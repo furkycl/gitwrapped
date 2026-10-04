@@ -113,7 +113,8 @@ export function parseLog(stdout) {
       hash,
       author,
       email,
-      date,
+      // git >= 2.5x prints UTC as "Z", older git as "+00:00": normalize so output is stable.
+      date: date.replace(/Z$/i, '+00:00'),
       subject: rest.join(US),
       files: [],
       filesChanged: 0,

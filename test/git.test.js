@@ -87,7 +87,7 @@ describe('parseLog', () => {
     const out = rec('h', 'A', 'a@x', '2025-01-01T00:00:00Z', '') + '\n\r\n';
     const [c] = parseLog(out);
     assert.equal(c.subject, '');
-    assert.equal(c.date, '2025-01-01T00:00:00Z');
+    assert.equal(c.date, '2025-01-01T00:00:00+00:00');
   });
 
   test('malformed records with too few fields are skipped', () => {
@@ -422,4 +422,9 @@ describe('readCommits review fixes', () => {
   test('output larger than maxBuffer gives a friendly error', async () => {
     await assert.rejects(readCommits(dir, { maxBuffer: 16 }), /larger than .*MB; narrow it down with --since or --author/);
   });
+});
+
+test('parseLog normalizes a UTC "Z" author date to +00:00 (git 2.55 vs older git)', () => {
+  const [c] = parseLog('h\x1fA\x1fa@x\x1f2025-01-01T00:00:00Z\x1fs\0');
+  assert.equal(c.date, '2025-01-01T00:00:00+00:00');
 });

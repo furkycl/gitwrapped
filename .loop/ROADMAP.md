@@ -9,8 +9,8 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 
 ## M2 — Git parser
 - [x] Read commits via `git log` with a stable delimiter format (hash, author, email, ISO date, subject)
-- [ ] Read per-commit file stats via `--numstat` (files changed, lines added/removed)
-- [ ] Fixture repos for tests: script that builds a tiny throwaway repo with known commits
+- [x] Read per-commit file stats via `--numstat` (files changed, lines added/removed)
+- [x] Fixture repos for tests: script that builds a tiny throwaway repo with known commits
 
 ## M3 — Stats engine
 - [ ] Totals: commits, active days, lines added/removed, files touched

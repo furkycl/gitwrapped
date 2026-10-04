@@ -61,6 +61,25 @@ export function localParts(isoDate) {
   };
 }
 
+const DAY_KEY = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
+ * 'YYYY-MM-DD' → integer days since 1970-01-01 (pure arithmetic, no Date/timezone).
+ * Consecutive calendar days differ by exactly 1.
+ * Invalid input policy: returns `null` (never throws) for a non-string, a wrong shape,
+ * or an impossible date (e.g. '2023-02-29').
+ */
+export function epochDay(dayKey) {
+  if (typeof dayKey !== 'string') return null;
+  const m = DAY_KEY.exec(dayKey);
+  if (!m) return null;
+  const year = +m[1];
+  const month = +m[2];
+  const day = +m[3];
+  if (month < 1 || month > 12 || day < 1 || day > daysInMonth(year, month)) return null;
+  return daysFromCivil(year, month, day);
+}
+
 /** 0-23 → "12 AM" (midnight), "9 AM", "12 PM" (noon), "11 PM". null/invalid → null. */
 export function hourLabel(hour) {
   if (!Number.isInteger(hour) || hour < 0 || hour > 23) return null;

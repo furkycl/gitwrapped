@@ -1,6 +1,6 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeStats, computeTimeHabits, computeTotals, hourLabel } from '../src/stats/index.js';
+import { computeHotFiles, computeStats, computeStreaks, computeTimeHabits, computeTotals, hourLabel } from '../src/stats/index.js';
 import { readCommits } from '../src/git.js';
 import { makeFixtureRepo } from '../scripts/make-fixture-repo.js';
 
@@ -110,9 +110,15 @@ describe('computeTimeHabits', () => {
 });
 
 describe('computeStats', () => {
-  test('combines totals and habits', () => {
+  test('combines totals, habits, streaks and hot files', () => {
     const commits = [at('2024-06-15T09:00:00Z')];
-    assert.deepEqual(computeStats(commits), { totals: computeTotals(commits), habits: computeTimeHabits(commits) });
+    const today = '2024-06-16';
+    assert.deepEqual(computeStats(commits, { today }), {
+      totals: computeTotals(commits),
+      habits: computeTimeHabits(commits),
+      streaks: computeStreaks(commits, { today }),
+      hotFiles: computeHotFiles(commits),
+    });
     assert.equal(computeStats([]).totals.commits, 0);
     assert.equal(computeStats().habits.peakHour, null);
   });
@@ -163,6 +169,7 @@ describe('stats on the fixture repo (integration)', () => {
   });
 
   test('readCommits output and the fixture expectations give the same stats', () => {
-    assert.deepEqual(computeStats(commits), computeStats(fixture.commits));
+    const today = '2024-03-14';
+    assert.deepEqual(computeStats(commits, { today }), computeStats(fixture.commits, { today }));
   });
 });

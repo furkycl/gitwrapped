@@ -3,3 +3,4 @@ gitwrapped-out/
 coverage/
 *.log
 .DS_Store
+cards-preview/

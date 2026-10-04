@@ -1,5 +1,7 @@
 # gitwrapped 🎁
 
+[![CI](https://github.com/furkycl/gitwrapped/actions/workflows/ci.yml/badge.svg)](https://github.com/furkycl/gitwrapped/actions/workflows/ci.yml)
+
 **Spotify Wrapped, but for your git history.**
 
 ```bash
@@ -23,7 +25,8 @@ gitwrapped --version   # -v
 ```
 
 Right now the CLI only parses and validates these flags (`path` defaults to `.`,
-`--out` defaults to `gitwrapped-out`). It does **not** analyze your history or write
+`--out` defaults to `gitwrapped-out`; `--author` matches the commit author's email
+exactly, case-insensitive). It does **not** analyze your history or write
 any cards yet; it just prints what it would do. Requires Node.js >= 20.
 
 > 🚧 Under construction — this project is being built, commit by commit, by an

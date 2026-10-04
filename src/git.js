@@ -51,6 +51,9 @@ function sinceMs(since) {
  * Build the argument list for `git log` (without `-C <path>`).
  * Arguments are passed straight to execFile (no shell), so values are never interpreted.
  */
+/** Largest value git accepts for --max-count (a C int). */
+const GIT_INT_MAX = 2 ** 31 - 1;
+
 export function buildLogArgs({ since, author, maxCount } = {}) {
   const args = [
     'log',
@@ -176,10 +179,12 @@ export async function readHistory(repoPath, { since, author, limit = DEFAULT_LIM
   }
   checkRepoPath(repoPath);
   // Without `since`, ask git for one extra commit so a history of exactly `limit` commits
-  // is not "truncated" (capped so limit + 1 never leaves the safe-integer range). With
+  // is not "truncated". With
   // `since`, git cannot cap: its --since checks the committer date, and a rebased commit
   // (old author date, new committer date) would use up a slot before the author-date filter.
-  const maxCount = since || limit === Infinity ? undefined : Math.min(limit + 1, Number.MAX_SAFE_INTEGER);
+  // git parses --max-count as a C int (newer git rejects larger values), so a limit that
+  // big is the same as no cap: skip --max-count and cut in JS below.
+  const maxCount = since || limit + 1 > GIT_INT_MAX ? undefined : limit + 1;
   const args = ['-C', repoPath, '-c', 'diff.relative=false', ...buildLogArgs({ since, author, maxCount })];
   let stdout;
   try {

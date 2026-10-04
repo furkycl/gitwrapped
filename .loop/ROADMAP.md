@@ -21,8 +21,8 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] Commit personality: rule-based archetypes (Night Owl, Early Bird, Friday Deployer, Fixaholic, Weekend Warrior, Steady Shipper) with a one-line roast each
 
 ## M4 — Cards
-- [ ] Card renderer: 1080x1920 SVG story cards, bold gradient style, no external fonts needed
-- [ ] Card set: intro, totals, peak hour, streak, hot files, message hall of fame, personality, outro
+- [x] Card renderer: 1080x1920 SVG story cards, bold gradient style, no external fonts needed
+- [x] Card set: intro, totals, peak hour, streak, hot files, message hall of fame, personality, outro
 - [ ] HTML viewer: one self-contained `wrapped.html` with tap/arrow-key story navigation
 - [ ] PNG export via `@resvg/resvg-js` (one PNG per card + a 1200x630 share summary)
 

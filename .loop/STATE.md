@@ -1,6 +1,6 @@
 # STATE
 
-Next turn: 007
+Next turn: 008
 
 | Turn | Date (UTC) | Task | PR | Result | Note for next turn |
 |------|------------|------|----|--------|--------------------|
@@ -11,3 +11,4 @@ Next turn: 007
 | 004 | 2026-10-04 | M3: totals + time habits | https://github.com/furkycl/gitwrapped/pull/6 | done (190 tests, CI green Node 20+22) | Two sessions ran turn 004 in parallel; duplicate PR #7 closed unmerged (check that only one scheduled task fires). Stats live in src/stats/ (index.js computeStats → {totals, habits}; time.js localParts gives dayKey/weekday/ms in author-local time; parseLog normalizes Z → +00:00). Next: streaks + hot files as src/stats/streaks.js and src/stats/files.js, wired into computeStats. |
 | 005 | 2026-10-04 | M3: streaks + hot files | https://github.com/furkycl/gitwrapped/pull/8 | done (226 tests, CI green Node 20+22) | computeStats(commits, {today}) → {totals, habits, streaks, hotFiles}. Generic build dirs only ignored at repo/package root. Next: commit messages stats (src/stats/messages.js), then personality archetypes using habits + messages. |
 | 006 | 2026-10-04 | M3: commit messages + personality | https://github.com/furkycl/gitwrapped/pull/9 | done (281 tests, CI green Node 20+22) | M3 complete. Personality scores = clamp01((share − uniform baseline)/range); merge commits skipped in message stats. Next: M4 card renderer + card set (src/cards/). |
+| 007 | 2026-10-04 | M4: SVG card renderer + card set | https://github.com/furkycl/gitwrapped/pull/10 | done (343 tests, CI green Node 20+22) | src/cards/ (buildCards → [{id, svg}], unique ids per card via idPrefix). Preview: node scripts/preview-cards.js; screenshot with Playwright Chromium at /opt/pw-browsers. Next: HTML viewer + CLI wiring, then PNG export (fonts: resvg needs loadSystemFonts + defaultFontFamily). |

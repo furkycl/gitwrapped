@@ -5,10 +5,10 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 ## M1 — Skeleton
 - [x] Init npm package `gitwrapped` (ESM, `bin: gitwrapped`), `npm test` with `node:test`, `.gitignore`, MIT LICENSE
 - [x] CLI entry: `gitwrapped [path] [--since YYYY-MM-DD] [--author email] [--out dir]` with `--help` and `--version`
-- [ ] GitHub Actions CI: run `npm test` on push and PR (Node 20 and 22)
+- [x] GitHub Actions CI: run `npm test` on push and PR (Node 20 and 22)
 
 ## M2 — Git parser
-- [ ] Read commits via `git log` with a stable delimiter format (hash, author, email, ISO date, subject)
+- [x] Read commits via `git log` with a stable delimiter format (hash, author, email, ISO date, subject)
 - [ ] Read per-commit file stats via `--numstat` (files changed, lines added/removed)
 - [ ] Fixture repos for tests: script that builds a tiny throwaway repo with known commits
 

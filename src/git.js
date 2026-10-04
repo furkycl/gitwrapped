@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { statSync } from 'node:fs';
 import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
@@ -24,6 +25,9 @@ export const LOG_FORMAT = '%H%x1f%an%x1f%ae%x1f%aI%x1f%s';
 
 const MAX_BUFFER = 256 * 1024 * 1024;
 
+/** Default cap on analyzed commits: the most recent DEFAULT_LIMIT are read. */
+export const DEFAULT_LIMIT = 50_000;
+
 // Variables that would make git ignore `-C <path>` or stop repo discovery early.
 const STRIPPED_ENV = ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_CEILING_DIRECTORIES', 'GIT_COMMON_DIR', 'GIT_CONFIG_PARAMETERS', 'GIT_CONFIG_COUNT'];
 
@@ -47,7 +51,10 @@ function sinceMs(since) {
  * Build the argument list for `git log` (without `-C <path>`).
  * Arguments are passed straight to execFile (no shell), so values are never interpreted.
  */
-export function buildLogArgs({ since, author } = {}) {
+/** Largest value git accepts for --max-count (a C int). */
+const GIT_INT_MAX = 2 ** 31 - 1;
+
+export function buildLogArgs({ since, author, maxCount } = {}) {
   const args = [
     'log',
     '-z',
@@ -64,6 +71,10 @@ export function buildLogArgs({ since, author } = {}) {
     '--root',
     '-O/dev/null',
   ];
+  if (maxCount !== undefined) {
+    if (!Number.isSafeInteger(maxCount) || maxCount < 1) throw new TypeError(`maxCount must be a positive integer, got ${maxCount}`);
+    args.push(`--max-count=${maxCount}`);
+  }
   if (since) args.push(`--since=${gitSince(since)}`);
   if (author) {
     // Exact email match, case-insensitive: git matches --author against "Name <email>".
@@ -132,14 +143,49 @@ function gitEnv() {
   return env;
 }
 
+/** Fail fast, before running git, when `repoPath` is missing or not a directory. */
+function checkRepoPath(repoPath) {
+  let st;
+  try {
+    st = statSync(repoPath);
+  } catch (err) {
+    if (err?.code === 'ENOENT' || err?.code === 'ENOTDIR') throw new Error(`path does not exist: ${repoPath}`);
+    throw new Error(`cannot access ${repoPath}: ${err?.code ?? err?.message ?? err}`);
+  }
+  if (!st.isDirectory()) throw new Error(`not a directory: ${repoPath}`);
+}
+
+/** Shell-quote `p` for the user's platform, for a copy-paste command hint. */
+export function quoteForShell(p, platform = process.platform) {
+  const s = String(p);
+  if (platform === 'win32') return `"${s.replace(/"/g, '\\"')}"`;
+  return `'${s.replace(/'/g, "'\\''")}'`;
+}
+
 /**
- * Read commits from the repo at `repoPath`, newest first.
- * `since` filters on the author date (git's own --since uses the committer date, so it
- * is only a pre-filter). Returns [] for a repo without commits; throws
- * "not a git repository: <path>" for anything that is not a repo.
+ * Read the history of the repo at `repoPath`, newest first, capped at `limit` commits
+ * (default 50,000: the most recent ones; `Infinity` means no cap). Returns
+ * `{commits, truncated, limit}` where `truncated` is true when more than `limit` commits
+ * matched the filters. `since` filters on the author date: git's own --since uses the
+ * committer date, so it is only a pre-filter; the cap is applied after the author-date
+ * filter. `commits` is [] for a repo without commits. Throws a TypeError for an invalid
+ * `limit`, and a user-facing Error for: a missing path ("path does not exist: <path>"),
+ * a file ("not a directory: <path>"), a folder that is not a repo ("not a git repository:
+ * <path>"), git's safe.directory ownership check, a missing git, or oversized output.
  */
-export async function readCommits(repoPath, { since, author, maxBuffer = MAX_BUFFER } = {}) {
-  const args = ['-C', repoPath, '-c', 'diff.relative=false', ...buildLogArgs({ since, author })];
+export async function readHistory(repoPath, { since, author, limit = DEFAULT_LIMIT, maxBuffer = MAX_BUFFER } = {}) {
+  if (limit !== Infinity && (!Number.isSafeInteger(limit) || limit < 1)) {
+    throw new TypeError(`limit must be a positive integer or Infinity, got ${limit}`);
+  }
+  checkRepoPath(repoPath);
+  // Without `since`, ask git for one extra commit so a history of exactly `limit` commits
+  // is not "truncated". With
+  // `since`, git cannot cap: its --since checks the committer date, and a rebased commit
+  // (old author date, new committer date) would use up a slot before the author-date filter.
+  // git parses --max-count as a C int (newer git rejects larger values), so a limit that
+  // big is the same as no cap: skip --max-count and cut in JS below.
+  const maxCount = since || limit + 1 > GIT_INT_MAX ? undefined : limit + 1;
+  const args = ['-C', repoPath, '-c', 'diff.relative=false', ...buildLogArgs({ since, author, maxCount })];
   let stdout;
   try {
     ({ stdout } = await execFileAsync('git', args, {
@@ -154,19 +200,38 @@ export async function readCommits(repoPath, { since, author, maxBuffer = MAX_BUF
     }
     if (err.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
       const mb = Math.round(maxBuffer / (1024 * 1024));
-      throw new Error(`git log output is larger than ${mb} MB; narrow it down with --since or --author`);
+      throw new Error(`git log output is larger than ${mb} MB; narrow it down with --since or --author, or lower --max-commits`);
     }
     const stderr = String(err.stderr ?? '');
     if (/does not have any commits yet|bad default revision 'HEAD'/.test(stderr)) {
-      return [];
+      return { commits: [], truncated: false, limit };
+    }
+    if (/detected dubious ownership/i.test(stderr)) {
+      const at = /dubious ownership in repository at '([^\n]+)'[ \t]*$/im.exec(stderr)?.[1] ?? repoPath;
+      throw new Error(
+        `git refused to read ${repoPath}: the repository is owned by another user ("dubious ownership").\n` +
+          `If you trust it, run: git config --global --add safe.directory ${quoteForShell(at)}`,
+      );
     }
     if (/not a git repository|cannot change to/i.test(stderr)) {
       throw new Error(`not a git repository: ${repoPath}`);
     }
     throw new Error(`git log failed: ${stderr.trim() || err.message}`);
   }
-  const commits = parseLog(stdout);
+  let commits = parseLog(stdout);
   const min = since ? sinceMs(since) : NaN;
-  if (Number.isNaN(min)) return commits;
-  return commits.filter((c) => Date.parse(c.date) >= min);
+  if (!Number.isNaN(min)) commits = commits.filter((c) => Date.parse(c.date) >= min);
+  const truncated = commits.length > limit;
+  if (truncated) commits = commits.slice(0, limit);
+  return { commits, truncated, limit };
+}
+
+/**
+ * Read commits from the repo at `repoPath`, newest first: `readHistory(...).commits`
+ * (same options and errors). Like readHistory, it is capped by default at the most recent
+ * DEFAULT_LIMIT (50,000) commits, silently; pass `limit: Infinity` to read everything, or
+ * use readHistory to learn whether the result was truncated. Returns [] for a repo without commits.
+ */
+export async function readCommits(repoPath, opts = {}) {
+  return (await readHistory(repoPath, opts)).commits;
 }

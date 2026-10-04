@@ -3,9 +3,10 @@ import { execFile } from 'node:child_process';
 import { accessSync, constants as fsConstants, mkdirSync, readFileSync, rmdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { buildCards, renderShareCard } from './cards/index.js';
-import { readCommits } from './git.js';
+import { DEFAULT_LIMIT, readHistory } from './git.js';
 import { renderPng } from './png.js';
 import { computeStats } from './stats/index.js';
+import { formatSummary, shouldUseColor } from './summary.js';
 import { buildViewerHtml } from './viewer.js';
 
 const execFileAsync = promisify(execFile);
@@ -24,7 +25,11 @@ Options:
   --author <email>     Only include commits by this author email
                        (exact email match, case-insensitive)
   --out <dir>          Output directory (default: "gitwrapped-out")
+  --max-commits <n>    Analyze at most the n most recent commits
+                       (default: 50000)
   --no-png             Skip PNG rendering (faster; SVG + HTML only)
+  --no-color           Plain console output (also: NO_COLOR=1;
+                       FORCE_COLOR=1 forces color)
   -h, --help           Show this help and exit
   -v, --version        Show the version and exit
 `;
@@ -33,7 +38,9 @@ const OPTIONS = {
   since: { type: 'string' },
   author: { type: 'string' },
   out: { type: 'string' },
+  'max-commits': { type: 'string' },
   'no-png': { type: 'boolean' },
+  'no-color': { type: 'boolean' },
   help: { type: 'boolean', short: 'h' },
   version: { type: 'boolean', short: 'v' },
 };
@@ -55,15 +62,56 @@ function validateSince(value) {
   return value;
 }
 
+function validateMaxCommits(value) {
+  const v = value.trim();
+  const n = Number(v);
+  if (!/^\d+$/.test(v) || !Number.isSafeInteger(n) || n < 1) {
+    throw new Error(`invalid --max-commits "${value}": expected a positive whole number`);
+  }
+  return n;
+}
+
+const VALUE_OPTIONS = new Set(Object.keys(OPTIONS).filter((k) => OPTIONS[k].type === 'string').map((k) => `--${k}`));
+const NEGATIVE_NUMBER = /^-\d/;
+
+/**
+ * Pre-scan argv for value-taking options followed by a token that starts with "-".
+ * Node's parseArgs reports those as "argument is ambiguous"; instead a negative number
+ * (`--max-commits -5`) is joined into `--max-commits=-5` so validation gives a precise
+ * message, and anything else (`--since --no-png`, or the option last) is "requires a value".
+ */
+function normalizeArgv(argv) {
+  const out = [];
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === '--') {
+      out.push(...argv.slice(i));
+      break;
+    }
+    if (VALUE_OPTIONS.has(arg)) {
+      const next = argv[i + 1];
+      if (next === undefined || (next.startsWith('-') && !NEGATIVE_NUMBER.test(next))) {
+        throw new Error(`${arg} requires a value`);
+      }
+      out.push(`${arg}=${next}`);
+      i++;
+      continue;
+    }
+    out.push(arg);
+  }
+  return out;
+}
+
 /**
  * Parse CLI arguments (without node/script prefix).
- * Returns {help:true}, {version:true}, or {path, since, author, out, png}.
+ * Returns {help:true}, {version:true}, or {path, since, author, out, png, maxCommits, color}
+ * (color: false for --no-color, else undefined = auto).
  * Throws an Error with a user-facing message on invalid input.
  */
 export function parseCli(argv) {
   let parsed;
   try {
-    parsed = parseArgs({ args: argv, options: OPTIONS, allowPositionals: true, strict: true });
+    parsed = parseArgs({ args: normalizeArgv(argv), options: OPTIONS, allowPositionals: true, strict: true });
   } catch (err) {
     // Strip Node's verbose suffix (e.g. "To specify a positional argument ...").
     const msg = String(err.message).split(/\.(?:\s|$)/)[0];
@@ -78,7 +126,7 @@ export function parseCli(argv) {
     throw new Error(`expected at most one path, got ${positionals.length}: ${positionals.join(' ')}`);
   }
 
-  for (const name of ['since', 'author', 'out']) {
+  for (const name of ['since', 'author', 'out', 'max-commits']) {
     if (values[name] !== undefined && values[name].trim() === '') {
       throw new Error(`--${name} requires a non-empty value`);
     }
@@ -90,6 +138,8 @@ export function parseCli(argv) {
     author: values.author?.trim(),
     out: values.out?.trim() ?? 'gitwrapped-out',
     png: !values['no-png'],
+    maxCommits: values['max-commits'] === undefined ? DEFAULT_LIMIT : validateMaxCommits(values['max-commits']),
+    ...(values['no-color'] ? { color: false } : {}),
   };
 }
 
@@ -105,11 +155,22 @@ function repoEnv() {
 }
 
 /**
+ * Folder name for a repo path without a work tree: "proj.git" → "proj", and a ".git"
+ * directory itself → its parent folder's name.
+ */
+export function bareRepoName(repoPath) {
+  const abs = resolve(repoPath);
+  const base = basename(abs);
+  if (base === '.git') return basename(dirname(abs));
+  return base.replace(/\.git$/, '') || base;
+}
+
+/**
  * Name to show for the repo: basename of `git rev-parse --show-toplevel`, falling back to
- * the basename of the resolved path.
+ * bareRepoName(path) (bare repos and .git dirs have no top level).
  */
 export async function repoName(repoPath) {
-  const fallback = basename(resolve(repoPath)) || 'your repo';
+  const fallback = bareRepoName(repoPath) || 'your repo';
   try {
     const { stdout } = await execFileAsync('git', ['-C', repoPath, 'rev-parse', '--show-toplevel'], {
       encoding: 'utf8',
@@ -220,12 +281,14 @@ function removeStalePngs(pngDir, sharePngPath, names) {
  * Everything is rendered in memory and the output paths are checked first, so a bad
  * --out fails before anything is written. If the PNG renderer cannot be loaded or fails,
  * the SVG/HTML output is still written and `pngSkipped` holds the reason.
- * Returns {commits, html, cardsDir, cardFiles, shareSvg, pngDir, pngFiles, sharePng,
- * pngSkipped} with the written paths (joined onto `out`; PNG paths null/[] when skipped).
+ * At most `maxCommits` (default 50,000) of the most recent commits are analyzed.
+ * Returns {commits, stats, repoName, truncated, limit, html, cardsDir, cardFiles, shareSvg,
+ * pngDir, pngFiles, sharePng, pngSkipped} with the written paths (joined onto `out`; PNG
+ * paths null/[] when skipped); `truncated` is true when the cap cut the history short.
  * `renderPng` (svg, {width}) → Promise<Buffer> replaces the PNG renderer (for tests).
  */
-export async function generate({ path, since, author, out, png = true }, { today, renderPng: rasterize = renderPng } = {}) {
-  const commits = await readCommits(path, { since, author });
+export async function generate({ path, since, author, out, png = true, maxCommits = DEFAULT_LIMIT }, { today, renderPng: rasterize = renderPng } = {}) {
+  const { commits, truncated, limit } = await readHistory(path, { since, author, limit: maxCommits });
   const stats = computeStats(commits, { today });
   const name = await repoName(path);
   const cards = buildCards(stats, { repoName: name, since, author });
@@ -273,6 +336,10 @@ export async function generate({ path, since, author, out, png = true }, { today
   const pngFiles = pngs.map((p) => p.file).filter((f) => f !== sharePngPath);
   return {
     commits: commits.length,
+    stats,
+    repoName: name,
+    truncated,
+    limit,
     html,
     cardsDir,
     cardFiles: files.map((f) => f.file),
@@ -287,7 +354,7 @@ export async function generate({ path, since, author, out, png = true }, { today
 /**
  * Run the CLI. Resolves to a process exit code.
  */
-export async function run(argv, { stdout = process.stdout, stderr = process.stderr, today, renderPng: rasterize } = {}) {
+export async function run(argv, { stdout = process.stdout, stderr = process.stderr, env = process.env, today, renderPng: rasterize } = {}) {
   let opts;
   try {
     opts = parseCli(argv);
@@ -313,16 +380,31 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
     stderr.write(`gitwrapped: ${err?.message ?? String(err)}\n`);
     return 1;
   }
-  const noun = result.commits === 1 ? 'commit' : 'commits';
-  stdout.write(`gitwrapped: ${result.commits} ${noun} → ${result.html}\n`);
-  stdout.write(`  ${result.cardFiles.length} cards in ${result.cardsDir}\n`);
-  for (const file of result.cardFiles) stdout.write(`    ${file}\n`);
-  if (result.sharePng) {
-    stdout.write(`  ${result.pngFiles.length} PNGs in ${result.pngDir}\n`);
-    stdout.write(`  share image: ${result.sharePng}\n`);
-  } else {
-    stdout.write(`  share image: ${result.shareSvg}\n`);
+  const notes = [];
+  if (result.truncated) {
+    const n = result.limit.toLocaleString('en-US');
+    notes.push(
+      opts.since || opts.author
+        ? `Note: more than ${n} matching commits; only the most recent ${n} were analyzed.`
+        : `Note: this repo has more than ${n} commits; only the most recent ${n} were analyzed.`,
+    );
   }
+  stdout.write(
+    formatSummary(result.stats, {
+      color: shouldUseColor({ stream: stdout, env, flag: opts.color }),
+      repoName: result.repoName,
+      notes,
+      paths: {
+        html: result.html,
+        cardsDir: result.cardsDir,
+        cardCount: result.cardFiles.length,
+        pngDir: result.pngDir,
+        pngCount: result.pngFiles.length,
+        sharePng: result.sharePng,
+        shareSvg: result.shareSvg,
+      },
+    }),
+  );
   if (result.pngSkipped) stderr.write(`gitwrapped: PNG export skipped: ${result.pngSkipped}\n`);
   return 0;
 }

@@ -19,7 +19,8 @@ message, and your commit personality.
 ## Usage
 
 ```bash
-gitwrapped [path] [--since YYYY-MM-DD] [--author email] [--out dir] [--no-png]
+gitwrapped [path] [--since YYYY-MM-DD] [--author email] [--out dir]
+           [--max-commits n] [--no-png] [--no-color]
 gitwrapped --help      # -h
 gitwrapped --version   # -v
 ```
@@ -49,8 +50,27 @@ a card with `wrapped.html#3`. Auto-advance is off when your system prefers reduc
 motion.
 
 `--since` keeps commits authored on or after that day; `--author` matches the commit
-author's email exactly, case-insensitive. A repo (or filter) with no commits still
-gets a card set. Requires Node.js >= 20 and `git` on your PATH.
+author's email exactly, case-insensitive. Requires Node.js >= 20 and `git` on your PATH.
+
+When it is done, gitwrapped prints a short recap in the terminal: commits, active
+days, lines added/removed, power hour, streaks, hottest file, top word and your commit
+personality, then where the output went. The first line is always
+`gitwrapped: N commits → <out>/wrapped.html`, easy to grep. The recap is colored on a
+terminal; `--no-color` or `NO_COLOR=1` turns color off and `FORCE_COLOR=1` forces it
+(piped output is plain by default).
+
+Edge cases:
+
+- **Empty repo** (`git init`, no commits yet) or a filter that matches nothing: you
+  still get a full card set with friendly empty copy, the recap says
+  "No commits found", and the exit code is 0.
+- **Huge repo:** only the 50,000 most recent commits are analyzed, and the recap says
+  so. Change the cap with `--max-commits n`.
+- **Not a repo:** a missing path, a file, or a folder that is not a git repository
+  each exit 1 with a one-line error (`path does not exist`, `not a directory`,
+  `not a git repository`). If git refuses a repo owned by another user ("dubious
+  ownership"), gitwrapped prints the `git config --global --add safe.directory`
+  command that allows it.
 
 PNGs are rendered locally with [`@resvg/resvg-js`](https://github.com/yisibl/resvg-js)
 (a prebuilt native module, the only dependency). Text uses your system's fonts: the

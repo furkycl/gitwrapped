@@ -347,6 +347,20 @@ describe('buildCards', () => {
     assert.ok(totals.includes('1 commit per active day'));
   });
 
+  test('single weekend commit: personality card shows no score bars that contradict the fallback', () => {
+    const one = [{
+      hash: 'h', author: 'A', email: 'a@x', date: '2024-03-10T21:00:00+00:00', subject: 'hello world',
+      files: [], filesChanged: 0, linesAdded: 0, linesRemoved: 0,
+    }];
+    const s = computeStats(one, { today: TODAY });
+    assert.equal(s.personality.archetype.id, 'steady-shipper');
+    assert.notEqual(s.personality.scores[0].id, 'steady-shipper');
+    const m = byId(buildCards(s));
+    assert.ok(m.personality.includes('Not enough commits yet.'));
+    assert.doesNotMatch(stripTags(m.personality), /\d+%/);
+    for (const svg of Object.values(m)) assert.doesNotMatch(stripTags(svg), /\b(null|undefined|NaN)\b|\b1 (commits|days)\b/);
+  });
+
   test('every card passes the built-in XML well-formedness check', () => {
     assert.equal(xmlError('<a><b x="1"/></a>'), null);
     assert.notEqual(xmlError('<a><b></a>'), null);

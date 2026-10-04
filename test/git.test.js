@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { buildLogArgs, parseLog, readCommits, LOG_FORMAT } from '../src/git.js';
+import { buildLogArgs, parseLog, readCommits, readHistory, DEFAULT_LIMIT, LOG_FORMAT } from '../src/git.js';
 
 const US = '\x1f';
 
@@ -25,6 +25,12 @@ describe('buildLogArgs', () => {
     assert.ok(args.includes('--no-renames'));
     assert.ok(!args.some((a) => a.startsWith('--since') || a.startsWith('--author')));
     assert.deepEqual(buildLogArgs({}), args);
+  });
+
+  test('maxCount adds --max-count; invalid values throw', () => {
+    assert.ok(buildLogArgs({ maxCount: 50001 }).includes('--max-count=50001'));
+    assert.ok(!buildLogArgs().some((a) => a.startsWith('--max-count')));
+    for (const maxCount of [0, -1, 2.5, '10']) assert.throws(() => buildLogArgs({ maxCount }), TypeError);
   });
 
   test('--since date is sent as local midnight in a single arg', () => {
@@ -190,8 +196,54 @@ describe('readCommits', () => {
 
   test('missing path throws a clear error', async () => {
     const missing = join(notRepo, 'does-not-exist');
-    await assert.rejects(readCommits(missing), { message: `not a git repository: ${missing}` });
+    await assert.rejects(readCommits(missing), { message: `path does not exist: ${missing}` });
   });
+
+  test('readHistory caps at the most recent `limit` commits and flags truncation', async () => {
+    const two = await readHistory(dir, { limit: 2 });
+    assert.equal(two.truncated, true);
+    assert.equal(two.limit, 2);
+    assert.deepEqual(two.commits.map((c) => c.subject), ['wip 🎉', 'fix: handle a | b\tcase']);
+    const exact = await readHistory(dir, { limit: 3 });
+    assert.equal(exact.truncated, false, 'exactly `limit` commits is not truncated');
+    assert.equal(exact.commits.length, 3);
+    const all = await readHistory(dir);
+    assert.equal(all.limit, DEFAULT_LIMIT);
+    assert.equal(all.truncated, false);
+    assert.deepEqual(all.commits, await readCommits(dir));
+    assert.deepEqual((await readCommits(dir, { limit: 1 })).map((c) => c.subject), ['wip 🎉']);
+  });
+
+  test('a repo owned by another user gives a safe.directory hint', { skip: process.getuid?.() === 0 ? false : 'needs root to chown' }, async (t) => {
+    const owned = mkdtempSync(join(tmpdir(), 'gitwrapped-dubious-'));
+    t.after(() => rmSync(owned, { recursive: true, force: true }));
+    git(owned, ['init', '-q']);
+    execFileSync('chown', ['-R', '65534', owned]);
+    const saved = { GIT_CONFIG_GLOBAL: process.env.GIT_CONFIG_GLOBAL, GIT_CONFIG_NOSYSTEM: process.env.GIT_CONFIG_NOSYSTEM };
+    process.env.GIT_CONFIG_GLOBAL = '/dev/null';
+    process.env.GIT_CONFIG_NOSYSTEM = '1';
+    try {
+      await assert.rejects(readHistory(owned), (err) => {
+        assert.match(err.message, /dubious ownership/);
+        assert.match(err.message, /git config --global --add safe\.directory '[^']+'/);
+        return true;
+      });
+    } finally {
+      for (const [k, v] of Object.entries(saved)) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }
+  });
+
+  test('readHistory on an empty repo → no commits, not truncated', async () => {
+    assert.deepEqual(await readHistory(emptyDir), { commits: [], truncated: false, limit: DEFAULT_LIMIT });
+  });
+
+  test('readHistory rejects a non-positive / non-integer limit', async () => {
+    for (const limit of [0, -1, 1.5, NaN, '3']) await assert.rejects(readHistory(dir, { limit }), TypeError);
+  });
+
 });
 
 describe('parseLog edge cases', () => {
@@ -323,10 +375,10 @@ describe('readCommits edge cases', () => {
     assert.equal((await readCommits(sub)).length, 5);
   });
 
-  test('a file path (not a directory) throws "not a git repository"', async () => {
+  test('a file path throws "not a directory"', async () => {
     const file = join(root, 'plain file.txt');
     writeFileSync(file, 'x');
-    await assert.rejects(readCommits(file), { message: `not a git repository: ${file}` });
+    await assert.rejects(readCommits(file), { message: `not a directory: ${file}` });
   });
 });
 

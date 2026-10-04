@@ -1,0 +1,5 @@
+node_modules/
+gitwrapped-out/
+coverage/
+*.log
+.DS_Store

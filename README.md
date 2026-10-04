@@ -12,6 +12,8 @@ npx gitwrapped
 <!-- TODO: replace with docs/hero.gif (screen recording of wrapped.html) -->
 ![gitwrapped story cards](docs/self-wrapped/share.png)
 
+See gitwrapped's own Wrapped: [docs/self-wrapped/](docs/self-wrapped/) has the cards from running it on this repo.
+
 ## What you get
 
 Eight 1080x1920 story cards:

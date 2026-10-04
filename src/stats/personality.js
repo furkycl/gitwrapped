@@ -7,7 +7,7 @@ export const ARCHETYPES = Object.freeze(
     { id: 'early-bird', name: 'Early Bird', roast: 'You push code before the coffee is even brewed. Show-off.' },
     { id: 'friday-deployer', name: 'Friday Deployer', roast: 'You ship on Fridays and call it courage. Your on-call rotation calls it something else.' },
     { id: 'fixaholic', name: 'Fixaholic', roast: 'Every bug you fix is a bug you lovingly wrote first.' },
-    { id: 'weekend-warrior', name: 'Weekend Warrior', roast: 'Saturdays are for touching grass. You touched git instead.' },
+    { id: 'weekend-warrior', name: 'Weekend Warrior', roast: 'Weekends are for touching grass. You touched git instead.' },
     { id: 'steady-shipper', name: 'Steady Shipper', roast: 'Reliable, consistent, low drama. Frankly, a little suspicious.' },
   ].map((a) => Object.freeze(a)),
 );

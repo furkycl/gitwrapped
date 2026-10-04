@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" role="img" aria-label="YOUR POWER HOUR — 8 PM — is when you commit the most">
+<title>YOUR POWER HOUR — 8 PM — is when you commit the most</title>
+<defs><linearGradient id="gw-peak-hour-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0.00" stop-color="#8e2de2"/><stop offset="0.50" stop-color="#4a00e0"/><stop offset="1.00" stop-color="#10002f"/></linearGradient><radialGradient id="gw-peak-hour-glow"><stop offset="0" stop-color="#d59bff" stop-opacity="0.55"/><stop offset="1" stop-color="#d59bff" stop-opacity="0"/></radialGradient></defs><rect width="1080" height="1920" fill="url(#gw-peak-hour-bg)"/><circle cx="930" cy="250" r="460" fill="url(#gw-peak-hour-glow)"/><circle cx="110" cy="1650" r="560" fill="url(#gw-peak-hour-glow)"/><circle cx="960" cy="1280" r="180" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="24"/>
+<g fill="#ffffff" font-family="system-ui, -apple-system, &apos;Segoe UI&apos;, Roboto, Helvetica, Arial, sans-serif">
+<rect x="96" y="150" width="72" height="10" rx="5" fill="#ffffff"/>
+<text x="96" y="222" font-size="36" font-weight="800" fill-opacity="0.9" letter-spacing="5">YOUR POWER HOUR</text>
+<text x="96" y="817.5" font-size="280" font-weight="900" letter-spacing="-5.6">8 PM</text>
+<text x="96" y="982.7" font-size="72" font-weight="800">is when you commit</text><text x="96" y="1063.4" font-size="72" font-weight="800">the most</text>
+<text x="96" y="1168.2" font-size="44" font-weight="600" fill-opacity="0.9">6 commits landed in the 8 PM</text><text x="96" y="1225.4" font-size="44" font-weight="600" fill-opacity="0.9">hour. After-hours hero. Sunday is</text><text x="96" y="1282.6" font-size="44" font-weight="600" fill-opacity="0.9">your busiest day.</text>
+<text x="96" y="1820" font-size="44" font-weight="900" letter-spacing="-1">gitwrapped</text>
+<text x="984" y="1818" font-size="32" font-weight="600" fill-opacity="0.8" text-anchor="end">gitwrapped · 2026-10-04</text>
+</g>
+</svg>

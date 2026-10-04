@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'sha256-YH2iYmB1vIhCPWb4PsOEFO3DV/WoJrTXDpRDGmBJWVo='; script-src 'sha256-CJR4gxn5qmQu399yHa9PQ8VyG3SeAo9xcSHm7LHmoto='; img-src data:; base-uri 'none'; form-action 'none'">
+<meta name="color-scheme" content="dark">
+<title>gitwrapped · gitwrapped</title>
+<style>
+:root{--dur:6000ms;color-scheme:dark;--bg:#07070b;--fg:#fff;--track:rgba(255,255,255,.35);--focus:#ffd84d}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+.stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+.story{position:relative;width:min(100vw,calc(100vh * 9 / 16));height:min(100vh,calc(100vw * 16 / 9));
+  width:min(100vw,calc(100dvh * 9 / 16));height:min(100dvh,calc(100vw * 16 / 9));
+  overflow:hidden;border-radius:12px;background:#000;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:pan-y}
+.slide{position:absolute;inset:0;visibility:hidden;opacity:0;transition:opacity .25s ease}
+.slide.active{visibility:visible;opacity:1}
+.slide svg{display:block;width:100%;height:100%}
+.bars{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));left:calc(10px + env(safe-area-inset-left,0px));right:calc(10px + env(safe-area-inset-right,0px));display:flex;gap:4px;z-index:3;pointer-events:none}
+.bar{flex:1;height:4px;border-radius:2px;background:var(--track);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--fg)}
+.bar.done i{width:100%}
+.bar.current i{width:100%}
+.auto .bar.current i{width:0;animation:fill var(--dur,6s) linear forwards}
+.paused .bar.current i{animation-play-state:paused}
+@keyframes fill{from{width:0}to{width:100%}}
+.nav{position:absolute;top:0;bottom:0;z-index:2;margin:0;padding:0;border:0;background:transparent;cursor:pointer;color:inherit;-webkit-tap-highlight-color:transparent}
+.nav.prev{left:0;width:33.333%}
+.nav.next{right:0;width:66.667%}
+.nav:focus{outline:none}
+.nav:focus-visible{outline:3px solid var(--focus);outline-offset:-6px;border-radius:12px}
+.pause{position:absolute;top:calc(22px + env(safe-area-inset-top,0px));right:calc(12px + env(safe-area-inset-right,0px));z-index:4;width:40px;height:40px;border:0;border-radius:50%;background:rgba(0,0,0,.35);color:var(--fg);font:600 16px/1 system-ui,sans-serif;cursor:pointer}
+.pause:focus{outline:none}
+.pause:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.pause[hidden]{display:none}
+.sr{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (min-width:700px){.story{box-shadow:0 20px 60px rgba(0,0,0,.6)}}
+@media (prefers-reduced-motion:reduce){.slide{transition:none}.auto .bar.current i{animation:none;width:100%}}
+</style>
+</head>
+<body>
+<main class="stage">
+<h1 class="sr">gitwrapped · gitwrapped</h1>
+<div class="story" id="story" aria-roledescription="carousel" aria-label="gitwrapped · gitwrapped">
+<div class="bars" aria-hidden="true"><span class="bar current"><i></i></span><span class="bar"><i></i></span><span class="bar"><i></i></span><span class="bar"><i></i></span><span class="bar"><i></i></span><span class="bar"><i></i></span><span class="bar"><i></i></span><span class="bar"><i></i></span></div>
+<section class="slide active" id="card-1" data-card="intro" data-title="GITWRAPPED PRESENTS — gitwrapped — Wrapped" aria-roledescription="slide" aria-label="1 of 8" aria-hidden="false">
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" role="img" aria-label="GITWRAPPED PRESENTS — gitwrapped — Wrapped">
+<title>GITWRAPPED PRESENTS — gitwrapped — Wrapped</title>
+<defs><linearGradient id="gw-intro-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0.00" stop-color="#ff3d77"/><stop offset="0.50" stop-color="#9b2ff7"/><stop offset="1.00" stop-color="#2a0a6b"/></linearGradient><radialGradient id="gw-intro-glow"><stop offset="0" stop-color="#ffb3d1" stop-opacity="0.55"/><stop offset="1" stop-color="#ffb3d1" stop-opacity="0"/></radialGradient></defs><rect width="1080" height="1920" fill="url(#gw-intro-bg)"/><circle cx="930" cy="250" r="460" fill="url(#gw-intro-glow)"/><circle cx="110" cy="1650" r="560" fill="url(#gw-intro-glow)"/><circle cx="960" cy="1280" r="180" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="24"/>
+<g fill="#ffffff" font-family="system-ui, -apple-system, &apos;Segoe UI&apos;, Roboto, Helvetica, Arial, sans-serif">
+<rect x="96" y="150" width="72" height="10" rx="5" fill="#ffffff"/>
+<text x="96" y="222" font-size="36" font-weight="800" fill-opacity="0.9" letter-spacing="5">GITWRAPPED PRESENTS</text>
+<text x="96" y="794.2" font-size="134" font-weight="900" letter-spacing="-2.7">gitwrapped</text>
+<text x="96" y="930.2" font-size="72" font-weight="800">Wrapped</text>
+<text x="96" y="1035.1" font-size="44" font-weight="600" fill-opacity="0.9">Your commits, your chaos, your</text><text x="96" y="1092.3" font-size="44" font-weight="600" fill-opacity="0.9">story. Let&apos;s see what you&apos;ve been</text><text x="96" y="1149.5" font-size="44" font-weight="600" fill-opacity="0.9">up to.</text>
+<text x="96" y="1820" font-size="44" font-weight="900" letter-spacing="-1">gitwrapped</text>
+<text x="984" y="1818" font-size="32" font-weight="600" fill-opacity="0.8" text-anchor="end">gitwrapped · 2026-10-04</text>
+</g>
+</svg>
+</section>
+<section class="slide" id="card-2" data-card="totals" data-title="THE GRAND TOTAL — 26 — commits" aria-roledescription="slide" aria-label="2 of 8" aria-hidden="true">
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" role="img" aria-label="THE GRAND TOTAL — 26 — commits">
+<title>THE GRAND TOTAL — 26 — commits</title>
+<defs><linearGradient id="gw-totals-bg" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0.00" stop-color="#00c6ff"/><stop offset="0.50" stop-color="#0063e6"/><stop offset="1.00" stop-color="#14125e"/></linearGradient><radialGradient id="gw-totals-glow"><stop offset="0" stop-color="#7ae8ff" stop-opacity="0.55"/><stop offset="1" stop-color="#7ae8ff" stop-opacity="0"/></radialGradient></defs><rect width="1080" height="1920" fill="url(#gw-totals-bg)"/><circle cx="930" cy="250" r="460" fill="url(#gw-totals-glow)"/><circle cx="110" cy="1650" r="560" fill="url(#gw-totals-glow)"/><circle cx="960" cy="1280" r="180" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="24"/>
+<g fill="#ffffff" font-family="system-ui, -apple-system, &apos;Segoe UI&apos;, Roboto, Helvetica, Arial, sans-serif">
+<rect x="96" y="150" width="72" height="10" rx="5" fill="#ffffff"/>
+<text x="96" y="222" font-size="36" font-weight="800" fill-opacity="0.9" letter-spacing="5">THE GRAND TOTAL</text>
+<text x="96" y="694.5" font-size="280" font-weight="900" letter-spacing="-5.6">26</text>
+<text x="96" y="859.7" font-size="72" font-weight="800">commits</text>
+<text x="96" y="964.5" font-size="44" font-weight="600" fill-opacity="0.9">That&apos;s 13 commits per active day.</text>
+<rect x="64" y="1032.3152" width="952" height="440" rx="40" fill="#ffffff" fill-opacity="0.14"/><text x="96" y="1108.3" font-size="40" font-weight="700">Lines added</text><text x="984" y="1108.3" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">+9,210</text><text x="96" y="1186.3" font-size="40" font-weight="700">Lines removed</text><text x="984" y="1186.3" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">−282</text><text x="96" y="1264.3" font-size="40" font-weight="700">Active days</text><text x="984" y="1264.3" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">2</text><text x="96" y="1342.3" font-size="40" font-weight="700">Files touched</text><text x="984" y="1342.3" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">49</text><text x="96" y="1420.3" font-size="40" font-weight="700">Contributors</text><text x="984" y="1420.3" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">2</text>
+<text x="96" y="1820" font-size="44" font-weight="900" letter-spacing="-1">gitwrapped</text>
+<text x="984" y="1818" font-size="32" font-weight="600" fill-opacity="0.8" text-anchor="end">gitwrapped · 2026-10-04</text>
+</g>
+</svg>
+</section>
+<section class="slide" id="card-3" data-card="peak-hour" data-title="YOUR POWER HOUR — 8 PM — is when you commit the most" aria-roledescription="slide" aria-label="3 of 8" aria-hidden="true">
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" role="img" aria-label="YOUR POWER HOUR — 8 PM — is when you commit the most">
+<title>YOUR POWER HOUR — 8 PM — is when you commit the most</title>
+<defs><linearGradient id="gw-peak-hour-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0.00" stop-color="#8e2de2"/><stop offset="0.50" stop-color="#4a00e0"/><stop offset="1.00" stop-color="#10002f"/></linearGradient><radialGradient id="gw-peak-hour-glow"><stop offset="0" stop-color="#d59bff" stop-opacity="0.55"/><stop offset="1" stop-color="#d59bff" stop-opacity="0"/></radialGradient></defs><rect width="1080" height="1920" fill="url(#gw-peak-hour-bg)"/><circle cx="930" cy="250" r="460" fill="url(#gw-peak-hour-glow)"/><circle cx="110" cy="1650" r="560" fill="url(#gw-peak-hour-glow)"/><circle cx="960" cy="1280" r="180" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="24"/>
+<g fill="#ffffff" font-family="system-ui, -apple-system, &apos;Segoe UI&apos;, Roboto, Helvetica, Arial, sans-serif">
+<rect x="96" y="150" width="72" height="10" rx="5" fill="#ffffff"/>
+<text x="96" y="222" font-size="36" font-weight="800" fill-opacity="0.9" letter-spacing="5">YOUR POWER HOUR</text>
+<text x="96" y="817.5" font-size="280" font-weight="900" letter-spacing="-5.6">8 PM</text>
+<text x="96" y="982.7" font-size="72" font-weight="800">is when you commit</text><text x="96" y="1063.4" font-size="72" font-weight="800">the most</text>
+<text x="96" y="1168.2" font-size="44" font-weight="600" fill-opacity="0.9">6 commits landed in the 8 PM</text><text x="96" y="1225.4" font-size="44" font-weight="600" fill-opacity="0.9">hour. After-hours hero. Sunday is</text><text x="96" y="1282.6" font-size="44" font-weight="600" fill-opacity="0.9">your busiest day.</text>
+<text x="96" y="1820" font-size="44" font-weight="900" letter-spacing="-1">gitwrapped</text>
+<text x="984" y="1818" font-size="32" font-weight="600" fill-opacity="0.8" text-anchor="end">gitwrapped · 2026-10-04</text>
+</g>
+</svg>
+</section>
+<section class="slide" id="card-4" data-card="streak" data-title="YOUR LONGEST STREAK — 2 — days in a row" aria-roledescription="slide" aria-label="4 of 8" aria-hidden="true">
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" role="img" aria-label="YOUR LONGEST STREAK — 2 — days in a row">
+<title>YOUR LONGEST STREAK — 2 — days in a row</title>
+<defs><linearGradient id="gw-streak-bg" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0.00" stop-color="#ff6a2f"/><stop offset="0.50" stop-color="#e0245e"/><stop offset="1.00" stop-color="#4a0d2e"/></linearGradient><radialGradient id="gw-streak-glow"><stop offset="0" stop-color="#ffd166" stop-opacity="0.55"/><stop offset="1" stop-color="#ffd166" stop-opacity="0"/></radialGradient></defs><rect width="1080" height="1920" fill="url(#gw-streak-bg)"/><circle cx="930" cy="250" r="460" fill="url(#gw-streak-glow)"/><circle cx="110" cy="1650" r="560" fill="url(#gw-streak-glow)"/><circle cx="960" cy="1280" r="180" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="24"/>
+<g fill="#ffffff" font-family="system-ui, -apple-system, &apos;Segoe UI&apos;, Roboto, Helvetica, Arial, sans-serif">
+<rect x="96" y="150" width="72" height="10" rx="5" fill="#ffffff"/>
+<text x="96" y="222" font-size="36" font-weight="800" fill-opacity="0.9" letter-spacing="5">YOUR LONGEST STREAK</text>
+<text x="96" y="851.4" font-size="280" font-weight="900" letter-spacing="-5.6">2</text>
+<text x="96" y="1016.6" font-size="72" font-weight="800">days in a row</text>
+<text x="96" y="1121.4" font-size="44" font-weight="600" fill-opacity="0.9">From 2026-10-04 → 2026-10-05.</text><text x="96" y="1178.6" font-size="44" font-weight="600" fill-opacity="0.9">You&apos;re on a 2-day streak right</text><text x="96" y="1235.8" font-size="44" font-weight="600" fill-opacity="0.9">now. Keep it alive!</text>
+<text x="96" y="1820" font-size="44" font-weight="900" letter-spacing="-1">gitwrapped</text>
+<text x="984" y="1818" font-size="32" font-weight="600" fill-opacity="0.8" text-anchor="end">gitwrapped · 2026-10-04</text>
+</g>
+</svg>
+</section>
+<section class="slide" id="card-5" data-card="hot-files" data-title="YOUR HOT FILES — STATE.md — is the file you can&#39;t stop touching" aria-roledescription="slide" aria-label="5 of 8" aria-hidden="true">
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" role="img" aria-label="YOUR HOT FILES — STATE.md — is the file you can&apos;t stop touching">
+<title>YOUR HOT FILES — STATE.md — is the file you can&apos;t stop touching</title>
+<defs><linearGradient id="gw-hot-files-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0.00" stop-color="#16b89a"/><stop offset="0.50" stop-color="#0d6e78"/><stop offset="1.00" stop-color="#0b1f3a"/></linearGradient><radialGradient id="gw-hot-files-glow"><stop offset="0" stop-color="#9dffc9" stop-opacity="0.55"/><stop offset="1" stop-color="#9dffc9" stop-opacity="0"/></radialGradient></defs><rect width="1080" height="1920" fill="url(#gw-hot-files-bg)"/><circle cx="930" cy="250" r="460" fill="url(#gw-hot-files-glow)"/><circle cx="110" cy="1650" r="560" fill="url(#gw-hot-files-glow)"/><circle cx="960" cy="1280" r="180" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="24"/>
+<g fill="#ffffff" font-family="system-ui, -apple-system, &apos;Segoe UI&apos;, Roboto, Helvetica, Arial, sans-serif">
+<rect x="96" y="150" width="72" height="10" rx="5" fill="#ffffff"/>
+<text x="96" y="222" font-size="36" font-weight="800" fill-opacity="0.9" letter-spacing="5">YOUR HOT FILES</text>
+<text x="96" y="610.9" font-size="153" font-weight="900" letter-spacing="-3.1">STATE.md</text>
+<text x="96" y="750.7" font-size="72" font-weight="800">is the file you can&apos;t</text><text x="96" y="831.3" font-size="72" font-weight="800">stop touching</text>
+<text x="96" y="936.2" font-size="44" font-weight="600" fill-opacity="0.9">14 commits, +31 / −12 lines.</text>
+<rect x="64" y="1003.9532000000002" width="952" height="440" rx="40" fill="#ffffff" fill-opacity="0.14"/><text x="96" y="1080" font-size="40" font-weight="700">.loop/STATE.md</text><text x="984" y="1080" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">14 commits</text><text x="96" y="1158" font-size="40" font-weight="700">.loop/ROADMAP.md</text><text x="984" y="1158" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">12 commits</text><text x="96" y="1236" font-size="40" font-weight="700">README.md</text><text x="984" y="1236" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">7 commits</text><text x="96" y="1314" font-size="40" font-weight="700">src/cli.js</text><text x="984" y="1314" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">5 commits</text><text x="96" y="1392" font-size="40" font-weight="700">test/git.test.js</text><text x="984" y="1392" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">5 commits</text>
+<text x="96" y="1820" font-size="44" font-weight="900" letter-spacing="-1">gitwrapped</text>
+<text x="984" y="1818" font-size="32" font-weight="600" fill-opacity="0.8" text-anchor="end">gitwrapped · 2026-10-04</text>
+</g>
+</svg>
+</section>
+<section class="slide" id="card-6" data-card="messages" data-title="MESSAGE HALL OF FAME — “loop” — was your favorite word (15 times)" aria-roledescription="slide" aria-label="6 of 8" aria-hidden="true">
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" role="img" aria-label="MESSAGE HALL OF FAME — “loop” — was your favorite word (15 times)">
+<title>MESSAGE HALL OF FAME — “loop” — was your favorite word (15 times)</title>
+<defs><linearGradient id="gw-messages-bg" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0.00" stop-color="#f72585"/><stop offset="0.50" stop-color="#b5179e"/><stop offset="1.00" stop-color="#3a0ca3"/></linearGradient><radialGradient id="gw-messages-glow"><stop offset="0" stop-color="#4cc9f0" stop-opacity="0.55"/><stop offset="1" stop-color="#4cc9f0" stop-opacity="0"/></radialGradient></defs><rect width="1080" height="1920" fill="url(#gw-messages-bg)"/><circle cx="930" cy="250" r="460" fill="url(#gw-messages-glow)"/><circle cx="110" cy="1650" r="560" fill="url(#gw-messages-glow)"/><circle cx="960" cy="1280" r="180" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="24"/>
+<g fill="#ffffff" font-family="system-ui, -apple-system, &apos;Segoe UI&apos;, Roboto, Helvetica, Arial, sans-serif">
+<rect x="96" y="150" width="72" height="10" rx="5" fill="#ffffff"/>
+<text x="96" y="222" font-size="36" font-weight="800" fill-opacity="0.9" letter-spacing="5">MESSAGE HALL OF FAME</text>
+<text x="96" y="609.6" font-size="211" font-weight="900" letter-spacing="-4.2">“loop”</text>
+<text x="96" y="761" font-size="72" font-weight="800">was your favorite</text><text x="96" y="841.6" font-size="72" font-weight="800">word (15 times)</text>
+<text x="96" y="946.4" font-size="44" font-weight="600" fill-opacity="0.9">Your messages average 37.5</text><text x="96" y="1003.6" font-size="44" font-weight="600" fill-opacity="0.9">characters.</text>
+<rect x="64" y="1071.442" width="952" height="440" rx="40" fill="#ffffff" fill-opacity="0.14"/><text x="96" y="1147.4" font-size="40" font-weight="700">Longest: “feat: self-contained…</text><text x="96" y="1225.4" font-size="40" font-weight="700">Shortest: “chore(loop): turn 001”</text><text x="96" y="1303.4" font-size="40" font-weight="700">“fix” commits</text><text x="984" y="1303.4" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">1</text><text x="96" y="1381.4" font-size="40" font-weight="700">“wip” commits</text><text x="984" y="1381.4" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">0</text><text x="96" y="1459.4" font-size="40" font-weight="700">“oops” commits</text><text x="984" y="1459.4" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">0</text>
+<text x="96" y="1820" font-size="44" font-weight="900" letter-spacing="-1">gitwrapped</text>
+<text x="984" y="1818" font-size="32" font-weight="600" fill-opacity="0.8" text-anchor="end">gitwrapped · 2026-10-04</text>
+</g>
+</svg>
+</section>
+<section class="slide" id="card-7" data-card="personality" data-title="YOUR COMMIT PERSONALITY — Weekend Warrior — Weekends are for touching grass. You touched git instead." aria-roledescription="slide" aria-label="7 of 8" aria-hidden="true">
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" role="img" aria-label="YOUR COMMIT PERSONALITY — Weekend Warrior — Weekends are for touching grass. You touched git instead.">
+<title>YOUR COMMIT PERSONALITY — Weekend Warrior — Weekends are for touching grass. You touched git instead.</title>
+<defs><linearGradient id="gw-personality-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0.00" stop-color="#ff9a00"/><stop offset="0.50" stop-color="#e52e71"/><stop offset="1.00" stop-color="#5b0f4d"/></linearGradient><radialGradient id="gw-personality-glow"><stop offset="0" stop-color="#ffe08a" stop-opacity="0.55"/><stop offset="1" stop-color="#ffe08a" stop-opacity="0"/></radialGradient></defs><rect width="1080" height="1920" fill="url(#gw-personality-bg)"/><circle cx="930" cy="250" r="460" fill="url(#gw-personality-glow)"/><circle cx="110" cy="1650" r="560" fill="url(#gw-personality-glow)"/><circle cx="960" cy="1280" r="180" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="24"/>
+<g fill="#ffffff" font-family="system-ui, -apple-system, &apos;Segoe UI&apos;, Roboto, Helvetica, Arial, sans-serif">
+<rect x="96" y="150" width="72" height="10" rx="5" fill="#ffffff"/>
+<text x="96" y="222" font-size="36" font-weight="800" fill-opacity="0.9" letter-spacing="5">YOUR COMMIT PERSONALITY</text>
+<text x="96" y="593" font-size="88" font-weight="900" letter-spacing="-1.8">Weekend Warrior</text>
+<text x="96" y="719.8" font-size="72" font-weight="800">Weekends are for</text><text x="96" y="800.5" font-size="72" font-weight="800">touching grass. You</text><text x="96" y="881.1" font-size="72" font-weight="800">touched git instead.</text>
+<text x="96" y="986" font-size="44" font-weight="600" fill-opacity="0.9">88% of your commits land on a</text><text x="96" y="1043.2" font-size="44" font-weight="600" fill-opacity="0.9">Saturday or Sunday.</text>
+<rect x="64" y="1110.9664" width="952" height="284" rx="40" fill="#ffffff" fill-opacity="0.14"/><text x="96" y="1187" font-size="40" font-weight="700">Weekend Warrior</text><text x="984" y="1187" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">100%</text><text x="96" y="1265" font-size="40" font-weight="700">Night Owl</text><text x="984" y="1265" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">81%</text><text x="96" y="1343" font-size="40" font-weight="700">Steady Shipper</text><text x="984" y="1343" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">74%</text>
+<text x="96" y="1820" font-size="44" font-weight="900" letter-spacing="-1">gitwrapped</text>
+<text x="984" y="1818" font-size="32" font-weight="600" fill-opacity="0.8" text-anchor="end">gitwrapped · 2026-10-04</text>
+</g>
+</svg>
+</section>
+<section class="slide" id="card-8" data-card="outro" data-title="THAT&#39;S A WRAP — Thanks! — gitwrapped, in one card" aria-roledescription="slide" aria-label="8 of 8" aria-hidden="true">
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" role="img" aria-label="THAT&apos;S A WRAP — Thanks! — gitwrapped, in one card">
+<title>THAT&apos;S A WRAP — Thanks! — gitwrapped, in one card</title>
+<defs><linearGradient id="gw-outro-bg" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0.00" stop-color="#f7b42c"/><stop offset="0.50" stop-color="#d35400"/><stop offset="1.00" stop-color="#3b1206"/></linearGradient><radialGradient id="gw-outro-glow"><stop offset="0" stop-color="#fff3b0" stop-opacity="0.55"/><stop offset="1" stop-color="#fff3b0" stop-opacity="0"/></radialGradient></defs><rect width="1080" height="1920" fill="url(#gw-outro-bg)"/><circle cx="930" cy="250" r="460" fill="url(#gw-outro-glow)"/><circle cx="110" cy="1650" r="560" fill="url(#gw-outro-glow)"/><circle cx="960" cy="1280" r="180" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="24"/>
+<g fill="#ffffff" font-family="system-ui, -apple-system, &apos;Segoe UI&apos;, Roboto, Helvetica, Arial, sans-serif">
+<rect x="96" y="150" width="72" height="10" rx="5" fill="#ffffff"/>
+<text x="96" y="222" font-size="36" font-weight="800" fill-opacity="0.9" letter-spacing="5">THAT&apos;S A WRAP</text>
+<text x="96" y="602.5" font-size="193" font-weight="900" letter-spacing="-3.9">Thanks!</text>
+<text x="96" y="750.3" font-size="72" font-weight="800">gitwrapped, in one</text><text x="96" y="831" font-size="72" font-weight="800">card</text>
+<text x="96" y="935.8" font-size="44" font-weight="600" fill-opacity="0.9">Made with gitwrapped. Share</text><text x="96" y="993" font-size="44" font-weight="600" fill-opacity="0.9">your cards and tag a teammate.</text>
+<rect x="64" y="1060.7932" width="952" height="440" rx="40" fill="#ffffff" fill-opacity="0.14"/><text x="96" y="1136.8" font-size="40" font-weight="700">Commits</text><text x="984" y="1136.8" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">26</text><text x="96" y="1214.8" font-size="40" font-weight="700">Power hour</text><text x="984" y="1214.8" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">8 PM</text><text x="96" y="1292.8" font-size="40" font-weight="700">Best streak</text><text x="984" y="1292.8" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">2 days</text><text x="96" y="1370.8" font-size="40" font-weight="700">Hottest file</text><text x="984" y="1370.8" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">STATE.md</text><text x="96" y="1448.8" font-size="40" font-weight="700">Personality</text><text x="984" y="1448.8" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">Weekend Warrior</text>
+<text x="96" y="1820" font-size="44" font-weight="900" letter-spacing="-1">gitwrapped</text>
+<text x="984" y="1818" font-size="32" font-weight="600" fill-opacity="0.8" text-anchor="end">gitwrapped · 2026-10-04</text>
+</g>
+</svg>
+</section>
+<button type="button" class="nav prev" id="prev" aria-label="Previous card"></button>
+<button type="button" class="nav next" id="next" aria-label="Next card"></button>
+<button type="button" class="pause" id="pause" aria-label="Pause" aria-pressed="false">&#10074;&#10074;</button>
+<p class="sr" id="status" aria-live="polite"></p>
+</div>
+</main>
+<script>
+(function () {
+  'use strict';
+  var story = document.getElementById('story');
+  var slides = Array.prototype.slice.call(story.querySelectorAll('.slide'));
+  var bars = Array.prototype.slice.call(story.querySelectorAll('.bar'));
+  var status = document.getElementById('status');
+  var pauseBtn = document.getElementById('pause');
+  var n = slides.length;
+  if (!n) return;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  var auto = false;
+  var current = -1;
+  var paused = false;
+  var userPaused = false;
+  var down = null; // active press: {id, x, y, held}
+
+  function setAuto(on) {
+    auto = on && n > 1;
+    story.classList.toggle('auto', auto);
+    pauseBtn.hidden = !auto;
+  }
+
+  function fromHash() {
+    var m = /^#(\d+)$/.exec(location.hash);
+    return m ? Math.min(Math.max(parseInt(m[1], 10), 1), n) - 1 : null;
+  }
+
+  function setPaused(p) {
+    paused = p;
+    story.classList.toggle('paused', p);
+    pauseBtn.setAttribute('aria-label', p ? 'Play' : 'Pause');
+    pauseBtn.setAttribute('aria-pressed', p ? 'true' : 'false');
+    pauseBtn.textContent = p ? '\u25B6' : '\u275A\u275A';
+  }
+
+  // Paused if the user toggled pause, is holding the story, or the tab is hidden.
+  function syncPaused() {
+    setPaused(userPaused || Boolean(down && down.held) || Boolean(document.hidden));
+  }
+
+  // announce: only user-initiated navigation updates the live region; auto-advance
+  // and the initial render stay quiet so screen readers are not interrupted.
+  function show(i, announce) {
+    i = Math.min(Math.max(i, 0), n - 1);
+    if (i === current) return;
+    current = i;
+    for (var k = 0; k < n; k++) {
+      var on = k === i;
+      slides[k].classList.toggle('active', on);
+      slides[k].setAttribute('aria-hidden', on ? 'false' : 'true');
+      bars[k].classList.toggle('done', k < i);
+      bars[k].classList.remove('current');
+    }
+    void bars[i].offsetWidth; // restart the fill animation
+    bars[i].classList.add('current');
+    if (announce) status.textContent = 'Card ' + (i + 1) + ' of ' + n + ': ' + (slides[i].getAttribute('data-title') || '');
+    var hash = '#' + (i + 1);
+    if (location.hash !== hash) {
+      try { history.replaceState(null, '', hash); } catch (e) { /* file:// in some browsers */ }
+    }
+  }
+
+  function next(announce) { if (current < n - 1) show(current + 1, announce); }
+  function prev(announce) { if (current > 0) show(current - 1, announce); else restart(); }
+  function restart() { var c = current; current = -1; show(c, false); }
+  function userNext() { next(true); }
+  function userPrev() { prev(true); }
+  function togglePause() { userPaused = !paused; syncPaused(); }
+
+  bars.forEach(function (bar, k) {
+    bar.addEventListener('animationend', function () {
+      if (k === current && auto && !paused) next(false);
+    });
+  });
+
+  // Pointer: tap zones, hold to pause, horizontal swipe. The story captures the pointer
+  // so a release outside it (or a lost capture) still ends the hold. Because a captured
+  // pointer's click may be retargeted to the story, taps navigate here on pointerup and
+  // the click that follows is swallowed; the buttons' own click handlers then only see
+  // keyboard / assistive-tech activations.
+  var holdTimer = null;
+  var swallowClickUntil = 0;
+  story.addEventListener('pointerdown', function (e) {
+    if (e.target === pauseBtn || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    down = { id: e.pointerId, x: e.clientX, y: e.clientY, held: false };
+    try { story.setPointerCapture(e.pointerId); } catch (err) { /* pointer already gone */ }
+    clearTimeout(holdTimer);
+    holdTimer = setTimeout(function () {
+      if (down && auto) { down.held = true; syncPaused(); }
+    }, 250);
+  });
+  function endPointer(e, cancelled) {
+    if (!down || (e && e.pointerId !== undefined && e.pointerId !== down.id)) return;
+    clearTimeout(holdTimer);
+    var d = down;
+    down = null;
+    if (d.held) syncPaused();
+    if (cancelled) return;
+    swallowClickUntil = Date.now() + 600;
+    if (d.held) return; // a hold is not a tap
+    var dx = e.clientX - d.x;
+    var dy = e.clientY - d.y;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
+      if (dx < 0) userNext(); else userPrev();
+      return;
+    }
+    if (Math.abs(dx) > 10 || Math.abs(dy) > 10) return; // a drag, not a tap
+    var r = story.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+    if (e.clientX < r.left + r.width / 3) userPrev(); else userNext();
+  }
+  story.addEventListener('pointerup', function (e) { endPointer(e, false); });
+  story.addEventListener('pointercancel', function (e) { endPointer(e, true); });
+  story.addEventListener('lostpointercapture', function (e) { endPointer(e, true); });
+  story.addEventListener('contextmenu', function (e) { if (down) e.preventDefault(); });
+  story.addEventListener('click', function (e) {
+    if (e.target === pauseBtn || Date.now() >= swallowClickUntil) return;
+    swallowClickUntil = 0;
+    e.stopPropagation();
+    e.preventDefault();
+  }, true);
+
+  document.getElementById('prev').addEventListener('click', userPrev);
+  document.getElementById('next').addEventListener('click', userNext);
+  pauseBtn.addEventListener('click', togglePause);
+
+  document.addEventListener('keydown', function (e) {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    var t = e.target;
+    var onButton = t && t.tagName === 'BUTTON';
+    switch (e.key) {
+      case 'ArrowRight': case 'PageDown': userNext(); break;
+      case 'ArrowLeft': case 'PageUp': userPrev(); break;
+      case ' ': case 'Spacebar':
+        if (onButton) return; // let the focused button activate itself
+        if (e.shiftKey) userPrev(); else userNext();
+        break;
+      case 'Home': show(0, true); break;
+      case 'End': show(n - 1, true); break;
+      case 'p': case 'P': case 'k': case 'K':
+        if (!auto) return;
+        togglePause(); break;
+      default: return;
+    }
+    e.preventDefault();
+  });
+
+  window.addEventListener('hashchange', function () {
+    var h = fromHash();
+    if (h !== null) show(h, true);
+  });
+  document.addEventListener('visibilitychange', syncPaused);
+
+  function onMotionChange() {
+    var was = auto;
+    setAuto(!(mq && mq.matches));
+    if (auto !== was && current >= 0) restart(); // restart the bar under the new mode
+  }
+  if (mq) {
+    if (mq.addEventListener) mq.addEventListener('change', onMotionChange);
+    else if (mq.addListener) mq.addListener(onMotionChange);
+  }
+
+  setAuto(!(mq && mq.matches));
+  syncPaused();
+  var start = fromHash();
+  show(start === null ? 0 : start, false);
+})();
+</script>
+</body>
+</html>

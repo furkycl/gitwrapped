@@ -311,7 +311,7 @@ describe('rendered PNGs keep text inside the padding', () => {
     const cards = [
       ['intro gitwrapped', buildCards(fixtureStats, { repoName: 'gitwrapped' })[0].svg],
       ...buildCards(fixtureStats, { repoName: 'fixture' }).map((c) => [c.id, c.svg]),
-      ['big Weekend Warrior', renderCard({ eyebrow: 'Your commit personality', big: 'Weekend Warrior', title: 'Saturdays are for touching grass. You touched git instead.' })],
+      ['big Weekend Warrior', renderCard({ eyebrow: 'Your commit personality', big: 'Weekend Warrior', title: 'Weekends are for touching grass. You touched git instead.' })],
       ['big Friday Deployer', renderCard({ big: 'Friday Deployer', title: 'WWWW MMMM '.repeat(6), subtitle: 'mmmm wwww '.repeat(12) })],
       ['big MMMMWWWW', renderCard({ big: 'MMMMWWWW', lines: [{ label: `Longest: “${'refactor: move app to main '.repeat(3)}”` }, { label: 'WWWWWWWWWWWWWWWWWWWWWWWWW', value: '9,007,199,254' }] })],
       ['big digits', renderCard({ eyebrow: 'W'.repeat(60), big: '9,007,199', footer: `${'w'.repeat(40)} · 2024-03-04 → 2024-03-13` })],

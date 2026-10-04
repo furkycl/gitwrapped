@@ -4,3 +4,4 @@ coverage/
 *.log
 .DS_Store
 cards-preview/
+docs/self-wrapped/png/

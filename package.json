@@ -38,7 +38,8 @@
   "scripts": {
     "test": "node --test",
     "prepublishOnly": "npm test",
-    "preview": "node scripts/preview-cards.js"
+    "preview": "node scripts/preview-cards.js",
+    "self-wrapped": "node bin/gitwrapped.js . --out docs/self-wrapped --no-color"
   },
   "engines": {
     "node": ">=20"

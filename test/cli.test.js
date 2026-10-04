@@ -1,9 +1,13 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { parseCli, run, HELP_TEXT, readVersion } from '../src/cli.js';
+import { CARD_IDS } from '../src/cards/index.js';
+import { makeFixtureRepo } from '../scripts/make-fixture-repo.js';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const BIN = fileURLToPath(new URL('../bin/gitwrapped.js', import.meta.url));
@@ -22,10 +26,10 @@ function sink() {
   };
 }
 
-function runCaptured(argv) {
+async function runCaptured(argv, opts = {}) {
   const stdout = sink();
   const stderr = sink();
-  const code = run(argv, { stdout, stderr });
+  const code = await run(argv, { stdout, stderr, ...opts });
   return { code, stdout: stdout.data, stderr: stderr.data };
 }
 
@@ -165,9 +169,9 @@ describe('parseCli', () => {
 });
 
 describe('run', () => {
-  test('--help prints HELP_TEXT to stdout and exits 0', () => {
+  test('--help prints HELP_TEXT to stdout and exits 0', async () => {
     for (const flag of ['--help', '-h']) {
-      const r = runCaptured([flag]);
+      const r = await runCaptured([flag]);
       assert.equal(r.code, 0);
       assert.equal(r.stdout, HELP_TEXT);
       assert.equal(r.stderr, '');
@@ -180,9 +184,9 @@ describe('run', () => {
     }
   });
 
-  test('--version / -v prints package.json version and exits 0', () => {
+  test('--version / -v prints package.json version and exits 0', async () => {
     for (const flag of ['--version', '-v']) {
-      const r = runCaptured([flag]);
+      const r = await runCaptured([flag]);
       assert.equal(r.code, 0);
       assert.equal(r.stdout, `${PKG.version}\n`);
       assert.equal(r.stderr, '');
@@ -194,19 +198,65 @@ describe('run', () => {
     assert.match(readVersion(), /^\d+\.\d+\.\d+/);
   });
 
-  test('default run exits 0 and reports path and out dir', () => {
-    const r = runCaptured([]);
-    assert.equal(r.code, 0);
+  test('generates cards and wrapped.html for the fixture repo', async (t) => {
+    const fixture = makeFixtureRepo();
+    const out = mkdtempSync(join(tmpdir(), 'gw-out-'));
+    t.after(() => {
+      fixture.cleanup();
+      rmSync(out, { recursive: true, force: true });
+    });
+    const dest = join(out, 'nested', 'dir');
+    const r = await runCaptured([fixture.dir, '--out', dest], { today: '2024-03-14' });
+    assert.equal(r.code, 0, r.stderr);
     assert.equal(r.stderr, '');
-    assert.match(r.stdout, /would analyze \. /);
-    assert.match(r.stdout, /into gitwrapped-out/);
+    const html = join(dest, 'wrapped.html');
+    assert.ok(r.stdout.startsWith(`gitwrapped: ${fixture.commits.length} commits → ${html}\n`), r.stdout);
+    const expected = CARD_IDS.map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}.svg`);
+    assert.deepEqual(readdirSync(join(dest, 'cards')).sort(), expected);
+    for (const f of expected) assert.match(r.stdout, new RegExp(f.replace('.', '\\.')));
+    const page = readFileSync(html, 'utf8');
+    assert.match(page, /^<!doctype html>/);
+    assert.equal((page.match(/<svg\b/g) ?? []).length, CARD_IDS.length);
+    assert.match(page, /<title>gitwrapped · [^<]+<\/title>/);
   });
 
-  test('run with filters mentions them in stdout', () => {
-    const r = runCaptured(['repo', '--since', '2024-02-29', '--author', 'a@b.c', '--out', 'dist']);
-    assert.equal(r.code, 0);
-    assert.equal(r.stderr, '');
-    assert.match(r.stdout, /repo \(since 2024-02-29, author a@b\.c\) into dist/);
+  test('--author with no matching commits still generates cards and exits 0', async (t) => {
+    const fixture = makeFixtureRepo();
+    const out = mkdtempSync(join(tmpdir(), 'gw-out-'));
+    t.after(() => {
+      fixture.cleanup();
+      rmSync(out, { recursive: true, force: true });
+    });
+    const r = await runCaptured([fixture.dir, '--author', 'nobody@example.com', '--out', out]);
+    assert.equal(r.code, 0, r.stderr);
+    assert.match(r.stdout, /^gitwrapped: 0 commits → /);
+    assert.ok(existsSync(join(out, 'wrapped.html')));
+    assert.equal(readdirSync(join(out, 'cards')).length, CARD_IDS.length);
+  });
+
+  test('a path that is not a git repo exits 1 with a message on stderr', async (t) => {
+    const dir = mkdtempSync(join(tmpdir(), 'gw-norepo-'));
+    t.after(() => rmSync(dir, { recursive: true, force: true }));
+    const out = join(dir, 'out');
+    const r = await runCaptured([join(dir, 'missing'), '--out', out]);
+    assert.equal(r.code, 1);
+    assert.equal(r.stdout, '');
+    assert.match(r.stderr, /^gitwrapped: not a git repository: /);
+    assert.equal(existsSync(out), false, 'nothing is written on error');
+  });
+
+  test('a non-Error throw is reported as its string value', async (t) => {
+    const fixture = makeFixtureRepo();
+    const out = mkdtempSync(join(tmpdir(), 'gw-out-'));
+    t.after(() => {
+      fixture.cleanup();
+      rmSync(out, { recursive: true, force: true });
+    });
+    const boom = { toJSON() { throw 'boom'; }, toString() { throw 'boom'; } }; // eslint-disable-line no-throw-literal
+    const r = await runCaptured([fixture.dir, '--out', out], { today: boom });
+    assert.equal(r.code, 1);
+    assert.equal(r.stderr, 'gitwrapped: boom\n');
+    assert.equal(readdirSync(out).length, 0, 'nothing written');
   });
 
   const errorCases = [
@@ -218,8 +268,8 @@ describe('run', () => {
     [['--since'], /--since/],
   ];
   for (const [argv, re] of errorCases) {
-    test(`run ${JSON.stringify(argv)} exits 2 with error on stderr only`, () => {
-      const r = runCaptured(argv);
+    test(`run ${JSON.stringify(argv)} exits 2 with error on stderr only`, async () => {
+      const r = await runCaptured(argv);
       assert.equal(r.code, 2);
       assert.equal(r.stdout, '');
       assert.match(r.stderr, /^gitwrapped: /);

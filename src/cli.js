@@ -1,9 +1,18 @@
-import { parseArgs } from 'node:util';
-import { readFileSync } from 'node:fs';
+import { parseArgs, promisify } from 'node:util';
+import { execFile } from 'node:child_process';
+import { accessSync, constants as fsConstants, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { basename, dirname, join, resolve } from 'node:path';
+import { buildCards } from './cards/index.js';
+import { readCommits } from './git.js';
+import { computeStats } from './stats/index.js';
+import { buildViewerHtml } from './viewer.js';
+
+const execFileAsync = promisify(execFile);
 
 export const HELP_TEXT = `Usage: gitwrapped [path] [options]
 
 Turn a git repo's commit history into shareable story cards.
+Writes <out>/cards/*.svg and <out>/wrapped.html (open it in a browser).
 
 Arguments:
   path                 Path to the git repository (default: ".")
@@ -84,10 +93,135 @@ export function readVersion() {
   return pkg.version;
 }
 
+function repoEnv() {
+  const env = { ...process.env };
+  for (const name of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_CEILING_DIRECTORIES', 'GIT_COMMON_DIR']) delete env[name];
+  return env;
+}
+
 /**
- * Run the CLI. Returns a process exit code.
+ * Name to show for the repo: basename of `git rev-parse --show-toplevel`, falling back to
+ * the basename of the resolved path.
  */
-export function run(argv, { stdout = process.stdout, stderr = process.stderr } = {}) {
+export async function repoName(repoPath) {
+  const fallback = basename(resolve(repoPath)) || 'your repo';
+  try {
+    const { stdout } = await execFileAsync('git', ['-C', repoPath, 'rev-parse', '--show-toplevel'], {
+      encoding: 'utf8',
+      env: repoEnv(),
+    });
+    return basename(stdout.trim()) || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/** fs.Stats for `p`, or null if nothing is there (or it cannot be inspected). */
+function statOrNull(p) {
+  try {
+    return statSync(p);
+  } catch {
+    return null;
+  }
+}
+
+/** A user-facing Error with a short message (no errno noise, no stack in the CLI). */
+function outputError(message) {
+  return new Error(message);
+}
+
+/**
+ * Make sure `dir` exists as a directory, creating missing levels one at a time.
+ * Checks the nearest existing ancestor first and fails fast if it is not a writable
+ * directory (Node's recursive mkdir can hang on paths like /proc/x).
+ */
+function ensureDir(dir, label = dir) {
+  const missing = [];
+  let cur = resolve(dir);
+  let st = statOrNull(cur);
+  while (!st) {
+    missing.unshift(cur);
+    const parent = dirname(cur);
+    if (parent === cur) break;
+    cur = parent;
+    st = statOrNull(cur);
+  }
+  if (!st) throw outputError(`cannot create output directory: ${label}`);
+  if (!st.isDirectory()) {
+    throw outputError(missing.length ? `output path is not a directory: ${cur} (needed for ${label})` : `output path is not a directory: ${label}`);
+  }
+  if (missing.length === 0) return;
+  try {
+    accessSync(cur, fsConstants.W_OK | fsConstants.X_OK);
+  } catch {
+    throw outputError(`output directory is not writable: ${cur} (needed for ${label})`);
+  }
+  for (const p of missing) {
+    try {
+      mkdirSync(p);
+    } catch (err) {
+      if (err?.code === 'EEXIST' && statOrNull(p)?.isDirectory()) continue;
+      throw outputError(`cannot create output directory ${p}: ${err?.code ?? err?.message ?? err}`);
+    }
+  }
+}
+
+/**
+ * Check where the output will go before writing anything: `out` must be (or be creatable
+ * as) a directory, <out>/cards a directory, <out>/wrapped.html not a directory, and no
+ * card file may be occupied by a directory.
+ */
+function checkOutputPaths(out, htmlPath, cardsDir, cardPaths) {
+  const outSt = statOrNull(out);
+  if (outSt && !outSt.isDirectory()) throw outputError(`output path is not a directory: ${out}`);
+  if (statOrNull(htmlPath)?.isDirectory()) throw outputError(`cannot write ${htmlPath}: a directory is in the way`);
+  const cardsSt = statOrNull(cardsDir);
+  if (cardsSt && !cardsSt.isDirectory()) throw outputError(`cannot write cards: ${cardsDir} exists and is not a directory`);
+  for (const p of cardPaths) {
+    if (statOrNull(p)?.isDirectory()) throw outputError(`cannot write ${p}: a directory is in the way`);
+  }
+}
+
+function writeOutput(file, data) {
+  try {
+    writeFileSync(file, data);
+  } catch (err) {
+    throw outputError(`cannot write ${file}: ${err?.code ?? err?.message ?? err}`);
+  }
+}
+
+/**
+ * Generate the story into `out`: cards/NN-<id>.svg and wrapped.html.
+ * Everything is rendered in memory and the output paths are checked first, so a bad
+ * --out fails before anything is written.
+ * Returns {commits, html, cardsDir, cardFiles} with the written paths (joined onto `out`).
+ */
+export async function generate({ path, since, author, out }, { today } = {}) {
+  const commits = await readCommits(path, { since, author });
+  const stats = computeStats(commits, { today });
+  const name = await repoName(path);
+  const cards = buildCards(stats, { repoName: name, since, author });
+
+  const cardsDir = join(out, 'cards');
+  const html = join(out, 'wrapped.html');
+  const page = buildViewerHtml(cards, { title: `gitwrapped · ${name}` });
+  const files = cards.map(({ id, svg }, i) => ({
+    file: join(cardsDir, `${String(i + 1).padStart(2, '0')}-${id}.svg`),
+    svg,
+  }));
+
+  checkOutputPaths(out, html, cardsDir, files.map((f) => f.file));
+  ensureDir(out);
+  ensureDir(cardsDir);
+  for (const { file, svg } of files) writeOutput(file, svg);
+  writeOutput(html, page);
+  return { commits: commits.length, html, cardsDir, cardFiles: files.map((f) => f.file) };
+}
+
+/**
+ * Run the CLI. Resolves to a process exit code.
+ */
+export async function run(argv, { stdout = process.stdout, stderr = process.stderr, today } = {}) {
   let opts;
   try {
     opts = parseCli(argv);
@@ -106,12 +240,16 @@ export function run(argv, { stdout = process.stdout, stderr = process.stderr } =
     return 0;
   }
 
-  const filters = [];
-  if (opts.since) filters.push(`since ${opts.since}`);
-  if (opts.author) filters.push(`author ${opts.author}`);
-  const filterText = filters.length ? ` (${filters.join(', ')})` : '';
-  stdout.write(
-    `gitwrapped: would analyze ${opts.path}${filterText} into ${opts.out} (not implemented yet)\n`,
-  );
+  let result;
+  try {
+    result = await generate(opts, { today });
+  } catch (err) {
+    stderr.write(`gitwrapped: ${err?.message ?? String(err)}\n`);
+    return 1;
+  }
+  const noun = result.commits === 1 ? 'commit' : 'commits';
+  stdout.write(`gitwrapped: ${result.commits} ${noun} → ${result.html}\n`);
+  stdout.write(`  ${result.cardFiles.length} cards in ${result.cardsDir}\n`);
+  for (const file of result.cardFiles) stdout.write(`    ${file}\n`);
   return 0;
 }

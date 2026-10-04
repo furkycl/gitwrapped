@@ -1,6 +1,6 @@
 # STATE
 
-Next turn: 010
+Next turn: 011
 
 | Turn | Date (UTC) | Task | PR | Result | Note for next turn |
 |------|------------|------|----|--------|--------------------|
@@ -15,3 +15,4 @@ Next turn: 010
 | 008 | 2026-10-04 | M4: HTML story viewer + CLI generation | https://github.com/furkycl/gitwrapped/pull/11 | done (389 tests, CI green Node 20+22) | PR #11 was opened by a parallel session (session_01SQce…) that never merged it. This turn ran a cold review (clean), squash-merged it and recorded it. Two scheduled runs still seem to overlap, so the owner should check the scheduled tasks. CLI writes --out/cards/NN-<id>.svg + wrapped.html (src/viewer.js, CSP sha256-hashed inline style/script). Next: PNG export via @resvg/resvg-js (loadSystemFonts + defaultFontFamily) + 1200x630 share summary. Remote branch deletes still blocked (proxy). |
 | 008 | 2026-10-04 | M4: HTML viewer + CLI generation | https://github.com/furkycl/gitwrapped/pull/11 | done (389 tests, CI green Node 20+22) | CLI now writes <out>/cards/*.svg + wrapped.html (hash-CSP, no network). run() is async. e2e tests in test/e2e.test.js run the real binary. Next: PNG export via @resvg/resvg-js (first runtime dep; CI needs npm ci). |
 | 009 | 2026-10-04 | M4: PNG export + share image | https://github.com/furkycl/gitwrapped/pull/12 | done (414 tests, CI green Node 20+22) | M4 complete. @resvg/resvg-js pinned 2.6.2 (only runtime dep, lazy-loaded; graceful skip). Width model calibrated to DejaVu Sans Bold. Each render rescans system fonts (~150ms) — could cache via fontFiles later. Next: M5 terminal summary + edge cases. |
+| 010 | 2026-10-04 | M5: terminal recap + edge cases | https://github.com/furkycl/gitwrapped/pull/13 | done (537 tests, CI green Node 20+22 after 1 fix) | CI git 2.55 rejects --max-count beyond C int: now skipped above 2^31-1 (local git 2.43 accepted it — CI caught it). readHistory → {commits, truncated, limit}. Next: README + npm publish readiness, then self-wrapped cards in docs/self-wrapped/. |

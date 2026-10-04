@@ -27,8 +27,8 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] PNG export via `@resvg/resvg-js` (one PNG per card + a 1200x630 share summary)
 
 ## M5 — Polish & launch
-- [ ] Terminal output: short colorful summary in the console after generating
-- [ ] Edge cases: empty repo, single commit, huge repo (cap at 50k commits with notice), non-git folder error
+- [x] Terminal output: short colorful summary in the console after generating
+- [x] Edge cases: empty repo, single commit, huge repo (cap at 50k commits with notice), non-git folder error
 - [ ] README: hero GIF placeholder, install, usage, examples, "built by an autonomous agent loop" section
 - [ ] Run gitwrapped on this very repo and commit its cards to `docs/self-wrapped/`
 - [ ] `npm publish` readiness: package.json fields, files whitelist, `npm pack --dry-run` clean

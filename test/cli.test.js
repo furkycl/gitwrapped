@@ -1,0 +1,284 @@
+import { test, describe } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { parseCli, run, HELP_TEXT, readVersion } from '../src/cli.js';
+
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
+const BIN = fileURLToPath(new URL('../bin/gitwrapped.js', import.meta.url));
+const PKG = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+
+function sink() {
+  let data = '';
+  return {
+    write(s) {
+      data += s;
+      return true;
+    },
+    get data() {
+      return data;
+    },
+  };
+}
+
+function runCaptured(argv) {
+  const stdout = sink();
+  const stderr = sink();
+  const code = run(argv, { stdout, stderr });
+  return { code, stdout: stdout.data, stderr: stderr.data };
+}
+
+const DEFAULTS = { path: '.', since: undefined, author: undefined, out: 'gitwrapped-out' };
+
+describe('parseCli', () => {
+  test('defaults with no arguments', () => {
+    assert.deepEqual(parseCli([]), DEFAULTS);
+  });
+
+  test('positional path', () => {
+    assert.deepEqual(parseCli(['../repo']), { ...DEFAULTS, path: '../repo' });
+  });
+
+  test('--since with separate value', () => {
+    assert.equal(parseCli(['--since', '2025-01-15']).since, '2025-01-15');
+  });
+
+  test('--since=value form', () => {
+    assert.equal(parseCli(['--since=2025-01-15']).since, '2025-01-15');
+  });
+
+  test('--author with separate value and = form', () => {
+    assert.equal(parseCli(['--author', 'a@b.com']).author, 'a@b.com');
+    assert.equal(parseCli(['--author=a@b.com']).author, 'a@b.com');
+  });
+
+  test('--out with separate value and = form', () => {
+    assert.equal(parseCli(['--out', 'dist']).out, 'dist');
+    assert.equal(parseCli(['--out=dist']).out, 'dist');
+  });
+
+  test('all flags together with a path, in any order', () => {
+    const expected = { path: 'repo', since: '2024-06-01', author: 'x@y.z', out: 'o' };
+    assert.deepEqual(
+      parseCli(['repo', '--since', '2024-06-01', '--author', 'x@y.z', '--out', 'o']),
+      expected,
+    );
+    assert.deepEqual(
+      parseCli(['--out=o', '--author=x@y.z', 'repo', '--since=2024-06-01']),
+      expected,
+    );
+  });
+
+  test('--help and -h', () => {
+    assert.deepEqual(parseCli(['--help']), { help: true });
+    assert.deepEqual(parseCli(['-h']), { help: true });
+  });
+
+  test('--version and -v', () => {
+    assert.deepEqual(parseCli(['--version']), { version: true });
+    assert.deepEqual(parseCli(['-v']), { version: true });
+  });
+
+  test('help takes precedence over other valid options', () => {
+    assert.deepEqual(parseCli(['repo', '--since', '2025-01-01', '-h']), { help: true });
+  });
+
+  describe('--since validation', () => {
+    for (const bad of ['2025-1-5', '25-01-05', '2025/01/05', '20250105', 'yesterday', '2025-01-05T00:00', ' 2025-01-05']) {
+      test(`rejects bad format ${JSON.stringify(bad)}`, () => {
+        assert.throws(() => parseCli(['--since', bad]), /invalid --since .*YYYY-MM-DD/);
+      });
+    }
+
+    for (const impossible of ['2025-02-30', '2025-13-01', '2025-00-10', '2025-04-31', '2025-01-00', '2023-02-29']) {
+      test(`rejects impossible date ${impossible}`, () => {
+        assert.throws(() => parseCli(['--since', impossible]), /not a real calendar date/);
+      });
+    }
+
+    test('accepts leap day 2024-02-29', () => {
+      assert.equal(parseCli(['--since', '2024-02-29']).since, '2024-02-29');
+    });
+
+    test('accepts leap day 2000-02-29 but rejects 1900-02-29', () => {
+      assert.equal(parseCli(['--since=2000-02-29']).since, '2000-02-29');
+      assert.throws(() => parseCli(['--since=1900-02-29']), /not a real calendar date/);
+    });
+
+    test('accepts month/year boundaries', () => {
+      assert.equal(parseCli(['--since', '2025-12-31']).since, '2025-12-31');
+      assert.equal(parseCli(['--since', '2025-01-01']).since, '2025-01-01');
+    });
+  });
+
+  test('unknown long flag throws', () => {
+    assert.throws(() => parseCli(['--bogus']), /Unknown option '--bogus'/);
+  });
+
+  test('unknown short flag throws', () => {
+    assert.throws(() => parseCli(['-x']), /Unknown option '-x'/);
+  });
+
+  test('unknown flag error has Node verbose suffix stripped', () => {
+    assert.throws(
+      () => parseCli(['--bogus']),
+      (err) => {
+        assert.doesNotMatch(err.message, /positional argument/);
+        return true;
+      },
+    );
+  });
+
+  test('two positionals throw', () => {
+    assert.throws(() => parseCli(['a', 'b']), /at most one path, got 2/);
+  });
+
+  test('missing value for --since throws', () => {
+    assert.throws(() => parseCli(['--since']), /--since/);
+  });
+
+  test('flag-looking value for --since is rejected with a single-line message', () => {
+    // `--since --author x` is ambiguous; the user-facing message should be one line
+    // (parseCli strips Node's verbose suffix for other errors).
+    assert.throws(
+      () => parseCli(['--since', '--author', 'x']),
+      (err) => {
+        assert.match(err.message, /--since/);
+        assert.doesNotMatch(err.message, /\n/, `message should be single-line, got: ${JSON.stringify(err.message)}`);
+        return true;
+      },
+    );
+  });
+
+  for (const name of ['since', 'author', 'out']) {
+    test(`empty --${name}= value throws`, () => {
+      assert.throws(() => parseCli([`--${name}=`]), new RegExp(`--${name} requires a non-empty value`));
+    });
+    test(`empty --${name} "" value throws`, () => {
+      assert.throws(() => parseCli([`--${name}`, '']), new RegExp(`--${name} requires a non-empty value`));
+    });
+    test(`whitespace-only --${name} value throws`, () => {
+      assert.throws(() => parseCli([`--${name}`, '   ']), new RegExp(`--${name} requires a non-empty value`));
+    });
+  }
+});
+
+describe('run', () => {
+  test('--help prints HELP_TEXT to stdout and exits 0', () => {
+    for (const flag of ['--help', '-h']) {
+      const r = runCaptured([flag]);
+      assert.equal(r.code, 0);
+      assert.equal(r.stdout, HELP_TEXT);
+      assert.equal(r.stderr, '');
+    }
+  });
+
+  test('HELP_TEXT documents every option', () => {
+    for (const s of ['Usage: gitwrapped', '--since', '--author', '--out', '-h, --help', '-v, --version', 'YYYY-MM-DD']) {
+      assert.ok(HELP_TEXT.includes(s), `HELP_TEXT missing ${s}`);
+    }
+  });
+
+  test('--version / -v prints package.json version and exits 0', () => {
+    for (const flag of ['--version', '-v']) {
+      const r = runCaptured([flag]);
+      assert.equal(r.code, 0);
+      assert.equal(r.stdout, `${PKG.version}\n`);
+      assert.equal(r.stderr, '');
+    }
+  });
+
+  test('readVersion matches package.json', () => {
+    assert.equal(readVersion(), PKG.version);
+    assert.match(readVersion(), /^\d+\.\d+\.\d+/);
+  });
+
+  test('default run exits 0 and reports path and out dir', () => {
+    const r = runCaptured([]);
+    assert.equal(r.code, 0);
+    assert.equal(r.stderr, '');
+    assert.match(r.stdout, /would analyze \. /);
+    assert.match(r.stdout, /into gitwrapped-out/);
+  });
+
+  test('run with filters mentions them in stdout', () => {
+    const r = runCaptured(['repo', '--since', '2024-02-29', '--author', 'a@b.c', '--out', 'dist']);
+    assert.equal(r.code, 0);
+    assert.equal(r.stderr, '');
+    assert.match(r.stdout, /repo \(since 2024-02-29, author a@b\.c\) into dist/);
+  });
+
+  const errorCases = [
+    [['--bogus'], /Unknown option '--bogus'/],
+    [['a', 'b'], /at most one path/],
+    [['--since', '2025-02-30'], /not a real calendar date/],
+    [['--since', 'nope'], /YYYY-MM-DD/],
+    [['--out='], /--out requires a non-empty value/],
+    [['--since'], /--since/],
+  ];
+  for (const [argv, re] of errorCases) {
+    test(`run ${JSON.stringify(argv)} exits 2 with error on stderr only`, () => {
+      const r = runCaptured(argv);
+      assert.equal(r.code, 2);
+      assert.equal(r.stdout, '');
+      assert.match(r.stderr, /^gitwrapped: /);
+      assert.match(r.stderr, re);
+      assert.match(r.stderr, /Run "gitwrapped --help" for usage\.\n$/);
+    });
+  }
+});
+
+describe('end-to-end bin', () => {
+  function spawnBin(args) {
+    return spawnSync(process.execPath, [BIN, ...args], { cwd: ROOT, encoding: 'utf8' });
+  }
+
+  test('--version exits 0 and prints version', () => {
+    const r = spawnBin(['--version']);
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(r.stdout, `${PKG.version}\n`);
+    assert.equal(r.stderr, '');
+  });
+
+  test('--help exits 0 and prints usage', () => {
+    const r = spawnBin(['--help']);
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(r.stdout, HELP_TEXT);
+  });
+
+  test('--bogus exits 2 with stderr message', () => {
+    const r = spawnBin(['--bogus']);
+    assert.equal(r.status, 2);
+    assert.equal(r.stdout, '');
+    assert.match(r.stderr, /^gitwrapped: Unknown option '--bogus'/);
+  });
+});
+
+describe('package metadata', () => {
+  test('package.json has bin, type module, engines >=20, test script', () => {
+    assert.equal(PKG.name, 'gitwrapped');
+    assert.equal(PKG.type, 'module');
+    assert.equal(PKG.bin?.gitwrapped, 'bin/gitwrapped.js');
+    assert.equal(PKG.engines?.node, '>=20');
+    assert.equal(PKG.license, 'MIT');
+    assert.match(PKG.scripts?.test ?? '', /node --test/);
+  });
+
+  test('bin file starts with a node shebang', () => {
+    const src = readFileSync(BIN, 'utf8');
+    assert.ok(src.startsWith('#!/usr/bin/env node\n'), 'bin/gitwrapped.js must start with shebang');
+  });
+
+  test('LICENSE is MIT and .gitignore ignores node_modules', () => {
+    assert.match(readFileSync(new URL('../LICENSE', import.meta.url), 'utf8'), /^MIT License/);
+    assert.match(readFileSync(new URL('../.gitignore', import.meta.url), 'utf8'), /^node_modules\/?$/m);
+  });
+});
+
+test('--author and --out values are trimmed', async () => {
+  const { parseCli } = await import('../src/cli.js');
+  const r = parseCli(['--author', ' a@b.c ', '--out', ' dist ']);
+  assert.equal(r.author, 'a@b.c');
+  assert.equal(r.out, 'dist');
+});

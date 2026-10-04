@@ -1,0 +1,35 @@
+{
+  "name": "gitwrapped",
+  "version": "0.0.1",
+  "description": "Spotify Wrapped for your git history. Turns a repo's commit log into shareable story cards. Fully local.",
+  "type": "module",
+  "bin": {
+    "gitwrapped": "bin/gitwrapped.js"
+  },
+  "files": [
+    "bin",
+    "src"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "git",
+    "wrapped",
+    "stats",
+    "cli"
+  ],
+  "author": "furkycl",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/furkycl/gitwrapped.git"
+  },
+  "homepage": "https://github.com/furkycl/gitwrapped#readme",
+  "bugs": {
+    "url": "https://github.com/furkycl/gitwrapped/issues"
+  }
+}

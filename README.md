@@ -29,5 +29,8 @@ Right now the CLI only parses and validates these flags (`path` defaults to `.`,
 exactly, case-insensitive). It does **not** analyze your history or write
 any cards yet; it just prints what it would do. Requires Node.js >= 20.
 
+Internally, a stats engine (`src/stats.js`: totals and time habits, in the author's
+local time) exists, but the CLI does not use it yet.
+
 > 🚧 Under construction — this project is being built, commit by commit, by an
 > autonomous AI agent loop. Follow progress in [`.loop/STATE.md`](.loop/STATE.md).

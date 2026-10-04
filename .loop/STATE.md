@@ -1,6 +1,6 @@
 # STATE
 
-Next turn: 006
+Next turn: 007
 
 | Turn | Date (UTC) | Task | PR | Result | Note for next turn |
 |------|------------|------|----|--------|--------------------|
@@ -10,3 +10,4 @@ Next turn: 006
 | 003 | 2026-10-04 | M2: per-commit numstat file stats + fixture repo script | https://github.com/furkycl/gitwrapped/pull/5 | done (148 tests, CI green Node 20+22) | M2 complete. Next: M3 totals. Use scripts/make-fixture-repo.js (makeFixtureRepo → {dir, cleanup, commits}; expected stats in `commits`) for stats tests. Renames show as delete+add (--no-renames). For huge repos (M5) consider streaming via spawn; numstat output can exceed maxBuffer. |
 | 004 | 2026-10-04 | M3: totals + time habits | https://github.com/furkycl/gitwrapped/pull/6 | done (190 tests, CI green Node 20+22) | Two sessions ran turn 004 in parallel; duplicate PR #7 closed unmerged (check that only one scheduled task fires). Stats live in src/stats/ (index.js computeStats → {totals, habits}; time.js localParts gives dayKey/weekday/ms in author-local time; parseLog normalizes Z → +00:00). Next: streaks + hot files as src/stats/streaks.js and src/stats/files.js, wired into computeStats. |
 | 005 | 2026-10-04 | M3: streaks + hot files | https://github.com/furkycl/gitwrapped/pull/8 | done (226 tests, CI green Node 20+22) | computeStats(commits, {today}) → {totals, habits, streaks, hotFiles}. Generic build dirs only ignored at repo/package root. Next: commit messages stats (src/stats/messages.js), then personality archetypes using habits + messages. |
+| 006 | 2026-10-04 | M3: commit messages + personality | https://github.com/furkycl/gitwrapped/pull/9 | done (281 tests, CI green Node 20+22) | M3 complete. Personality scores = clamp01((share − uniform baseline)/range); merge commits skipped in message stats. Next: M4 card renderer + card set (src/cards/). |

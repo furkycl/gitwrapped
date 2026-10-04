@@ -17,8 +17,8 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] Time habits: commits by hour and weekday, "peak hour"
 - [x] Streaks: longest daily streak and current streak
 - [x] Hot files: most-edited files (top 5), ignoring lockfiles and build output
-- [ ] Commit messages: shortest, longest, most repeated word, count of "fix"/"wip"/"oops"
-- [ ] Commit personality: rule-based archetypes (Night Owl, Early Bird, Friday Deployer, Fixaholic, Weekend Warrior, Steady Shipper) with a one-line roast each
+- [x] Commit messages: shortest, longest, most repeated word, count of "fix"/"wip"/"oops"
+- [x] Commit personality: rule-based archetypes (Night Owl, Early Bird, Friday Deployer, Fixaholic, Weekend Warrior, Steady Shipper) with a one-line roast each
 
 ## M4 — Cards
 - [ ] Card renderer: 1080x1920 SVG story cards, bold gradient style, no external fonts needed

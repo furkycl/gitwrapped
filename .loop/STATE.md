@@ -1,6 +1,6 @@
 # STATE
 
-Next turn: 008
+Next turn: 009
 
 | Turn | Date (UTC) | Task | PR | Result | Note for next turn |
 |------|------------|------|----|--------|--------------------|
@@ -12,3 +12,4 @@ Next turn: 008
 | 005 | 2026-10-04 | M3: streaks + hot files | https://github.com/furkycl/gitwrapped/pull/8 | done (226 tests, CI green Node 20+22) | computeStats(commits, {today}) → {totals, habits, streaks, hotFiles}. Generic build dirs only ignored at repo/package root. Next: commit messages stats (src/stats/messages.js), then personality archetypes using habits + messages. |
 | 006 | 2026-10-04 | M3: commit messages + personality | https://github.com/furkycl/gitwrapped/pull/9 | done (281 tests, CI green Node 20+22) | M3 complete. Personality scores = clamp01((share − uniform baseline)/range); merge commits skipped in message stats. Next: M4 card renderer + card set (src/cards/). |
 | 007 | 2026-10-04 | M4: SVG card renderer + card set | https://github.com/furkycl/gitwrapped/pull/10 | done (343 tests, CI green Node 20+22) | src/cards/ (buildCards → [{id, svg}], unique ids per card via idPrefix). Preview: node scripts/preview-cards.js; screenshot with Playwright Chromium at /opt/pw-browsers. Next: HTML viewer + CLI wiring, then PNG export (fonts: resvg needs loadSystemFonts + defaultFontFamily). |
+| 008 | 2026-10-04 | M4: HTML story viewer + CLI generation | https://github.com/furkycl/gitwrapped/pull/11 | done (389 tests, CI green Node 20+22) | PR #11 was opened by a parallel session (session_01SQce…) that never merged it. This turn ran a cold review (clean), squash-merged it and recorded it. Two scheduled runs still seem to overlap, so the owner should check the scheduled tasks. CLI writes --out/cards/NN-<id>.svg + wrapped.html (src/viewer.js, CSP sha256-hashed inline style/script). Next: PNG export via @resvg/resvg-js (loadSystemFonts + defaultFontFamily) + 1200x630 share summary. Remote branch deletes still blocked (proxy). |

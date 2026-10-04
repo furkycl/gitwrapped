@@ -23,7 +23,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 ## M4 — Cards
 - [x] Card renderer: 1080x1920 SVG story cards, bold gradient style, no external fonts needed
 - [x] Card set: intro, totals, peak hour, streak, hot files, message hall of fame, personality, outro
-- [ ] HTML viewer: one self-contained `wrapped.html` with tap/arrow-key story navigation
+- [x] HTML viewer: one self-contained `wrapped.html` with tap/arrow-key story navigation
 - [ ] PNG export via `@resvg/resvg-js` (one PNG per card + a 1200x630 share summary)
 
 ## M5 — Polish & launch

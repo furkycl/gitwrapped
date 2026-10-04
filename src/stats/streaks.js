@@ -16,10 +16,10 @@ function localToday() {
  * (days with at least one commit).
  * - longest: the longest run; ties go to the earliest run.
  * - current: the run ending on the last active day, but only while it is still alive,
- *   i.e. that last day is `today` or the day before `today`; otherwise length 0.
- *   A last active day after `today` (clock skew, future-dated commits) is not alive.
- *   Note: days are author-local but `today` defaults to the machine's local date; with far
- *   apart offsets these can differ by a day, which the one-day grace mostly absorbs.
+ *   i.e. that last day is `today`, the day before, or the day after `today`; otherwise
+ *   length 0. The day after counts because days are author-local: an author in a timezone
+ *   ahead of the machine can already be on tomorrow. Two or more days ahead (clock skew,
+ *   future-dated commits) is not alive.
  *   For a past-period wrapped (e.g. --since last year) current is usually 0.
  * - No active days → both `{length: 0, start: null, end: null}`.
  *
@@ -60,7 +60,7 @@ export function computeStreaks(commits, { today } = {}) {
   for (const run of runs) if (run.length > longest.length) longest = run;
 
   const last = sorted[sorted.length - 1];
-  const alive = last === todayDay || last === todayDay - 1;
+  const alive = last >= todayDay - 1 && last <= todayDay + 1;
   const current = alive ? runs[runs.length - 1] : EMPTY;
   return { longest: { ...longest }, current: { ...current } };
 }

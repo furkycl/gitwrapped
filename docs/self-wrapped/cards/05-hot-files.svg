@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" role="img" aria-label="YOUR HOT FILES — STATE.md — is the file you can&apos;t stop touching">
+<title>YOUR HOT FILES — STATE.md — is the file you can&apos;t stop touching</title>
+<defs><linearGradient id="gw-hot-files-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0.00" stop-color="#16b89a"/><stop offset="0.50" stop-color="#0d6e78"/><stop offset="1.00" stop-color="#0b1f3a"/></linearGradient><radialGradient id="gw-hot-files-glow"><stop offset="0" stop-color="#9dffc9" stop-opacity="0.55"/><stop offset="1" stop-color="#9dffc9" stop-opacity="0"/></radialGradient></defs><rect width="1080" height="1920" fill="url(#gw-hot-files-bg)"/><circle cx="930" cy="250" r="460" fill="url(#gw-hot-files-glow)"/><circle cx="110" cy="1650" r="560" fill="url(#gw-hot-files-glow)"/><circle cx="960" cy="1280" r="180" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="24"/>
+<g fill="#ffffff" font-family="system-ui, -apple-system, &apos;Segoe UI&apos;, Roboto, Helvetica, Arial, sans-serif">
+<rect x="96" y="150" width="72" height="10" rx="5" fill="#ffffff"/>
+<text x="96" y="222" font-size="36" font-weight="800" fill-opacity="0.9" letter-spacing="5">YOUR HOT FILES</text>
+<text x="96" y="610.9" font-size="153" font-weight="900" letter-spacing="-3.1">STATE.md</text>
+<text x="96" y="750.7" font-size="72" font-weight="800">is the file you can&apos;t</text><text x="96" y="831.3" font-size="72" font-weight="800">stop touching</text>
+<text x="96" y="936.2" font-size="44" font-weight="600" fill-opacity="0.9">14 commits, +31 / −12 lines.</text>
+<rect x="64" y="1003.9532000000002" width="952" height="440" rx="40" fill="#ffffff" fill-opacity="0.14"/><text x="96" y="1080" font-size="40" font-weight="700">.loop/STATE.md</text><text x="984" y="1080" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">14 commits</text><text x="96" y="1158" font-size="40" font-weight="700">.loop/ROADMAP.md</text><text x="984" y="1158" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">12 commits</text><text x="96" y="1236" font-size="40" font-weight="700">README.md</text><text x="984" y="1236" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">7 commits</text><text x="96" y="1314" font-size="40" font-weight="700">src/cli.js</text><text x="984" y="1314" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">5 commits</text><text x="96" y="1392" font-size="40" font-weight="700">test/git.test.js</text><text x="984" y="1392" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">5 commits</text>
+<text x="96" y="1820" font-size="44" font-weight="900" letter-spacing="-1">gitwrapped</text>
+<text x="984" y="1818" font-size="32" font-weight="600" fill-opacity="0.8" text-anchor="end">gitwrapped · 2026-10-04</text>
+</g>
+</svg>

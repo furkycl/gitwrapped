@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" role="img" aria-label="THE GRAND TOTAL — 26 — commits">
+<title>THE GRAND TOTAL — 26 — commits</title>
+<defs><linearGradient id="gw-totals-bg" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0.00" stop-color="#00c6ff"/><stop offset="0.50" stop-color="#0063e6"/><stop offset="1.00" stop-color="#14125e"/></linearGradient><radialGradient id="gw-totals-glow"><stop offset="0" stop-color="#7ae8ff" stop-opacity="0.55"/><stop offset="1" stop-color="#7ae8ff" stop-opacity="0"/></radialGradient></defs><rect width="1080" height="1920" fill="url(#gw-totals-bg)"/><circle cx="930" cy="250" r="460" fill="url(#gw-totals-glow)"/><circle cx="110" cy="1650" r="560" fill="url(#gw-totals-glow)"/><circle cx="960" cy="1280" r="180" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="24"/>
+<g fill="#ffffff" font-family="system-ui, -apple-system, &apos;Segoe UI&apos;, Roboto, Helvetica, Arial, sans-serif">
+<rect x="96" y="150" width="72" height="10" rx="5" fill="#ffffff"/>
+<text x="96" y="222" font-size="36" font-weight="800" fill-opacity="0.9" letter-spacing="5">THE GRAND TOTAL</text>
+<text x="96" y="694.5" font-size="280" font-weight="900" letter-spacing="-5.6">26</text>
+<text x="96" y="859.7" font-size="72" font-weight="800">commits</text>
+<text x="96" y="964.5" font-size="44" font-weight="600" fill-opacity="0.9">That&apos;s 13 commits per active day.</text>
+<rect x="64" y="1032.3152" width="952" height="440" rx="40" fill="#ffffff" fill-opacity="0.14"/><text x="96" y="1108.3" font-size="40" font-weight="700">Lines added</text><text x="984" y="1108.3" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">+9,210</text><text x="96" y="1186.3" font-size="40" font-weight="700">Lines removed</text><text x="984" y="1186.3" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">−282</text><text x="96" y="1264.3" font-size="40" font-weight="700">Active days</text><text x="984" y="1264.3" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">2</text><text x="96" y="1342.3" font-size="40" font-weight="700">Files touched</text><text x="984" y="1342.3" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">49</text><text x="96" y="1420.3" font-size="40" font-weight="700">Contributors</text><text x="984" y="1420.3" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">2</text>
+<text x="96" y="1820" font-size="44" font-weight="900" letter-spacing="-1">gitwrapped</text>
+<text x="984" y="1818" font-size="32" font-weight="600" fill-opacity="0.8" text-anchor="end">gitwrapped · 2026-10-04</text>
+</g>
+</svg>

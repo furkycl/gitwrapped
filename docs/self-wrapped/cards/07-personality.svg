@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" role="img" aria-label="YOUR COMMIT PERSONALITY — Weekend Warrior — Weekends are for touching grass. You touched git instead.">
+<title>YOUR COMMIT PERSONALITY — Weekend Warrior — Weekends are for touching grass. You touched git instead.</title>
+<defs><linearGradient id="gw-personality-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0.00" stop-color="#ff9a00"/><stop offset="0.50" stop-color="#e52e71"/><stop offset="1.00" stop-color="#5b0f4d"/></linearGradient><radialGradient id="gw-personality-glow"><stop offset="0" stop-color="#ffe08a" stop-opacity="0.55"/><stop offset="1" stop-color="#ffe08a" stop-opacity="0"/></radialGradient></defs><rect width="1080" height="1920" fill="url(#gw-personality-bg)"/><circle cx="930" cy="250" r="460" fill="url(#gw-personality-glow)"/><circle cx="110" cy="1650" r="560" fill="url(#gw-personality-glow)"/><circle cx="960" cy="1280" r="180" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="24"/>
+<g fill="#ffffff" font-family="system-ui, -apple-system, &apos;Segoe UI&apos;, Roboto, Helvetica, Arial, sans-serif">
+<rect x="96" y="150" width="72" height="10" rx="5" fill="#ffffff"/>
+<text x="96" y="222" font-size="36" font-weight="800" fill-opacity="0.9" letter-spacing="5">YOUR COMMIT PERSONALITY</text>
+<text x="96" y="593" font-size="88" font-weight="900" letter-spacing="-1.8">Weekend Warrior</text>
+<text x="96" y="719.8" font-size="72" font-weight="800">Weekends are for</text><text x="96" y="800.5" font-size="72" font-weight="800">touching grass. You</text><text x="96" y="881.1" font-size="72" font-weight="800">touched git instead.</text>
+<text x="96" y="986" font-size="44" font-weight="600" fill-opacity="0.9">88% of your commits land on a</text><text x="96" y="1043.2" font-size="44" font-weight="600" fill-opacity="0.9">Saturday or Sunday.</text>
+<rect x="64" y="1110.9664" width="952" height="284" rx="40" fill="#ffffff" fill-opacity="0.14"/><text x="96" y="1187" font-size="40" font-weight="700">Weekend Warrior</text><text x="984" y="1187" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">100%</text><text x="96" y="1265" font-size="40" font-weight="700">Night Owl</text><text x="984" y="1265" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">81%</text><text x="96" y="1343" font-size="40" font-weight="700">Steady Shipper</text><text x="984" y="1343" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">74%</text>
+<text x="96" y="1820" font-size="44" font-weight="900" letter-spacing="-1">gitwrapped</text>
+<text x="984" y="1818" font-size="32" font-weight="600" fill-opacity="0.8" text-anchor="end">gitwrapped · 2026-10-04</text>
+</g>
+</svg>

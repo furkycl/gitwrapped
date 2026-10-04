@@ -108,10 +108,17 @@ describe('computeStreaks', () => {
     assert.deepEqual(computeStreaks(days('2024-06-30'), { today: '2024-07-01' }).current, run(1, '2024-06-30', '2024-06-30'));
   });
 
-  test('current is dead two days later or when the last day is after today', () => {
+  test('current is alive when the last day is one day after today (author timezone ahead)', () => {
+    const input = days('2024-06-27', '2024-06-28');
+    assert.deepEqual(computeStreaks(input, { today: '2024-06-27' }).current, run(2, '2024-06-27', '2024-06-28'));
+    // across a month boundary
+    assert.deepEqual(computeStreaks(days('2024-07-01'), { today: '2024-06-30' }).current, run(1, '2024-07-01', '2024-07-01'));
+  });
+
+  test('current is dead two days later or when the last day is 2+ days after today', () => {
     const input = days('2024-06-27', '2024-06-28');
     assert.deepEqual(computeStreaks(input, { today: '2024-06-30' }).current, NONE);
-    assert.deepEqual(computeStreaks(input, { today: '2024-06-27' }).current, NONE);
+    assert.deepEqual(computeStreaks(input, { today: '2024-06-26' }).current, NONE);
     assert.deepEqual(computeStreaks(input, { today: '2024-06-01' }).current, NONE);
     // longest is unaffected by today
     assert.deepEqual(computeStreaks(input, { today: '2024-06-01' }).longest, run(2, '2024-06-27', '2024-06-28'));

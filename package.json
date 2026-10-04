@@ -23,5 +23,8 @@
     "stats"
   ],
   "author": "furkycl",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@resvg/resvg-js": "2.6.2"
+  }
 }

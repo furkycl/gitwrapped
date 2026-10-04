@@ -20,8 +20,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
+          cache: npm
       - name: Set git identity (tests create throwaway repos)
         run: |
           git config --global user.name ci
           git config --global user.email ci@example.com
+      - run: npm ci
       - run: npm test

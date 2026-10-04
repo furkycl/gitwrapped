@@ -5,7 +5,7 @@
 export const CARD_WIDTH = 1080;
 export const CARD_HEIGHT = 1920;
 
-const FONT_FAMILY = "system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+export const FONT_FAMILY = "system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 const PAD_X = 96;
 const CONTENT_WIDTH = CARD_WIDTH - 2 * PAD_X;
 // Non-big text wraps a little short of the content width: the width model is an
@@ -47,24 +47,35 @@ export function escapeXml(s) {
 }
 
 // ---------------------------------------------------------------------------------------
-// Text measurement: an approximate glyph-width model (in em) for a bold sans-serif face.
+// Text measurement: per-glyph advance widths (in em) of DejaVu Sans Bold, the Linux
+// fallback sans and one of the widest common sans faces. Calibrating against it makes the
+// model err wide for the narrower faces browsers and other platforms pick (Helvetica,
+// Segoe UI, Roboto, Arial ...), so fitted text never runs past the card padding.
+// test/png.test.js checks the model against real resvg-rendered widths.
 
-const NARROW = new Set("il.,:;'|!`Iíìj()[]{}");
-const SEMI_NARROW = new Set('ftr"-/\\ ');
-const WIDE = new Set('mwMW@%');
+// Advance widths in 1/1000 em for ASCII 0x20 (space) .. 0x7E (~).
+const ASCII_WIDTHS = [
+  348, 456, 521, 838, 696, 1002, 872, 306, 457, 457, 523, 838, 380, 415, 380, 365,
+  696, 696, 696, 696, 696, 696, 696, 696, 696, 696, 400, 400, 838, 838, 838, 580,
+  1000, 774, 762, 734, 830, 683, 683, 821, 837, 372, 372, 775, 637, 995, 837, 850,
+  733, 850, 770, 720, 682, 812, 774, 1103, 771, 724, 725, 457, 365, 457, 838, 500,
+  500, 675, 716, 593, 716, 678, 435, 716, 712, 343, 343, 665, 343, 1042, 712, 687,
+  716, 716, 493, 595, 478, 712, 652, 924, 645, 652, 582, 712, 365, 712, 838,
+];
 const ZERO_WIDTH = /[\u0300-\u036F\u200B-\u200F\u20D0-\u20FF\uFE00-\uFE0F]|\p{M}/u;
 const FULL_WIDTH = /\p{Extended_Pictographic}|\p{Regional_Indicator}|[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6]|[\u{20000}-\u{3fffd}]/u;
+const LETTER = /\p{L}/u;
 
 /** Width of one code point, in em. */
 function charWidth(ch) {
-  if (NARROW.has(ch)) return 0.3;
-  if (SEMI_NARROW.has(ch)) return 0.38;
-  if (WIDE.has(ch)) return 0.9;
+  const cp = ch.codePointAt(0);
+  if (cp >= 0x20 && cp <= 0x7e) return ASCII_WIDTHS[cp - 0x20] / 1000;
   if (ZERO_WIDTH.test(ch)) return 0;
   if (FULL_WIDTH.test(ch)) return 1;
-  if (/[A-Z]/.test(ch)) return 0.68;
-  if (/[0-9]/.test(ch)) return 0.6;
-  return 0.56;
+  if (cp === 0x2026 || cp === 0x2014) return 1; // ellipsis, em dash
+  if (cp < 0x20) return 0;
+  // Other letters (accented Latin, Greek, Cyrillic ...) as a wide capital; symbols as '+'.
+  return LETTER.test(ch) ? 0.85 : 0.84;
 }
 
 /** Approximate rendered width of `text` in px at `fontSize`. */
@@ -152,7 +163,8 @@ export function wrapText(text, { maxWidth, fontSize, maxLines = Infinity } = {})
 
 const BIG_MAX = 280;
 const BIG_MIN = 72;
-const BIG_WEIGHT_FACTOR = 1.08; // heavy weights run a bit wider than the model
+// The width model matches DejaVu Sans Bold; keep a little slack for rasterizer rounding.
+const BIG_WEIGHT_FACTOR = 1.02;
 const TITLE = { size: 72, lineHeight: 1.12, maxLines: 3 };
 const SUBTITLE = { size: 44, lineHeight: 1.3, maxLines: 4 };
 const LIST = { size: 40, rowHeight: 78, pad: 40, maxRows: 6 };
@@ -221,11 +233,21 @@ function blocks({ big, title, subtitle, lines }, bigMax) {
   return out;
 }
 
+/** `text` on one line with letter `spacing` px, cut at the end with '…' to fit `maxWidth`. */
+function fitSpaced(text, maxWidth, fontSize, spacing) {
+  const width = (t) => measureText(t, fontSize) + spacing * Array.from(t).length;
+  if (width(text) <= maxWidth) return text;
+  const gs = graphemes(text);
+  while (gs.length > 0 && width(gs.join('').trimEnd() + ELLIPSIS) > maxWidth) gs.pop();
+  return gs.join('').trimEnd() + ELLIPSIS;
+}
+
 const totalHeight = (bs) => bs.reduce((h, b) => h + b.height, 0) + GAP * Math.max(0, bs.length - 1);
 
 const round = (n) => Math.round(n * 10) / 10;
 
-function textEl(x, y, text, { size, weight = 700, opacity = 1, anchor = 'start', spacing = 0 }) {
+/** One <text> element (text XML-escaped, coordinates rounded to 0.1px). */
+export function textEl(x, y, text, { size, weight = 700, opacity = 1, anchor = 'start', spacing = 0 }) {
   const attrs = [`x="${round(x)}"`, `y="${round(y)}"`, `font-size="${round(size)}"`, `font-weight="${weight}"`];
   if (opacity !== 1) attrs.push(`fill-opacity="${opacity}"`);
   if (anchor !== 'start') attrs.push(`text-anchor="${anchor}"`);
@@ -249,7 +271,7 @@ function background(id, t) {
 }
 
 /** A valid XML id prefix (NCName-safe): letters, digits, '-', '_', '.'; starts with a letter. */
-function sanitizeIdPrefix(prefix) {
+export function sanitizeIdPrefix(prefix) {
   const cleaned = String(prefix ?? '').replace(/[^A-Za-z0-9_.-]+/g, '-');
   if (!cleaned) return '';
   return /^[A-Za-z_]/.test(cleaned) ? cleaned : `gw-${cleaned}`;
@@ -285,7 +307,7 @@ export function renderCard({ theme: themeName, eyebrow, title, big, subtitle, li
   const body = [];
   const eb = str(eyebrow).toUpperCase();
   if (eb) {
-    const [line] = wrapText(eb, { maxWidth: CONTENT_WIDTH / 1.15, fontSize: 36, maxLines: 1 });
+    const line = fitSpaced(eb, CONTENT_WIDTH, 36, 5);
     body.push(`<rect x="${PAD_X}" y="150" width="72" height="10" rx="5" fill="#ffffff"/>`);
     body.push(textEl(PAD_X, 222, line, { size: 36, weight: 800, opacity: 0.9, spacing: 5 }));
   }
@@ -296,8 +318,11 @@ export function renderCard({ theme: themeName, eyebrow, title, big, subtitle, li
   body.push(textEl(PAD_X, 1820, 'gitwrapped', { size: 44, weight: 900, spacing: -1 }));
   const foot = str(footer);
   if (foot) {
-    const [line] = wrapText(foot, { maxWidth: 560, fontSize: 32, maxLines: 1 });
-    body.push(textEl(PAD_X + CONTENT_WIDTH, 1818, line, { size: 32, weight: 600, opacity: 0.8, anchor: 'end' }));
+    // Right of the brand, leaving a gap; shrinks (32 → 24px) before it is ellipsized.
+    const maxWidth = CONTENT_WIDTH - (measureText('gitwrapped', 44) - 10) - 40;
+    const size = Math.max(24, Math.min(32, Math.floor(maxWidth / Math.max(measureText(foot, 1), 0.01))));
+    const [line] = wrapText(foot, { maxWidth, fontSize: size, maxLines: 1 });
+    body.push(textEl(PAD_X + CONTENT_WIDTH, 1818, line, { size, weight: 600, opacity: 0.8, anchor: 'end' }));
   }
 
   const label = escapeXml([eb, content.big, content.title].filter(Boolean).join(' — ') || 'gitwrapped card');

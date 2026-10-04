@@ -33,7 +33,7 @@ async function runCaptured(argv, opts = {}) {
   return { code, stdout: stdout.data, stderr: stderr.data };
 }
 
-const DEFAULTS = { path: '.', since: undefined, author: undefined, out: 'gitwrapped-out' };
+const DEFAULTS = { path: '.', since: undefined, author: undefined, out: 'gitwrapped-out', png: true };
 
 describe('parseCli', () => {
   test('defaults with no arguments', () => {
@@ -57,13 +57,19 @@ describe('parseCli', () => {
     assert.equal(parseCli(['--author=a@b.com']).author, 'a@b.com');
   });
 
+  test('--no-png turns PNG export off', () => {
+    assert.equal(parseCli(['--no-png']).png, false);
+    assert.deepEqual(parseCli(['repo', '--no-png', '--out', 'o']), { ...DEFAULTS, path: 'repo', out: 'o', png: false });
+    assert.throws(() => parseCli(['--no-png=yes']), /--no-png/);
+  });
+
   test('--out with separate value and = form', () => {
     assert.equal(parseCli(['--out', 'dist']).out, 'dist');
     assert.equal(parseCli(['--out=dist']).out, 'dist');
   });
 
   test('all flags together with a path, in any order', () => {
-    const expected = { path: 'repo', since: '2024-06-01', author: 'x@y.z', out: 'o' };
+    const expected = { path: 'repo', since: '2024-06-01', author: 'x@y.z', out: 'o', png: true };
     assert.deepEqual(
       parseCli(['repo', '--since', '2024-06-01', '--author', 'x@y.z', '--out', 'o']),
       expected,
@@ -179,7 +185,7 @@ describe('run', () => {
   });
 
   test('HELP_TEXT documents every option', () => {
-    for (const s of ['Usage: gitwrapped', '--since', '--author', '--out', '-h, --help', '-v, --version', 'YYYY-MM-DD']) {
+    for (const s of ['Usage: gitwrapped', '--since', '--author', '--out', '--no-png', '-h, --help', '-v, --version', 'YYYY-MM-DD']) {
       assert.ok(HELP_TEXT.includes(s), `HELP_TEXT missing ${s}`);
     }
   });
@@ -206,7 +212,7 @@ describe('run', () => {
       rmSync(out, { recursive: true, force: true });
     });
     const dest = join(out, 'nested', 'dir');
-    const r = await runCaptured([fixture.dir, '--out', dest], { today: '2024-03-14' });
+    const r = await runCaptured([fixture.dir, '--out', dest, '--no-png'], { today: '2024-03-14' });
     assert.equal(r.code, 0, r.stderr);
     assert.equal(r.stderr, '');
     const html = join(dest, 'wrapped.html');
@@ -218,6 +224,10 @@ describe('run', () => {
     assert.match(page, /^<!doctype html>/);
     assert.equal((page.match(/<svg\b/g) ?? []).length, CARD_IDS.length);
     assert.match(page, /<title>gitwrapped · [^<]+<\/title>/);
+    assert.match(readFileSync(join(dest, 'share.svg'), 'utf8'), /^<svg [^>]*width="1200" height="630"/);
+    assert.ok(r.stdout.includes(`share image: ${join(dest, 'share.svg')}`), r.stdout);
+    assert.equal(existsSync(join(dest, 'png')), false, '--no-png writes no PNGs');
+    assert.equal(existsSync(join(dest, 'share.png')), false);
   });
 
   test('--author with no matching commits still generates cards and exits 0', async (t) => {
@@ -227,7 +237,7 @@ describe('run', () => {
       fixture.cleanup();
       rmSync(out, { recursive: true, force: true });
     });
-    const r = await runCaptured([fixture.dir, '--author', 'nobody@example.com', '--out', out]);
+    const r = await runCaptured([fixture.dir, '--author', 'nobody@example.com', '--out', out, '--no-png']);
     assert.equal(r.code, 0, r.stderr);
     assert.match(r.stdout, /^gitwrapped: 0 commits → /);
     assert.ok(existsSync(join(out, 'wrapped.html')));
@@ -253,7 +263,7 @@ describe('run', () => {
       rmSync(out, { recursive: true, force: true });
     });
     const boom = { toJSON() { throw 'boom'; }, toString() { throw 'boom'; } }; // eslint-disable-line no-throw-literal
-    const r = await runCaptured([fixture.dir, '--out', out], { today: boom });
+    const r = await runCaptured([fixture.dir, '--out', out, '--no-png'], { today: boom });
     assert.equal(r.code, 1);
     assert.equal(r.stderr, 'gitwrapped: boom\n');
     assert.equal(readdirSync(out).length, 0, 'nothing written');

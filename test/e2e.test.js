@@ -12,6 +12,7 @@ import { CARD_IDS } from '../src/cards/index.js';
 import { buildCards } from '../src/cards/index.js';
 import { computeStats } from '../src/stats/index.js';
 import { buildViewerHtml } from '../src/viewer.js';
+import { pngSize } from '../src/png.js';
 import { makeFixtureRepo } from '../scripts/make-fixture-repo.js';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -19,8 +20,9 @@ const BIN = fileURLToPath(new URL('../bin/gitwrapped.js', import.meta.url));
 const CARD_FILES = CARD_IDS.map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}.svg`);
 
 // TZ=UTC so a bare --since date means UTC midnight regardless of the machine's zone.
-function bin(args, env = {}) {
-  return spawnSync(process.execPath, [BIN, ...args], {
+// PNG rendering is slow-ish, so runs pass --no-png unless `png: true` (the full run).
+function bin(args, env = {}, { png = false } = {}) {
+  return spawnSync(process.execPath, [BIN, ...args, ...(png ? [] : ['--no-png'])], {
     cwd: ROOT,
     encoding: 'utf8',
     env: { ...process.env, TZ: 'UTC', ...env },
@@ -49,7 +51,7 @@ describe('bin: full run on the fixture repo', () => {
   let page;
   before(() => {
     out = join(tmp, 'full');
-    r = bin([fixture.dir, '--out', out]);
+    r = bin([fixture.dir, '--out', out], {}, { png: true });
     page = existsSync(join(out, 'wrapped.html')) ? readFileSync(join(out, 'wrapped.html'), 'utf8') : '';
   });
 
@@ -69,6 +71,16 @@ describe('bin: full run on the fixture repo', () => {
       assert.ok(statSync(join(out, 'cards', f)).size > 0, `${f} is non-empty`);
       assert.ok(r.stdout.includes(join(out, 'cards', f)), `stdout lists ${f}`);
     }
+  });
+
+  test('writes png/01-intro.png .. 08-outro.png at 1080x1920 and share.png at 1200x630', () => {
+    const pngs = CARD_FILES.map((f) => f.replace(/\.svg$/, '.png'));
+    assert.deepEqual(readdirSync(join(out, 'png')).sort(), pngs);
+    for (const f of pngs) assert.deepEqual(pngSize(readFileSync(join(out, 'png', f))), { width: 1080, height: 1920 }, f);
+    assert.deepEqual(pngSize(readFileSync(join(out, 'share.png'))), { width: 1200, height: 630 });
+    assert.match(readFileSync(join(out, 'share.svg'), 'utf8'), /^<svg [^>]*width="1200" height="630"/);
+    assert.ok(r.stdout.includes(`share image: ${join(out, 'share.png')}`), r.stdout);
+    assert.ok(r.stdout.includes(`8 PNGs in ${join(out, 'png')}`), r.stdout);
   });
 
   test('wrapped.html inlines all 8 SVGs', () => {
@@ -200,6 +212,17 @@ describe('bin: errors', () => {
     assert.equal(r.status, 1);
     assert.equal(r.stderr, `gitwrapped: cannot write ${join(out, 'wrapped.html')}: a directory is in the way\n`);
     assert.equal(existsSync(join(out, 'cards')), false, 'no half-written card set');
+  });
+
+  test('<out>/png occupied by a file → exit 1 before anything is written (PNG export on)', (t) => {
+    const out = mkdtempSync(join(tmp, 'pngfile-'));
+    t.after(() => rmSync(out, { recursive: true, force: true }));
+    writeFileSync(join(out, 'png'), 'x');
+    const r = bin([fixture.dir, '--out', out], {}, { png: true });
+    assert.equal(r.status, 1);
+    assert.equal(r.stderr, `gitwrapped: cannot write PNGs: ${join(out, 'png')} exists and is not a directory\n`);
+    assert.equal(existsSync(join(out, 'cards')), false);
+    assert.equal(existsSync(join(out, 'wrapped.html')), false);
   });
 
   test('<out>/cards occupied by a file → exit 1, clear message, nothing written', (t) => {
@@ -419,5 +442,31 @@ describe('viewer inline script', () => {
     v.mq.fire('change', { matches: true });
     assert.equal(v.story.classList.contains('auto'), false);
     assert.equal(v.pause.hidden, true);
+  });
+});
+
+describe('stale PNG cleanup', () => {
+  test('a --no-png run removes PNGs left by an earlier run', async () => {
+    const { mkdtempSync, rmSync, existsSync, mkdirSync, writeFileSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const { makeFixtureRepo } = await import('../scripts/make-fixture-repo.js');
+    const { generate } = await import('../src/cli.js');
+    const fx = makeFixtureRepo();
+    const out = mkdtempSync(join(tmpdir(), 'gw-stale-'));
+    try {
+      mkdirSync(join(out, 'png'));
+      writeFileSync(join(out, 'png', '01-intro.png'), 'old');
+      writeFileSync(join(out, 'png', 'keep-me.txt'), 'user file');
+      writeFileSync(join(out, 'share.png'), 'old');
+      await generate({ path: fx.dir, out, png: false }, { today: '2024-03-14' });
+      assert.equal(existsSync(join(out, 'share.png')), false);
+      assert.equal(existsSync(join(out, 'png', '01-intro.png')), false);
+      assert.equal(existsSync(join(out, 'png', 'keep-me.txt')), true);
+      assert.equal(existsSync(join(out, 'share.svg')), true);
+    } finally {
+      rmSync(out, { recursive: true, force: true });
+      fx.cleanup();
+    }
   });
 });

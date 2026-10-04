@@ -13,6 +13,7 @@ test('parseCli returns defaults with no arguments', () => {
     since: undefined,
     author: undefined,
     out: 'gitwrapped-out',
+    png: true,
   });
 });
 

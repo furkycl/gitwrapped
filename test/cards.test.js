@@ -219,7 +219,7 @@ describe('buildCards', () => {
     assert.ok(m.intro.includes(`my${INJECT_ESCAPED}repo`), 'repo name escaped on intro');
     assert.ok(m.intro.includes(`Ada ${INJECT_ESCAPED}`), 'author on intro');
     // Footer is limited to 560px on one line, so the tail may be ellipsized.
-    assert.ok(m.totals.includes(`my${INJECT_ESCAPED}repo · since 2024`), 'footer');
+    assert.ok(m.totals.includes(`my${INJECT_ESCAPED}repo · since`), 'footer');
     const short = byId(buildCards(fixtureStats, { repoName: 'r', since: `${INJECT}` }));
     assert.ok(short.totals.includes(`r · since ${INJECT_ESCAPED}`), 'short footer fully escaped');
     assert.ok(m.outro.includes(`my${INJECT_ESCAPED}repo`));
@@ -386,7 +386,9 @@ describe('integration: fixture repo → cards', () => {
     assert.ok(stripTags(m.totals).includes('8'));
     assert.ok(m['hot-files'].includes('src/app.js'));
     assert.ok(m.personality.includes('Steady Shipper'));
-    assert.ok(m.messages.includes('refactor: move app to main'));
+    // 'Longest: “refactor: move app to main”' is wider than a list row at 40px in
+    // DejaVu Sans Bold, so it is ellipsized.
+    assert.ok(m.messages.includes('Longest: “refactor: move app'));
     assert.ok(m.intro.includes('fixture'));
     assert.ok(m.totals.includes('fixture · 2024-03-04 → 2024-03-13'), 'footer date range');
     assert.ok(m['peak-hour'].includes('one of'), 'fixture peak hour is tied');

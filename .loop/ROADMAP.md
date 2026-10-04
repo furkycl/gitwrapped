@@ -15,8 +15,8 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 ## M3 — Stats engine
 - [x] Totals: commits, active days, lines added/removed, files touched
 - [x] Time habits: commits by hour and weekday, "peak hour"
-- [ ] Streaks: longest daily streak and current streak
-- [ ] Hot files: most-edited files (top 5), ignoring lockfiles and build output
+- [x] Streaks: longest daily streak and current streak
+- [x] Hot files: most-edited files (top 5), ignoring lockfiles and build output
 - [ ] Commit messages: shortest, longest, most repeated word, count of "fix"/"wip"/"oops"
 - [ ] Commit personality: rule-based archetypes (Night Owl, Early Bird, Friday Deployer, Fixaholic, Weekend Warrior, Steady Shipper) with a one-line roast each
 

@@ -16,17 +16,17 @@ test('parseCli returns defaults with no arguments', () => {
   });
 });
 
-test('run --version prints package version and exits 0', () => {
+test('run --version prints package version and exits 0', async () => {
   const stdout = sink();
   const stderr = sink();
-  assert.equal(run(['--version'], { stdout, stderr }), 0);
+  assert.equal(await run(['--version'], { stdout, stderr }), 0);
   assert.match(stdout.data, /^\d+\.\d+\.\d+\n$/);
 });
 
-test('run with an invalid flag exits 2 and writes to stderr', () => {
+test('run with an invalid flag exits 2 and writes to stderr', async () => {
   const stdout = sink();
   const stderr = sink();
-  assert.equal(run(['--nope'], { stdout, stderr }), 2);
+  assert.equal(await run(['--nope'], { stdout, stderr }), 2);
   assert.match(stderr.data, /^gitwrapped: /);
   assert.equal(stdout.data, '');
 });

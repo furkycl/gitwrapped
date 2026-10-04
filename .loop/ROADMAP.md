@@ -13,8 +13,8 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] Fixture repos for tests: script that builds a tiny throwaway repo with known commits
 
 ## M3 — Stats engine
-- [ ] Totals: commits, active days, lines added/removed, files touched
-- [ ] Time habits: commits by hour and weekday, "peak hour"
+- [x] Totals: commits, active days, lines added/removed, files touched
+- [x] Time habits: commits by hour and weekday, "peak hour"
 - [ ] Streaks: longest daily streak and current streak
 - [ ] Hot files: most-edited files (top 5), ignoring lockfiles and build output
 - [ ] Commit messages: shortest, longest, most repeated word, count of "fix"/"wip"/"oops"

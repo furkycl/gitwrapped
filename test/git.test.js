@@ -21,6 +21,8 @@ describe('buildLogArgs', () => {
     assert.equal(LOG_FORMAT, '%H%x1f%an%x1f%ae%x1f%aI%x1f%s');
     assert.ok(args.includes('-z'));
     assert.ok(args.includes('--encoding=UTF-8'));
+    assert.ok(args.includes('--numstat'));
+    assert.ok(args.includes('--no-renames'));
     assert.ok(!args.some((a) => a.startsWith('--since') || a.startsWith('--author')));
     assert.deepEqual(buildLogArgs({}), args);
   });
@@ -55,7 +57,17 @@ describe('parseLog', () => {
   test('parses one record with all fields', () => {
     const out = rec('abc123', 'Ada', 'ada@x.io', '2025-01-02T03:04:05+01:00', 'init');
     assert.deepEqual(parseLog(out), [
-      { hash: 'abc123', author: 'Ada', email: 'ada@x.io', date: '2025-01-02T03:04:05+01:00', subject: 'init' },
+      {
+        hash: 'abc123',
+        author: 'Ada',
+        email: 'ada@x.io',
+        date: '2025-01-02T03:04:05+01:00',
+        subject: 'init',
+        files: [],
+        filesChanged: 0,
+        linesAdded: 0,
+        linesRemoved: 0,
+      },
     ]);
   });
 

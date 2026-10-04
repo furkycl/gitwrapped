@@ -3,8 +3,8 @@
 Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 
 ## M1 — Skeleton
-- [ ] Init npm package `gitwrapped` (ESM, `bin: gitwrapped`), `npm test` with `node:test`, `.gitignore`, MIT LICENSE
-- [ ] CLI entry: `gitwrapped [path] [--since YYYY-MM-DD] [--author email] [--out dir]` with `--help` and `--version`
+- [x] Init npm package `gitwrapped` (ESM, `bin: gitwrapped`), `npm test` with `node:test`, `.gitignore`, MIT LICENSE
+- [x] CLI entry: `gitwrapped [path] [--since YYYY-MM-DD] [--author email] [--out dir]` with `--help` and `--version`
 - [ ] GitHub Actions CI: run `npm test` on push and PR (Node 20 and 22)
 
 ## M2 — Git parser

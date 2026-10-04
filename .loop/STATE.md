@@ -1,6 +1,6 @@
 # STATE
 
-Next turn: 012
+Next turn: — (project done)
 
 | Turn | Date (UTC) | Task | PR | Result | Note for next turn |
 |------|------------|------|----|--------|--------------------|
@@ -17,3 +17,4 @@ Next turn: 012
 | 009 | 2026-10-04 | M4: PNG export + share image | https://github.com/furkycl/gitwrapped/pull/12 | done (414 tests, CI green Node 20+22) | M4 complete. @resvg/resvg-js pinned 2.6.2 (only runtime dep, lazy-loaded; graceful skip). Width model calibrated to DejaVu Sans Bold. Each render rescans system fonts (~150ms) — could cache via fontFiles later. Next: M5 terminal summary + edge cases. |
 | 010 | 2026-10-04 | M5: terminal recap + edge cases | https://github.com/furkycl/gitwrapped/pull/13 | done (537 tests, CI green Node 20+22 after 1 fix) | CI git 2.55 rejects --max-count beyond C int: now skipped above 2^31-1 (local git 2.43 accepted it — CI caught it). readHistory → {commits, truncated, limit}. Next: README + npm publish readiness, then self-wrapped cards in docs/self-wrapped/. |
 | 011 | 2026-10-04 | M5: README + npm publish readiness | https://github.com/furkycl/gitwrapped/pull/14 | done (544 tests, CI green Node 20+22) | npm pack: 20 files. Name availability on npm not checked (offline). Next (last task): run gitwrapped on this repo into docs/self-wrapped/ (README hero image points at docs/self-wrapped/share.png). |
+| 012 | 2026-10-04 | M5: self-wrapped cards in docs/self-wrapped | https://github.com/furkycl/gitwrapped/pull/15 | done (550 tests, CI green Node 20+22) | ROADMAP complete → .loop/DONE created. Fixed current-streak for authors a day ahead of the machine TZ. Owner follow-ups: delete the hourly scheduled task, delete stale loop/* remote branches, check npm name availability before `npm publish`, optionally record docs/hero.gif. |

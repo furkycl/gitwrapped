@@ -1,9 +1,10 @@
 import { parseArgs, promisify } from 'node:util';
 import { execFile } from 'node:child_process';
-import { accessSync, constants as fsConstants, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { accessSync, constants as fsConstants, mkdirSync, readFileSync, rmdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
-import { buildCards } from './cards/index.js';
+import { buildCards, renderShareCard } from './cards/index.js';
 import { readCommits } from './git.js';
+import { renderPng } from './png.js';
 import { computeStats } from './stats/index.js';
 import { buildViewerHtml } from './viewer.js';
 
@@ -12,7 +13,8 @@ const execFileAsync = promisify(execFile);
 export const HELP_TEXT = `Usage: gitwrapped [path] [options]
 
 Turn a git repo's commit history into shareable story cards.
-Writes <out>/cards/*.svg and <out>/wrapped.html (open it in a browser).
+Writes <out>/wrapped.html (open it in a browser), <out>/cards/*.svg,
+<out>/png/*.png (1080x1920) and a 1200x630 share image <out>/share.png (+ .svg).
 
 Arguments:
   path                 Path to the git repository (default: ".")
@@ -22,6 +24,7 @@ Options:
   --author <email>     Only include commits by this author email
                        (exact email match, case-insensitive)
   --out <dir>          Output directory (default: "gitwrapped-out")
+  --no-png             Skip PNG rendering (faster; SVG + HTML only)
   -h, --help           Show this help and exit
   -v, --version        Show the version and exit
 `;
@@ -30,6 +33,7 @@ const OPTIONS = {
   since: { type: 'string' },
   author: { type: 'string' },
   out: { type: 'string' },
+  'no-png': { type: 'boolean' },
   help: { type: 'boolean', short: 'h' },
   version: { type: 'boolean', short: 'v' },
 };
@@ -53,7 +57,7 @@ function validateSince(value) {
 
 /**
  * Parse CLI arguments (without node/script prefix).
- * Returns {help:true}, {version:true}, or {path, since, author, out}.
+ * Returns {help:true}, {version:true}, or {path, since, author, out, png}.
  * Throws an Error with a user-facing message on invalid input.
  */
 export function parseCli(argv) {
@@ -85,6 +89,7 @@ export function parseCli(argv) {
     since: values.since === undefined ? undefined : validateSince(values.since),
     author: values.author?.trim(),
     out: values.out?.trim() ?? 'gitwrapped-out',
+    png: !values['no-png'],
   };
 }
 
@@ -168,16 +173,17 @@ function ensureDir(dir, label = dir) {
 
 /**
  * Check where the output will go before writing anything: `out` must be (or be creatable
- * as) a directory, <out>/cards a directory, <out>/wrapped.html not a directory, and no
- * card file may be occupied by a directory.
+ * as) a directory, every subdirectory (<out>/cards, <out>/png) a directory if it exists,
+ * and no output file (wrapped.html, share.*, card files) may be occupied by a directory.
  */
-function checkOutputPaths(out, htmlPath, cardsDir, cardPaths) {
+function checkOutputPaths(out, dirs, filePaths) {
   const outSt = statOrNull(out);
   if (outSt && !outSt.isDirectory()) throw outputError(`output path is not a directory: ${out}`);
-  if (statOrNull(htmlPath)?.isDirectory()) throw outputError(`cannot write ${htmlPath}: a directory is in the way`);
-  const cardsSt = statOrNull(cardsDir);
-  if (cardsSt && !cardsSt.isDirectory()) throw outputError(`cannot write cards: ${cardsDir} exists and is not a directory`);
-  for (const p of cardPaths) {
+  for (const { dir, what } of dirs) {
+    const st = statOrNull(dir);
+    if (st && !st.isDirectory()) throw outputError(`cannot write ${what}: ${dir} exists and is not a directory`);
+  }
+  for (const p of filePaths) {
     if (statOrNull(p)?.isDirectory()) throw outputError(`cannot write ${p}: a directory is in the way`);
   }
 }
@@ -190,38 +196,98 @@ function writeOutput(file, data) {
   }
 }
 
+/** Remove share.png and this card set's png/NN-<id>.png files (and png/ if left empty). */
+function removeStalePngs(pngDir, sharePngPath, names) {
+  const rmFile = (f) => {
+    try {
+      if (statSync(f).isFile()) unlinkSync(f);
+    } catch {
+      // missing or not removable: leave it
+    }
+  };
+  rmFile(sharePngPath);
+  for (const n of names) rmFile(join(pngDir, n));
+  try {
+    rmdirSync(pngDir); // only succeeds when empty
+  } catch {
+    // not empty or missing
+  }
+}
+
 /**
- * Generate the story into `out`: cards/NN-<id>.svg and wrapped.html.
+ * Generate the story into `out`: wrapped.html, cards/NN-<id>.svg, share.svg and (unless
+ * `png` is false) png/NN-<id>.png (1080x1920) plus share.png (1200x630).
  * Everything is rendered in memory and the output paths are checked first, so a bad
- * --out fails before anything is written.
- * Returns {commits, html, cardsDir, cardFiles} with the written paths (joined onto `out`).
+ * --out fails before anything is written. If the PNG renderer cannot be loaded or fails,
+ * the SVG/HTML output is still written and `pngSkipped` holds the reason.
+ * Returns {commits, html, cardsDir, cardFiles, shareSvg, pngDir, pngFiles, sharePng,
+ * pngSkipped} with the written paths (joined onto `out`; PNG paths null/[] when skipped).
+ * `renderPng` (svg, {width}) → Promise<Buffer> replaces the PNG renderer (for tests).
  */
-export async function generate({ path, since, author, out }, { today } = {}) {
+export async function generate({ path, since, author, out, png = true }, { today, renderPng: rasterize = renderPng } = {}) {
   const commits = await readCommits(path, { since, author });
   const stats = computeStats(commits, { today });
   const name = await repoName(path);
   const cards = buildCards(stats, { repoName: name, since, author });
+  const shareSvg = renderShareCard(stats, { repoName: name, since, author });
 
   const cardsDir = join(out, 'cards');
+  const pngDir = join(out, 'png');
   const html = join(out, 'wrapped.html');
+  const shareSvgPath = join(out, 'share.svg');
+  const sharePngPath = join(out, 'share.png');
   const page = buildViewerHtml(cards, { title: `gitwrapped · ${name}` });
-  const files = cards.map(({ id, svg }, i) => ({
-    file: join(cardsDir, `${String(i + 1).padStart(2, '0')}-${id}.svg`),
-    svg,
-  }));
+  const stem = (id, i) => `${String(i + 1).padStart(2, '0')}-${id}`;
+  const files = cards.map(({ id, svg }, i) => ({ file: join(cardsDir, `${stem(id, i)}.svg`), svg }));
+  const pngTargets = png ? cards.map(({ id, svg }, i) => ({ file: join(pngDir, `${stem(id, i)}.png`), svg, width: 1080 })) : [];
+  if (png) pngTargets.push({ file: sharePngPath, svg: shareSvg, width: 1200 });
 
-  checkOutputPaths(out, html, cardsDir, files.map((f) => f.file));
+  const dirs = [{ dir: cardsDir, what: 'cards' }];
+  if (png) dirs.push({ dir: pngDir, what: 'PNGs' });
+  checkOutputPaths(out, dirs, [html, shareSvgPath, ...files.map((f) => f.file), ...pngTargets.map((t) => t.file)]);
+
+  // Rasterize before writing anything, so a renderer failure never leaves half a PNG set.
+  let pngs = [];
+  let pngSkipped = null;
+  if (png) {
+    try {
+      for (const t of pngTargets) pngs.push({ file: t.file, data: await rasterize(t.svg, { width: t.width }) });
+    } catch (err) {
+      pngs = [];
+      pngSkipped = String(err?.message ?? err).split('\n')[0] || 'unknown error';
+    }
+  }
+
   ensureDir(out);
   ensureDir(cardsDir);
   for (const { file, svg } of files) writeOutput(file, svg);
+  writeOutput(shareSvgPath, shareSvg);
   writeOutput(html, page);
-  return { commits: commits.length, html, cardsDir, cardFiles: files.map((f) => f.file) };
+  if (pngs.length > 0) {
+    ensureDir(pngDir);
+    for (const { file, data } of pngs) writeOutput(file, data);
+  } else {
+    // No PNGs this run: drop ones a previous run left behind so nothing stale remains.
+    removeStalePngs(pngDir, sharePngPath, cards.map(({ id }, i) => `${stem(id, i)}.png`));
+  }
+  const pngFiles = pngs.map((p) => p.file).filter((f) => f !== sharePngPath);
+  return {
+    commits: commits.length,
+    html,
+    cardsDir,
+    cardFiles: files.map((f) => f.file),
+    shareSvg: shareSvgPath,
+    pngDir: pngs.length > 0 ? pngDir : null,
+    pngFiles,
+    sharePng: pngs.length > 0 ? sharePngPath : null,
+    pngSkipped,
+  };
 }
 
 /**
  * Run the CLI. Resolves to a process exit code.
  */
-export async function run(argv, { stdout = process.stdout, stderr = process.stderr, today } = {}) {
+export async function run(argv, { stdout = process.stdout, stderr = process.stderr, today, renderPng: rasterize } = {}) {
   let opts;
   try {
     opts = parseCli(argv);
@@ -242,7 +308,7 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
 
   let result;
   try {
-    result = await generate(opts, { today });
+    result = await generate(opts, { today, ...(rasterize ? { renderPng: rasterize } : {}) });
   } catch (err) {
     stderr.write(`gitwrapped: ${err?.message ?? String(err)}\n`);
     return 1;
@@ -251,5 +317,12 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
   stdout.write(`gitwrapped: ${result.commits} ${noun} → ${result.html}\n`);
   stdout.write(`  ${result.cardFiles.length} cards in ${result.cardsDir}\n`);
   for (const file of result.cardFiles) stdout.write(`    ${file}\n`);
+  if (result.sharePng) {
+    stdout.write(`  ${result.pngFiles.length} PNGs in ${result.pngDir}\n`);
+    stdout.write(`  share image: ${result.sharePng}\n`);
+  } else {
+    stdout.write(`  share image: ${result.shareSvg}\n`);
+  }
+  if (result.pngSkipped) stderr.write(`gitwrapped: PNG export skipped: ${result.pngSkipped}\n`);
   return 0;
 }

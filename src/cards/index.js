@@ -2,8 +2,10 @@
 // Pure and deterministic. Every card copes with empty stats (0 commits, null peaks,
 // no hot files, null messages) and never prints "null", "undefined" or "NaN".
 import { renderCard } from './svg.js';
+import { renderShareSvg } from './share.js';
 
 export { renderCard, wrapText, escapeXml, measureText, truncateStart, THEMES, CARD_WIDTH, CARD_HEIGHT } from './svg.js';
+export { renderShareSvg, SHARE_WIDTH, SHARE_HEIGHT } from './share.js';
 
 /** Card ids in display order. */
 export const CARD_IDS = Object.freeze(['intro', 'totals', 'peak-hour', 'streak', 'hot-files', 'messages', 'personality', 'outro']);
@@ -195,7 +197,7 @@ function outro(s, ctx) {
   const label = text(s.habits?.peakHourLabel);
   if (label) rows.push({ label: 'Power hour', value: label });
   const len = num(s.streaks?.longest?.length);
-  if (len > 0) rows.push({ label: 'Longest streak', value: plural(len, 'day') });
+  if (len > 0) rows.push({ label: 'Best streak', value: plural(len, 'day') });
   const top = Array.isArray(s.hotFiles) ? text(s.hotFiles[0]?.path) : null;
   if (top) rows.push({ label: 'Hottest file', value: basename(top) });
   const name = text(s.personality?.archetype?.name);
@@ -232,4 +234,32 @@ export function buildCards(stats, { repoName, since, author } = {}) {
     id,
     svg: renderCard({ theme: CARD_THEMES[id], footer, idPrefix: `gw-${id}`, ...BUILDERS[id](stats, ctx) }),
   }));
+}
+
+/**
+ * The 1200x630 share summary card (landscape, for link previews and social posts):
+ * repo name, four stat tiles (commits, longest streak, power hour, personality) and the
+ * hottest file. Same options as buildCards(); copes with empty stats. Returns an SVG string.
+ */
+export function renderShareCard(stats, { repoName, since, author } = {}) {
+  stats = stats ?? {};
+  const ctx = { repoName: text(repoName) ?? 'your repo', since: text(since), author: text(author) };
+  const commits = num(stats.totals?.commits);
+  const len = num(stats.streaks?.longest?.length);
+  const top = (Array.isArray(stats.hotFiles) ? stats.hotFiles : []).find((f) => text(f?.path));
+  return renderShareSvg({
+    theme: 'pulse',
+    idPrefix: 'gw-share',
+    eyebrow: ctx.author ? `Git Wrapped · ${ctx.author}` : 'My Git Wrapped',
+    title: ctx.repoName,
+    tiles: [
+      { label: 'Commits', value: formatNumber(commits) },
+      { label: 'Best streak', value: plural(len, 'day') },
+      { label: 'Power hour', value: text(stats.habits?.peakHourLabel) ?? 'None yet' },
+      { label: 'Personality', value: commits > 0 ? (text(stats.personality?.archetype?.name) ?? 'Steady Shipper') : 'TBD' },
+    ],
+    file: top ? { label: 'Hottest file', path: top.path, value: plural(top.commits, 'commit') } : null,
+    note: commits > 0 ? 'No hot files yet.' : EMPTY_LINE,
+    footer: footerText(stats, ctx),
+  });
 }

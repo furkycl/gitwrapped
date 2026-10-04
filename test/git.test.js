@@ -139,7 +139,9 @@ describe('readCommits', () => {
     assert.equal(mid.author, 'Zoë Ñúñez');
     assert.equal(mid.email, 'zoe@example.com');
     assert.equal(mid.date, '2024-06-15T23:30:00+02:00');
-    assert.equal(commits[0].date, '2025-03-01T12:00:00+00:00');
+    // %aI prints UTC as +00:00 on older git but as Z on git 2.55 (CI): compare instants.
+    assert.match(commits[0].date, /^2025-03-01T12:00:00(Z|[+-]00:00)$/);
+    assert.equal(Date.parse(commits[0].date), Date.parse('2025-03-01T12:00:00Z'));
   });
 
   test('hashes match git rev-list', async () => {

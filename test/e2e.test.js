@@ -19,13 +19,20 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const BIN = fileURLToPath(new URL('../bin/gitwrapped.js', import.meta.url));
 const CARD_FILES = CARD_IDS.map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}.svg`);
 
+function withoutColorEnv(env) {
+  const copy = { ...env };
+  delete copy.FORCE_COLOR;
+  delete copy.NO_COLOR;
+  return copy;
+}
+
 // TZ=UTC so a bare --since date means UTC midnight regardless of the machine's zone.
 // PNG rendering is slow-ish, so runs pass --no-png unless `png: true` (the full run).
 function bin(args, env = {}, { png = false } = {}) {
   return spawnSync(process.execPath, [BIN, ...args, ...(png ? [] : ['--no-png'])], {
     cwd: ROOT,
     encoding: 'utf8',
-    env: { ...process.env, TZ: 'UTC', ...env },
+    env: { ...withoutColorEnv(process.env), TZ: 'UTC', ...env },
   });
 }
 
@@ -60,7 +67,8 @@ describe('bin: full run on the fixture repo', () => {
     assert.equal(r.stderr, '');
     assert.match(r.stdout, /^gitwrapped: 8 commits → /);
     assert.ok(r.stdout.includes(join(out, 'wrapped.html')), r.stdout);
-    assert.match(r.stdout, /8 cards in /);
+    assert.ok(r.stdout.includes(`8 cards in ${join(out, 'cards')}\n`), r.stdout);
+    assert.ok(!r.stdout.includes('\x1b'), 'no ANSI escapes when piped');
   });
 
   test('writes cards/01-intro.svg .. 08-outro.svg', () => {
@@ -69,7 +77,6 @@ describe('bin: full run on the fixture repo', () => {
     assert.equal(CARD_FILES[7], '08-outro.svg');
     for (const f of CARD_FILES) {
       assert.ok(statSync(join(out, 'cards', f)).size > 0, `${f} is non-empty`);
-      assert.ok(r.stdout.includes(join(out, 'cards', f)), `stdout lists ${f}`);
     }
   });
 

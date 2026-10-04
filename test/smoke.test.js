@@ -14,6 +14,7 @@ test('parseCli returns defaults with no arguments', () => {
     author: undefined,
     out: 'gitwrapped-out',
     png: true,
+    maxCommits: 50000,
   });
 });
 

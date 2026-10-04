@@ -179,7 +179,12 @@ function messages(s) {
 
 function personality(s) {
   const a = s.personality?.archetype ?? {};
-  const scores = (Array.isArray(s.personality?.scores) ? s.personality.scores : [])
+  const all = Array.isArray(s.personality?.scores) ? s.personality.scores : [];
+  // Score bars only back up the headline when it is the top scorer; with too few commits
+  // (or no standout habit) the headline is the steady-shipper fallback and bars like
+  // "Weekend Warrior 100%" under it would contradict the card.
+  const consistent = all[0]?.id === undefined || a.id === undefined || all[0].id === a.id;
+  const scores = (consistent ? all : [])
     .filter((x) => text(x?.name) && num(x.score) > 0)
     .slice(0, 3);
   return {

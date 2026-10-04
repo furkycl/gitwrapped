@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -29,11 +29,11 @@ function sink() {
 async function runCaptured(argv, opts = {}) {
   const stdout = sink();
   const stderr = sink();
-  const code = await run(argv, { stdout, stderr, ...opts });
+  const code = await run(argv, { stdout, stderr, env: {}, ...opts });
   return { code, stdout: stdout.data, stderr: stderr.data };
 }
 
-const DEFAULTS = { path: '.', since: undefined, author: undefined, out: 'gitwrapped-out', png: true };
+const DEFAULTS = { path: '.', since: undefined, author: undefined, out: 'gitwrapped-out', png: true, maxCommits: 50000 };
 
 describe('parseCli', () => {
   test('defaults with no arguments', () => {
@@ -69,7 +69,7 @@ describe('parseCli', () => {
   });
 
   test('all flags together with a path, in any order', () => {
-    const expected = { path: 'repo', since: '2024-06-01', author: 'x@y.z', out: 'o', png: true };
+    const expected = { path: 'repo', since: '2024-06-01', author: 'x@y.z', out: 'o', png: true, maxCommits: 50000 };
     assert.deepEqual(
       parseCli(['repo', '--since', '2024-06-01', '--author', 'x@y.z', '--out', 'o']),
       expected,
@@ -219,7 +219,9 @@ describe('run', () => {
     assert.ok(r.stdout.startsWith(`gitwrapped: ${fixture.commits.length} commits → ${html}\n`), r.stdout);
     const expected = CARD_IDS.map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}.svg`);
     assert.deepEqual(readdirSync(join(dest, 'cards')).sort(), expected);
-    for (const f of expected) assert.match(r.stdout, new RegExp(f.replace('.', '\\.')));
+    assert.ok(r.stdout.includes(`${CARD_IDS.length} cards in ${join(dest, 'cards')}\n`), r.stdout);
+    assert.ok(!r.stdout.includes(expected[0]), 'card files are not listed one by one');
+    assert.ok(!r.stdout.includes('\x1b'), 'no ANSI escapes when not a TTY');
     const page = readFileSync(html, 'utf8');
     assert.match(page, /^<!doctype html>/);
     assert.equal((page.match(/<svg\b/g) ?? []).length, CARD_IDS.length);
@@ -248,11 +250,80 @@ describe('run', () => {
     const dir = mkdtempSync(join(tmpdir(), 'gw-norepo-'));
     t.after(() => rmSync(dir, { recursive: true, force: true }));
     const out = join(dir, 'out');
-    const r = await runCaptured([join(dir, 'missing'), '--out', out]);
+    const r = await runCaptured([dir, '--out', out]);
     assert.equal(r.code, 1);
     assert.equal(r.stdout, '');
-    assert.match(r.stderr, /^gitwrapped: not a git repository: /);
+    assert.equal(r.stderr, `gitwrapped: not a git repository: ${dir}\n`);
     assert.equal(existsSync(out), false, 'nothing is written on error');
+  });
+
+  test('a missing path or a file path exits 1 with a specific message', async (t) => {
+    const dir = mkdtempSync(join(tmpdir(), 'gw-norepo-'));
+    t.after(() => rmSync(dir, { recursive: true, force: true }));
+    const out = join(dir, 'out');
+    const missing = join(dir, 'missing');
+    let r = await runCaptured([missing, '--out', out]);
+    assert.equal(r.code, 1);
+    assert.equal(r.stdout, '');
+    assert.equal(r.stderr, `gitwrapped: path does not exist: ${missing}\n`);
+    const file = join(dir, 'file.txt');
+    writeFileSync(file, 'x');
+    r = await runCaptured([file, '--out', out]);
+    assert.equal(r.code, 1);
+    assert.equal(r.stderr, `gitwrapped: not a directory: ${file}\n`);
+    assert.equal(existsSync(out), false, 'nothing is written on error');
+  });
+
+  test('an empty repo (git init, no commits) exits 0 with a "No commits found" notice', async (t) => {
+    const dir = mkdtempSync(join(tmpdir(), 'gw-empty-'));
+    t.after(() => rmSync(dir, { recursive: true, force: true }));
+    spawnSync('git', ['init', '-q', dir]);
+    const out = join(dir, 'out');
+    const r = await runCaptured([dir, '--out', out, '--no-png']);
+    assert.equal(r.code, 0, r.stderr);
+    assert.equal(r.stderr, '');
+    assert.ok(r.stdout.startsWith(`gitwrapped: 0 commits → ${join(out, 'wrapped.html')}\n`), r.stdout);
+    assert.match(r.stdout, /No commits found/);
+    assert.doesNotMatch(r.stdout, /null|undefined|NaN/);
+    assert.equal(readdirSync(join(out, 'cards')).length, CARD_IDS.length);
+  });
+
+  test('--max-commits caps the history and prints a notice', async (t) => {
+    const fixture = makeFixtureRepo();
+    const out = mkdtempSync(join(tmpdir(), 'gw-out-'));
+    t.after(() => {
+      fixture.cleanup();
+      rmSync(out, { recursive: true, force: true });
+    });
+    const r = await runCaptured([fixture.dir, '--out', out, '--no-png', '--max-commits', '3'], { today: '2024-03-14' });
+    assert.equal(r.code, 0, r.stderr);
+    assert.match(r.stdout, /^gitwrapped: 3 commits → /);
+    assert.ok(r.stdout.includes('Note: this repo has more than 3 commits; only the most recent 3 were analyzed.'), r.stdout);
+    const all = await runCaptured([fixture.dir, '--out', out, '--no-png', '--max-commits', String(fixture.commits.length)], { today: '2024-03-14' });
+    assert.match(all.stdout, new RegExp(`^gitwrapped: ${fixture.commits.length} commits → `));
+    assert.doesNotMatch(all.stdout, /Note:/, 'exactly the cap is not truncated');
+  });
+
+  test('color: FORCE_COLOR colors the recap, --no-color and NO_COLOR keep it plain', async (t) => {
+    const fixture = makeFixtureRepo();
+    const out = mkdtempSync(join(tmpdir(), 'gw-out-'));
+    t.after(() => {
+      fixture.cleanup();
+      rmSync(out, { recursive: true, force: true });
+    });
+    const args = [fixture.dir, '--out', out, '--no-png'];
+    const forced = await runCaptured(args, { env: { FORCE_COLOR: '1' }, today: '2024-03-14' });
+    assert.match(forced.stdout, /\x1b\[/);
+    assert.ok(forced.stdout.startsWith(`gitwrapped: ${fixture.commits.length} commits → `), 'first line stays plain');
+    const flag = await runCaptured([...args, '--no-color'], { env: { FORCE_COLOR: '1' }, today: '2024-03-14' });
+    assert.ok(!flag.stdout.includes('\x1b'));
+    const tty = Object.assign(sink(), { isTTY: true });
+    assert.equal(await run(args, { stdout: tty, stderr: sink(), env: {}, today: '2024-03-14' }), 0);
+    assert.match(tty.data, /\x1b\[/, 'a TTY gets color by default');
+    const ttyNo = Object.assign(sink(), { isTTY: true });
+    assert.equal(await run(args, { stdout: ttyNo, stderr: sink(), env: { NO_COLOR: '1' }, today: '2024-03-14' }), 0);
+    assert.match(ttyNo.data, /^gitwrapped: /);
+    assert.ok(!ttyNo.data.includes('\x1b'), 'NO_COLOR disables color on a TTY');
   });
 
   test('a non-Error throw is reported as its string value', async (t) => {
@@ -276,6 +347,11 @@ describe('run', () => {
     [['--since', 'nope'], /YYYY-MM-DD/],
     [['--out='], /--out requires a non-empty value/],
     [['--since'], /--since/],
+    [['--max-commits', '0'], /invalid --max-commits "0"/],
+    [['--max-commits', '-3'], /--max-commits/],
+    [['--max-commits', '1.5'], /invalid --max-commits/],
+    [['--max-commits', 'lots'], /invalid --max-commits/],
+    [['--no-color=yes'], /--no-color/],
   ];
   for (const [argv, re] of errorCases) {
     test(`run ${JSON.stringify(argv)} exits 2 with error on stderr only`, async () => {

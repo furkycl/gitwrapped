@@ -11,6 +11,7 @@ Arguments:
 Options:
   --since YYYY-MM-DD   Only include commits on or after this date
   --author <email>     Only include commits by this author email
+                       (exact email match, case-insensitive)
   --out <dir>          Output directory (default: "gitwrapped-out")
   -h, --help           Show this help and exit
   -v, --version        Show the version and exit

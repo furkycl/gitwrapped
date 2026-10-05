@@ -109,15 +109,16 @@ function intro(s, ctx) {
   else parts.push("Your commits, your chaos, your story. Let's see what you've been up to.");
   if (ctx.author) parts.push(`Starring ${ctx.author}.`);
   const range = formatDateRange(s.totals?.firstDay, s.totals?.lastDay);
+  const story = ctx.year ? `Your ${ctx.year} in commits` : 'Your story so far';
   return {
-    eyebrow: 'gitwrapped presents',
+    eyebrow: ctx.year ? `gitwrapped presents · ${ctx.year}` : 'gitwrapped presents',
     big: ctx.repoName,
-    title: 'Wrapped',
-    titleSize: 136,
+    title: ctx.year ? `${ctx.year} Wrapped` : 'Wrapped',
+    titleSize: ctx.year ? 96 : 136, // "2025 Wrapped" stays on one line at 96
     subtitle: parts.join(' '),
     chart: commits > 0
-      ? { kind: 'callout', title: 'Your story so far', value: range || plural(commits, 'commit'), note: `${plural(commits, 'commit')} to unwrap` }
-      : { kind: 'callout', title: 'Your story so far', value: 'Chapter one', note: 'starts with your first commit' },
+      ? { kind: 'callout', title: story, value: range || plural(commits, 'commit'), note: `${plural(commits, 'commit')} to unwrap` }
+      : { kind: 'callout', title: story, value: 'Chapter one', note: 'starts with your first commit' },
   };
 }
 
@@ -200,18 +201,42 @@ function peakHour(s) {
   };
 }
 
-function streak(s) {
+/**
+ * How to talk about the "current" streak. Normally it is the streak alive today; with
+ * `ctx.streakAsOf` (a window that ended in the past) it is the streak alive on that day.
+ */
+function currentStreakCopy(cur, ctx) {
+  const end = ctx.streakAsOf ? formatDay(ctx.streakAsOf) : null;
+  if (!end) {
+    return {
+      label: 'Current',
+      chartTitle: 'Longest vs. current',
+      line: cur > 0 ? `You're on a ${formatNumber(cur)}-day streak right now. Keep it alive!` : 'No streak running right now — today is a great day to start one.',
+    };
+  }
+  const year = ctx.year && ctx.streakAsOf === `${ctx.year}-12-31` ? ctx.year : null;
+  return {
+    label: year ? `End of ${year}` : 'At window end',
+    chartTitle: year ? `Longest vs. end of ${year}` : 'Longest vs. at window end',
+    line: cur > 0
+      ? (year ? `You ended ${year} on a ${formatNumber(cur)}-day streak.` : `You were on a ${formatNumber(cur)}-day streak on ${end}.`)
+      : `No streak running on ${end}.`,
+  };
+}
+
+function streak(s, ctx = {}) {
   const longest = s.streaks?.longest ?? {};
   const current = s.streaks?.current ?? {};
   const len = num(longest.length);
   const cur = num(current.length);
+  const copy = currentStreakCopy(cur, ctx);
   const chart = {
     kind: 'hbars',
     size: 'large',
-    title: 'Longest vs. current',
+    title: copy.chartTitle,
     items: [
       { label: 'Longest', value: plural(len, 'day'), amount: len },
-      { label: 'Current', value: plural(cur, 'day'), amount: cur },
+      { label: copy.label, value: plural(cur, 'day'), amount: cur },
     ],
   };
   if (len === 0) {
@@ -227,7 +252,7 @@ function streak(s) {
     title: len === 1 ? 'day streak' : 'days in a row',
     subtitle: [
       range ? `${len === 1 ? 'On' : 'From'} ${range}.` : '',
-      cur > 0 ? `You're on a ${formatNumber(cur)}-day streak right now. Keep it alive!` : 'No streak running right now — today is a great day to start one.',
+      copy.line,
     ].filter(Boolean).join(' '),
     chart,
   };
@@ -398,21 +423,49 @@ function outro(s, ctx) {
 const BUILDERS = { intro, totals, 'peak-hour': peakHour, streak, activity, 'hot-files': hotFiles, messages, personality, outro };
 const CARD_THEMES = { intro: 'pulse', totals: 'ocean', 'peak-hour': 'cosmic', streak: 'ember', activity: 'cosmic', 'hot-files': 'mint', messages: 'neon', personality: 'sunset', outro: 'gold' };
 
+/** A requested window as footer text, or null when none was requested. */
+function windowText({ since, until, year }) {
+  if (year) return String(year);
+  const day = (d) => formatDay(d) ?? d;
+  // formatDateRange's compact same-year form ("Jan 1 – Mar 31, 2025") keeps the footer
+  // from being cut off; cross-year windows get both years.
+  if (since && until) return parseDay(since) && parseDay(until) ? formatDateRange(since, until) : `${day(since)} – ${day(until)}`;
+  if (since) return `since ${day(since)}`;
+  if (until) return `through ${day(until)}`;
+  return null;
+}
+
 /**
- * Footer text: "<repo> · <date range>" ("<repo> · since <date>" with --since). The repo
- * name is left out when it is "gitwrapped", which the footer brand already says.
+ * Footer text: "<repo> · <window>", where the window is the requested one ("2025" with
+ * --year, "Jan 1 – Mar 31, 2025" with --since and --until, "since <date>",
+ * "through <date>") or else the actual first–last commit range. The repo name is left
+ * out when it is "gitwrapped", which the footer brand already says.
  */
-export function footerText(stats, { repoName, since }) {
+export function footerText(stats, { repoName, since, until, year } = {}) {
   const t = stats?.totals ?? {};
-  const range = since ? `since ${formatDay(since) ?? since}` : formatDateRange(t.firstDay, t.lastDay);
-  const repo = repoName.toLowerCase() === 'gitwrapped' ? '' : repoName;
+  const range = windowText({ since, until, year }) ?? formatDateRange(t.firstDay, t.lastDay);
+  const repo = String(repoName ?? '').toLowerCase() === 'gitwrapped' ? '' : String(repoName ?? '');
   return [repo, range].filter(Boolean).join(' · ');
+}
+
+/** Normalized card context from the buildCards() options. */
+function cardContext({ repoName, since, until, year, author, streakAsOf }) {
+  const y = Number.isInteger(year) || (typeof year === 'string' && /^\d{4}$/.test(year.trim())) ? String(year).trim() : null;
+  return {
+    repoName: text(repoName) ?? 'your repo',
+    since: text(since),
+    until: text(until),
+    year: y,
+    author: text(author),
+    streakAsOf: parseDay(streakAsOf)?.key ?? null,
+  };
 }
 
 /**
  * Build the full card set from computeStats() output.
- * Options: `repoName` (default "your repo"), `since` and `author` (as passed to the
- * CLI; shown in the copy when given). Returns `[{id, svg}]` in CARD_IDS order.
+ * Options: `repoName` (default "your repo"), `since`, `until`, `year` and `author` (as
+ * passed to the CLI; shown in the copy when given), and `streakAsOf` ('YYYY-MM-DD': the
+ * stats' "current" streak was measured on that past day, the end of the window). Returns `[{id, svg}]` in CARD_IDS order.
  */
 export function buildCards(stats, opts = {}) {
   return buildCardSpecs(stats, opts).map(({ id, spec }) => ({ id, svg: renderCard(spec) }));
@@ -422,9 +475,9 @@ export function buildCards(stats, opts = {}) {
  * The renderCard() input for every card (same arguments as buildCards), as
  * `[{id, spec}]`; buildCards() renders exactly these. Useful for layout checks.
  */
-export function buildCardSpecs(stats, { repoName, since, author } = {}) {
+export function buildCardSpecs(stats, opts = {}) {
   stats = stats ?? {};
-  const ctx = { repoName: text(repoName) ?? 'your repo', since: text(since), author: text(author) };
+  const ctx = cardContext(opts);
   const footer = footerText(stats, ctx);
   return CARD_IDS.map((id, i) => ({
     id,
@@ -437,16 +490,18 @@ export function buildCardSpecs(stats, { repoName, since, author } = {}) {
  * repo name, four stat tiles (commits, longest streak, power hour, personality) and the
  * hottest file. Same options as buildCards(); copes with empty stats. Returns an SVG string.
  */
-export function renderShareCard(stats, { repoName, since, author } = {}) {
+export function renderShareCard(stats, opts = {}) {
   stats = stats ?? {};
-  const ctx = { repoName: text(repoName) ?? 'your repo', since: text(since), author: text(author) };
+  const ctx = cardContext(opts);
   const commits = num(stats.totals?.commits);
   const top = (Array.isArray(stats.hotFiles) ? stats.hotFiles : []).find((f) => text(f?.path));
   const [c, hour, streakTile, persona] = summaryTiles(stats);
   return renderShareSvg({
     theme: 'pulse',
     idPrefix: 'gw-share',
-    eyebrow: ctx.author ? `Git Wrapped · ${ctx.author}` : 'My Git Wrapped',
+    eyebrow: ctx.author
+      ? `Git Wrapped${ctx.year ? ` ${ctx.year}` : ''} · ${ctx.author}`
+      : (ctx.year ? `My ${ctx.year} Git Wrapped` : 'My Git Wrapped'),
     title: ctx.repoName,
     tiles: [c, streakTile, hour, persona],
     file: top ? { label: 'Hottest file', path: top.path, value: plural(top.commits, 'commit') } : null,

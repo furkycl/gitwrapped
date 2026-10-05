@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `--until YYYY-MM-DD`: only include commits authored on or before this date (the
+  author-local date, inclusive).
+- `--year YYYY` (1970-9999): a calendar-year window, the classic "Wrapped" (same as
+  `--since YYYY-01-01 --until YYYY-12-31`).
+- Card footers, the share image and the terminal recap show the requested date window
+  (for example `2025`, or `Jan 1 – Mar 31, 2025`), and with `--year` the intro card
+  reads "2025 Wrapped". With a window that ends in the past, the current streak is the
+  one running on the window's last day, and the streak card and recap say so.
+
+### Changed
+
+- `--since` now compares each commit's author-local date (the calendar day in the
+  author's own time zone, as the cards use) instead of your machine's local midnight, so
+  results no longer depend on the time zone you run gitwrapped in. `--until` and
+  `--year` work the same way.
+
 ## [1.0.0] - 2026-10-05
 
 First public release on npm as `@furkycl/gitwrapped`.

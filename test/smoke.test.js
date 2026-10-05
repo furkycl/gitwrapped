@@ -11,6 +11,8 @@ test('parseCli returns defaults with no arguments', () => {
   assert.deepEqual(parseCli([]), {
     path: '.',
     since: undefined,
+    until: undefined,
+    year: undefined,
     author: undefined,
     out: 'gitwrapped-out',
     png: true,

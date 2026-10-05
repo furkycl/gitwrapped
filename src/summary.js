@@ -72,6 +72,10 @@ function shortWord(w, max = 32) {
  * Format the end-of-run recap. `stats` is computeStats() output; options:
  * - color: emit ANSI colors (default false; with false the result has no ESC chars)
  * - repoName: shown in the heading
+ * - window: the analyzed date window (e.g. "2025", "since 2025-01-01"), appended to the
+ *   heading as `★ <repo> Wrapped · <window>`
+ * - streakAtWindowEnd: the "current" streak was measured at the end of a past window,
+ *   so it is shown as "at window end" instead of "current"
  * - paths: {html, cardsDir, cardCount, pngDir, pngCount, sharePng, shareSvg}
  *   (pngDir / sharePng null when PNGs were not written)
  * - notes: extra notice lines (e.g. the commit cap), shown in yellow
@@ -79,7 +83,7 @@ function shortWord(w, max = 32) {
  * to grep. Every text value is stripped of control characters (stripControl), so repo
  * data cannot inject terminal escapes. Returns the whole recap, newline-terminated.
  */
-export function formatSummary(stats, { color = false, repoName, paths = {}, notes = [] } = {}) {
+export function formatSummary(stats, { color = false, repoName, window, streakAtWindowEnd = false, paths = {}, notes = [] } = {}) {
   const c = painter(color);
   const t = stats?.totals ?? {};
   const commits = Number.isFinite(t.commits) ? t.commits : 0;
@@ -94,7 +98,8 @@ export function formatSummary(stats, { color = false, repoName, paths = {}, note
     lines.push(c('yellow', '  No commits found: the cards are generated, but there is nothing to recap yet.'));
   } else {
     const name = repoName ? `${sc(repoName)} ` : '';
-    lines.push(`  ${c('bold', c('magenta', `★ ${name}Wrapped`))}`);
+    const win = window ? sc(window) : '';
+    lines.push(`  ${c('bold', c('magenta', `★ ${name}Wrapped${win ? ` · ${win}` : ''}`))}`);
     const lineStats = `${c('green', `+${num(t.linesAdded)}`)} / ${c('red', `−${num(t.linesRemoved)}`)} lines`;
     lines.push(`  ${c('bold', plural(commits, 'commit'))} · ${plural(t.activeDays ?? 0, 'active day')} · ${lineStats}`);
 
@@ -108,7 +113,7 @@ export function formatSummary(stats, { color = false, repoName, paths = {}, note
     const longest = s.longest?.length ?? 0;
     if (longest > 0) {
       const current = s.current?.length ?? 0;
-      const cur = current > 0 ? ` · current ${plural(current, 'day')}` : '';
+      const cur = current > 0 ? ` · ${streakAtWindowEnd ? 'at window end' : 'current'} ${plural(current, 'day')}` : '';
       lines.push(`  ${label('Streak')}longest ${c('cyan', plural(longest, 'day'))}${cur}`);
     }
 

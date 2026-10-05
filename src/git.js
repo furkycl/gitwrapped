@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { readFileSync, statSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
 import { promisify } from 'node:util';
+import { localParts } from './stats/time.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -59,6 +60,62 @@ function gitSince(since) {
   return Number.isNaN(ms) ? since : new Date(ms - SINCE_SLACK_DAYS * 86_400_000).toISOString();
 }
 
+/**
+ * Slack for git's --until pre-filter: git filters on the committer date, which is often
+ * later than the author date (rebases, rebase-merges, cherry-picks), sometimes by weeks.
+ */
+export const UNTIL_SLACK_DAYS = 31;
+
+/**
+ * Git-side until bound: the end of the local day UNTIL_SLACK_DAYS after `until`. It is
+ * only a loose pre-filter on the committer date; the exact author-date filter runs in JS.
+ * Commits whose committer date is more than UNTIL_SLACK_DAYS after `until` are not seen.
+ * An unparseable value is passed through unchanged.
+ */
+function gitUntil(until) {
+  if (DATE_ONLY.test(until)) {
+    const [y, m, d] = until.split('-').map(Number);
+    const t = new Date(y, m - 1, d + UNTIL_SLACK_DAYS);
+    return `${t.getFullYear()}-${pad2(t.getMonth() + 1)}-${pad2(t.getDate())} 23:59:59`;
+  }
+  const ms = Date.parse(until);
+  return Number.isNaN(ms) ? until : new Date(ms + UNTIL_SLACK_DAYS * 86_400_000).toISOString();
+}
+
+/**
+ * Exclusive upper bound as epoch ms: local midnight after the `until` day for YYYY-MM-DD
+ * (so the whole day is included), else the parsed instant + 1 ms; NaN if unparseable.
+ */
+function untilEndMs(until) {
+  if (DATE_ONLY.test(until)) {
+    const [y, m, d] = until.split('-').map(Number);
+    return new Date(y, m - 1, d + 1).getTime();
+  }
+  return Date.parse(until) + 1;
+}
+
+/**
+ * The exact author-date filter for a since / until window: a function from a commit list
+ * to the commits inside it. A YYYY-MM-DD bound compares the commit's author-local day
+ * (from the offset in git's %aI date) as text; any other bound compares instants (a
+ * commit whose date cannot be split into local parts falls back to that too).
+ */
+function windowFilter(since, until) {
+  if (!since && !until) return (list) => list;
+  const sinceDay = since && DATE_ONLY.test(since) ? since : null;
+  const untilDay = until && DATE_ONLY.test(until) ? until : null;
+  const min = since ? sinceMs(since) : NaN;
+  const end = until ? untilEndMs(until) : NaN;
+  const inWindow = (c) => {
+    const t = Date.parse(c.date);
+    const day = localParts(c.date)?.dayKey ?? null;
+    const afterSince = !since || (sinceDay && day ? day >= sinceDay : Number.isNaN(min) || t >= min);
+    const beforeUntil = !until || (untilDay && day ? day <= untilDay : Number.isNaN(end) || t < end);
+    return afterSince && beforeUntil;
+  };
+  return (list) => list.filter(inWindow);
+}
+
 /** Since as epoch ms (local midnight for YYYY-MM-DD), or NaN if unparseable. */
 function sinceMs(since) {
   if (DATE_ONLY.test(since)) {
@@ -78,10 +135,11 @@ const GIT_INT_MAX = 2 ** 31 - 1;
  * committer date; plain --since would stop walking at the first older commit and drop
  * newer commits behind it (e.g. merged from an old branch). The bound is
  * SINCE_SLACK_DAYS looser than `since`: it is only a pre-filter, and the caller applies
- * the exact author-date filter. With `sinceAsFilter: false` (older git) no date filter is
- * sent at all.
+ * the exact author-date filter. With `sinceAsFilter: false` (older git) no since filter is
+ * sent at all. `until` is sent as plain --until (works on every git version: it never stops
+ * the walk early), UNTIL_SLACK_DAYS looser than `until`, again only as a pre-filter.
  */
-export function buildLogArgs({ since, author, maxCount, sinceAsFilter = true } = {}) {
+export function buildLogArgs({ since, until, author, maxCount, sinceAsFilter = true } = {}) {
   const args = [
     'log',
     '-z',
@@ -107,6 +165,7 @@ export function buildLogArgs({ since, author, maxCount, sinceAsFilter = true } =
     args.push(`--max-count=${maxCount}`);
   }
   if (since && sinceAsFilter) args.push(`--since-as-filter=${gitSince(since)}`);
+  if (until) args.push(`--until=${gitUntil(until)}`);
   if (author) {
     // Exact email match, case-insensitive: git matches --author against "Name <email>".
     args.push('--fixed-strings', '--regexp-ignore-case', `--author=<${author}>`);
@@ -260,15 +319,21 @@ async function shallowBoundary(repoPath) {
  * `{commits, truncated, limit, shallow}` where `truncated` is true when more than `limit`
  * commits matched the filters, and `shallow` is true for a shallow clone (its boundary
  * commits get empty file stats: git would otherwise count their whole tree as added).
- * `since` filters on the author date (from local midnight for YYYY-MM-DD). On git >= 2.37
- * git pre-filters with --since-as-filter (committer date) so --max-count still caps the
- * output; older git gets no date filter and everything is filtered in JS.
+ * `since` / `until` (YYYY-MM-DD, both inclusive) filter on each commit's author-local
+ * calendar day (the day in the author's own UTC offset, the same day the stats use), so
+ * the result does not depend on the machine's time zone. Other `since` / `until` values
+ * are compared as instants. On git >= 2.37 git pre-filters since with --since-as-filter
+ * (committer date) so --max-count still caps the output; older git gets no since filter
+ * and everything is filtered in JS. git pre-filters until with a loose --until on the
+ * committer date (UNTIL_SLACK_DAYS). Both pre-filters have days of slack, which also
+ * covers author offsets of up to ±14 hours. `year` (a number) only changes the wording of
+ * the "output too large" hint.
  * `commits` is [] for a repo without commits. Throws a TypeError for an invalid
  * `limit`, and a user-facing Error for: a missing path ("path does not exist: <path>"),
  * a file ("not a directory: <path>"), a folder that is not a repo ("not a git repository:
  * <path>"), git's safe.directory ownership check, a missing git, or oversized output.
  */
-export async function readHistory(repoPath, { since, author, limit = DEFAULT_LIMIT, maxBuffer = MAX_BUFFER } = {}) {
+export async function readHistory(repoPath, { since, until, year, author, limit = DEFAULT_LIMIT, maxBuffer = MAX_BUFFER } = {}) {
   if (limit !== Infinity && (!Number.isSafeInteger(limit) || limit < 1)) {
     throw new TypeError(`limit must be a positive integer or Infinity, got ${limit}`);
   }
@@ -279,19 +344,25 @@ export async function readHistory(repoPath, { since, author, limit = DEFAULT_LIM
   // a limit that big is the same as no cap: skip --max-count and cut in JS below.
   // Without a git-side date filter (old git), git cannot cap a --since run at all.
   const canCap = limit + 1 <= GIT_INT_MAX && (!since || sinceAsFilter);
-  const min = since ? sinceMs(since) : NaN;
-  const byAuthorDate = (list) => (Number.isNaN(min) ? list : list.filter((c) => Date.parse(c.date) >= min));
+  const byAuthorDate = windowFilter(since, until);
 
-  let commits = await runLog(repoPath, { since, author, maxBuffer, sinceAsFilter, maxCount: canCap ? limit + 1 : undefined });
+  const logOpts = { since, until, year, author, maxBuffer, sinceAsFilter };
+  let maxCount = canCap ? limit + 1 : undefined;
+  let commits = await runLog(repoPath, { ...logOpts, maxCount });
   if (commits === null) return { commits: [], truncated: false, limit, shallow: false };
   let filtered = byAuthorDate(commits);
-  // git's pre-filter checks the committer date with some slack: a rebased commit (old
-  // author date, new committer date) or one inside the slack window can use up a capped
-  // slot and then fail the author-date filter. If fewer than limit + 1 commits survive,
-  // the cap may have hidden matching ones: read again without it. (When limit + 1
-  // survive, the capped read is a prefix of the full one, so the result is the same.)
-  if (canCap && since && commits.length === limit + 1 && filtered.length <= limit) {
-    commits = (await runLog(repoPath, { since, author, maxBuffer, sinceAsFilter })) ?? [];
+  // git's pre-filters check the committer date with some slack: a rebased commit (old
+  // author date, new committer date) or one inside a slack window can use up a capped
+  // slot and then fail the author-date filter. While the capped read came back full and
+  // fewer than limit + 1 commits survived, the cap may have hidden matching ones: read
+  // again with room for at least the dropped ones, doubling that room each round, so a
+  // busy slack window never makes us read the whole history. Once limit + 1 survive (or
+  // the read was not full), the capped read is a prefix of the full one: same result.
+  let allowance = 0;
+  while (maxCount !== undefined && (since || until) && commits.length === maxCount && filtered.length <= limit) {
+    allowance = Math.max(commits.length - filtered.length, allowance * 2);
+    maxCount = limit + 1 + allowance <= GIT_INT_MAX ? limit + 1 + allowance : undefined;
+    commits = (await runLog(repoPath, { ...logOpts, maxCount })) ?? [];
     filtered = byAuthorDate(commits);
   }
   commits = filtered;
@@ -308,8 +379,8 @@ export async function readHistory(repoPath, { since, author, limit = DEFAULT_LIM
 }
 
 /** Run `git log` and parse it; null for a repo without commits. Maps errors to user-facing ones. */
-async function runLog(repoPath, { since, author, maxBuffer, sinceAsFilter, maxCount }) {
-  const args = ['-C', repoPath, '-c', 'diff.relative=false', ...buildLogArgs({ since, author, maxCount, sinceAsFilter })];
+async function runLog(repoPath, { since, until, year, author, maxBuffer, sinceAsFilter, maxCount }) {
+  const args = ['-C', repoPath, '-c', 'diff.relative=false', ...buildLogArgs({ since, until, author, maxCount, sinceAsFilter })];
   let stdout;
   try {
     ({ stdout } = await execFileAsync('git', args, {
@@ -324,8 +395,13 @@ async function runLog(repoPath, { since, author, maxBuffer, sinceAsFilter, maxCo
     if (err.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
       const mb = Math.round(maxBuffer / (1024 * 1024));
       // Only suggest what can shrink the output: --max-commits only helps when git caps it.
-      const tips = [since ? 'a later --since' : '--since', '--author'];
-      const narrow = `narrow it down with ${tips.join(' or ')}`;
+      let narrow;
+      if (year !== undefined) {
+        narrow = 'narrow it down by splitting the year with --since and --until instead of --year (e.g. one quarter at a time), or with --author';
+      } else {
+        const tips = [since ? 'a later --since' : '--since', ...(until ? ['an earlier --until'] : []), '--author'];
+        narrow = `narrow it down with ${tips.slice(0, -1).join(', ')} or ${tips.at(-1)}`;
+      }
       throw new Error(`git log output is larger than ${mb} MB; ${maxCount !== undefined ? `${narrow}, or lower --max-commits` : narrow}`);
     }
     const stderr = String(err.stderr ?? '');

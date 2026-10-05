@@ -21,7 +21,7 @@ summary image it made for link previews.
 
 Nine 1080x1920 story cards:
 
-1. **Intro**: the repo name, the date range in plain English ("Oct 4 – Oct 5, 2026") and how many commits there are to unwrap, plus whose story it is when you pass `--author`.
+1. **Intro**: the repo name, the date range in plain English ("Oct 4 – Oct 5, 2026") and how many commits there are to unwrap, plus whose story it is when you pass `--author`. With `--year 2025` it becomes your "2025 Wrapped".
 2. **Totals**: commits, a lines added vs. removed bar, active days and files touched (and contributors, when there is more than one).
 3. **Power hour**: the hour of the day you commit the most, with a 24-hour bar chart and a Monday-to-Sunday weekday chart (hover a bar in `wrapped.html` for its count).
 4. **Streak**: your longest run of consecutive days with a commit, with a longest vs. current bar comparison.
@@ -87,7 +87,9 @@ gitwrapped [path] [options]
 | Argument / option     | What it does                                                                           |
 |-----------------------|----------------------------------------------------------------------------------------|
 | `path`                | Path to the git repository (default: `.`; an empty path also means `.`)               |
-| `--since YYYY-MM-DD`  | Only include commits on or after this date (from your local midnight)                  |
+| `--since YYYY-MM-DD`  | Only include commits on or after this date (each commit's author-local date)          |
+| `--until YYYY-MM-DD`  | Only include commits on or before this date (each commit's author-local date)         |
+| `--year YYYY`         | Only include commits from that calendar year (1970-9999), the classic Wrapped: same as `--since YYYY-01-01 --until YYYY-12-31`, and can't be combined with them |
 | `--author <email>`    | Only include commits by this author email (exact, case-insensitive match against the email after `.mailmap` is applied) |
 | `--out <dir>`         | Output directory (default: `gitwrapped-out`, created if needed)                        |
 | `--max-commits <n>`   | Analyze at most the n most recent commits (default: 50000; also applies with `--since`) |
@@ -102,8 +104,14 @@ is easy to grep. The recap is in color on a terminal and plain when piped.
 ## Examples
 
 ```bash
-# This year only
+# Your 2025 Wrapped: one calendar year
+npx @furkycl/gitwrapped --year 2025
+
+# This year so far
 npx @furkycl/gitwrapped --since 2026-01-01
+
+# The first quarter
+npx @furkycl/gitwrapped --since 2026-01-01 --until 2026-03-31
 
 # Just you, in a shared repo
 npx @furkycl/gitwrapped --author you@example.com
@@ -148,6 +156,22 @@ NO_COLOR=1 npx @furkycl/gitwrapped --no-png | head -1
   `--since-as-filter` a week before the date (committer dates can lag author dates), and
   the exact author-date filter runs in JavaScript. Older git does all the filtering in
   JavaScript, so `--max-commits` can't shorten the read there.
+- **Dates in `--since`, `--until` and `--year`** are compared with each commit's
+  *author-local* date: the calendar day in the author's own time zone, the same day the
+  cards use. A commit made at 01:00 on Jan 1, 2026 in Tokyo is not in `--year 2025`, and
+  one made at 20:00 on Dec 31, 2025 in California is, whatever time zone you run
+  gitwrapped in.
+- **`--until`** and **`--year`** also filter on the *author* date. git pre-filters with
+  `--until` 31 days after the date, because git checks the committer date, which is often
+  later than the author date (rebases, rebase-merges); the exact author-date filter runs
+  in JavaScript. A commit authored inside the window but committed more than 31 days
+  after its end is left out.
+- **Date windows on the cards:** with `--year`, `--since` or `--until`, the card footers
+  and the recap show the window you asked for (for example `2025`). When the window ends
+  before today, the streak card and the recap show the streak that was running on the
+  window's last day ("You ended 2025 on a 3-day streak") instead of a current streak.
+- **Huge histories with `--year`:** if `git log` output is too large, split the year
+  into smaller `--since`/`--until` windows.
 - **Authors** are counted by their `.mailmap` identity, so one person with two emails
   mapped together counts once, and `--author` matches the mapped email. If `--author`
   matches nothing and isn't an email address, the recap reminds you it expects one.

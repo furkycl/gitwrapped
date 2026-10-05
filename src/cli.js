@@ -22,6 +22,10 @@ Arguments:
 
 Options:
   --since YYYY-MM-DD   Only include commits on or after this date
+  --until YYYY-MM-DD   Only include commits on or before this date
+  --year YYYY          Only include commits from this calendar year, 1970-9999
+                       (same as --since YYYY-01-01 --until YYYY-12-31)
+                       Dates are each commit's author-local date.
   --author <email>     Only include commits by this author email
                        (exact email match, case-insensitive, after .mailmap)
   --out <dir>          Output directory (default: "gitwrapped-out")
@@ -36,6 +40,8 @@ Options:
 
 const OPTIONS = {
   since: { type: 'string' },
+  until: { type: 'string' },
+  year: { type: 'string' },
   author: { type: 'string' },
   out: { type: 'string' },
   'max-commits': { type: 'string' },
@@ -45,10 +51,12 @@ const OPTIONS = {
   version: { type: 'boolean', short: 'v' },
 };
 
-function validateSince(value) {
+/** Check a YYYY-MM-DD value for option `name` ("since" / "until"); returns it. */
+function validateDate(name, raw) {
+  const value = raw.trim();
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!m) {
-    throw new Error(`invalid --since "${value}": expected format YYYY-MM-DD`);
+    throw new Error(`invalid --${name} "${value}": expected format YYYY-MM-DD`);
   }
   const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
   const date = new Date(Date.UTC(y, mo - 1, d));
@@ -57,9 +65,18 @@ function validateSince(value) {
     date.getUTCMonth() !== mo - 1 ||
     date.getUTCDate() !== d
   ) {
-    throw new Error(`invalid --since "${value}": not a real calendar date`);
+    throw new Error(`invalid --${name} "${value}": not a real calendar date`);
   }
   return value;
+}
+
+function validateYear(value) {
+  const v = value.trim();
+  const n = Number(v);
+  if (!/^\d{4}$/.test(v) || n < 1970) {
+    throw new Error(`invalid --year "${value}": expected a 4-digit year like 2025`);
+  }
+  return n;
 }
 
 function validateMaxCommits(value) {
@@ -104,8 +121,10 @@ function normalizeArgv(argv) {
 
 /**
  * Parse CLI arguments (without node/script prefix).
- * Returns {help:true}, {version:true}, or {path, since, author, out, png, maxCommits, color}
- * (color: false for --no-color, else undefined = auto).
+ * Returns {help:true}, {version:true}, or {path, since, until, year, author, out, png,
+ * maxCommits, color} (color: false for --no-color, else undefined = auto). `--year Y`
+ * sets since Y-01-01 and until Y-12-31 (and `year` to the number); it cannot be combined
+ * with --since or --until.
  * Throws an Error with a user-facing message on invalid input.
  */
 export function parseCli(argv) {
@@ -126,16 +145,32 @@ export function parseCli(argv) {
     throw new Error(`expected at most one path, got ${positionals.length}: ${positionals.join(' ')}`);
   }
 
-  for (const name of ['since', 'author', 'out', 'max-commits']) {
+  for (const name of ['since', 'until', 'year', 'author', 'out', 'max-commits']) {
     if (values[name] !== undefined && values[name].trim() === '') {
       throw new Error(`--${name} requires a non-empty value`);
     }
   }
 
+  let since = values.since === undefined ? undefined : validateDate('since', values.since);
+  let until = values.until === undefined ? undefined : validateDate('until', values.until);
+  let year;
+  if (values.year !== undefined) {
+    if (since !== undefined || until !== undefined) throw new Error('--year cannot be combined with --since or --until');
+    year = validateYear(values.year);
+    since = `${year}-01-01`;
+    until = `${year}-12-31`;
+  }
+  // Same-shape YYYY-MM-DD strings compare correctly as text.
+  if (since !== undefined && until !== undefined && until < since) {
+    throw new Error(`--until (${until}) is before --since (${since})`);
+  }
+
   return {
     // An empty path ("") means the current directory, like the default.
     path: positionals[0] || '.',
-    since: values.since === undefined ? undefined : validateSince(values.since),
+    since,
+    until,
+    year,
     author: values.author?.trim(),
     out: values.out?.trim() ?? 'gitwrapped-out',
     png: !values['no-png'],
@@ -310,6 +345,21 @@ function removeOldCardFiles(dir, ext, keep) {
   }
 }
 
+/** The local calendar date as 'YYYY-MM-DD'. */
+function localToday() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * True when an `until` window ends before today (the `today` override, else the local
+ * date): then "current streak" means the streak alive at the end of the window. An
+ * explicit `today` on or before `until` keeps the normal meaning.
+ */
+function windowEndedBefore(today, until) {
+  return Boolean(until) && until < (today ?? localToday());
+}
+
 /**
  * Generate the story into `out`: wrapped.html, cards/NN-<id>.svg, share.svg and (unless
  * `png` is false) png/NN-<id>.png (1080x1920) plus share.png (1200x630).
@@ -317,18 +367,24 @@ function removeOldCardFiles(dir, ext, keep) {
  * --out fails before anything is written. If the PNG renderer cannot be loaded or fails,
  * the SVG/HTML output is still written and `pngSkipped` holds the reason.
  * At most `maxCommits` (default 50,000) of the most recent commits are analyzed.
- * Returns {commits, stats, repoName, truncated, limit, shallow, html, cardsDir, cardFiles,
+ * `since` / `until` (YYYY-MM-DD, inclusive) limit the author-date window; `year` (as
+ * parsed by parseCli) only changes the card copy. When `until` is before today, streaks
+ * are measured on the `until` day and `streakAsOf` is that day (else undefined).
+ * Returns {commits, stats, repoName, since, until, year, streakAsOf, truncated, limit, shallow, html, cardsDir, cardFiles,
  * shareSvg, pngDir, pngFiles, sharePng, pngSkipped} with the written paths (joined onto
  * `out`; PNG paths null/[] when skipped); `truncated` is true when the cap cut the history
  * short, `shallow` when the repo is a shallow clone.
  * `renderPng` (svg, {width}) → Promise<Buffer> replaces the PNG renderer (for tests).
  */
-export async function generate({ path, since, author, out, png = true, maxCommits = DEFAULT_LIMIT }, { today, renderPng: rasterize = renderPng } = {}) {
-  const { commits, truncated, limit, shallow } = await readHistory(path, { since, author, limit: maxCommits });
-  const stats = computeStats(commits, { today });
+export async function generate({ path, since, until, year, author, out, png = true, maxCommits = DEFAULT_LIMIT }, { today, renderPng: rasterize = renderPng } = {}) {
+  const { commits, truncated, limit, shallow } = await readHistory(path, { since, until, year, author, limit: maxCommits });
+  // When the window ended before today, streaks are measured at its end (and the cards say so).
+  const streakAsOf = windowEndedBefore(today, until) ? until : undefined;
+  const stats = computeStats(commits, { today: streakAsOf ?? today });
   const name = await repoName(path);
-  const cards = buildCards(stats, { repoName: name, since, author });
-  const shareSvg = renderShareCard(stats, { repoName: name, since, author });
+  const cardOpts = { repoName: name, since, until, year, author, streakAsOf };
+  const cards = buildCards(stats, cardOpts);
+  const shareSvg = renderShareCard(stats, cardOpts);
 
   const cardsDir = join(out, 'cards');
   const pngDir = join(out, 'png');
@@ -380,6 +436,10 @@ export async function generate({ path, since, author, out, png = true, maxCommit
     commits: commits.length,
     stats,
     repoName: name,
+    since,
+    until,
+    year,
+    streakAsOf,
     truncated,
     limit,
     shallow: Boolean(shallow),
@@ -392,6 +452,19 @@ export async function generate({ path, since, author, out, png = true, maxCommit
     sharePng: pngs.length > 0 ? sharePngPath : null,
     pngSkipped,
   };
+}
+
+/**
+ * Short label for the analyzed date window, for the recap header: "2025",
+ * "2025-01-01 → 2025-03-31", "2025-02-29" (a one-day window), "since 2025-01-01",
+ * "through 2025-03-31", or undefined.
+ */
+export function windowLabel({ since, until, year } = {}) {
+  if (year !== undefined) return String(year);
+  if (since && until) return since === until ? since : `${since} → ${until}`;
+  if (since) return `since ${since}`;
+  if (until) return `through ${until}`;
+  return undefined;
 }
 
 /**
@@ -427,7 +500,7 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
   if (result.truncated) {
     const n = result.limit.toLocaleString('en-US');
     notes.push(
-      opts.since || opts.author
+      opts.since || opts.until || opts.author
         ? `Note: more than ${n} matching commits; only the most recent ${n} were analyzed.`
         : `Note: this repo has more than ${n} commits; only the most recent ${n} were analyzed.`,
     );
@@ -442,6 +515,8 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
     formatSummary(result.stats, {
       color: shouldUseColor({ stream: stdout, env, flag: opts.color }),
       repoName: result.repoName,
+      window: windowLabel(opts),
+      streakAtWindowEnd: Boolean(result.streakAsOf),
       notes,
       paths: {
         html: result.html,

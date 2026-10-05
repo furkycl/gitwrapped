@@ -32,3 +32,12 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] README: hero GIF placeholder, install, usage, examples, "built by an autonomous agent loop" section
 - [x] Run gitwrapped on this very repo and commit its cards to `docs/self-wrapped/`
 - [x] `npm publish` readiness: package.json fields, files whitelist, `npm pack --dry-run` clean
+
+## M6 — Launch polish (owner request, 2026-10-05)
+- [ ] System audit: cold review of the whole codebase, fix every real bug found (with tests)
+- [ ] Rename npm package to `@furkycl/gitwrapped` (`gitwrapped` on npm belongs to someone else); command stays `gitwrapped`
+- [ ] Card design v2: hour-of-day + weekday bar charts on the power-hour card, fuller layouts, no decoration overlapping content, no duplicated footer text
+- [ ] Activity heatmap card: GitHub-style calendar of commits per day
+- [ ] Viewer polish: wrapped.html design, card download/share actions, accessibility pass
+- [ ] Hero GIF in `docs/hero.gif`, regenerate `docs/self-wrapped/`, README refresh
+- [ ] v1.0.0 readiness: CHANGELOG, CI on Linux/macOS/Windows, tag-triggered npm publish workflow (needs `NPM_TOKEN` secret), version bump

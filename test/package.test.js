@@ -26,7 +26,7 @@ function npmPackFiles() {
 }
 
 test('package.json has the fields npm publish needs', () => {
-  assert.equal(pkg.name, 'gitwrapped');
+  assert.equal(pkg.name, '@furkycl/gitwrapped');
   assert.match(pkg.version, /^\d+\.\d+\.\d+$/);
   assert.equal(pkg.type, 'module');
   assert.equal(pkg.license, 'MIT');
@@ -97,4 +97,10 @@ test('README usage table lists no flag that --help does not know', () => {
   for (const flag of tableFlags) {
     assert.ok(HELP_TEXT.includes(flag), `${flag} is a real option`);
   }
+});
+
+test('README only advertises the scoped package name', () => {
+  assert.doesNotMatch(readme, /npx gitwrapped\b/);
+  assert.doesNotMatch(readme, /npm i(nstall)? -g gitwrapped\b/);
+  assert.match(readme, /npx @furkycl\/gitwrapped/);
 });

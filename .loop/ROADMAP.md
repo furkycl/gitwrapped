@@ -35,7 +35,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 
 ## M6 — Launch polish (owner request, 2026-10-05)
 - [x] System audit: cold review of the whole codebase, fix every real bug found (with tests)
-- [ ] Rename npm package to `@furkycl/gitwrapped` (`gitwrapped` on npm belongs to someone else); command stays `gitwrapped`
+- [x] Rename npm package to `@furkycl/gitwrapped` (`gitwrapped` on npm belongs to someone else); command stays `gitwrapped`
 - [ ] Card design v2: hour-of-day + weekday bar charts on the power-hour card, fuller layouts, no decoration overlapping content, no duplicated footer text
 - [ ] Activity heatmap card: GitHub-style calendar of commits per day
 - [ ] Viewer polish: wrapped.html design, card download/share actions, accessibility pass

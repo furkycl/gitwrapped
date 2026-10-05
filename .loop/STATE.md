@@ -1,6 +1,6 @@
 # STATE
 
-Next turn: 014 — rename package to @furkycl/gitwrapped
+Next turn: 015 — card design v2
 
 | Turn | Date (UTC) | Task | PR | Result | Note for next turn |
 |------|------------|------|----|--------|--------------------|
@@ -19,3 +19,4 @@ Next turn: 014 — rename package to @furkycl/gitwrapped
 | 011 | 2026-10-04 | M5: README + npm publish readiness | https://github.com/furkycl/gitwrapped/pull/14 | done (544 tests, CI green Node 20+22) | npm pack: 20 files. Name availability on npm not checked (offline). Next (last task): run gitwrapped on this repo into docs/self-wrapped/ (README hero image points at docs/self-wrapped/share.png). |
 | 012 | 2026-10-04 | M5: self-wrapped cards in docs/self-wrapped | https://github.com/furkycl/gitwrapped/pull/15 | done (550 tests, CI green Node 20+22) | ROADMAP complete → .loop/DONE created. Fixed current-streak for authors a day ahead of the machine TZ. Owner follow-ups: delete the hourly scheduled task, delete stale loop/* remote branches, check npm name availability before `npm publish`, optionally record docs/hero.gif. |
 | 013 | 2026-10-05 | M6: system audit + fixes | https://github.com/furkycl/gitwrapped/pull/16 | done (580 tests, CI green Node 20+22) | 12 audit findings fixed (since-as-filter+7d slack, mailmap, %P merges, shallow, submodules, linear wrap, emoji clusters, recap control chars, viewer Space). PNG font reuse impossible in resvg-js 2.6.2. Remote branch delete still 403. |
+| 014 | 2026-10-05 | M6: rename to @furkycl/gitwrapped | https://github.com/furkycl/gitwrapped/pull/17 | done (581 tests, CI green Node 20+22) | Unscoped 'gitwrapped' on npm is DavidAmunga's project. README test guards against unscoped install lines. |

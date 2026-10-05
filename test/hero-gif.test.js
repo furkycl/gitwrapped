@@ -86,7 +86,7 @@ test('importing make-hero-gif has no side effects and exports the API', async ()
     assert.equal(after, before, 'import must not rewrite docs/hero.gif');
     assert.deepEqual(readdirSync(dir), []);
   } finally {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
   }
 });
 
@@ -247,7 +247,7 @@ test('CLI writes a GIF from a cards dir; bad args exit 1', () => {
     assert.match(none.stderr, /no \.svg cards/);
     assert.equal(existsSync(join(dir, 'x.gif')), false);
   } finally {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
   }
 });
 

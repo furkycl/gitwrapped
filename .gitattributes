@@ -1,0 +1,5 @@
+# Keep LF line endings in every checkout (Windows included): tests compare file
+# contents byte for byte (shebang, .gitignore, README, generated SVG/HTML).
+* text=auto eol=lf
+*.png binary
+*.gif binary

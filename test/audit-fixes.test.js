@@ -25,7 +25,7 @@ function tmp(prefix) {
 }
 
 after(() => {
-  for (const d of tmpDirs) rmSync(d, { recursive: true, force: true });
+  for (const d of tmpDirs) rmSync(d, { recursive: true, force: true, maxRetries: 5 });
 });
 
 function git(cwd, args, env = {}) {

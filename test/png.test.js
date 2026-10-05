@@ -291,8 +291,12 @@ describe('width model vs real rendering (resvg)', () => {
       }
       assert.ok(real > 0, `rendered nothing for ${r.s}`);
       const model = measureText(r.s, size);
-      // +1: `real` is a whole pixel column (anti-aliased edge rounds up).
-      assert.ok(model + 1 >= real, `${JSON.stringify(r.s)} @${r.weight}: model ${model.toFixed(1)} < real ${real}`);
+      // +1: `real` is a whole pixel column (anti-aliased edge rounds up). The model is
+      // calibrated to DejaVu Sans Bold (what Linux resolves this stack to); macOS/Windows
+      // pick other faces, so there allow the 5% slack the card layout keeps for wrapped
+      // text (WRAP_WIDTH). The padding tests below still check real overflow everywhere.
+      const slack = process.platform === 'linux' ? 1 : 1 + model * 0.05;
+      assert.ok(model + slack >= real,`${JSON.stringify(r.s)} @${r.weight}: model ${model.toFixed(1)} < real ${real}`);
     });
   });
 });
@@ -410,7 +414,7 @@ describe('CLI PNG export', () => {
   before(() => {
     out = mkdtempSync(join(tmpdir(), 'gw-png-'));
   });
-  after(() => rmSync(out, { recursive: true, force: true }));
+  after(() => rmSync(out, { recursive: true, force: true, maxRetries: 5 }));
   const svgFiles = CARD_IDS.map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}.svg`);
 
   test('renderer unavailable → SVG + HTML still written, exit 0, "PNG export skipped" on stderr', async () => {

@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readHistory, quoteForShell, DEFAULT_LIMIT } from '../src/git.js';
 import { bareRepoName, parseCli, run } from '../src/cli.js';
@@ -66,7 +66,7 @@ before(() => {
 });
 after(() => {
   fixture?.cleanup();
-  if (tmp) rmSync(tmp, { recursive: true, force: true });
+  if (tmp) rmSync(tmp, { recursive: true, force: true, maxRetries: 5 });
 });
 
 // ---------------------------------------------------------------------------------------
@@ -131,7 +131,7 @@ describe('readHistory limit', () => {
 
   test('--since + limit with a commit whose committer date is new but author date is old', async (t) => {
     const dir = mkdtempSync(join(tmpdir(), 'gw-rebased-'));
-    t.after(() => rmSync(dir, { recursive: true, force: true }));
+    t.after(() => rmSync(dir, { recursive: true, force: true, maxRetries: 5 }));
     initRepo(dir);
     const c1 = commitAt(dir, 'one', { author: '2024-01-01T10:00:00Z' });
     const c2 = commitAt(dir, 'two', { author: '2024-01-02T10:00:00Z' });
@@ -610,7 +610,7 @@ describe('bin: odd repo shapes', () => {
     const r = bin(['.', '--out', out, '--no-png'], { cwd: sub });
     assert.equal(r.status, 0, r.stderr);
     assert.match(r.stdout, new RegExp(`^gitwrapped: ${fixture.commits.length} commits → `));
-    const top = fixture.dir.split('/').pop();
+    const top = basename(fixture.dir);
     assert.ok(r.stdout.includes(`★ ${top} Wrapped`), r.stdout);
     assert.doesNotMatch(r.stdout, /★ notes Wrapped/);
     // No path argument at all behaves the same.
@@ -626,7 +626,7 @@ describe('bin: odd repo shapes', () => {
       assert.equal(r.status, 0, r.stderr);
       assert.ok(existsSync(join(sub, 'rel-out', 'wrapped.html')));
     } finally {
-      rmSync(join(sub, 'rel-out'), { recursive: true, force: true });
+      rmSync(join(sub, 'rel-out'), { recursive: true, force: true, maxRetries: 5 });
     }
   });
 
@@ -648,7 +648,7 @@ describe('bin: odd repo shapes', () => {
     assert.ok(r.status === 0 || r.status === 1, `${r.status}: ${r.stderr}`);
     assert.doesNotMatch(r.stderr, /\n\s+at /, 'no stack trace');
     if (r.status === 0) {
-      const top = fixture.dir.split('/').pop();
+      const top = basename(fixture.dir);
       assert.ok(r.stdout.includes(`★ ${top} Wrapped`), r.stdout);
     }
   });

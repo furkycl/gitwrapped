@@ -10,10 +10,10 @@
 // Requires git >= 2.32 (`init -b`, and GIT_CONFIG_GLOBAL so user config is really ignored). Global/system git config is ignored so user settings
 // (autocrlf, gpgsign, hooks, default branch...) cannot change the result.
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
 export const AUTHORS = {
   ada: { name: 'Ada Lovelace', email: 'ada@example.com' },
@@ -119,7 +119,7 @@ export function makeFixtureRepo({ dir } = {}) {
   } else {
     dir = mkdtempSync(join(tmpdir(), 'gitwrapped-fixture-'));
   }
-  const cleanup = () => rmSync(dir, { recursive: true, force: true });
+  const cleanup = () => rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
   try {
     git(dir, ['init', '-q', '-b', 'main']);
     git(dir, ['config', 'user.name', 'Fixture']);
@@ -165,7 +165,19 @@ export function makeFixtureRepo({ dir } = {}) {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+// Compare real paths: the ESM loader resolves symlinks (e.g. macOS /var → /private/var)
+// and Windows drive-letter case can differ between argv[1] and import.meta.url.
+function isMain() {
+  if (!process.argv[1]) return false;
+  try {
+    const norm = (p) => (process.platform === 'win32' ? realpathSync(p).toLowerCase() : realpathSync(p));
+    return norm(resolve(process.argv[1])) === norm(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
+if (isMain()) {
   const { dir } = makeFixtureRepo({ dir: process.argv[2] });
   process.stdout.write(`${dir}\n`);
 }

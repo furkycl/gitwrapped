@@ -370,7 +370,7 @@ describe('re-running into an older output folder', () => {
     const out = mkdtempSync(join(tmpdir(), 'gw-renumber-'));
     t.after(() => {
       fixture.cleanup();
-      rmSync(out, { recursive: true, force: true });
+      rmSync(out, { recursive: true, force: true, maxRetries: 5 });
     });
     mkdirSync(join(out, 'cards'), { recursive: true });
     mkdirSync(join(out, 'png'), { recursive: true });
@@ -393,7 +393,7 @@ describe('re-running into an older output folder', () => {
     const out = mkdtempSync(join(tmpdir(), 'gw-nomarker-'));
     t.after(() => {
       fixture.cleanup();
-      rmSync(out, { recursive: true, force: true });
+      rmSync(out, { recursive: true, force: true, maxRetries: 5 });
     });
     mkdirSync(join(out, 'cards'), { recursive: true });
     mkdirSync(join(out, 'png'), { recursive: true });
@@ -405,7 +405,7 @@ describe('re-running into an older output folder', () => {
     assert.ok(readdirSync(join(out, 'png')).includes('08-outro.png'));
     // --no-png into a fresh folder with old names: still kept.
     const out2 = mkdtempSync(join(tmpdir(), 'gw-nomarker2-'));
-    t.after(() => rmSync(out2, { recursive: true, force: true }));
+    t.after(() => rmSync(out2, { recursive: true, force: true, maxRetries: 5 }));
     mkdirSync(join(out2, 'png'), { recursive: true });
     writeFileSync(join(out2, 'png', '05-hot-files.png'), 'old');
     await generate({ path: fixture.dir, out: out2, png: false }, { today: TODAY });

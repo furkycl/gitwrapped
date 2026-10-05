@@ -384,7 +384,7 @@ describe('buildCards', () => {
       }
       execFileSync('xmllint', ['--noout', ...files], { stdio: ['ignore', 'pipe', 'pipe'] });
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
     }
   });
 
@@ -423,7 +423,7 @@ describe('scripts/preview-cards.js', () => {
       assert.equal(stdout.trim().split('\n').length, 18);
       for (const f of svgs) assert.equal(xmlError(readFileSync(join(out, f), 'utf8')), null, f);
     } finally {
-      rmSync(out, { recursive: true, force: true });
+      rmSync(out, { recursive: true, force: true, maxRetries: 5 });
     }
   });
 });

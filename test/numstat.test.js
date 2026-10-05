@@ -192,7 +192,7 @@ describe('makeFixtureRepo', () => {
       assert.equal(out, `${target}\n`);
       assert.equal(execFileSync('git', ['-C', target, 'rev-list', '--count', 'HEAD'], { encoding: 'utf8' }).trim(), '8');
     } finally {
-      rmSync(root, { recursive: true, force: true });
+      rmSync(root, { recursive: true, force: true, maxRetries: 5 });
     }
     const fx = makeFixtureRepo();
     fx.cleanup();

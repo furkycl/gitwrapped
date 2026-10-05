@@ -1,6 +1,6 @@
 # STATE
 
-Next turn: 017 — viewer polish
+Next turn: 022 — M7: --until / --year
 
 | Turn | Date (UTC) | Task | PR | Result | Note for next turn |
 |------|------------|------|----|--------|--------------------|
@@ -26,3 +26,4 @@ Next turn: 017 — viewer polish
 | 018 | 2026-10-05 | M6: hero GIF + regenerate docs/self-wrapped + README refresh | https://github.com/furkycl/gitwrapped/pull/21 | done (788 tests, CI green Node 20+22) | scripts/make-hero-gif.js (gifenc devDep only), docs/hero.gif 360x640 36 frames 1.8 MB, self-wrapped at 40 commits. Next (last task): v1.0.0 readiness — CHANGELOG, CI matrix Linux/macOS/Windows, tag-triggered npm publish workflow (owner must add NPM_TOKEN secret), version bump; likely split into sub-tasks. Remote branch delete still blocked (owner can prune loop/* branches). |
 | 019 | 2026-10-05 | M6: v1.0.0 readiness 1/3 — CI on Linux/macOS/Windows | https://github.com/furkycl/gitwrapped/pull/22 | done (788 tests, CI green on ubuntu/macos/windows × Node 20+22) | Split v1.0.0 task into 3. .gitattributes eol=lf; macOS-only bug found: resvg places 🚀 far off its text in PNGs (test swaps emoji→W on darwin, README known issue). Next: fix that in src/png.js, then CHANGELOG + publish workflow + 1.0.0 bump. |
 | 020 | 2026-10-05 | M6: v1.0.0 readiness 2/3 — macOS PNG emoji fix | https://github.com/furkycl/gitwrapped/pull/23 | done (817 tests, CI green on ubuntu/macos/windows × Node 20+22 after 1 fix) | No stable resvg 2.7, so renderPng strips color emoji (incl. Emoji_Presentation like ✨✅) from <text> on darwin; darwin test swap removed. Node 20 Intl.Segmenter is very slow on huge strings — segment per token only when an emoji candidate exists. Next (last task): CHANGELOG.md + tag-triggered npm publish workflow (owner adds NPM_TOKEN) + 1.0.0 bump. |
+| 021 | 2026-10-05 | M6: v1.0.0 readiness 3/3 — CHANGELOG + tag-triggered publish + 1.0.0 | https://github.com/furkycl/gitwrapped/pull/24 | done (835 tests, CI green on ubuntu/macos/windows × Node 20+22) | publish.yml: tag must be on main, match package.json, have a CHANGELOG heading; prereleases → `next`. Owner: add NPM_TOKEN secret and push v1.0.0 tag. Owner asked to keep going instead of DONE → added M7 (feature-complete 1.1). |

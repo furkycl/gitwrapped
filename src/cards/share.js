@@ -1,7 +1,7 @@
 // Share summary card: one landscape 1200x630 SVG (the usual link-preview / social image
 // size) in the same visual language as the story cards. Pure layout: buildShareCard() in
 // index.js turns stats into the strings drawn here.
-import { escapeXml, FONT_FAMILY, measureText, sanitizeIdPrefix, textEl, THEMES, truncateStart, wrapText } from './svg.js';
+import { escapeXml, fitCount, FONT_FAMILY, measureText, sanitizeIdPrefix, textEl, THEMES, truncateStart, wrapText } from './svg.js';
 
 export const SHARE_WIDTH = 1200;
 export const SHARE_HEIGHT = 630;
@@ -53,7 +53,6 @@ function background(id, t) {
     `<rect width="${SHARE_WIDTH}" height="${SHARE_HEIGHT}" fill="url(#${id}-bg)"/>`,
     `<circle cx="1080" cy="60" r="320" fill="url(#${id}-glow)"/>`,
     `<circle cx="80" cy="640" r="360" fill="url(#${id}-glow)"/>`,
-    `<circle cx="1110" cy="560" r="110" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="16"/>`,
   ].join('');
 }
 
@@ -62,7 +61,9 @@ function tile(x, width, { label, value }) {
   const parts = [`<rect x="${x}" y="${TILE_TOP}" width="${width}" height="${TILE_HEIGHT}" rx="28" fill="#ffffff" fill-opacity="0.14"/>`];
   const lab = fitLine(str(label).toUpperCase(), inner, 20, 2.5);
   if (lab) parts.push(textEl(x + TILE_PAD, TILE_TOP + 48, lab, { size: 20, weight: 800, opacity: 0.85, spacing: 2.5 }));
-  const v = str(value) || '—';
+  // A count too wide for the tile at 36px switches to compact form (12.3K), never wraps.
+  const raw = str(value) || '—';
+  const v = fitCount(raw, inner, 36, WEIGHT_FACTOR) ?? raw;
   const size = fitSize(v, inner, 64, 36);
   if (size) {
     parts.push(textEl(x + TILE_PAD, TILE_TOP + 140, v, { size, weight: 900, spacing: -0.02 * size }));

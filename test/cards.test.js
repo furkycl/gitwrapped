@@ -404,7 +404,7 @@ describe('integration: fixture repo → cards', () => {
     // DejaVu Sans Bold, so it is ellipsized.
     assert.ok(m.messages.includes('Longest: “refactor: move app'));
     assert.ok(m.intro.includes('fixture'));
-    assert.ok(m.totals.includes('fixture · 2024-03-04 → 2024-03-13'), 'footer date range');
+    assert.ok(m.totals.includes('fixture · Mar 4 – Mar 13, 2024'), 'footer date range');
     assert.ok(m['peak-hour'].includes('one of'), 'fixture peak hour is tied');
     assert.ok(m.streak.includes('>5<'));
   });

@@ -138,15 +138,18 @@ describe('--open with a fake xdg-open (real CLI)', { skip: process.platform === 
 // ---------------------------------------------------------------------------
 describe('viewer: CSP, descriptions, escaping (real CLI)', () => {
   const PAYLOAD = '<img src=x onerror=alert(1)>';
+  const ODD_NAME = process.platform === 'win32' ? "b&'.py" : 'b&"\'.py';
   let html;
   let out;
   const page = () => {
     if (html) return html;
+    // Windows file names cannot contain < > " (among others): there the payload rides in
+    // the commit subject only, and the odd file name keeps just & and '.
     const evilName = process.platform === 'win32' ? 'evil.js' : `${PAYLOAD}.js`;
     const dir = makeRepo([1, 2, 3].map((i) => ({
       date: `2026-01-0${i}T12:00:00+00:00`,
       subject: `${PAYLOAD} fix: ${i} \u202Edesrever\u202C </p><script>alert(3)</script>`,
-      file: i === 2 ? 'b&"\'.py' : evilName,
+      file: i === 2 ? ODD_NAME : evilName,
     })));
     out = tmp();
     const r = cli([dir, '--out', out, '--no-png']);
@@ -207,7 +210,8 @@ describe('viewer: CSP, descriptions, escaping (real CLI)', () => {
     // The descriptions carry the escaped payload (proves they include file paths / messages).
     const descs = [...h.matchAll(/<p class="sr" id="card-\d+-desc" aria-hidden="true">([^<]*)<\/p>/g)].map((x) => x[1]).join(' ');
     if (process.platform !== 'win32') assert.ok(descs.includes('&lt;img src=x onerror=alert(1)&gt;.js'));
-    assert.ok(descs.includes('b&amp;&quot;&#39;.py') || descs.includes('b&amp;&quot;&apos;.py'), descs.slice(0, 300));
+    const odd = process.platform === 'win32' ? 'b&amp;' : 'b&amp;&quot;';
+    assert.ok(descs.includes(`${odd}&#39;.py`) || descs.includes(`${odd}&apos;.py`), descs.slice(0, 300));
   });
 });
 

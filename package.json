@@ -1,6 +1,6 @@
 {
   "name": "@furkycl/gitwrapped",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Spotify Wrapped for your git history. Turns a repo's commit log into shareable story cards. Fully local.",
   "keywords": [
     "git",
@@ -33,6 +33,7 @@
     "bin",
     "src",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {

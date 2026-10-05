@@ -1,0 +1,58 @@
+name: Publish
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write # npm provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so the tagged commit can be checked against main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: npm
+      - name: Set git identity (tests create throwaway repos)
+        run: |
+          git config --global user.name ci
+          git config --global user.email ci@example.com
+      - name: Check tag matches package.json version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "${TAG#v}" != "$version" ]; then
+            echo "::error::tag $TAG does not match package.json version $version"
+            exit 1
+          fi
+      - name: Check the tagged commit is on main
+        run: |
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::the tagged commit is not on main; merge to main before tagging"
+            exit 1
+          fi
+      - name: Check CHANGELOG.md has an entry for this version
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if ! grep -qF "## [$version]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no '## [$version]' heading"
+            exit 1
+          fi
+      - run: npm ci
+      - run: npm test
+      - name: Publish to npm (prereleases like v1.1.0-beta.1 go to the "next" dist-tag)
+        env:
+          TAG: ${{ github.ref_name }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          dist_tag=latest
+          case "$TAG" in *-*) dist_tag=next ;; esac
+          npm publish --provenance --access public --tag "$dist_tag"

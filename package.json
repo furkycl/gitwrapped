@@ -39,7 +39,8 @@
     "test": "node --test",
     "prepublishOnly": "npm test",
     "preview": "node scripts/preview-cards.js",
-    "self-wrapped": "node bin/gitwrapped.js . --out docs/self-wrapped --no-color"
+    "self-wrapped": "node bin/gitwrapped.js . --out docs/self-wrapped --no-color",
+    "hero-gif": "node scripts/make-hero-gif.js"
   },
   "engines": {
     "node": ">=20"
@@ -49,5 +50,8 @@
   },
   "dependencies": {
     "@resvg/resvg-js": "2.6.2"
+  },
+  "devDependencies": {
+    "gifenc": "1.0.3"
   }
 }

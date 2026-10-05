@@ -5,8 +5,10 @@ was made by the autonomous agent loop that builds gitwrapped (see `.loop/`), so 
 cards tell the story of the loop itself.
 
 - **Generated:** 2026-10-05
-- **Commits analyzed:** 36 (the full history at the time of the run)
-- **Regenerate:** `npm run self-wrapped` (runs `gitwrapped . --out docs/self-wrapped`)
+- **Commits analyzed:** 40 (the full history at the time of the run)
+- **Regenerate:** `npm run self-wrapped` (runs `gitwrapped . --out docs/self-wrapped`),
+  then `npm run hero-gif` to rebuild the README's [`docs/hero.gif`](../hero.gif) from
+  these cards
 
 ## The story
 

@@ -4,17 +4,24 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'sha256-YH2iYmB1vIhCPWb4PsOEFO3DV/WoJrTXDpRDGmBJWVo='; script-src 'sha256-vDvQ44cVXJldqYWehkW13C4OEJ+OesH/cwuln/9eGpk='; img-src data:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'sha256-UnTTTi28n81hkCFuArKL5GYYl16rUCiD1Z/0+r5cA5U='; script-src 'sha256-7t1t0sRjFqAwwixKh7Q4PDYayNKvC6GIre0oU7tFxJw='; img-src data:; base-uri 'none'; form-action 'none'">
 <meta name="color-scheme" content="dark">
 <title>gitwrapped · gitwrapped</title>
 <style>
-:root{--dur:6000ms;color-scheme:dark;--bg:#07070b;--fg:#fff;--track:rgba(255,255,255,.35);--focus:#ffd84d}
+:root{--dur:6000ms;color-scheme:dark;--bg:#07070b;--fg:#fff;--muted:#c4c4d4;--track:rgba(255,255,255,.35);--focus:#ffd84d;--btn:rgba(255,255,255,.1);--btn-hover:rgba(255,255,255,.18);--line:rgba(255,255,255,.14);
+  --head:0px;--foot:60px;--side:0px;--gap:0px;--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px)}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden}
-.stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
-.story{position:relative;width:min(100vw,calc(100vh * 9 / 16));height:min(100vh,calc(100vw * 16 / 9));
-  width:min(100vw,calc(100dvh * 9 / 16));height:min(100dvh,calc(100vw * 16 / 9));
+body{display:flex;flex-direction:column;height:100vh;height:100svh;height:100dvh;padding-top:var(--sat);
+  background:radial-gradient(55% 45% at 50% 42%,rgba(124,92,255,.24),transparent 72%),radial-gradient(35% 35% at 85% 95%,rgba(255,61,119,.12),transparent 70%),radial-gradient(35% 35% at 12% 8%,rgba(0,200,255,.08),transparent 70%),var(--bg)}
+.top{flex:none;height:var(--head);padding:0 16px;display:flex;align-items:center;justify-content:center;gap:12px;min-width:0}
+.title{margin:0;font-size:15px;font-weight:600;letter-spacing:.02em;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stage{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;padding:var(--gap) var(--side)}
+.story{--avail:calc(100vh - var(--head) - var(--foot) - var(--sat) - var(--sab) - 2 * var(--gap));
+  position:relative;flex:none;width:min(calc(100vw - 2 * var(--side)),calc(var(--avail) * 9 / 16));height:min(var(--avail),calc((100vw - 2 * var(--side)) * 16 / 9));
   overflow:hidden;border-radius:12px;background:#000;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:pan-y}
+@supports (height:100svh){.story{--avail:calc(100svh - var(--head) - var(--foot) - var(--sat) - var(--sab) - 2 * var(--gap))}}
+@supports (height:100dvh){.story{--avail:calc(100dvh - var(--head) - var(--foot) - var(--sat) - var(--sab) - 2 * var(--gap))}}
 .slide{position:absolute;inset:0;visibility:hidden;opacity:0;transition:opacity .25s ease}
 .slide.active{visibility:visible;opacity:1}
 .slide svg{display:block;width:100%;height:100%}
@@ -31,18 +38,45 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:
 .nav.next{right:0;width:66.667%}
 .nav:focus{outline:none}
 .nav:focus-visible{outline:3px solid var(--focus);outline-offset:-6px;border-radius:12px}
-.pause{position:absolute;top:calc(22px + env(safe-area-inset-top,0px));right:calc(12px + env(safe-area-inset-right,0px));z-index:4;width:40px;height:40px;border:0;border-radius:50%;background:rgba(0,0,0,.35);color:var(--fg);font:600 16px/1 system-ui,sans-serif;cursor:pointer}
+.pause{position:absolute;top:calc(22px + env(safe-area-inset-top,0px));right:calc(12px + env(safe-area-inset-right,0px));z-index:4;width:40px;height:40px;border:0;border-radius:50%;background:rgba(0,0,0,.45);color:var(--fg);font:600 16px/1 system-ui,sans-serif;cursor:pointer}
 .pause:focus{outline:none}
 .pause:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
 .pause[hidden]{display:none}
-.sr{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-@media (min-width:700px){.story{box-shadow:0 20px 60px rgba(0,0,0,.6)}}
+.foot{flex:none;height:calc(var(--foot) + var(--sab));padding:0 max(12px,env(safe-area-inset-right,0px)) var(--sab) max(12px,env(safe-area-inset-left,0px));display:flex;align-items:center;justify-content:center;gap:12px}
+.count{margin:0;min-width:3.5em;font-size:14px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums;text-align:center}
+.actions{display:flex;gap:8px;align-items:center}
+.btn{min-width:44px;height:44px;padding:0 14px;border:1px solid var(--line);border-radius:22px;background:var(--btn);color:var(--fg);font:600 14px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;-webkit-tap-highlight-color:transparent}
+.btn:hover{background:var(--btn-hover)}
+.btn:disabled{opacity:.55;cursor:progress}
+.btn[hidden]{display:none}
+.btn.icon{padding:0;width:44px}
+.btn:focus{outline:none}
+.btn:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+dialog.help:not([open]){display:none}
+dialog.help{max-width:min(440px,calc(100vw - 32px));max-height:calc(100% - 32px);overflow:auto;padding:20px 22px;border:1px solid var(--line);border-radius:16px;background:#15151f;color:var(--fg);box-shadow:0 24px 80px rgba(0,0,0,.7)}
+dialog.help.fallback{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10;margin:0}
+dialog.help::backdrop{background:rgba(0,0,0,.6)}
+.help h2{margin:0 0 12px;font-size:18px}
+.keys{margin:0;display:grid;grid-template-columns:auto 1fr;gap:8px 16px;align-items:center;font-size:14px}
+.keys div{display:contents}
+.keys div[hidden]{display:none}
+.keys dt{margin:0;white-space:nowrap}
+.keys dd{margin:0;color:var(--muted)}
+kbd{display:inline-block;min-width:1.8em;padding:2px 6px;border:1px solid rgba(255,255,255,.3);border-bottom-width:2px;border-radius:6px;background:rgba(255,255,255,.08);font:600 12px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;text-align:center;color:var(--fg)}
+.help p{margin:14px 0 0;font-size:14px;line-height:1.45;color:var(--muted)}
+.help .btn{margin-top:16px;float:right}
+@media (min-width:600px) and (min-height:520px){:root{--head:48px;--foot:68px;--side:16px;--gap:8px}.story{border-radius:18px;box-shadow:0 0 0 1px rgba(255,255,255,.08),0 24px 70px rgba(0,0,0,.65),0 0 140px rgba(124,92,255,.28)}}
+@media (max-width:599px),(max-height:519px){.top{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0)}.btn{padding:0 11px}}
+@media (max-width:359px){.foot{gap:6px}.actions{gap:6px}.btn{padding:0 8px;font-size:13px}.count{min-width:2.8em;font-size:13px}}
 @media (prefers-reduced-motion:reduce){.slide{transition:none}.auto .bar.current i{animation:none;width:100%}}
 </style>
 </head>
 <body>
-<main class="stage">
-<h1 class="sr">gitwrapped · gitwrapped</h1>
+<header class="top" id="page-top">
+<h1 class="title">gitwrapped · gitwrapped</h1>
+</header>
+<main class="stage" id="page-main">
 <div class="story" id="story" aria-roledescription="carousel" aria-label="gitwrapped · gitwrapped">
 <div class="bars" aria-hidden="true"><span class="bar current"><i></i></span><span class="bar"><i></i></span><span class="bar"><i></i></span><span class="bar"><i></i></span><span class="bar"><i></i></span><span class="bar"><i></i></span><span class="bar"><i></i></span><span class="bar"><i></i></span><span class="bar"><i></i></span></div>
 <section class="slide active" id="card-1" data-card="intro" data-title="GITWRAPPED PRESENTS — gitwrapped — Wrapped" aria-roledescription="slide" aria-label="1 of 9" aria-hidden="false">
@@ -56,25 +90,25 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:
 <text x="96" y="539.9" font-size="134" font-weight="900" letter-spacing="-2.7">gitwrapped</text>
 <text x="96" y="730.3" font-size="136" font-weight="900" letter-spacing="-2.7">Wrapped</text>
 <text x="96" y="841.5" font-size="44" font-weight="600" fill-opacity="0.9">Your commits, your chaos, your</text><text x="96" y="898.7" font-size="44" font-weight="600" fill-opacity="0.9">story. Let&apos;s see what you&apos;ve been</text><text x="96" y="955.9" font-size="44" font-weight="600" fill-opacity="0.9">up to.</text>
-<rect x="56" y="1441.5" width="968" height="250.5" rx="44" fill="#ffffff" fill-opacity="0.14"/><text x="96" y="1510.8" font-size="28" font-weight="800" fill-opacity="0.75" letter-spacing="3">YOUR STORY SO FAR</text><text x="96" y="1592.2" font-size="64" font-weight="900" letter-spacing="-0.6">Oct 4 – Oct 5, 2026</text><text x="96" y="1644" font-size="34" font-weight="700" fill-opacity="0.85">36 commits to unwrap</text>
+<rect x="56" y="1441.5" width="968" height="250.5" rx="44" fill="#ffffff" fill-opacity="0.14"/><text x="96" y="1510.8" font-size="28" font-weight="800" fill-opacity="0.75" letter-spacing="3">YOUR STORY SO FAR</text><text x="96" y="1592.2" font-size="64" font-weight="900" letter-spacing="-0.6">Oct 4 – Oct 5, 2026</text><text x="96" y="1644" font-size="34" font-weight="700" fill-opacity="0.85">40 commits to unwrap</text>
 <text x="96" y="1820" font-size="44" font-weight="900" letter-spacing="-1">gitwrapped</text>
 <text x="984" y="1818" font-size="32" font-weight="600" fill-opacity="0.8" text-anchor="end">Oct 4 – Oct 5, 2026</text>
 </g>
 </svg>
 </section>
-<section class="slide" id="card-2" data-card="totals" data-title="THE GRAND TOTAL — 36 — commits" aria-roledescription="slide" aria-label="2 of 9" aria-hidden="true">
-<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" role="img" aria-label="THE GRAND TOTAL — 36 — commits">
-<title>THE GRAND TOTAL — 36 — commits</title>
+<section class="slide" id="card-2" data-card="totals" data-title="THE GRAND TOTAL — 40 — commits" aria-roledescription="slide" aria-label="2 of 9" aria-hidden="true">
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" role="img" aria-label="THE GRAND TOTAL — 40 — commits">
+<title>THE GRAND TOTAL — 40 — commits</title>
 <defs><linearGradient id="gw-totals-bg" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0.00" stop-color="#00c6ff"/><stop offset="0.50" stop-color="#0063e6"/><stop offset="1.00" stop-color="#14125e"/></linearGradient><radialGradient id="gw-totals-glow"><stop offset="0" stop-color="#7ae8ff" stop-opacity="0.55"/><stop offset="1" stop-color="#7ae8ff" stop-opacity="0"/></radialGradient></defs><rect width="1080" height="1920" fill="url(#gw-totals-bg)"/><circle cx="930" cy="250" r="460" fill="url(#gw-totals-glow)"/><circle cx="110" cy="1650" r="560" fill="url(#gw-totals-glow)"/>
 <g fill="#ffffff" font-family="system-ui, -apple-system, &apos;Segoe UI&apos;, Roboto, Helvetica, Arial, sans-serif">
 <text x="984" y="186" font-size="160" font-weight="900" fill-opacity="0.12" text-anchor="end" letter-spacing="-4">02</text>
 <rect x="96" y="150" width="72" height="10" rx="5" fill="#ffffff"/>
 <text x="96" y="222" font-size="36" font-weight="800" fill-opacity="0.9" letter-spacing="5">THE GRAND TOTAL</text>
-<text x="96" y="624" font-size="280" font-weight="900" letter-spacing="-5.6">36</text>
+<text x="96" y="624" font-size="280" font-weight="900" letter-spacing="-5.6">40</text>
 <text x="96" y="789.2" font-size="72" font-weight="800">commits</text>
-<text x="96" y="894" font-size="44" font-weight="600" fill-opacity="0.9">That&apos;s 18 commits per active day.</text>
-<rect x="64" y="1181.3" width="952" height="284" rx="40" fill="#ffffff" fill-opacity="0.14"/><text x="96" y="1257.3" font-size="40" font-weight="700">Active days</text><text x="984" y="1257.3" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">2</text><text x="96" y="1335.3" font-size="40" font-weight="700">Files touched</text><text x="984" y="1335.3" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">66</text><text x="96" y="1413.3" font-size="40" font-weight="700">Contributors</text><text x="984" y="1413.3" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">2</text>
-<text x="96" y="1534.6" font-size="28" font-weight="800" fill-opacity="0.75" letter-spacing="3">LINES CHANGED</text><rect x="96" y="1563.3" width="834.9" height="32" rx="16"><title>+12,553 Lines added / −678 Lines removed</title></rect><rect x="938.9" y="1563.3" width="45.1" height="32" rx="16" fill-opacity="0.4"><title>+12,553 Lines added / −678 Lines removed</title></rect><text x="96" y="1684" font-size="28" font-weight="700" fill-opacity="0.75">Lines added</text><text x="96" y="1648.7" font-size="44" font-weight="900">+12,553</text><text x="984" y="1684" font-size="28" font-weight="700" fill-opacity="0.75" text-anchor="end">Lines removed</text><text x="984" y="1648.7" font-size="44" font-weight="900" text-anchor="end">−678</text>
+<text x="96" y="894" font-size="44" font-weight="600" fill-opacity="0.9">That&apos;s 20 commits per active day.</text>
+<rect x="64" y="1181.3" width="952" height="284" rx="40" fill="#ffffff" fill-opacity="0.14"/><text x="96" y="1257.3" font-size="40" font-weight="700">Active days</text><text x="984" y="1257.3" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">2</text><text x="96" y="1335.3" font-size="40" font-weight="700">Files touched</text><text x="984" y="1335.3" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">75</text><text x="96" y="1413.3" font-size="40" font-weight="700">Contributors</text><text x="984" y="1413.3" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">2</text>
+<text x="96" y="1534.6" font-size="28" font-weight="800" fill-opacity="0.75" letter-spacing="3">LINES CHANGED</text><rect x="96" y="1563.3" width="831.8" height="32" rx="16"><title>+15,022 Lines added / −871 Lines removed</title></rect><rect x="935.8" y="1563.3" width="48.2" height="32" rx="16" fill-opacity="0.4"><title>+15,022 Lines added / −871 Lines removed</title></rect><text x="96" y="1684" font-size="28" font-weight="700" fill-opacity="0.75">Lines added</text><text x="96" y="1648.7" font-size="44" font-weight="900">+15,022</text><text x="984" y="1684" font-size="28" font-weight="700" fill-opacity="0.75" text-anchor="end">Lines removed</text><text x="984" y="1648.7" font-size="44" font-weight="900" text-anchor="end">−871</text>
 <text x="96" y="1820" font-size="44" font-weight="900" letter-spacing="-1">gitwrapped</text>
 <text x="984" y="1818" font-size="32" font-weight="600" fill-opacity="0.8" text-anchor="end">Oct 4 – Oct 5, 2026</text>
 </g>
@@ -91,8 +125,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:
 <text x="96" y="519.6" font-size="280" font-weight="900" letter-spacing="-5.6">8 PM</text>
 <text x="96" y="684.8" font-size="72" font-weight="800">is one of your power</text><text x="96" y="765.4" font-size="72" font-weight="800">hours</text>
 <text x="96" y="870.3" font-size="44" font-weight="600" fill-opacity="0.9">8 PM is tied for your power hour,</text><text x="96" y="927.5" font-size="44" font-weight="600" fill-opacity="0.9">with 6 commits. After-hours hero.</text><text x="96" y="984.7" font-size="44" font-weight="600" fill-opacity="0.9">Sunday is your busiest day.</text>
-<text x="96" y="1073.8" font-size="28" font-weight="800" fill-opacity="0.75" letter-spacing="3">COMMITS BY HOUR</text><path d="M100.5 1384V1231.7A6 6 0 0 1 106.5 1225.7H122.5A6 6 0 0 1 128.5 1231.7V1384Z" fill-opacity="0.35"><title>12 AM: 4 commits</title></path><rect x="137.5" y="1380" width="28" height="4" fill-opacity="0.15"><title>1 AM: 0 commits</title></rect><rect x="174.5" y="1380" width="28" height="4" fill-opacity="0.15"><title>2 AM: 0 commits</title></rect><rect x="211.5" y="1380" width="28" height="4" fill-opacity="0.15"><title>3 AM: 0 commits</title></rect><rect x="248.5" y="1380" width="28" height="4" fill-opacity="0.15"><title>4 AM: 0 commits</title></rect><rect x="285.5" y="1380" width="28" height="4" fill-opacity="0.15"><title>5 AM: 0 commits</title></rect><rect x="322.5" y="1380" width="28" height="4" fill-opacity="0.15"><title>6 AM: 0 commits</title></rect><rect x="359.5" y="1380" width="28" height="4" fill-opacity="0.15"><title>7 AM: 0 commits</title></rect><rect x="396.5" y="1380" width="28" height="4" fill-opacity="0.15"><title>8 AM: 0 commits</title></rect><rect x="433.5" y="1380" width="28" height="4" fill-opacity="0.15"><title>9 AM: 0 commits</title></rect><path d="M470.5 1384V1231.7A6 6 0 0 1 476.5 1225.7H492.5A6 6 0 0 1 498.5 1231.7V1384Z" fill-opacity="0.35"><title>10 AM: 4 commits</title></path><path d="M507.5 1384V1350.4A6 6 0 0 1 513.5 1344.4H529.5A6 6 0 0 1 535.5 1350.4V1384Z" fill-opacity="0.35"><title>11 AM: 1 commit</title></path><rect x="544.5" y="1380" width="28" height="4" fill-opacity="0.15"><title>12 PM: 0 commits</title></rect><path d="M581.5 1384V1310.8A6 6 0 0 1 587.5 1304.8H603.5A6 6 0 0 1 609.5 1310.8V1384Z" fill-opacity="0.35"><title>1 PM: 2 commits</title></path><path d="M618.5 1384V1350.4A6 6 0 0 1 624.5 1344.4H640.5A6 6 0 0 1 646.5 1350.4V1384Z" fill-opacity="0.35"><title>2 PM: 1 commit</title></path><rect x="655.5" y="1380" width="28" height="4" fill-opacity="0.15"><title>3 PM: 0 commits</title></rect><rect x="692.5" y="1380" width="28" height="4" fill-opacity="0.15"><title>4 PM: 0 commits</title></rect><rect x="729.5" y="1380" width="28" height="4" fill-opacity="0.15"><title>5 PM: 0 commits</title></rect><path d="M766.5 1384V1350.4A6 6 0 0 1 772.5 1344.4H788.5A6 6 0 0 1 794.5 1350.4V1384Z" fill-opacity="0.35"><title>6 PM: 1 commit</title></path><path d="M803.5 1384V1271.2A6 6 0 0 1 809.5 1265.2H825.5A6 6 0 0 1 831.5 1271.2V1384Z" fill-opacity="0.35"><title>7 PM: 3 commits</title></path><path d="M840.5 1384V1152.5A6 6 0 0 1 846.5 1146.5H862.5A6 6 0 0 1 868.5 1152.5V1384Z"><title>8 PM: 6 commits</title></path><path d="M877.5 1384V1152.5A6 6 0 0 1 883.5 1146.5H899.5A6 6 0 0 1 905.5 1152.5V1384Z"><title>9 PM: 6 commits</title></path><path d="M914.5 1384V1231.7A6 6 0 0 1 920.5 1225.7H936.5A6 6 0 0 1 942.5 1231.7V1384Z" fill-opacity="0.35"><title>10 PM: 4 commits</title></path><path d="M951.5 1384V1231.7A6 6 0 0 1 957.5 1225.7H973.5A6 6 0 0 1 979.5 1231.7V1384Z" fill-opacity="0.35"><title>11 PM: 4 commits</title></path><rect x="96" y="1384" width="888" height="2" fill-opacity="0.3"/><text x="854.5" y="1132.5" font-size="30" font-weight="800" text-anchor="middle">6</text><text x="127.6" y="1420" font-size="30" font-weight="700" fill-opacity="0.75" text-anchor="middle">12a</text><text x="336.5" y="1420" font-size="30" font-weight="700" fill-opacity="0.75" text-anchor="middle">6a</text><text x="558.5" y="1420" font-size="30" font-weight="700" fill-opacity="0.75" text-anchor="middle">12p</text><text x="780.5" y="1420" font-size="30" font-weight="700" fill-opacity="0.75" text-anchor="middle">6p</text><text x="951.7" y="1420" font-size="30" font-weight="700" fill-opacity="0.75" text-anchor="middle">11p</text>
-<text x="96" y="1503.3" font-size="28" font-weight="800" fill-opacity="0.75" letter-spacing="3">BY WEEKDAY</text><path d="M115 1666V1627A6 6 0 0 1 121 1621H197.9A6 6 0 0 1 203.9 1627V1666Z" fill-opacity="0.35"><title>Monday: 12 commits</title></path><rect x="241.9" y="1662" width="88.9" height="4" fill-opacity="0.15"><title>Tuesday: 0 commits</title></rect><rect x="368.7" y="1662" width="88.9" height="4" fill-opacity="0.15"><title>Wednesday: 0 commits</title></rect><rect x="495.6" y="1662" width="88.9" height="4" fill-opacity="0.15"><title>Thursday: 0 commits</title></rect><rect x="622.4" y="1662" width="88.9" height="4" fill-opacity="0.15"><title>Friday: 0 commits</title></rect><rect x="749.3" y="1662" width="88.9" height="4" fill-opacity="0.15"><title>Saturday: 0 commits</title></rect><path d="M876.1 1666V1582A6 6 0 0 1 882.1 1576H959A6 6 0 0 1 965 1582V1666Z"><title>Sunday: 24 commits</title></path><rect x="96" y="1666" width="888" height="2" fill-opacity="0.3"/><text x="920.6" y="1562" font-size="30" font-weight="800" text-anchor="middle">24</text><text x="159.4" y="1702" font-size="30" font-weight="700" fill-opacity="0.75" text-anchor="middle">M</text><text x="286.3" y="1702" font-size="30" font-weight="700" fill-opacity="0.75" text-anchor="middle">T</text><text x="413.1" y="1702" font-size="30" font-weight="700" fill-opacity="0.75" text-anchor="middle">W</text><text x="540" y="1702" font-size="30" font-weight="700" fill-opacity="0.75" text-anchor="middle">T</text><text x="666.9" y="1702" font-size="30" font-weight="700" fill-opacity="0.75" text-anchor="middle">F</text><text x="793.7" y="1702" font-size="30" font-weight="700" fill-opacity="0.75" text-anchor="middle">S</text><text x="920.6" y="1702" font-size="30" font-weight="700" fill-opacity="0.75" text-anchor="middle">S</text>
+<text x="96" y="1073.8" font-size="28" font-weight="800" fill-opacity="0.75" letter-spacing="3">COMMITS BY HOUR</text><path d="M100.5 1384V1231.7A6 6 0 0 1 106.5 1225.7H122.5A6 6 0 0 1 128.5 1231.7V1384Z" fill-opacity="0.35"><title>12 AM: 4 commits</title></path><rect x="137.5" y="1380" width="28" height="4" fill-opacity="0.15"><title>1 AM: 0 commits</title></rect><rect x="174.5" y="1380" width="28" height="4" fill-opacity="0.15"><title>2 AM: 0 commits</title></rect><rect x="211.5" y="1380" width="28" height="4" fill-opacity="0.15"><title>3 AM: 0 commits</title></rect><rect x="248.5" y="1380" width="28" height="4" fill-opacity="0.15"><title>4 AM: 0 commits</title></rect><rect x="285.5" y="1380" width="28" height="4" fill-opacity="0.15"><title>5 AM: 0 commits</title></rect><rect x="322.5" y="1380" width="28" height="4" fill-opacity="0.15"><title>6 AM: 0 commits</title></rect><rect x="359.5" y="1380" width="28" height="4" fill-opacity="0.15"><title>7 AM: 0 commits</title></rect><rect x="396.5" y="1380" width="28" height="4" fill-opacity="0.15"><title>8 AM: 0 commits</title></rect><rect x="433.5" y="1380" width="28" height="4" fill-opacity="0.15"><title>9 AM: 0 commits</title></rect><path d="M470.5 1384V1231.7A6 6 0 0 1 476.5 1225.7H492.5A6 6 0 0 1 498.5 1231.7V1384Z" fill-opacity="0.35"><title>10 AM: 4 commits</title></path><path d="M507.5 1384V1310.8A6 6 0 0 1 513.5 1304.8H529.5A6 6 0 0 1 535.5 1310.8V1384Z" fill-opacity="0.35"><title>11 AM: 2 commits</title></path><path d="M544.5 1384V1350.4A6 6 0 0 1 550.5 1344.4H566.5A6 6 0 0 1 572.5 1350.4V1384Z" fill-opacity="0.35"><title>12 PM: 1 commit</title></path><path d="M581.5 1384V1310.8A6 6 0 0 1 587.5 1304.8H603.5A6 6 0 0 1 609.5 1310.8V1384Z" fill-opacity="0.35"><title>1 PM: 2 commits</title></path><path d="M618.5 1384V1310.8A6 6 0 0 1 624.5 1304.8H640.5A6 6 0 0 1 646.5 1310.8V1384Z" fill-opacity="0.35"><title>2 PM: 2 commits</title></path><path d="M655.5 1384V1350.4A6 6 0 0 1 661.5 1344.4H677.5A6 6 0 0 1 683.5 1350.4V1384Z" fill-opacity="0.35"><title>3 PM: 1 commit</title></path><rect x="692.5" y="1380" width="28" height="4" fill-opacity="0.15"><title>4 PM: 0 commits</title></rect><rect x="729.5" y="1380" width="28" height="4" fill-opacity="0.15"><title>5 PM: 0 commits</title></rect><path d="M766.5 1384V1350.4A6 6 0 0 1 772.5 1344.4H788.5A6 6 0 0 1 794.5 1350.4V1384Z" fill-opacity="0.35"><title>6 PM: 1 commit</title></path><path d="M803.5 1384V1271.2A6 6 0 0 1 809.5 1265.2H825.5A6 6 0 0 1 831.5 1271.2V1384Z" fill-opacity="0.35"><title>7 PM: 3 commits</title></path><path d="M840.5 1384V1152.5A6 6 0 0 1 846.5 1146.5H862.5A6 6 0 0 1 868.5 1152.5V1384Z"><title>8 PM: 6 commits</title></path><path d="M877.5 1384V1152.5A6 6 0 0 1 883.5 1146.5H899.5A6 6 0 0 1 905.5 1152.5V1384Z"><title>9 PM: 6 commits</title></path><path d="M914.5 1384V1231.7A6 6 0 0 1 920.5 1225.7H936.5A6 6 0 0 1 942.5 1231.7V1384Z" fill-opacity="0.35"><title>10 PM: 4 commits</title></path><path d="M951.5 1384V1231.7A6 6 0 0 1 957.5 1225.7H973.5A6 6 0 0 1 979.5 1231.7V1384Z" fill-opacity="0.35"><title>11 PM: 4 commits</title></path><rect x="96" y="1384" width="888" height="2" fill-opacity="0.3"/><text x="854.5" y="1132.5" font-size="30" font-weight="800" text-anchor="middle">6</text><text x="127.6" y="1420" font-size="30" font-weight="700" fill-opacity="0.75" text-anchor="middle">12a</text><text x="336.5" y="1420" font-size="30" font-weight="700" fill-opacity="0.75" text-anchor="middle">6a</text><text x="558.5" y="1420" font-size="30" font-weight="700" fill-opacity="0.75" text-anchor="middle">12p</text><text x="780.5" y="1420" font-size="30" font-weight="700" fill-opacity="0.75" text-anchor="middle">6p</text><text x="951.7" y="1420" font-size="30" font-weight="700" fill-opacity="0.75" text-anchor="middle">11p</text>
+<text x="96" y="1503.3" font-size="28" font-weight="800" fill-opacity="0.75" letter-spacing="3">BY WEEKDAY</text><path d="M115 1666V1612A6 6 0 0 1 121 1606H197.9A6 6 0 0 1 203.9 1612V1666Z" fill-opacity="0.35"><title>Monday: 16 commits</title></path><rect x="241.9" y="1662" width="88.9" height="4" fill-opacity="0.15"><title>Tuesday: 0 commits</title></rect><rect x="368.7" y="1662" width="88.9" height="4" fill-opacity="0.15"><title>Wednesday: 0 commits</title></rect><rect x="495.6" y="1662" width="88.9" height="4" fill-opacity="0.15"><title>Thursday: 0 commits</title></rect><rect x="622.4" y="1662" width="88.9" height="4" fill-opacity="0.15"><title>Friday: 0 commits</title></rect><rect x="749.3" y="1662" width="88.9" height="4" fill-opacity="0.15"><title>Saturday: 0 commits</title></rect><path d="M876.1 1666V1582A6 6 0 0 1 882.1 1576H959A6 6 0 0 1 965 1582V1666Z"><title>Sunday: 24 commits</title></path><rect x="96" y="1666" width="888" height="2" fill-opacity="0.3"/><text x="920.6" y="1562" font-size="30" font-weight="800" text-anchor="middle">24</text><text x="159.4" y="1702" font-size="30" font-weight="700" fill-opacity="0.75" text-anchor="middle">M</text><text x="286.3" y="1702" font-size="30" font-weight="700" fill-opacity="0.75" text-anchor="middle">T</text><text x="413.1" y="1702" font-size="30" font-weight="700" fill-opacity="0.75" text-anchor="middle">W</text><text x="540" y="1702" font-size="30" font-weight="700" fill-opacity="0.75" text-anchor="middle">T</text><text x="666.9" y="1702" font-size="30" font-weight="700" fill-opacity="0.75" text-anchor="middle">F</text><text x="793.7" y="1702" font-size="30" font-weight="700" fill-opacity="0.75" text-anchor="middle">S</text><text x="920.6" y="1702" font-size="30" font-weight="700" fill-opacity="0.75" text-anchor="middle">S</text>
 <text x="96" y="1820" font-size="44" font-weight="900" letter-spacing="-1">gitwrapped</text>
 <text x="984" y="1818" font-size="32" font-weight="600" fill-opacity="0.8" text-anchor="end">Oct 4 – Oct 5, 2026</text>
 </g>
@@ -126,7 +160,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:
 <text x="96" y="519.6" font-size="280" font-weight="900" letter-spacing="-5.6">2</text>
 <text x="96" y="684.8" font-size="72" font-weight="800">active days</text>
 <text x="96" y="789.6" font-size="44" font-weight="600" fill-opacity="0.9">Busiest day: Oct 4, 2026 with 24</text><text x="96" y="846.8" font-size="44" font-weight="600" fill-opacity="0.9">commits. You showed up in 2</text><text x="96" y="904" font-size="44" font-weight="600" fill-opacity="0.9">different weeks.</text>
-<text x="326.3" y="998.6" font-size="26" font-weight="800" fill-opacity="0.75" text-anchor="middle">M</text><text x="408.7" y="998.6" font-size="26" font-weight="800" fill-opacity="0.75" text-anchor="middle">T</text><text x="491.1" y="998.6" font-size="26" font-weight="800" fill-opacity="0.75" text-anchor="middle">W</text><text x="573.5" y="998.6" font-size="26" font-weight="800" fill-opacity="0.75" text-anchor="middle">T</text><text x="655.9" y="998.6" font-size="26" font-weight="800" fill-opacity="0.75" text-anchor="middle">F</text><text x="738.3" y="998.6" font-size="26" font-weight="800" fill-opacity="0.75" text-anchor="middle">S</text><text x="820.7" y="998.6" font-size="26" font-weight="800" fill-opacity="0.75" text-anchor="middle">S</text><text x="224.3" y="1058.2" font-size="24" font-weight="700" fill-opacity="0.7">Aug</text><text x="224.3" y="1223" font-size="24" font-weight="700" fill-opacity="0.7">Sep</text><text x="224.3" y="1552.6" font-size="24" font-weight="700" fill-opacity="0.7">Oct</text><rect x="291.3" y="1014.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="373.8" y="1014.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="456.2" y="1014.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="538.6" y="1014.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="621" y="1014.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="703.3" y="1014.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="785.8" y="1014.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="291.3" y="1097" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="373.8" y="1097" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="456.2" y="1097" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="538.6" y="1097" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="621" y="1097" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="703.3" y="1097" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="785.8" y="1097" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="291.3" y="1179.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="373.8" y="1179.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="456.2" y="1179.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="538.6" y="1179.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="621" y="1179.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="703.3" y="1179.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="785.8" y="1179.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="291.3" y="1261.8" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="373.8" y="1261.8" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="456.2" y="1261.8" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="538.6" y="1261.8" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="621" y="1261.8" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="703.3" y="1261.8" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="785.8" y="1261.8" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="291.3" y="1344.2" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="373.8" y="1344.2" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="456.2" y="1344.2" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="538.6" y="1344.2" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="621" y="1344.2" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="703.3" y="1344.2" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="785.8" y="1344.2" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="291.3" y="1426.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="373.8" y="1426.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="456.2" y="1426.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="538.6" y="1426.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="621" y="1426.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="703.3" y="1426.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="785.8" y="1426.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="291.3" y="1509" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="373.8" y="1509" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="456.2" y="1509" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="538.6" y="1509" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="621" y="1509" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="703.3" y="1509" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="785.8" y="1509" width="69.9" height="69.9" rx="15.4" fill-opacity="1"><title>Oct 4, 2026: 24 commits</title></rect><rect x="291.3" y="1591.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.3"><title>Oct 5, 2026: 12 commits</title></rect><rect x="373.8" y="1591.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="456.2" y="1591.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="538.6" y="1591.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="621" y="1591.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="703.3" y="1591.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="785.8" y="1591.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><text x="617.8" y="1710.9" font-size="24" font-weight="700" fill-opacity="0.7" text-anchor="end">Less</text><rect x="629.8" y="1690.3" width="24" height="24" rx="5.3" fill-opacity="0.08"/><rect x="659.8" y="1690.3" width="24" height="24" rx="5.3" fill-opacity="0.3"/><rect x="689.8" y="1690.3" width="24" height="24" rx="5.3" fill-opacity="0.5"/><rect x="719.8" y="1690.3" width="24" height="24" rx="5.3" fill-opacity="0.75"/><rect x="749.8" y="1690.3" width="24" height="24" rx="5.3" fill-opacity="1"/><text x="855.7" y="1710.9" font-size="24" font-weight="700" fill-opacity="0.7" text-anchor="end">More</text>
+<text x="326.3" y="998.6" font-size="26" font-weight="800" fill-opacity="0.75" text-anchor="middle">M</text><text x="408.7" y="998.6" font-size="26" font-weight="800" fill-opacity="0.75" text-anchor="middle">T</text><text x="491.1" y="998.6" font-size="26" font-weight="800" fill-opacity="0.75" text-anchor="middle">W</text><text x="573.5" y="998.6" font-size="26" font-weight="800" fill-opacity="0.75" text-anchor="middle">T</text><text x="655.9" y="998.6" font-size="26" font-weight="800" fill-opacity="0.75" text-anchor="middle">F</text><text x="738.3" y="998.6" font-size="26" font-weight="800" fill-opacity="0.75" text-anchor="middle">S</text><text x="820.7" y="998.6" font-size="26" font-weight="800" fill-opacity="0.75" text-anchor="middle">S</text><text x="224.3" y="1058.2" font-size="24" font-weight="700" fill-opacity="0.7">Aug</text><text x="224.3" y="1223" font-size="24" font-weight="700" fill-opacity="0.7">Sep</text><text x="224.3" y="1552.6" font-size="24" font-weight="700" fill-opacity="0.7">Oct</text><rect x="291.3" y="1014.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="373.8" y="1014.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="456.2" y="1014.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="538.6" y="1014.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="621" y="1014.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="703.3" y="1014.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="785.8" y="1014.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="291.3" y="1097" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="373.8" y="1097" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="456.2" y="1097" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="538.6" y="1097" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="621" y="1097" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="703.3" y="1097" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="785.8" y="1097" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="291.3" y="1179.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="373.8" y="1179.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="456.2" y="1179.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="538.6" y="1179.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="621" y="1179.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="703.3" y="1179.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="785.8" y="1179.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="291.3" y="1261.8" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="373.8" y="1261.8" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="456.2" y="1261.8" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="538.6" y="1261.8" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="621" y="1261.8" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="703.3" y="1261.8" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="785.8" y="1261.8" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="291.3" y="1344.2" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="373.8" y="1344.2" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="456.2" y="1344.2" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="538.6" y="1344.2" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="621" y="1344.2" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="703.3" y="1344.2" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="785.8" y="1344.2" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="291.3" y="1426.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="373.8" y="1426.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="456.2" y="1426.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="538.6" y="1426.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="621" y="1426.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="703.3" y="1426.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="785.8" y="1426.6" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="291.3" y="1509" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="373.8" y="1509" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="456.2" y="1509" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="538.6" y="1509" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="621" y="1509" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="703.3" y="1509" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="785.8" y="1509" width="69.9" height="69.9" rx="15.4" fill-opacity="1"><title>Oct 4, 2026: 24 commits</title></rect><rect x="291.3" y="1591.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.3"><title>Oct 5, 2026: 16 commits</title></rect><rect x="373.8" y="1591.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="456.2" y="1591.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="538.6" y="1591.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="621" y="1591.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="703.3" y="1591.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><rect x="785.8" y="1591.4" width="69.9" height="69.9" rx="15.4" fill-opacity="0.08"></rect><text x="617.8" y="1710.9" font-size="24" font-weight="700" fill-opacity="0.7" text-anchor="end">Less</text><rect x="629.8" y="1690.3" width="24" height="24" rx="5.3" fill-opacity="0.08"/><rect x="659.8" y="1690.3" width="24" height="24" rx="5.3" fill-opacity="0.3"/><rect x="689.8" y="1690.3" width="24" height="24" rx="5.3" fill-opacity="0.5"/><rect x="719.8" y="1690.3" width="24" height="24" rx="5.3" fill-opacity="0.75"/><rect x="749.8" y="1690.3" width="24" height="24" rx="5.3" fill-opacity="1"/><text x="855.7" y="1710.9" font-size="24" font-weight="700" fill-opacity="0.7" text-anchor="end">More</text>
 <text x="96" y="1820" font-size="44" font-weight="900" letter-spacing="-1">gitwrapped</text>
 <text x="984" y="1818" font-size="32" font-weight="600" fill-opacity="0.8" text-anchor="end">Oct 4 – Oct 5, 2026</text>
 </g>
@@ -142,24 +176,24 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:
 <text x="96" y="222" font-size="36" font-weight="800" fill-opacity="0.9" letter-spacing="5">YOUR HOT FILES</text>
 <text x="96" y="525.4" font-size="153" font-weight="900" letter-spacing="-3.1">STATE.md</text>
 <text x="96" y="665.2" font-size="72" font-weight="800">is the file you can&apos;t</text><text x="96" y="745.8" font-size="72" font-weight="800">stop touching</text>
-<text x="96" y="850.7" font-size="44" font-weight="600" fill-opacity="0.9">18 commits, +39 / −16 lines.</text>
-<text x="96" y="1172.3" font-size="28" font-weight="800" fill-opacity="0.75" letter-spacing="3">MOST-TOUCHED FILES</text><g><title>.loop/STATE.md: 18 commits, +39 / −16 lines</title><text x="96" y="1229.8" font-size="36" font-weight="800">STATE.md</text><text x="318.5" y="1229.8" font-size="28" font-weight="600" fill-opacity="0.6">.loop/</text><text x="984" y="1229.8" font-size="36" font-weight="800" fill-opacity="0.85" text-anchor="end">18 commits</text><rect x="96" y="1246" width="888" height="18" rx="9" fill-opacity="0.15"/><rect x="96" y="1246" width="888" height="18" rx="9"/></g><g><title>.loop/ROADMAP.md: 17 commits, +67 / −24 lines</title><text x="96" y="1336.8" font-size="36" font-weight="800">ROADMAP.md</text><text x="398.8" y="1336.8" font-size="28" font-weight="600" fill-opacity="0.6">.loop/</text><text x="984" y="1336.8" font-size="36" font-weight="800" fill-opacity="0.85" text-anchor="end">17 commits</text><rect x="96" y="1353" width="888" height="18" rx="9" fill-opacity="0.15"/><rect x="96" y="1353" width="838.7" height="18" rx="9" fill-opacity="0.6"/></g><g><title>README.md: 11 commits, +299 / −101 lines</title><text x="96" y="1443.8" font-size="36" font-weight="800">README.md</text><text x="984" y="1443.8" font-size="36" font-weight="800" fill-opacity="0.85" text-anchor="end">11 commits</text><rect x="96" y="1460" width="888" height="18" rx="9" fill-opacity="0.15"/><rect x="96" y="1460" width="542.7" height="18" rx="9" fill-opacity="0.6"/></g><g><title>test/git.test.js: 6 commits, +575 / −18 lines</title><text x="96" y="1550.8" font-size="36" font-weight="800">git.test.js</text><text x="310.6" y="1550.8" font-size="28" font-weight="600" fill-opacity="0.6">test/</text><text x="984" y="1550.8" font-size="36" font-weight="800" fill-opacity="0.85" text-anchor="end">6 commits</text><rect x="96" y="1567" width="888" height="18" rx="9" fill-opacity="0.15"/><rect x="96" y="1567" width="296" height="18" rx="9" fill-opacity="0.6"/></g><g><title>src/cli.js: 6 commits, +479 / −60 lines</title><text x="96" y="1657.8" font-size="36" font-weight="800">cli.js</text><text x="205.4" y="1657.8" font-size="28" font-weight="600" fill-opacity="0.6">src/</text><text x="984" y="1657.8" font-size="36" font-weight="800" fill-opacity="0.85" text-anchor="end">6 commits</text><rect x="96" y="1674" width="888" height="18" rx="9" fill-opacity="0.15"/><rect x="96" y="1674" width="296" height="18" rx="9" fill-opacity="0.6"/></g>
+<text x="96" y="850.7" font-size="44" font-weight="600" fill-opacity="0.9">20 commits, +42 / −17 lines.</text>
+<text x="96" y="1172.3" font-size="28" font-weight="800" fill-opacity="0.75" letter-spacing="3">MOST-TOUCHED FILES</text><g><title>.loop/STATE.md: 20 commits, +42 / −17 lines</title><text x="96" y="1229.8" font-size="36" font-weight="800">STATE.md</text><text x="318.5" y="1229.8" font-size="28" font-weight="600" fill-opacity="0.6">.loop/</text><text x="984" y="1229.8" font-size="36" font-weight="800" fill-opacity="0.85" text-anchor="end">20 commits</text><rect x="96" y="1246" width="888" height="18" rx="9" fill-opacity="0.15"/><rect x="96" y="1246" width="888" height="18" rx="9"/></g><g><title>.loop/ROADMAP.md: 19 commits, +69 / −26 lines</title><text x="96" y="1336.8" font-size="36" font-weight="800">ROADMAP.md</text><text x="398.8" y="1336.8" font-size="28" font-weight="600" fill-opacity="0.6">.loop/</text><text x="984" y="1336.8" font-size="36" font-weight="800" fill-opacity="0.85" text-anchor="end">19 commits</text><rect x="96" y="1353" width="888" height="18" rx="9" fill-opacity="0.15"/><rect x="96" y="1353" width="843.6" height="18" rx="9" fill-opacity="0.6"/></g><g><title>README.md: 13 commits, +313 / −108 lines</title><text x="96" y="1443.8" font-size="36" font-weight="800">README.md</text><text x="984" y="1443.8" font-size="36" font-weight="800" fill-opacity="0.85" text-anchor="end">13 commits</text><rect x="96" y="1460" width="888" height="18" rx="9" fill-opacity="0.15"/><rect x="96" y="1460" width="577.2" height="18" rx="9" fill-opacity="0.6"/></g><g><title>src/cli.js: 7 commits, +521 / −62 lines</title><text x="96" y="1550.8" font-size="36" font-weight="800">cli.js</text><text x="205.4" y="1550.8" font-size="28" font-weight="600" fill-opacity="0.6">src/</text><text x="984" y="1550.8" font-size="36" font-weight="800" fill-opacity="0.85" text-anchor="end">7 commits</text><rect x="96" y="1567" width="888" height="18" rx="9" fill-opacity="0.15"/><rect x="96" y="1567" width="310.8" height="18" rx="9" fill-opacity="0.6"/></g><g><title>test/git.test.js: 6 commits, +575 / −18 lines</title><text x="96" y="1657.8" font-size="36" font-weight="800">git.test.js</text><text x="310.6" y="1657.8" font-size="28" font-weight="600" fill-opacity="0.6">test/</text><text x="984" y="1657.8" font-size="36" font-weight="800" fill-opacity="0.85" text-anchor="end">6 commits</text><rect x="96" y="1674" width="888" height="18" rx="9" fill-opacity="0.15"/><rect x="96" y="1674" width="266.4" height="18" rx="9" fill-opacity="0.6"/></g>
 <text x="96" y="1820" font-size="44" font-weight="900" letter-spacing="-1">gitwrapped</text>
 <text x="984" y="1818" font-size="32" font-weight="600" fill-opacity="0.8" text-anchor="end">Oct 4 – Oct 5, 2026</text>
 </g>
 </svg>
 </section>
-<section class="slide" id="card-7" data-card="messages" data-title="MESSAGE HALL OF FAME — “loop” — was your favorite word (21 times)" aria-roledescription="slide" aria-label="7 of 9" aria-hidden="true">
-<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" role="img" aria-label="MESSAGE HALL OF FAME — “loop” — was your favorite word (21 times)">
-<title>MESSAGE HALL OF FAME — “loop” — was your favorite word (21 times)</title>
+<section class="slide" id="card-7" data-card="messages" data-title="MESSAGE HALL OF FAME — “loop” — was your favorite word (23 times)" aria-roledescription="slide" aria-label="7 of 9" aria-hidden="true">
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" role="img" aria-label="MESSAGE HALL OF FAME — “loop” — was your favorite word (23 times)">
+<title>MESSAGE HALL OF FAME — “loop” — was your favorite word (23 times)</title>
 <defs><linearGradient id="gw-messages-bg" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0.00" stop-color="#f72585"/><stop offset="0.50" stop-color="#b5179e"/><stop offset="1.00" stop-color="#3a0ca3"/></linearGradient><radialGradient id="gw-messages-glow"><stop offset="0" stop-color="#4cc9f0" stop-opacity="0.55"/><stop offset="1" stop-color="#4cc9f0" stop-opacity="0"/></radialGradient></defs><rect width="1080" height="1920" fill="url(#gw-messages-bg)"/><circle cx="930" cy="250" r="460" fill="url(#gw-messages-glow)"/><circle cx="110" cy="1650" r="560" fill="url(#gw-messages-glow)"/>
 <g fill="#ffffff" font-family="system-ui, -apple-system, &apos;Segoe UI&apos;, Roboto, Helvetica, Arial, sans-serif">
 <text x="984" y="186" font-size="160" font-weight="900" fill-opacity="0.12" text-anchor="end" letter-spacing="-4">07</text>
 <rect x="96" y="150" width="72" height="10" rx="5" fill="#ffffff"/>
 <text x="96" y="222" font-size="36" font-weight="800" fill-opacity="0.9" letter-spacing="5">MESSAGE HALL OF FAME</text>
 <text x="96" y="568.3" font-size="211" font-weight="900" letter-spacing="-4.2">“loop”</text>
-<text x="96" y="719.8" font-size="72" font-weight="800">was your favorite</text><text x="96" y="800.4" font-size="72" font-weight="800">word (21 times)</text>
-<text x="96" y="905.2" font-size="44" font-weight="600" fill-opacity="0.9">Your messages average 40.5</text><text x="96" y="962.4" font-size="44" font-weight="600" fill-opacity="0.9">characters.</text>
+<text x="96" y="719.8" font-size="72" font-weight="800">was your favorite</text><text x="96" y="800.4" font-size="72" font-weight="800">word (23 times)</text>
+<text x="96" y="905.2" font-size="44" font-weight="600" fill-opacity="0.9">Your messages average 40.6</text><text x="96" y="962.4" font-size="44" font-weight="600" fill-opacity="0.9">characters.</text>
 <rect x="64" y="1252" width="952" height="440" rx="40" fill="#ffffff" fill-opacity="0.14"/><text x="96" y="1328" font-size="40" font-weight="700">Longest: “fix: system audit —…</text><text x="96" y="1406" font-size="40" font-weight="700">Shortest: “chore(loop): turn 001”</text><text x="96" y="1484" font-size="40" font-weight="700">“fix” commits</text><text x="984" y="1484" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">2</text><text x="96" y="1562" font-size="40" font-weight="700">“wip” commits</text><text x="984" y="1562" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">0</text><text x="96" y="1640" font-size="40" font-weight="700">“oops” commits</text><text x="984" y="1640" font-size="40" font-weight="800" fill-opacity="0.85" text-anchor="end">0</text>
 <text x="96" y="1820" font-size="44" font-weight="900" letter-spacing="-1">gitwrapped</text>
 <text x="984" y="1818" font-size="32" font-weight="600" fill-opacity="0.8" text-anchor="end">Oct 4 – Oct 5, 2026</text>
@@ -176,8 +210,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:
 <text x="96" y="222" font-size="36" font-weight="800" fill-opacity="0.9" letter-spacing="5">YOUR COMMIT PERSONALITY</text>
 <text x="96" y="482.4" font-size="88" font-weight="900" letter-spacing="-1.8">Weekend Warrior</text>
 <text x="96" y="609.2" font-size="72" font-weight="800">Weekends are for</text><text x="96" y="689.9" font-size="72" font-weight="800">touching grass. You</text><text x="96" y="770.5" font-size="72" font-weight="800">touched git instead.</text>
-<text x="96" y="875.4" font-size="44" font-weight="600" fill-opacity="0.9">67% of your commits land on a</text><text x="96" y="932.6" font-size="44" font-weight="600" fill-opacity="0.9">Saturday or Sunday.</text>
-<text x="96" y="1278.3" font-size="28" font-weight="800" fill-opacity="0.75" letter-spacing="3">YOUR HABIT SCORES</text><g><title>Weekend Warrior: 100%</title><text x="96" y="1342.2" font-size="44" font-weight="800">Weekend Warrior</text><text x="984" y="1342.2" font-size="44" font-weight="800" fill-opacity="0.85" text-anchor="end">100%</text><rect x="96" y="1358" width="888" height="40" rx="12" fill-opacity="0.15"/><rect x="96" y="1358" width="888" height="40" rx="12"/></g><g><title>Steady Shipper: 74%</title><text x="96" y="1489.2" font-size="44" font-weight="800">Steady Shipper</text><text x="984" y="1489.2" font-size="44" font-weight="800" fill-opacity="0.85" text-anchor="end">74%</text><rect x="96" y="1505" width="888" height="40" rx="12" fill-opacity="0.15"/><rect x="96" y="1505" width="657.1" height="40" rx="12" fill-opacity="0.6"/></g><g><title>Night Owl: 58%</title><text x="96" y="1636.2" font-size="44" font-weight="800">Night Owl</text><text x="984" y="1636.2" font-size="44" font-weight="800" fill-opacity="0.85" text-anchor="end">58%</text><rect x="96" y="1652" width="888" height="40" rx="12" fill-opacity="0.15"/><rect x="96" y="1652" width="515" height="40" rx="12" fill-opacity="0.6"/></g>
+<text x="96" y="875.4" font-size="44" font-weight="600" fill-opacity="0.9">60% of your commits land on a</text><text x="96" y="932.6" font-size="44" font-weight="600" fill-opacity="0.9">Saturday or Sunday.</text>
+<text x="96" y="1278.3" font-size="28" font-weight="800" fill-opacity="0.75" letter-spacing="3">YOUR HABIT SCORES</text><g><title>Weekend Warrior: 100%</title><text x="96" y="1342.2" font-size="44" font-weight="800">Weekend Warrior</text><text x="984" y="1342.2" font-size="44" font-weight="800" fill-opacity="0.85" text-anchor="end">100%</text><rect x="96" y="1358" width="888" height="40" rx="12" fill-opacity="0.15"/><rect x="96" y="1358" width="888" height="40" rx="12"/></g><g><title>Steady Shipper: 74%</title><text x="96" y="1489.2" font-size="44" font-weight="800">Steady Shipper</text><text x="984" y="1489.2" font-size="44" font-weight="800" fill-opacity="0.85" text-anchor="end">74%</text><rect x="96" y="1505" width="888" height="40" rx="12" fill-opacity="0.15"/><rect x="96" y="1505" width="657.1" height="40" rx="12" fill-opacity="0.6"/></g><g><title>Night Owl: 50%</title><text x="96" y="1636.2" font-size="44" font-weight="800">Night Owl</text><text x="984" y="1636.2" font-size="44" font-weight="800" fill-opacity="0.85" text-anchor="end">50%</text><rect x="96" y="1652" width="888" height="40" rx="12" fill-opacity="0.15"/><rect x="96" y="1652" width="444" height="40" rx="12" fill-opacity="0.6"/></g>
 <text x="96" y="1820" font-size="44" font-weight="900" letter-spacing="-1">gitwrapped</text>
 <text x="984" y="1818" font-size="32" font-weight="600" fill-opacity="0.8" text-anchor="end">Oct 4 – Oct 5, 2026</text>
 </g>
@@ -194,7 +228,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:
 <text x="96" y="514.1" font-size="193" font-weight="900" letter-spacing="-3.9">Thanks!</text>
 <text x="96" y="661.9" font-size="72" font-weight="800">gitwrapped, in one</text><text x="96" y="742.5" font-size="72" font-weight="800">card</text>
 <text x="96" y="847.4" font-size="44" font-weight="600" fill-opacity="0.9">Made with gitwrapped. Share</text><text x="96" y="904.6" font-size="44" font-weight="600" fill-opacity="0.9">your cards and tag a teammate.</text>
-<rect x="72" y="1104.1" width="456" height="196" rx="36" fill="#ffffff" fill-opacity="0.14"/><text x="104" y="1160.1" font-size="24" font-weight="800" fill-opacity="0.8" letter-spacing="2.5">COMMITS</text><text x="104" y="1256.1" font-size="72" font-weight="900" letter-spacing="-1.4">36</text><rect x="552" y="1104.1" width="456" height="196" rx="36" fill="#ffffff" fill-opacity="0.14"/><text x="584" y="1160.1" font-size="24" font-weight="800" fill-opacity="0.8" letter-spacing="2.5">POWER HOUR</text><text x="584" y="1256.1" font-size="72" font-weight="900" letter-spacing="-1.4">8 PM</text><rect x="72" y="1324.1" width="456" height="196" rx="36" fill="#ffffff" fill-opacity="0.14"/><text x="104" y="1380.1" font-size="24" font-weight="800" fill-opacity="0.8" letter-spacing="2.5">BEST STREAK</text><text x="104" y="1476.1" font-size="72" font-weight="900" letter-spacing="-1.4">2 days</text><rect x="552" y="1324.1" width="456" height="196" rx="36" fill="#ffffff" fill-opacity="0.14"/><text x="584" y="1380.1" font-size="24" font-weight="800" fill-opacity="0.8" letter-spacing="2.5">PERSONALITY</text><text x="584" y="1440.1" font-size="42" font-weight="900">Weekend</text><text x="584" y="1488.1" font-size="42" font-weight="900">Warrior</text><rect x="72" y="1544.1" width="936" height="150" rx="36" fill="#ffffff" fill-opacity="0.14"/><text x="104" y="1598.1" font-size="24" font-weight="800" fill-opacity="0.8" letter-spacing="2.5">HOTTEST FILE</text><text x="104" y="1662.1" font-size="48" font-weight="900" letter-spacing="-0.5">.loop/STATE.md</text><text x="976" y="1662.1" font-size="34" font-weight="700" fill-opacity="0.85" text-anchor="end">18 commits</text>
+<rect x="72" y="1104.1" width="456" height="196" rx="36" fill="#ffffff" fill-opacity="0.14"/><text x="104" y="1160.1" font-size="24" font-weight="800" fill-opacity="0.8" letter-spacing="2.5">COMMITS</text><text x="104" y="1256.1" font-size="72" font-weight="900" letter-spacing="-1.4">40</text><rect x="552" y="1104.1" width="456" height="196" rx="36" fill="#ffffff" fill-opacity="0.14"/><text x="584" y="1160.1" font-size="24" font-weight="800" fill-opacity="0.8" letter-spacing="2.5">POWER HOUR</text><text x="584" y="1256.1" font-size="72" font-weight="900" letter-spacing="-1.4">8 PM</text><rect x="72" y="1324.1" width="456" height="196" rx="36" fill="#ffffff" fill-opacity="0.14"/><text x="104" y="1380.1" font-size="24" font-weight="800" fill-opacity="0.8" letter-spacing="2.5">BEST STREAK</text><text x="104" y="1476.1" font-size="72" font-weight="900" letter-spacing="-1.4">2 days</text><rect x="552" y="1324.1" width="456" height="196" rx="36" fill="#ffffff" fill-opacity="0.14"/><text x="584" y="1380.1" font-size="24" font-weight="800" fill-opacity="0.8" letter-spacing="2.5">PERSONALITY</text><text x="584" y="1440.1" font-size="42" font-weight="900">Weekend</text><text x="584" y="1488.1" font-size="42" font-weight="900">Warrior</text><rect x="72" y="1544.1" width="936" height="150" rx="36" fill="#ffffff" fill-opacity="0.14"/><text x="104" y="1598.1" font-size="24" font-weight="800" fill-opacity="0.8" letter-spacing="2.5">HOTTEST FILE</text><text x="104" y="1662.1" font-size="48" font-weight="900" letter-spacing="-0.5">.loop/STATE.md</text><text x="976" y="1662.1" font-size="34" font-weight="700" fill-opacity="0.85" text-anchor="end">20 commits</text>
 <text x="96" y="1820" font-size="44" font-weight="900" letter-spacing="-1">gitwrapped</text>
 <text x="984" y="1818" font-size="32" font-weight="600" fill-opacity="0.8" text-anchor="end">Oct 4 – Oct 5, 2026</text>
 </g>
@@ -206,6 +240,29 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:
 <p class="sr" id="status" aria-live="polite"></p>
 </div>
 </main>
+<footer class="foot" id="page-foot">
+<p class="count" id="count" aria-hidden="true">1 / 9</p>
+<div class="actions" role="group" aria-label="Card actions">
+<button type="button" class="btn" id="dl-png" aria-keyshortcuts="D"><span aria-hidden="true">&#8595;</span><span class="sr">Download </span>PNG</button>
+<button type="button" class="btn" id="dl-svg"><span aria-hidden="true">&#8595;</span><span class="sr">Download </span>SVG</button>
+<button type="button" class="btn" id="share" hidden>Share</button>
+<button type="button" class="btn icon" id="help-open" aria-label="Keyboard shortcuts" aria-haspopup="dialog" aria-keyshortcuts="Shift+?">?</button>
+</div>
+</footer>
+<dialog class="help" id="help" aria-labelledby="help-title">
+<h2 id="help-title">Keyboard shortcuts</h2>
+<dl class="keys">
+<div><dt><kbd>&#8594;</kbd> <kbd>Space</kbd></dt><dd>Next card</dd></div>
+<div><dt><kbd>&#8592;</kbd> <kbd>Shift</kbd>+<kbd>Space</kbd></dt><dd>Previous card</dd></div>
+<div><dt><kbd>Home</kbd> <kbd>End</kbd></dt><dd>First / last card</dd></div>
+<div id="help-pause-row"><dt><kbd>P</kbd> <kbd>K</kbd></dt><dd>Pause / play auto-advance</dd></div>
+<div><dt><kbd>D</kbd></dt><dd>Download this card as PNG</dd></div>
+<div><dt><kbd>?</kbd></dt><dd>Show this help</dd></div>
+<div><dt><kbd>Esc</kbd></dt><dd>Close this help</dd></div>
+</dl>
+<p>On touch screens, tap the right side to go forward and the left side to go back, swipe to move, and press and hold to pause.</p>
+<button type="button" class="btn" id="help-close">Close</button>
+</dialog>
 <script>
 (function () {
   'use strict';
@@ -214,19 +271,39 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:
   var bars = Array.prototype.slice.call(story.querySelectorAll('.bar'));
   var status = document.getElementById('status');
   var pauseBtn = document.getElementById('pause');
+  var countEl = document.getElementById('count');
+  var pngBtn = document.getElementById('dl-png');
+  var svgBtn = document.getElementById('dl-svg');
+  var shareBtn = document.getElementById('share');
+  var helpBtn = document.getElementById('help-open');
+  var help = document.getElementById('help');
+  var helpClose = document.getElementById('help-close');
+  var pauseRow = document.getElementById('help-pause-row');
+  // Page regions made inert behind the fallback (non-modal) help dialog.
+  var regions = ['page-top', 'page-main', 'page-foot'].map(function (id) { return document.getElementById(id); })
+    .filter(Boolean);
+  var actionBtns = [pngBtn, svgBtn, shareBtn];
   var n = slides.length;
-  if (!n) return;
+  if (!n) {
+    actionBtns.concat([helpBtn]).forEach(function (b) { b.disabled = true; });
+    return;
+  }
   var mq = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
   var auto = false;
   var current = -1;
   var paused = false;
   var userPaused = false;
+  var busy = false; // a download/share is running
+  var helpOpen = false;
+  var helpOpener = null;
   var down = null; // active press: {id, x, y, held}
+  var nav = typeof navigator === 'undefined' ? {} : navigator;
 
   function setAuto(on) {
     auto = on && n > 1;
     story.classList.toggle('auto', auto);
     pauseBtn.hidden = !auto;
+    if (pauseRow) pauseRow.hidden = !auto; // the P / K help row only applies with auto-advance
   }
 
   function fromHash() {
@@ -242,9 +319,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:
     pauseBtn.textContent = p ? '\u25B6' : '\u275A\u275A';
   }
 
-  // Paused if the user toggled pause, is holding the story, or the tab is hidden.
+  // Paused if the user toggled pause, is holding the story, the tab is hidden, the help
+  // dialog is open or a download/share is running.
   function syncPaused() {
-    setPaused(userPaused || Boolean(down && down.held) || Boolean(document.hidden));
+    setPaused(userPaused || Boolean(down && down.held) || Boolean(document.hidden) || helpOpen || busy);
   }
 
   // announce: only user-initiated navigation updates the live region; auto-advance
@@ -262,6 +340,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:
     }
     void bars[i].offsetWidth; // restart the fill animation
     bars[i].classList.add('current');
+    countEl.textContent = (i + 1) + ' / ' + n;
+    schedulePrerender();
     if (announce) status.textContent = 'Card ' + (i + 1) + ' of ' + n + ': ' + (slides[i].getAttribute('data-title') || '');
     var hash = '#' + (i + 1);
     if (location.hash !== hash) {
@@ -274,7 +354,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:
   function restart() { var c = current; current = -1; show(c, false); }
   function userNext() { next(true); }
   function userPrev() { prev(true); }
-  function togglePause() { userPaused = !paused; syncPaused(); }
+  function togglePause() { userPaused = !userPaused; syncPaused(); }
 
   bars.forEach(function (bar, k) {
     bar.addEventListener('animationend', function () {
@@ -282,15 +362,225 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:
     });
   });
 
+  // ---- Card actions: download PNG / SVG, share. Built from the inline SVG, all local.
+  function cardName(i) {
+    var id = (slides[i].getAttribute('data-card') || 'card').replace(/[^A-Za-z0-9_-]+/g, '-');
+    return String(i + 1).padStart(2, '0') + '-' + id;
+  }
+
+  // The current card as a standalone SVG document (XML prolog + xmlns from XMLSerializer).
+  function cardSvg(i) {
+    var svg = slides[i].querySelector('svg');
+    var clone = svg.cloneNode(true);
+    var box = svg.viewBox && svg.viewBox.baseVal;
+    var w = (box && box.width) || 1080;
+    var h = (box && box.height) || 1920;
+    if (!clone.getAttribute('width')) clone.setAttribute('width', String(w));
+    if (!clone.getAttribute('height')) clone.setAttribute('height', String(h));
+    var xml = new XMLSerializer().serializeToString(clone);
+    return { xml: '<?xml version="1.0" encoding="UTF-8"?>\n' + xml, width: w, height: h };
+  }
+
+  function saveBlob(blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener';
+    a.hidden = true;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+  }
+
+  // Rasterize the card: data: URL image (img-src data: is allowed) -> canvas -> PNG blob.
+  // Calls back with null on any failure (decode error, tainted canvas, toBlob null).
+  function cardPng(card, cb) {
+    var done = false;
+    function finish(blob) { if (!done) { done = true; cb(blob || null); } }
+    try {
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var canvas = document.createElement('canvas');
+          canvas.width = card.width;
+          canvas.height = card.height;
+          var ctx = canvas.getContext('2d');
+          if (!ctx) return finish(null);
+          ctx.drawImage(img, 0, 0, card.width, card.height);
+          canvas.toBlob(function (b) { finish(b); }, 'image/png');
+        } catch (e) { finish(null); }
+      };
+      img.onerror = function () { finish(null); };
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(card.xml);
+    } catch (e) { finish(null); }
+  }
+
+  function svgBlob(card) { return new Blob([card.xml], { type: 'image/svg+xml' }); }
+
+  function say(msg) { status.textContent = msg; }
+
+  function setBusy(b) {
+    busy = b;
+    actionBtns.forEach(function (btn) { btn.disabled = b; });
+    syncPaused();
+  }
+
+  function downloadSvg() {
+    if (busy || helpOpen) return;
+    var name = cardName(current) + '.svg';
+    saveBlob(svgBlob(cardSvg(current)), name);
+    say('Saved ' + name);
+  }
+
+  function downloadPng() {
+    if (busy || helpOpen) return;
+    var i = current;
+    var card = cardSvg(i);
+    setBusy(true);
+    cardPng(card, function (blob) {
+      setBusy(false);
+      if (blob) {
+        saveBlob(blob, cardName(i) + '.png');
+        say('Saved ' + cardName(i) + '.png');
+      } else {
+        saveBlob(svgBlob(card), cardName(i) + '.svg');
+        say('PNG not available in this browser; saved ' + cardName(i) + '.svg instead');
+      }
+    });
+  }
+
+  // Share. Safari only allows navigator.share() during the click's user activation, so
+  // the current card's PNG is rendered ahead of time (only while share is available, only
+  // the current card is kept) and a click with the PNG ready shares synchronously.
+  var pngCache = null; // {i, ready, blob, waiters}
+  var prerenderTimer = null;
+  function prerender(i, cb) {
+    if (pngCache && pngCache.i === i) {
+      if (cb) { if (pngCache.ready) cb(pngCache.blob); else pngCache.waiters.push(cb); }
+      return;
+    }
+    var entry = { i: i, ready: false, blob: null, waiters: cb ? [cb] : [] };
+    pngCache = entry;
+    cardPng(cardSvg(i), function (blob) {
+      entry.ready = true;
+      entry.blob = blob;
+      var ws = entry.waiters;
+      entry.waiters = [];
+      ws.forEach(function (w) { w(blob); });
+    });
+  }
+  function schedulePrerender() {
+    if (!nav.share) return;
+    clearTimeout(prerenderTimer);
+    prerenderTimer = setTimeout(function () { prerender(current); }, 400);
+  }
+  function warmShare() { if (nav.share && n) prerender(current); }
+
+  function share() {
+    if (busy || helpOpen || !nav.share) return;
+    var i = current;
+    var title = document.title;
+    var text = title + ' — ' + (slides[i].getAttribute('data-title') || 'Card ' + (i + 1));
+    function shareData(blob) {
+      if (blob && typeof File === 'function' && nav.canShare) {
+        var file = new File([blob], cardName(i) + '.png', { type: 'image/png' });
+        if (nav.canShare({ files: [file] })) return { files: [file], title: title, text: text };
+      }
+      return { title: title, text: text };
+    }
+    // late: the PNG was not ready, so the click's user activation may have expired.
+    function run(blob, late) {
+      function failed(err) {
+        setBusy(false);
+        if (err && err.name === 'AbortError') return;
+        // The PNG is cached now, so the next tap shares synchronously.
+        if (late && err && err.name === 'NotAllowedError') say('Tap Share again to share the card');
+        else say('Sharing failed');
+      }
+      var p;
+      try { p = nav.share(shareData(blob)); } catch (err) { failed(err); return; }
+      Promise.resolve(p).then(function () { setBusy(false); }, failed);
+    }
+    setBusy(true);
+    if (pngCache && pngCache.i === i && pngCache.ready) run(pngCache.blob, false);
+    else prerender(i, function (blob) { run(blob, true); });
+  }
+
+  pngBtn.addEventListener('click', downloadPng);
+  svgBtn.addEventListener('click', downloadSvg);
+  shareBtn.hidden = !nav.share;
+  shareBtn.addEventListener('click', share);
+  ['focus', 'pointerenter', 'pointerdown'].forEach(function (t) { shareBtn.addEventListener(t, warmShare); });
+
+  // ---- Keyboard shortcuts dialog. <dialog>.showModal when supported, else a plain
+  // open attribute (Esc handled below). Focus returns to whatever opened it.
+  var nativeDialog = typeof help.showModal === 'function';
+  var helpModal = false;
+  if (!nativeDialog) help.classList.add('fallback');
+  function openHelp() {
+    if (helpOpen) return;
+    helpOpener = document.activeElement;
+    helpOpen = true;
+    syncPaused();
+    helpModal = false;
+    if (nativeDialog) { try { help.showModal(); helpModal = true; } catch (e) { /* fall through */ } }
+    if (!helpModal) {
+      help.classList.add('fallback');
+      help.setAttribute('open', '');
+      setInert(true);
+    }
+    helpClose.focus();
+  }
+  function afterHelpClosed() {
+    if (!helpOpen) return;
+    helpOpen = false;
+    helpModal = false;
+    setInert(false);
+    syncPaused();
+    var back = helpOpener;
+    helpOpener = null;
+    // Never leave focus on the body or on something hidden: fall back to the ? button.
+    if (focusable(back)) back.focus();
+    if (!focusable(back) || document.activeElement !== back) helpBtn.focus();
+  }
+  function focusable(el) {
+    return Boolean(el && el !== document.body && typeof el.focus === 'function' && !el.hidden && !el.disabled &&
+      (typeof el.getClientRects !== 'function' || el.getClientRects().length > 0));
+  }
+  function setInert(on) {
+    regions.forEach(function (el) {
+      if (on) { el.setAttribute('inert', ''); el.setAttribute('aria-hidden', 'true'); }
+      else { el.removeAttribute('inert'); el.removeAttribute('aria-hidden'); }
+    });
+  }
+  function closeHelp() {
+    if (helpModal) help.close(); // fires 'close'
+    else { help.removeAttribute('open'); afterHelpClosed(); }
+  }
+  help.addEventListener('close', afterHelpClosed);
+  // Fallback dialog has no focus trap of its own: keep focus inside it while open.
+  document.addEventListener('focusin', function (e) {
+    if (helpOpen && !helpModal && e.target !== help && !(help.contains && help.contains(e.target))) helpClose.focus();
+  });
+  help.addEventListener('focusout', function () {
+    setTimeout(function () {
+      if (helpOpen && !helpModal && (!document.activeElement || document.activeElement === document.body)) helpClose.focus();
+    }, 0);
+  });
+  helpBtn.addEventListener('click', openHelp);
+  helpClose.addEventListener('click', closeHelp);
+
   // Pointer: tap zones, hold to pause, horizontal swipe. The story captures the pointer
   // so a release outside it (or a lost capture) still ends the hold. Because a captured
   // pointer's click may be retargeted to the story, taps navigate here on pointerup and
   // the click that follows is swallowed; the buttons' own click handlers then only see
-  // keyboard / assistive-tech activations.
+  // keyboard / assistive-tech activations. The toolbar lives outside the story.
   var holdTimer = null;
   var swallowClickUntil = 0;
   story.addEventListener('pointerdown', function (e) {
-    if (e.target === pauseBtn || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    if (helpOpen || e.target === pauseBtn || (e.pointerType === 'mouse' && e.button !== 0)) return;
     down = { id: e.pointerId, x: e.clientX, y: e.clientY, held: false };
     try { story.setPointerCapture(e.pointerId); } catch (err) { /* pointer already gone */ }
     clearTimeout(holdTimer);
@@ -323,6 +613,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:
   story.addEventListener('lostpointercapture', function (e) { endPointer(e, true); });
   story.addEventListener('contextmenu', function (e) { if (down) e.preventDefault(); });
   story.addEventListener('click', function (e) {
+    if (helpOpen) { e.stopPropagation(); e.preventDefault(); return; } // fallback dialog: story is inert
     if (e.target === pauseBtn || Date.now() >= swallowClickUntil) return;
     swallowClickUntil = 0;
     e.stopPropagation();
@@ -339,14 +630,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:
     b.addEventListener('mousedown', function (e) { e.preventDefault(); });
   });
   function isSpace(e) { return e.key === ' ' || e.key === 'Spacebar'; }
+  // Toolbar buttons keep their own Space/Enter activation.
+  function isToolbarControl(t) { return Boolean(t && t.classList && t.classList.contains('btn')); }
 
   document.addEventListener('keydown', function (e) {
     if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (helpOpen) {
+      // Only Esc while the dialog is open; a native modal dialog closes itself on Esc.
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        if (!helpModal) { closeHelp(); e.preventDefault(); }
+      }
+      return;
+    }
     switch (e.key) {
       case 'ArrowRight': case 'PageDown': userNext(); break;
       case 'ArrowLeft': case 'PageUp': userPrev(); break;
       case ' ': case 'Spacebar':
-        if (e.target === pauseBtn) return; // let the pause button toggle itself
+        if (e.target === pauseBtn || isToolbarControl(e.target)) return; // let buttons activate themselves
         // Anywhere else, even on a focused tap zone, Space goes forward (Shift+Space back).
         if (e.shiftKey) userPrev(); else userNext();
         break;
@@ -355,6 +655,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:
       case 'p': case 'P': case 'k': case 'K':
         if (!auto) return;
         togglePause(); break;
+      case 'd': case 'D':
+        if (!e.repeat) downloadPng(); // holding D must not save a file per key repeat
+        break;
+      case '?':
+        if (!e.repeat) openHelp();
+        break;
       default: return;
     }
     e.preventDefault();

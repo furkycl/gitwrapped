@@ -9,7 +9,7 @@ import { parseLog, readCommits } from '../src/git.js';
 import { makeFixtureRepo, AUTHORS } from '../scripts/make-fixture-repo.js';
 
 const US = '\x1f';
-const header = (hash, subject = 's') => [hash, 'A', 'a@x', '2025-01-01T00:00:00Z', subject].join(US);
+const header = (hash, subject = 's') => [hash, 'A', 'a@x', '2025-01-01T00:00:00Z', '', subject].join(US);
 
 // %aI prints UTC as +00:00 on older git but as Z on git 2.55 (CI): compare instants.
 const instant = (c) => ({ ...c, date: Date.parse(c.date) });
@@ -79,7 +79,10 @@ describe('readCommits file stats on the fixture repo', () => {
 
   test('matches the fixture description exactly (dates compared as instants)', () => {
     assert.equal(commits.length, 8);
-    assert.deepEqual(commits.map(instant), fx.commits.map(instant));
+    // The fixture description has no parent hashes: check those separately.
+    for (const c of commits) assert.ok(Array.isArray(c.parents) && c.parents.length <= 1);
+    const noParents = ({ parents, ...c }) => c;
+    assert.deepEqual(commits.map(noParents).map(instant), fx.commits.map(instant));
   });
 
   test('per-commit files and line counts', () => {

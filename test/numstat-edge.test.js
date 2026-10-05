@@ -149,8 +149,14 @@ describe('numstat: deletes, big counts, merges, submodules', () => {
     assert.equal(commits.length, 7);
   });
 
-  test('submodule pointer shows as a 1-line file', () => {
-    assert.deepEqual(by('add submodule').files, [{ path: 'vendor/sub', added: 1, removed: 0, binary: false }]);
+  test('submodule pointer (gitlink) is not counted as a file edit', () => {
+    const c = by('add submodule');
+    assert.deepEqual([c.files, c.filesChanged, c.linesAdded, c.linesRemoved], [[], 0, 0, 0]);
+  });
+
+  test('a merge has two parents, other commits one', () => {
+    assert.equal(by('merge side').parents.length, 2);
+    assert.equal(by('side change').parents.length, 1);
   });
 });
 

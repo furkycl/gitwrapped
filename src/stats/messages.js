@@ -20,15 +20,25 @@ const HAS_LETTER = /\p{L}/u;
 /** Subjects git generates for merges; they say nothing about the author's habits. */
 const MERGE = /^Merge (?:(?:branch|branches|pull request|remote-tracking branch|tag|commit)\b|(['"]).+?\1 into\b)/;
 
+/**
+ * A merge commit: more than one parent when the commit carries `parents` (from git),
+ * else (hand-built commits without parent info) a git-generated merge subject.
+ */
+export function isMergeCommit(c) {
+  if (Array.isArray(c?.parents)) return c.parents.length > 1;
+  return typeof c?.subject === 'string' && MERGE.test(c.subject.trim());
+}
+
 /** A word is in a counted family if it, or any of its hyphen parts ("hot-fix"), is. */
 const isCountedWord = (word) => word.split('-').some((part) => COUNTED_WORD.test(part));
 
 const codePoints = (s) => [...s].length;
 
 /**
- * Commit-message stats over each commit's subject line (trimmed). Merge commits (subjects
- * starting "Merge branch / branches / pull request / remote-tracking branch / tag / commit"
- * or "Merge '...' into") are skipped by every field.
+ * Commit-message stats over each commit's subject line (trimmed). Merge commits (more than
+ * one entry in `parents`; for commits without a `parents` array, subjects starting "Merge
+ * branch / branches / pull request / remote-tracking branch / tag / commit" or "Merge
+ * '...' into") are skipped by every field.
  * Returns `{shortest, longest, topWord, counts: {fix, wip, oops}, averageLength}`:
  * - shortest / longest: `{subject, hash, length}` (length in Unicode code points) or null
  *   when no commit has a non-empty subject. Ties go to the earliest commit by date;
@@ -51,8 +61,9 @@ export function computeMessages(commits) {
   commits = commits ?? [];
   const entries = [];
   commits.forEach((c, index) => {
+    if (isMergeCommit(c)) return;
     const subject = typeof c?.subject === 'string' ? c.subject.trim() : '';
-    if (!subject || MERGE.test(subject)) return;
+    if (!subject) return;
     const t = localParts(c.date);
     entries.push({ subject, hash: c.hash ?? null, length: codePoints(subject), ms: t ? t.ms : Infinity, index });
   });

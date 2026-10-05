@@ -18,14 +18,14 @@ See gitwrapped's own Wrapped: [docs/self-wrapped/](docs/self-wrapped/) has the c
 
 Eight 1080x1920 story cards:
 
-1. **Intro**: the repo name, and whose story it is when you pass `--author`.
-2. **Totals**: commits, lines added/removed, active days, files touched (and contributors, when there is more than one).
-3. **Power hour**: the hour of the day you commit the most.
-4. **Streak**: your longest run of consecutive days with a commit, plus your current one.
-5. **Hot files**: the five files you edit most (lockfiles and build output are ignored).
+1. **Intro**: the repo name, the date range in plain English ("Oct 4 – Oct 5, 2026") and how many commits there are to unwrap, plus whose story it is when you pass `--author`.
+2. **Totals**: commits, a lines added vs. removed bar, active days and files touched (and contributors, when there is more than one).
+3. **Power hour**: the hour of the day you commit the most, with a 24-hour bar chart and a Monday-to-Sunday weekday chart (hover a bar in `wrapped.html` for its count).
+4. **Streak**: your longest run of consecutive days with a commit, with a longest vs. current bar comparison.
+5. **Hot files**: the five files you edit most as a bar list (lockfiles and build output are ignored).
 6. **Message hall of fame**: your favorite word, your longest and shortest messages, and how many "fix", "wip" and "oops" commits you made.
-7. **Personality**: Night Owl, Early Bird, Friday Deployer, Fixaholic, Weekend Warrior or Steady Shipper, with a one-line roast.
-8. **Outro**: a summary card to post.
+7. **Personality**: Night Owl, Early Bird, Friday Deployer, Fixaholic, Weekend Warrior or Steady Shipper, with a one-line roast and bars for your top habit scores.
+8. **Outro**: a summary card to post: commits, power hour, best streak and personality tiles, plus your hottest file.
 
 You also get:
 

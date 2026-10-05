@@ -198,6 +198,89 @@ export function truncateStart(text, { maxWidth, fontSize }) {
 }
 
 /**
+ * `text` shortened in the middle (head + '…' + tail) so that it fits `maxWidth`; keeps
+ * both ends, so names that share a prefix or a suffix stay distinguishable.
+ */
+export function truncateMiddle(text, { maxWidth, fontSize }) {
+  text = String(text ?? '').replace(/\s+/g, ' ').trim();
+  if (measureText(text, fontSize) <= maxWidth) return text;
+  const gs = graphemes(text);
+  const budget = maxWidth - measureText(ELLIPSIS, fontSize);
+  let head = 0;
+  let tail = gs.length;
+  let used = 0;
+  const take = (fromEnd, limit) => {
+    while (head < tail) {
+      const w = measureText(fromEnd ? gs[tail - 1] : gs[head], fontSize);
+      if (used + w > limit) return;
+      used += w;
+      if (fromEnd) tail -= 1;
+      else head += 1;
+    }
+  };
+  // ~60% of the room for the end (the extension and the distinctive suffix), the rest
+  // for the start, then any leftover back to the end.
+  take(true, budget * 0.6);
+  take(false, budget);
+  take(true, budget);
+  return gs.slice(0, head).join('').trimEnd() + ELLIPSIS + gs.slice(tail).join('').trimStart();
+}
+
+const SUFFIXES = ['K', 'M', 'B', 'T'];
+
+/**
+ * A count in compact form for tight spots: 950 → "950", 12,345 → "12.3K",
+ * 4,500,000 → "4.5M", 123,456,789,012 → "123B", 9,007,199,254,740,991 → "9,007T";
+ * 10,000T and up → "9,999T+". Accepts a number or an en-US formatted string
+ * ("12,345"; a leading '+', '−' or '-' is kept). Never scientific notation; anything that is
+ * not a finite count → "0".
+ */
+export function compactNumber(n) {
+  let neg = false;
+  let plus = false;
+  if (typeof n === 'string') {
+    const m = /^([+\u2212-])?(\d{1,3}(?:,\d{3})*|\d+)$/.exec(n.trim());
+    if (!m) return '0';
+    if (m[1] === '+') plus = true;
+    else neg = Boolean(m[1]);
+    n = Number(m[2].replace(/,/g, ''));
+  }
+  if (typeof n !== 'number' || !Number.isFinite(n)) return '0';
+  if (n < 0) {
+    neg = true;
+    n = -n;
+  }
+  const sign = neg ? '−' : plus ? '+' : '';
+  if (n < 1000) return `${sign}${Math.round(n)}`;
+  let unit = 0;
+  let v = n / 1000;
+  while (unit < SUFFIXES.length - 1 && Math.round(v) >= 1000) {
+    v /= 1000;
+    unit += 1;
+  }
+  const last = unit === SUFFIXES.length - 1;
+  if (last && v >= 9999.5) return `${sign}9,999T+`;
+  const r = Math.round(v * 10) / 10;
+  const shown = r < 100 ? r.toFixed(1) : String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return `${sign}${shown}${SUFFIXES[unit]}`;
+}
+
+const NUMBER_VALUE = /^([+\u2212-]?\d{1,3}(?:,\d{3})*)(\s.*)?$/;
+
+/**
+ * A tile value that fits `maxWidth` at `size`: as is when it fits, else, for a count
+ * ("12,345" or "12,345 days"), the count in compact form; null when neither fits.
+ */
+export function fitCount(value, maxWidth, size, factor = 1.02) {
+  const w = (t) => measureText(t, size) * factor;
+  if (w(value) <= maxWidth) return value;
+  const m = NUMBER_VALUE.exec(value);
+  if (!m) return null;
+  const compact = `${compactNumber(m[1])}${m[2] ?? ''}`;
+  return w(compact) <= maxWidth ? compact : null;
+}
+
+/**
  * Greedy word wrap using the approximate width model. Whitespace is collapsed; words
  * wider than `maxWidth` are hard-broken (after a '/' when possible). With more lines
  * than `maxLines` (default unlimited) the last kept line ends with '…'.
@@ -235,25 +318,62 @@ export function wrapText(text, { maxWidth, fontSize, maxLines = Infinity } = {})
 
 // ---------------------------------------------------------------------------------------
 // Layout
+//
+// A card is: eyebrow (top), an optional faint card-number watermark (top-right, above
+// the eyebrow line), the content area and the footer. The content area holds a "head"
+// group (big word, title, subtitle) that starts near the top, and a "body" group (rows
+// and charts) that sits at the bottom of the area, so cards use their full height.
+// layoutCard() returns every block's box; renderCard() draws them.
 
 const BIG_MAX = 280;
 const BIG_MIN = 72;
+const BIG_ONE_WORD_MIN = 56;
 // The width model matches DejaVu Sans Bold; keep a little slack for rasterizer rounding.
 const BIG_WEIGHT_FACTOR = 1.02;
 const TITLE = { size: 72, lineHeight: 1.12, maxLines: 3 };
 const SUBTITLE = { size: 44, lineHeight: 1.3, maxLines: 4 };
 const LIST = { size: 40, rowHeight: 78, pad: 40, maxRows: 6 };
 const GAP = 48;
-const CONTENT_TOP = 300;
-const CONTENT_BOTTOM = 1700;
+/** Top of the content area (below the eyebrow). */
+export const CONTENT_TOP = 290;
+/** Bottom of the content area: nothing but the footer is drawn below this line. */
+export const CONTENT_BOTTOM = 1716;
+const FOOTER_BASELINE = 1820;
+/** Top of the footer text (cap height of the 44px brand above its baseline). */
+export const FOOTER_TOP = FOOTER_BASELINE - 44;
+const EYEBROW = { size: 36, minSize: 28, spacing: 5, baseline: 222 };
+const WATERMARK = { size: 160, baseline: 186, opacity: 0.12 };
+
+// Chart typography.
+const CAPTION = { size: 28, spacing: 3, height: 50 };
+const TICK = { size: 30 };
+const MAX_CHART_ITEMS = 6;
+
+const clampNum = (n) => (typeof n === 'number' && Number.isFinite(n) && n > 0 ? n : 0);
+const s1 = (v) => (v === null || v === undefined ? '' : String(v).replace(/\s+/g, ' ').trim());
+/** Heavy-weight width estimate (see BIG_WEIGHT_FACTOR). */
+const heavyWidth = (text, size) => measureText(text, size) * BIG_WEIGHT_FACTOR;
 
 /** Font size and lines for the big number/word: as large as fits, wrapping as a last resort. */
 function fitBig(text, maxSize) {
   const em = measureText(text, 1) * BIG_WEIGHT_FACTOR;
-  const size = Math.max(BIG_MIN, Math.min(maxSize, Math.floor(CONTENT_WIDTH / Math.max(em, 0.01))));
+  // One word (a huge number, a long file name) may go a little smaller before it wraps.
+  const min = /\s/.test(text) ? BIG_MIN : BIG_ONE_WORD_MIN;
+  const size = Math.max(min, Math.min(maxSize, Math.floor(CONTENT_WIDTH / Math.max(em, 0.01))));
   if (em * size <= CONTENT_WIDTH) return { size, lines: [text] };
   return { size: BIG_MIN, lines: wrapText(text, { maxWidth: CONTENT_WIDTH / BIG_WEIGHT_FACTOR, fontSize: BIG_MIN, maxLines: 2 }) };
 }
+
+/** `text` on one line at the largest size in [min, max] that fits, else ellipsized at `min`. */
+function fitOneLine(text, maxWidth, max, min) {
+  const em = measureText(text, 1) * BIG_WEIGHT_FACTOR;
+  const size = Math.min(max, Math.floor(maxWidth / Math.max(em, 0.001)));
+  if (size >= min) return { size, line: text };
+  return { size: min, line: wrapText(text, { maxWidth: maxWidth / BIG_WEIGHT_FACTOR, fontSize: min, maxLines: 1 })[0] ?? '' };
+}
+
+/** One line cut at the end with '…' (heavy-weight widths) to fit `maxWidth`. */
+const fitEnd = (text, maxWidth, size) => (text ? wrapText(text, { maxWidth: maxWidth / BIG_WEIGHT_FACTOR, fontSize: size, maxLines: 1 })[0] ?? '' : '');
 
 function normalizeRow(row) {
   if (row && typeof row === 'object') {
@@ -262,50 +382,385 @@ function normalizeRow(row) {
   return { label: String(row ?? ''), value: '', truncate: 'end' };
 }
 
-/** Lay out the text blocks; each block has a height and a render(y) → svg string. */
-function blocks({ big, title, subtitle, lines }, bigMax) {
+/** `label` for a row: shortened from the start or the end to fit `maxWidth`. */
+function fitLabel(label, maxWidth, size, truncate) {
+  if (truncate === 'start') return truncateStart(label, { maxWidth: maxWidth / BIG_WEIGHT_FACTOR, fontSize: size });
+  if (truncate === 'middle') return truncateMiddle(label, { maxWidth: maxWidth / BIG_WEIGHT_FACTOR, fontSize: size });
+  return fitEnd(label, maxWidth, size);
+}
+
+/** Small-caps chart caption (upper-cased, letter-spaced) at the top of a block. */
+function caption(y, text) {
+  const t = fitSpaced(s1(text).toUpperCase(), CONTENT_WIDTH, CAPTION.size, CAPTION.spacing);
+  return t ? textEl(PAD_X, y + CAPTION.size * 0.76, t, { size: CAPTION.size, weight: 800, opacity: 0.75, spacing: CAPTION.spacing }) : '';
+}
+
+const TRUNCATE_MODES = new Set(['start', 'middle', 'end']);
+
+const titleEl = (t) => (t ? `<title>${escapeXml(t)}</title>` : '');
+
+/**
+ * Wrap `text` into at most `maxLines` lines. When it does not fit, drop whole trailing
+ * sentences rather than cut one mid-way with '…' (falls back to the '…' cut when even
+ * the first sentence is too long).
+ */
+function wrapAtSentence(text, opts, maxLines) {
+  const all = wrapText(text, { ...opts, maxLines: maxLines + 1 });
+  if (all.length <= maxLines) return all;
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  for (let n = sentences.length - 1; n >= 1; n--) {
+    const lines = wrapText(sentences.slice(0, n).join(' '), { ...opts, maxLines: maxLines + 1 });
+    if (lines.length <= maxLines) return lines;
+  }
+  return wrapText(text, { ...opts, maxLines });
+}
+
+// --- head blocks ---------------------------------------------------------------------
+
+function headBlocks({ big, title, subtitle, titleSize }, { bigMax, titleLines, subtitleLines }) {
   const out = [];
   if (big) {
     const { size, lines: bl } = fitBig(big, bigMax);
     const lh = size * 1.02;
     out.push({
+      kind: 'big',
       height: lh * bl.length,
       render: (y) => bl.map((l, i) =>
         textEl(PAD_X, y + size * 0.82 + i * lh, l, { size, weight: 900, spacing: -0.02 * size })).join(''),
     });
   }
-  for (const [text, spec, extra] of [[title, TITLE, { weight: 800 }], [subtitle, SUBTITLE, { weight: 600, opacity: 0.9 }]]) {
+  const titleSpec = titleSize > TITLE.size ? { size: titleSize, lineHeight: 1.04 } : TITLE;
+  const titleExtra = titleSize > TITLE.size ? { weight: 900, spacing: -0.02 * titleSize } : { weight: 800 };
+  const specs = [['title', title, titleSpec, titleLines, titleExtra], ['subtitle', subtitle, SUBTITLE, subtitleLines, { weight: 600, opacity: 0.9 }]];
+  for (const [kind, text, spec, maxLines, extra] of specs) {
     if (!text) continue;
-    const tl = wrapText(text, { maxWidth: WRAP_WIDTH, fontSize: spec.size, maxLines: spec.maxLines });
+    const wrapOpts = { maxWidth: spec === TITLE || spec === SUBTITLE ? WRAP_WIDTH : WRAP_WIDTH / BIG_WEIGHT_FACTOR, fontSize: spec.size };
+    const tl = wrapAtSentence(text, wrapOpts, maxLines);
     const lh = spec.size * spec.lineHeight;
     out.push({
+      kind,
       height: lh * tl.length,
       render: (y) => tl.map((l, i) => textEl(PAD_X, y + spec.size * 0.85 + i * lh, l, { size: spec.size, ...extra })).join(''),
     });
   }
-  const rows = (Array.isArray(lines) ? lines : []).map(normalizeRow).filter((r) => r.label || r.value).slice(0, LIST.maxRows);
-  if (rows.length > 0) {
-    const height = rows.length * LIST.rowHeight + 2 * LIST.pad - (LIST.rowHeight - LIST.size * 1.2);
-    out.push({
-      height,
-      render: (y) => {
-        const parts = [`<rect x="${PAD_X - 32}" y="${y}" width="${CONTENT_WIDTH + 64}" height="${height}" rx="40" fill="#ffffff" fill-opacity="0.14"/>`];
-        rows.forEach((row, i) => {
-          const baseline = y + LIST.pad + LIST.size * 0.9 + i * LIST.rowHeight;
-          const value = row.value ? wrapText(row.value, { maxWidth: WRAP_WIDTH * 0.55, fontSize: LIST.size, maxLines: 1 })[0] : '';
-          const valueWidth = value ? measureText(value, LIST.size) + 32 : 0;
-          const maxWidth = Math.max(LIST.size * 3, WRAP_WIDTH - valueWidth);
-          const label = row.truncate === 'start'
-            ? truncateStart(row.label, { maxWidth, fontSize: LIST.size })
-            : (wrapText(row.label, { maxWidth, fontSize: LIST.size, maxLines: 1 })[0] ?? '');
-          parts.push(textEl(PAD_X, baseline, label, { size: LIST.size, weight: 700 }));
-          if (value) parts.push(textEl(PAD_X + CONTENT_WIDTH, baseline, value, { size: LIST.size, weight: 800, opacity: 0.85, anchor: 'end' }));
-        });
-        return parts.join('');
-      },
-    });
-  }
   return out;
+}
+
+// --- body blocks: rows + charts --------------------------------------------------------
+
+function rowsBlock(lines) {
+  const rows = (Array.isArray(lines) ? lines : []).map(normalizeRow).filter((r) => r.label || r.value).slice(0, LIST.maxRows);
+  if (rows.length === 0) return null;
+  const height = rows.length * LIST.rowHeight + 2 * LIST.pad - (LIST.rowHeight - LIST.size * 1.2);
+  return {
+    kind: 'rows',
+    height,
+    render: (y) => {
+      const parts = [`<rect x="${PAD_X - 32}" y="${round(y)}" width="${CONTENT_WIDTH + 64}" height="${round(height)}" rx="40" fill="#ffffff" fill-opacity="0.14"/>`];
+      rows.forEach((row, i) => {
+        const baseline = y + LIST.pad + LIST.size * 0.9 + i * LIST.rowHeight;
+        const value = row.value ? wrapText(row.value, { maxWidth: WRAP_WIDTH * 0.55, fontSize: LIST.size, maxLines: 1 })[0] : '';
+        const valueWidth = value ? measureText(value, LIST.size) + 32 : 0;
+        const maxWidth = Math.max(LIST.size * 3, WRAP_WIDTH - valueWidth);
+        const label = row.truncate === 'start'
+          ? truncateStart(row.label, { maxWidth, fontSize: LIST.size })
+          : (wrapText(row.label, { maxWidth, fontSize: LIST.size, maxLines: 1 })[0] ?? '');
+        parts.push(textEl(PAD_X, baseline, label, { size: LIST.size, weight: 700 }));
+        if (value) parts.push(textEl(PAD_X + CONTENT_WIDTH, baseline, value, { size: LIST.size, weight: 800, opacity: 0.85, anchor: 'end' }));
+      });
+      return parts.join('');
+    },
+  };
+}
+
+/** Path of a bar with rounded top corners and a square bottom on the baseline. */
+function barPath(x, w, base, h, r) {
+  r = Math.min(r, w / 2, h);
+  const top = base - h;
+  return `M${round(x)} ${round(base)}V${round(top + r)}A${round(r)} ${round(r)} 0 0 1 ${round(x + r)} ${round(top)}`
+    + `H${round(x + w - r)}A${round(r)} ${round(r)} 0 0 1 ${round(x + w)} ${round(top + r)}V${round(base)}Z`;
+}
+
+/** x for a centered label of `width` at `cx`, kept inside the content area. */
+const clampCenter = (cx, width) => Math.min(PAD_X + CONTENT_WIDTH - width / 2, Math.max(PAD_X + width / 2, cx));
+
+/**
+ * Vertical bar chart. Spec: `{kind: 'bars', title, values: number[], labels: string[]
+ * (tick labels; '' for none), titles: string[] (hover text per bar), highlight: index[],
+ * peakLabel: string (shown above the first highlighted bar), maxBarHeight}`.
+ */
+function barsBlock(spec, compact = false) {
+  const values = (Array.isArray(spec.values) ? spec.values : []).slice(0, 64).map(clampNum);
+  if (values.length === 0) return null;
+  const n = values.length;
+  const max = Math.max(0, ...values);
+  const hl = new Set((Array.isArray(spec.highlight) ? spec.highlight : []).filter((i) => Number.isInteger(i) && i >= 0 && i < n && values[i] > 0));
+  const peak = [...hl].sort((a, b) => a - b)[0];
+  const peakLabel = peak === undefined ? '' : s1(spec.peakLabel) || String(values[peak]);
+  const labels = Array.isArray(spec.labels) ? spec.labels : [];
+  const titles = Array.isArray(spec.titles) ? spec.titles : [];
+  const cap = s1(spec.title);
+  const capH = cap ? CAPTION.height : 0;
+  const peakH = 44;
+  const tickH = labels.some((l) => s1(l)) ? 50 : 14;
+  const minBar = compact ? 56 : 90;
+  const maxBar = Math.max(minBar, Number.isFinite(spec.maxBarHeight) ? spec.maxBarHeight : 260);
+  const fixed = capH + peakH + tickH;
+  return {
+    kind: 'bars',
+    height: fixed + minBar,
+    maxHeight: max > 0 ? fixed + maxBar : fixed + minBar,
+    render: (y, height) => {
+      const barArea = height - fixed;
+      const base = y + capH + peakH + barArea;
+      const slot = CONTENT_WIDTH / n;
+      const gap = Math.max(2, Math.round(slot * (n > 12 ? 0.24 : 0.3)));
+      const w = slot - gap;
+      const parts = [caption(y, cap)];
+      values.forEach((v, i) => {
+        const x = PAD_X + i * slot + gap / 2;
+        const t = titleEl(s1(titles[i]));
+        if (v === 0 || max === 0) {
+          parts.push(`<rect x="${round(x)}" y="${round(base - 4)}" width="${round(w)}" height="4" fill-opacity="0.15">${t}</rect>`);
+          return;
+        }
+        const h = Math.max(6, (v / max) * barArea);
+        const op = hl.has(i) ? '' : ' fill-opacity="0.35"';
+        parts.push(`<path d="${barPath(x, w, base, h, 6)}"${op}>${t}</path>`);
+      });
+      parts.push(`<rect x="${PAD_X}" y="${round(base)}" width="${CONTENT_WIDTH}" height="2" fill-opacity="0.3"/>`);
+      if (peak !== undefined) {
+        const lbl = fitEnd(peakLabel, CONTENT_WIDTH / 2, TICK.size);
+        const cx = clampCenter(PAD_X + (peak + 0.5) * slot, heavyWidth(lbl, TICK.size));
+        const top = base - Math.max(6, (values[peak] / max) * barArea);
+        parts.push(textEl(cx, top - 14, lbl, { size: TICK.size, weight: 800, anchor: 'middle' }));
+      }
+      labels.slice(0, n).forEach((l, i) => {
+        const t = fitEnd(s1(l), Math.max(slot * 3, 60), TICK.size);
+        if (!t) return;
+        const cx = clampCenter(PAD_X + (i + 0.5) * slot, heavyWidth(t, TICK.size));
+        parts.push(textEl(cx, base + 12 + TICK.size * 0.8, t, { size: TICK.size, weight: 700, opacity: 0.75, anchor: 'middle' }));
+      });
+      return parts.join('');
+    },
+  };
+}
+
+/**
+ * Horizontal bar list. Spec: `{kind: 'hbars', title, items: [{label, sub, value, amount,
+ * title, truncate}]}`: label (bold) with an optional dimmer `sub` after it, `value` right
+ * aligned, and a bar proportional to `amount` / the largest amount. At most 6 items.
+ */
+function hbarsBlock(spec, compact = false) {
+  const items = (Array.isArray(spec.items) ? spec.items : [])
+    .filter((it) => it && (s1(it.label) || s1(it.value)))
+    .slice(0, MAX_CHART_ITEMS)
+    .map((it) => ({ label: s1(it.label), sub: s1(it.sub), value: s1(it.value), amount: clampNum(it.amount), title: s1(it.title), truncate: TRUNCATE_MODES.has(it.truncate) ? it.truncate : 'end' }));
+  if (items.length === 0) return null;
+  const cap = s1(spec.title);
+  const capH = cap ? CAPTION.height : 0;
+  const large = spec.size === 'large';
+  const LABEL = large ? 44 : 36;
+  const SUB = 28;
+  const BAR = large ? 40 : 18;
+  const ITEM = Math.round(LABEL * 0.8 + 16 + BAR);
+  const minGap = compact ? 16 : 26;
+  const maxGap = large ? 56 : 44;
+  const n = items.length;
+  // Bars are scaled to `scaleMax` when given (e.g. 1 for 0..1 scores), else to the largest amount.
+  const scale = clampNum(spec.scaleMax) || Math.max(0, ...items.map((it) => it.amount));
+  const largest = Math.max(0, ...items.map((it) => it.amount));
+  return {
+    kind: 'hbars',
+    height: capH + n * ITEM + (n - 1) * minGap,
+    maxHeight: capH + n * ITEM + (n - 1) * maxGap,
+    render: (y, height) => {
+      const gap = n > 1 ? (height - capH - n * ITEM) / (n - 1) : 0;
+      const parts = [caption(y, cap)];
+      items.forEach((it, i) => {
+        const top = y + capH + i * (ITEM + gap);
+        const baseline = top + LABEL * 0.8;
+        const value = fitEnd(it.value, CONTENT_WIDTH * 0.4, LABEL);
+        const valueW = value ? heavyWidth(value, LABEL) + 28 : 0;
+        const room = CONTENT_WIDTH - valueW;
+        const label = fitLabel(it.label, room, LABEL, it.truncate);
+        const g = [titleEl(it.title)];
+        g.push(textEl(PAD_X, baseline, label, { size: LABEL, weight: 800 }));
+        const subX = PAD_X + heavyWidth(label, LABEL) + 14;
+        const subRoom = PAD_X + room - subX;
+        if (it.sub && subRoom >= 80) {
+          const sub = truncateStart(it.sub, { maxWidth: subRoom / BIG_WEIGHT_FACTOR, fontSize: SUB });
+          if (sub && sub !== ELLIPSIS) g.push(textEl(subX, baseline, sub, { size: SUB, weight: 600, opacity: 0.6 }));
+        }
+        if (value) g.push(textEl(PAD_X + CONTENT_WIDTH, baseline, value, { size: LABEL, weight: 800, opacity: 0.85, anchor: 'end' }));
+        const barY = top + ITEM - BAR;
+        const rx = Math.min(BAR / 2, 12);
+        g.push(`<rect x="${PAD_X}" y="${round(barY)}" width="${CONTENT_WIDTH}" height="${BAR}" rx="${rx}" fill-opacity="0.15"/>`);
+        if (it.amount > 0 && scale > 0) {
+          const w = Math.max(BAR, Math.min(1, it.amount / scale) * CONTENT_WIDTH);
+          const op = it.amount === largest ? '' : ' fill-opacity="0.6"';
+          g.push(`<rect x="${PAD_X}" y="${round(barY)}" width="${round(w)}" height="${BAR}" rx="${rx}"${op}/>`);
+        }
+        parts.push(`<g>${g.join('')}</g>`);
+      });
+      return parts.join('');
+    },
+  };
+}
+
+/**
+ * One 100% bar split in two. Spec: `{kind: 'split', title, segments: [{label, value,
+ * amount}, {label, value, amount}]}`: the first segment is solid (left), the second
+ * translucent (right); labels sit under each end.
+ */
+function splitBlock(spec) {
+  const segs = (Array.isArray(spec.segments) ? spec.segments : []).slice(0, 2)
+    .map((sg) => ({ label: s1(sg?.label), value: s1(sg?.value), amount: clampNum(sg?.amount) }));
+  if (segs.length < 2) return null;
+  const cap = s1(spec.title);
+  const capH = cap ? CAPTION.height : 0;
+  const BAR = 32;
+  const VALUE = 44;
+  const LABEL = 28;
+  const height = capH + BAR + 20 + VALUE * 0.76 + 14 + LABEL * 0.76 + 8;
+  return {
+    kind: 'split',
+    height,
+    render: (y) => {
+      const parts = [caption(y, cap)];
+      const barY = y + capH;
+      const [a, b] = segs;
+      const total = a.amount + b.amount;
+      const titleText = segs.map((sg) => [sg.value, sg.label].filter(Boolean).join(' ')).join(' / ');
+      if (total === 0) {
+        parts.push(`<rect x="${PAD_X}" y="${round(barY)}" width="${CONTENT_WIDTH}" height="${BAR}" rx="${BAR / 2}" fill-opacity="0.15">${titleEl(titleText)}</rect>`);
+      } else {
+        const gap = a.amount > 0 && b.amount > 0 ? 8 : 0;
+        const usable = CONTENT_WIDTH - gap;
+        let wa = (a.amount / total) * usable;
+        if (a.amount > 0) wa = Math.max(BAR, Math.min(usable - (b.amount > 0 ? BAR : 0), wa));
+        const wb = usable - wa;
+        if (wa > 0) parts.push(`<rect x="${PAD_X}" y="${round(barY)}" width="${round(wa)}" height="${BAR}" rx="${BAR / 2}">${titleEl(titleText)}</rect>`);
+        if (wb > 0) parts.push(`<rect x="${round(PAD_X + wa + gap)}" y="${round(barY)}" width="${round(wb)}" height="${BAR}" rx="${BAR / 2}" fill-opacity="0.4">${titleEl(titleText)}</rect>`);
+      }
+      const vBase = barY + BAR + 20 + VALUE * 0.76;
+      const lBase = vBase + 14 + LABEL * 0.76;
+      const half = CONTENT_WIDTH / 2 - 16;
+      [[a, PAD_X, 'start'], [b, PAD_X + CONTENT_WIDTH, 'end']].forEach(([sg, x, anchor]) => {
+        const label = fitEnd(sg.label, half, LABEL);
+        const value = fitCount(sg.value, half, VALUE, BIG_WEIGHT_FACTOR) ?? fitEnd(sg.value, half, VALUE);
+        if (label) parts.push(textEl(x, lBase, label, { size: LABEL, weight: 700, opacity: 0.75, anchor }));
+        if (value) parts.push(textEl(x, vBase, value, { size: VALUE, weight: 900, anchor }));
+      });
+      return parts.join('');
+    },
+  };
+}
+
+const PANEL_FILL = 'fill="#ffffff" fill-opacity="0.14"';
+
+/**
+ * A translucent panel with a caption, one big fitted value and a note line.
+ * Spec: `{kind: 'callout', title, value, note}`.
+ */
+function calloutBlock(spec) {
+  const cap = s1(spec.title).toUpperCase();
+  const value = s1(spec.value);
+  const note = s1(spec.note);
+  if (!value && !note) return null;
+  const PAD = 48;
+  const inner = CONTENT_WIDTH;
+  let h = PAD;
+  const capBase = h + CAPTION.size * 0.76;
+  if (cap) h += CAPTION.size + 26;
+  const fit = value ? fitOneLine(value, inner, 64, 40) : null;
+  const valBase = h + (fit ? fit.size * 0.76 : 0);
+  if (fit) h += fit.size * 0.76 + 26;
+  const noteBase = h + 34 * 0.76;
+  if (note) h += 34 * 0.76 + 14;
+  h += PAD - 14;
+  return {
+    kind: 'callout',
+    height: h,
+    render: (y) => {
+      const parts = [`<rect x="${PAD_X - 40}" y="${round(y)}" width="${CONTENT_WIDTH + 80}" height="${round(h)}" rx="44" ${PANEL_FILL}/>`];
+      if (cap) parts.push(textEl(PAD_X, y + capBase, fitSpaced(cap, inner, CAPTION.size, CAPTION.spacing), { size: CAPTION.size, weight: 800, opacity: 0.75, spacing: CAPTION.spacing }));
+      if (fit) parts.push(textEl(PAD_X, y + valBase, fit.line, { size: fit.size, weight: 900, spacing: -0.01 * fit.size }));
+      if (note) parts.push(textEl(PAD_X, y + noteBase, fitEnd(note, inner, 34), { size: 34, weight: 700, opacity: 0.85 }));
+      return parts.join('');
+    },
+  };
+}
+
+/**
+ * A grid of stat tiles (2 per row) plus an optional full-width `wide` tile.
+ * Spec: `{kind: 'tiles', items: [{label, value}] (up to 4), wide: {label, value, note,
+ * truncate} | null}`.
+ */
+function tilesBlock(spec) {
+  const items = (Array.isArray(spec.items) ? spec.items : []).slice(0, 4).map((t) => ({ label: s1(t?.label).toUpperCase(), value: s1(t?.value) || '—' }));
+  const wide = spec.wide && (s1(spec.wide.value) || s1(spec.wide.label))
+    ? { label: s1(spec.wide.label).toUpperCase(), value: s1(spec.wide.value), note: s1(spec.wide.note), truncate: spec.wide.truncate === 'start' ? 'start' : 'end' }
+    : null;
+  if (items.length === 0 && !wide) return null;
+  const TILE_H = 196;
+  const WIDE_H = 150;
+  const GUTTER = 24;
+  const rows = Math.ceil(items.length / 2);
+  const height = rows * TILE_H + Math.max(0, rows - 1) * GUTTER + (wide ? (rows ? GUTTER : 0) + WIDE_H : 0);
+  const X0 = PAD_X - 24;
+  const FULL = CONTENT_WIDTH + 48;
+  const TW = (FULL - GUTTER) / 2;
+  const TP = 32; // inner padding
+  const tileInner = TW - 2 * TP;
+  // One value size for all tiles (the largest every fitting value allows, 44..72px);
+  // values that do not fit at 44px wrap onto two lines instead.
+  // Counts that do not fit even at 44px switch to compact form (12.3K) rather than wrap.
+  for (const t of items) t.value = fitCount(t.value, tileInner, 44, BIG_WEIGHT_FACTOR) ?? t.value;
+  const fits = items.map((t) => Math.min(72, Math.floor(tileInner / Math.max(measureText(t.value, 1) * BIG_WEIGHT_FACTOR, 0.001))));
+  const shared = Math.min(72, ...fits.filter((f) => f >= 44));
+  return {
+    kind: 'tiles',
+    height,
+    render: (y) => {
+      const parts = [];
+      items.forEach((t, i) => {
+        const x = X0 + (i % 2) * (TW + GUTTER);
+        const ty = y + Math.floor(i / 2) * (TILE_H + GUTTER);
+        parts.push(`<rect x="${round(x)}" y="${round(ty)}" width="${round(TW)}" height="${TILE_H}" rx="36" ${PANEL_FILL}/>`);
+        const lab = fitSpaced(t.label, tileInner, 24, 2.5);
+        if (lab) parts.push(textEl(x + TP, ty + 56, lab, { size: 24, weight: 800, opacity: 0.8, spacing: 2.5 }));
+        if (fits[i] >= 44) {
+          parts.push(textEl(x + TP, ty + 152, t.value, { size: shared, weight: 900, spacing: -0.02 * shared }));
+        } else {
+          const ls = wrapText(t.value, { maxWidth: tileInner / BIG_WEIGHT_FACTOR, fontSize: 42, maxLines: 2 });
+          const y0 = ls.length > 1 ? ty + 116 : ty + 150;
+          ls.forEach((l, j) => parts.push(textEl(x + TP, y0 + j * 48, l, { size: 42, weight: 900 })));
+        }
+      });
+      if (wide) {
+        const wy = y + rows * (TILE_H + GUTTER);
+        const inner = FULL - 2 * TP;
+        parts.push(`<rect x="${X0}" y="${round(wy)}" width="${FULL}" height="${WIDE_H}" rx="36" ${PANEL_FILL}/>`);
+        const lab = fitSpaced(wide.label, inner, 24, 2.5);
+        if (lab) parts.push(textEl(X0 + TP, wy + 54, lab, { size: 24, weight: 800, opacity: 0.8, spacing: 2.5 }));
+        const note = fitCount(wide.note, inner * 0.4, 34, BIG_WEIGHT_FACTOR) ?? fitEnd(wide.note, inner * 0.4, 34);
+        const noteW = note ? heavyWidth(note, 34) + 28 : 0;
+        const value = fitLabel(wide.value, inner - noteW, 48, wide.truncate);
+        if (value) parts.push(textEl(X0 + TP, wy + 118, value, { size: 48, weight: 900, spacing: -0.5 }));
+        if (note) parts.push(textEl(X0 + FULL - TP, wy + 118, note, { size: 34, weight: 700, opacity: 0.85, anchor: 'end' }));
+      }
+      return parts.join('');
+    },
+  };
+}
+
+const CHARTS = { bars: barsBlock, hbars: hbarsBlock, split: splitBlock, callout: calloutBlock, tiles: tilesBlock };
+
+/** Chart blocks for `chart` (one spec or an array); `compact` asks for smaller minimums. */
+function chartBlocks(chart, compact = false) {
+  const list = Array.isArray(chart) ? chart : chart ? [chart] : [];
+  return list.map((c) => (c && Object.hasOwn(CHARTS, c.kind) ? CHARTS[c.kind](c, compact) : null)).filter(Boolean);
 }
 
 /** `text` on one line with letter `spacing` px, cut at the end with '…' to fit `maxWidth`. */
@@ -317,7 +772,7 @@ function fitSpaced(text, maxWidth, fontSize, spacing) {
   return gs.join('').trimEnd() + ELLIPSIS;
 }
 
-const totalHeight = (bs) => bs.reduce((h, b) => h + b.height, 0) + GAP * Math.max(0, bs.length - 1);
+const sumHeight = (bs, key = 'height') => bs.reduce((h, b) => h + b[key], 0) + GAP * Math.max(0, bs.length - 1);
 
 const round = (n) => Math.round(n * 10) / 10;
 
@@ -341,7 +796,6 @@ function background(id, t) {
     `<rect width="${CARD_WIDTH}" height="${CARD_HEIGHT}" fill="url(#${id}-bg)"/>`,
     `<circle cx="930" cy="250" r="460" fill="url(#${id}-glow)"/>`,
     `<circle cx="110" cy="1650" r="560" fill="url(#${id}-glow)"/>`,
-    `<circle cx="960" cy="1280" r="180" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="24"/>`,
   ].join('');
 }
 
@@ -352,55 +806,144 @@ export function sanitizeIdPrefix(prefix) {
   return /^[A-Za-z_]/.test(cleaned) ? cleaned : `gw-${cleaned}`;
 }
 
+/** Eyebrow text and size: shrinks (36 → 28px) before it is ellipsized. */
+function fitEyebrow(eb) {
+  const width = (t, size) => measureText(t, size) + EYEBROW.spacing * Array.from(t).length;
+  for (let size = EYEBROW.size; size >= EYEBROW.minSize; size -= 2) {
+    if (width(eb, size) <= CONTENT_WIDTH) return { size, line: eb };
+  }
+  return { size: EYEBROW.minSize, line: fitSpaced(eb, CONTENT_WIDTH, EYEBROW.minSize, EYEBROW.spacing) };
+}
+
+/**
+ * The footer: the "gitwrapped" brand bottom-left and `text` right-aligned after it,
+ * shrinking (32 → 24px) before it is ellipsized. `line`/`size` are what is drawn.
+ */
+function fitFooter(text) {
+  const box = { top: FOOTER_TOP, bottom: FOOTER_BASELINE + 12, left: PAD_X, right: PAD_X + CONTENT_WIDTH, text, line: '', size: 0 };
+  if (!text) return box;
+  const maxWidth = CONTENT_WIDTH - (measureText('gitwrapped', 44) - 10) - 40;
+  const size = Math.max(24, Math.min(32, Math.floor(maxWidth / Math.max(measureText(text, 1), 0.01))));
+  const [line] = wrapText(text, { maxWidth, fontSize: size, maxLines: 1 });
+  return { ...box, line: line ?? '', size };
+}
+
+/**
+ * Compute the layout of a card (same input as renderCard). Returns
+ * `{blocks: [{kind, group: 'head'|'body', top, bottom, svg}], eyebrow, watermark, footer}`
+ * where eyebrow / watermark / footer are `{top, bottom, left, right}` boxes (or null).
+ * Every block lies within [CONTENT_TOP, CONTENT_BOTTOM] and no two blocks overlap.
+ */
+export function layoutCard({ eyebrow, title, big, subtitle, titleSize, lines, chart, number, footer } = {}) {
+  // A display-size title (e.g. the intro's "Wrapped"): 73..160px; anything else → 72px.
+  const tSize = Number.isFinite(titleSize) ? Math.min(160, Math.max(TITLE.size, Math.round(titleSize))) : TITLE.size;
+  const content = { big: s1(big), title: s1(title), subtitle: s1(subtitle), titleSize: tSize };
+  const available = CONTENT_BOTTOM - CONTENT_TOP;
+  const rows = rowsBlock(lines);
+  let compact = false;
+  let charts = chartBlocks(chart);
+  const opts = { bigMax: BIG_MAX, titleLines: TITLE.maxLines, subtitleLines: SUBTITLE.maxLines };
+  const build = () => {
+    const head = headBlocks(content, opts);
+    const body = [rows, ...charts].filter(Boolean);
+    return { head, body, total: sumHeight(head) + sumHeight(body) + (head.length && body.length ? GAP : 0) };
+  };
+  // Shrink until everything fits: the big word first, then compact charts (smaller
+  // minimum heights), then fewer subtitle / title lines, then drop charts from the end
+  // (the text-only layout always fits).
+  let l = build();
+  while (l.total > available) {
+    if (opts.bigMax > BIG_MIN) opts.bigMax = Math.max(BIG_MIN, Math.floor(opts.bigMax * 0.85));
+    else if (!compact && charts.length > 0) {
+      compact = true;
+      charts = chartBlocks(chart, true);
+    } else if (opts.subtitleLines > 2) opts.subtitleLines -= 1;
+    else if (opts.titleLines > 2) opts.titleLines -= 1;
+    else if (charts.length > 0) charts = charts.slice(0, -1);
+    else break;
+    l = build();
+  }
+  const { head, body } = l;
+  // Hand spare room to flexible charts (up to their max height), first come first served.
+  let spare = available - l.total;
+  for (const b of body) {
+    b.h = b.height;
+    if (b.maxHeight > b.height && spare > 0) {
+      const add = Math.min(spare, b.maxHeight - b.height);
+      b.h += add;
+      spare -= add;
+    }
+  }
+  for (const b of head) b.h = b.height;
+  const blocks = [];
+  const place = (list, group, y) => {
+    for (const b of list) {
+      blocks.push({ kind: b.kind, group, top: round(y), bottom: round(y + b.h), svg: b.render(y, b.h) });
+      y += b.h + GAP;
+    }
+  };
+  if (body.length === 0) {
+    place(head, 'head', CONTENT_TOP + spare * 0.3);
+  } else {
+    // Head near the top, body resting on the bottom; most spare room goes between them.
+    const headTop = CONTENT_TOP + Math.min(spare * 0.3, 140);
+    const bodyH = sumHeight(body, 'h');
+    place(head, 'head', headTop);
+    place(body, 'body', CONTENT_BOTTOM - Math.min(spare * 0.1, 24) - bodyH);
+  }
+
+  const eb = s1(eyebrow).toUpperCase();
+  const ebFit = eb ? fitEyebrow(eb) : null;
+  const num = s1(number);
+  const markWidth = num ? heavyWidth(num, WATERMARK.size) : 0;
+  return {
+    blocks,
+    eyebrow: ebFit
+      ? { ...ebFit, top: EYEBROW.baseline - ebFit.size * 0.76, bottom: EYEBROW.baseline, left: PAD_X, right: PAD_X + measureText(ebFit.line, ebFit.size) + EYEBROW.spacing * Array.from(ebFit.line).length }
+      : null,
+    watermark: num
+      ? { text: num, top: WATERMARK.baseline - WATERMARK.size * 0.73, bottom: WATERMARK.baseline, left: PAD_X + CONTENT_WIDTH - markWidth, right: PAD_X + CONTENT_WIDTH }
+      : null,
+    footer: fitFooter(s1(footer)),
+  };
+}
+
 /**
  * Render one story card as a complete standalone SVG string (1080x1920).
- * All fields are optional strings except `lines`: an array of strings or
- * `{label, value, truncate}` rows (value right-aligned; truncate 'start' keeps the end
- * of long labels such as file paths). At most 6 rows are drawn.
- * `theme` is a THEMES key (unknown → 'pulse'). `footer` is small text next to the
+ * All fields are optional strings except:
+ * - `lines`: an array of strings or `{label, value, truncate}` rows (value right-aligned;
+ *   truncate 'start' keeps the end of long labels such as file paths). At most 6 rows.
+ * - `chart`: one chart spec or an array of them, drawn below the rows; kinds are
+ *   'bars' (vertical bar chart), 'hbars' (horizontal bar list), 'split' (one bar split
+ *   in two), 'callout' (a panel with one big value) and 'tiles' (2x2 stat tiles). See
+ *   the *Block functions above for each spec. Charts that do not fit are dropped, last first.
+ * `number` is a short card number ("03") drawn as a faint watermark top-right.
+ * `theme` is a THEMES key (unknown → 'pulse'). `footer` is small text right of the
  * "gitwrapped" brand. `idPrefix` prefixes every element id (default `gw-<theme>`);
  * pass a unique one per card when several SVGs are inlined into one HTML page.
  * All text is XML-escaped; output is deterministic.
  */
-export function renderCard({ theme: themeName, eyebrow, title, big, subtitle, lines, footer, idPrefix } = {}) {
-  const name = Object.hasOwn(THEMES, themeName ?? '') ? themeName : DEFAULT_THEME;
-  const ids = sanitizeIdPrefix(idPrefix) || `gw-${name}`;
-  const str = (v) => (v === null || v === undefined ? '' : String(v).replace(/\s+/g, ' ').trim());
-  const content = { big: str(big), title: str(title), subtitle: str(subtitle), lines };
-
-  // Shrink the big text until everything fits between the eyebrow and the footer.
-  const available = CONTENT_BOTTOM - CONTENT_TOP;
-  let bigMax = BIG_MAX;
-  let bs = blocks(content, bigMax);
-  while (totalHeight(bs) > available && bigMax > BIG_MIN) {
-    bigMax = Math.max(BIG_MIN, Math.floor(bigMax * 0.85));
-    bs = blocks(content, bigMax);
-  }
-  // Sit slightly above the vertical center of the content area.
-  let y = CONTENT_TOP + Math.max(0, (available - totalHeight(bs)) * 0.42);
+export function renderCard(opts = {}) {
+  opts = opts ?? {};
+  const name = Object.hasOwn(THEMES, opts.theme ?? '') ? opts.theme : DEFAULT_THEME;
+  const ids = sanitizeIdPrefix(opts.idPrefix) || `gw-${name}`;
+  const layout = layoutCard(opts);
 
   const body = [];
-  const eb = str(eyebrow).toUpperCase();
+  if (layout.watermark) {
+    body.push(textEl(PAD_X + CONTENT_WIDTH, WATERMARK.baseline, layout.watermark.text, { size: WATERMARK.size, weight: 900, opacity: WATERMARK.opacity, anchor: 'end', spacing: -4 }));
+  }
+  const eb = layout.eyebrow;
   if (eb) {
-    const line = fitSpaced(eb, CONTENT_WIDTH, 36, 5);
     body.push(`<rect x="${PAD_X}" y="150" width="72" height="10" rx="5" fill="#ffffff"/>`);
-    body.push(textEl(PAD_X, 222, line, { size: 36, weight: 800, opacity: 0.9, spacing: 5 }));
+    body.push(textEl(PAD_X, EYEBROW.baseline, eb.line, { size: eb.size, weight: 800, opacity: 0.9, spacing: EYEBROW.spacing }));
   }
-  for (const b of bs) {
-    body.push(b.render(y));
-    y += b.height + GAP;
-  }
-  body.push(textEl(PAD_X, 1820, 'gitwrapped', { size: 44, weight: 900, spacing: -1 }));
-  const foot = str(footer);
-  if (foot) {
-    // Right of the brand, leaving a gap; shrinks (32 → 24px) before it is ellipsized.
-    const maxWidth = CONTENT_WIDTH - (measureText('gitwrapped', 44) - 10) - 40;
-    const size = Math.max(24, Math.min(32, Math.floor(maxWidth / Math.max(measureText(foot, 1), 0.01))));
-    const [line] = wrapText(foot, { maxWidth, fontSize: size, maxLines: 1 });
-    body.push(textEl(PAD_X + CONTENT_WIDTH, 1818, line, { size, weight: 600, opacity: 0.8, anchor: 'end' }));
-  }
+  for (const b of layout.blocks) body.push(b.svg);
+  body.push(textEl(PAD_X, FOOTER_BASELINE, 'gitwrapped', { size: 44, weight: 900, spacing: -1 }));
+  const { line: footLine, size: footSize } = layout.footer;
+  if (footLine) body.push(textEl(PAD_X + CONTENT_WIDTH, FOOTER_BASELINE - 2, footLine, { size: footSize, weight: 600, opacity: 0.8, anchor: 'end' }));
 
-  const label = escapeXml([eb, content.big, content.title].filter(Boolean).join(' — ') || 'gitwrapped card');
+  const label = escapeXml([eb ? s1(opts.eyebrow).toUpperCase() : '', s1(opts.big), s1(opts.title)].filter(Boolean).join(' — ') || 'gitwrapped card');
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${CARD_WIDTH}" height="${CARD_HEIGHT}" viewBox="0 0 ${CARD_WIDTH} ${CARD_HEIGHT}" role="img" aria-label="${label}">`,
     `<title>${label}</title>`,

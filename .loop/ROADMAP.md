@@ -46,8 +46,8 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
   - [x] CHANGELOG.md + tag-triggered npm publish workflow (`v*` tags, needs `NPM_TOKEN` secret) + version bump to 1.0.0
 
 ## M7 — Feature-complete 1.1 (owner request, 2026-10-05: keep improving, leave nothing missing)
-- [ ] `--until YYYY-MM-DD` and `--year YYYY` (calendar-year window, the classic "Wrapped"); cards/recap show the requested window; tests
-- [ ] `--json`: write `<out>/stats.json` with every computed stat (stable, documented shape); tests
+- [x] `--until YYYY-MM-DD` and `--year YYYY` (calendar-year window, the classic "Wrapped"); cards/recap show the requested window; tests
+- [x] `--json`: write `<out>/stats.json` with every computed stat (stable, documented shape); tests
 - [ ] Languages card: top languages by lines changed (extension → language map, ignores lockfiles/build output), new card in the story, viewer/PNG/hero updated; tests
 - [ ] `--open`: open `wrapped.html` in the default browser after generating (open/xdg-open/start, no network, failure is a warning); tests
 - [ ] Packed-tarball smoke test: CI job that `npm pack`s, installs the tarball in a temp dir and runs `gitwrapped` on a fixture repo on all three OSes

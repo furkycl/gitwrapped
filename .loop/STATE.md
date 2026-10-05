@@ -1,6 +1,6 @@
 # STATE
 
-Next turn: 022 — M7: --until / --year
+Next turn: 023 — M7: languages card + --open
 
 | Turn | Date (UTC) | Task | PR | Result | Note for next turn |
 |------|------------|------|----|--------|--------------------|
@@ -27,3 +27,4 @@ Next turn: 022 — M7: --until / --year
 | 019 | 2026-10-05 | M6: v1.0.0 readiness 1/3 — CI on Linux/macOS/Windows | https://github.com/furkycl/gitwrapped/pull/22 | done (788 tests, CI green on ubuntu/macos/windows × Node 20+22) | Split v1.0.0 task into 3. .gitattributes eol=lf; macOS-only bug found: resvg places 🚀 far off its text in PNGs (test swaps emoji→W on darwin, README known issue). Next: fix that in src/png.js, then CHANGELOG + publish workflow + 1.0.0 bump. |
 | 020 | 2026-10-05 | M6: v1.0.0 readiness 2/3 — macOS PNG emoji fix | https://github.com/furkycl/gitwrapped/pull/23 | done (817 tests, CI green on ubuntu/macos/windows × Node 20+22 after 1 fix) | No stable resvg 2.7, so renderPng strips color emoji (incl. Emoji_Presentation like ✨✅) from <text> on darwin; darwin test swap removed. Node 20 Intl.Segmenter is very slow on huge strings — segment per token only when an emoji candidate exists. Next (last task): CHANGELOG.md + tag-triggered npm publish workflow (owner adds NPM_TOKEN) + 1.0.0 bump. |
 | 021 | 2026-10-05 | M6: v1.0.0 readiness 3/3 — CHANGELOG + tag-triggered publish + 1.0.0 | https://github.com/furkycl/gitwrapped/pull/24 | done (835 tests, CI green on ubuntu/macos/windows × Node 20+22) | publish.yml: tag must be on main, match package.json, have a CHANGELOG heading; prereleases → `next`. Owner: add NPM_TOKEN secret and push v1.0.0 tag. Owner asked to keep going instead of DONE → added M7 (feature-complete 1.1). |
+| 022 | 2026-10-05 | M7: --until/--year + --json | https://github.com/furkycl/gitwrapped/pull/25 | done (916 tests, CI green on ubuntu/macos/windows × Node 20+22) | Window filter = author-local dayKey (git.js windowFilter), --until uses two-pass readWindow (hashes, then --no-walk --stdin numstat). Past windows: todayComplete (no grace). Footer fitKeepTail keeps window label. stats.json has asOf; maxCommits always numeric. Next: languages card (card count 9→10: update viewer/hero/self-wrapped/README) + --open. |

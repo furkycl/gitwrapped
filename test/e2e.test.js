@@ -44,7 +44,7 @@ before(() => {
 });
 after(() => {
   fixture?.cleanup();
-  if (tmp) rmSync(tmp, { recursive: true, force: true });
+  if (tmp) rmSync(tmp, { recursive: true, force: true, maxRetries: 5 });
 });
 
 /** The inline SVGs in page order, as they appear in the HTML. */
@@ -152,7 +152,7 @@ describe('bin: filtering', () => {
   for (const [args, n] of cases) {
     test(`${args.join(' ')} → ${n} commits`, (t) => {
       const out = mkdtempSync(join(tmp, 'filter-'));
-      t.after(() => rmSync(out, { recursive: true, force: true }));
+      t.after(() => rmSync(out, { recursive: true, force: true, maxRetries: 5 }));
       const r = bin([fixture.dir, ...args, '--out', out]);
       assert.equal(r.status, 0, r.stderr);
       assert.match(r.stdout, new RegExp(`^gitwrapped: ${n} commits? → `));
@@ -165,8 +165,8 @@ describe('bin: filtering', () => {
     const outAll = mkdtempSync(join(tmp, 'all-'));
     const outBob = mkdtempSync(join(tmp, 'bob-'));
     t.after(() => {
-      rmSync(outAll, { recursive: true, force: true });
-      rmSync(outBob, { recursive: true, force: true });
+      rmSync(outAll, { recursive: true, force: true, maxRetries: 5 });
+      rmSync(outBob, { recursive: true, force: true, maxRetries: 5 });
     });
     assert.equal(bin([fixture.dir, '--out', outAll]).status, 0);
     assert.equal(bin([fixture.dir, '--author', 'bob@example.com', '--out', outBob]).status, 0);
@@ -179,7 +179,7 @@ describe('bin: filtering', () => {
 describe('bin: errors', () => {
   test('an existing dir that is not a git repo → exit 1, "not a git repository", out not created', (t) => {
     const dir = mkdtempSync(join(tmp, 'norepo-'));
-    t.after(() => rmSync(dir, { recursive: true, force: true }));
+    t.after(() => rmSync(dir, { recursive: true, force: true, maxRetries: 5 }));
     const out = join(dir, 'out');
     const r = bin([dir, '--out', out], { GIT_CEILING_DIRECTORIES: tmp });
     assert.equal(r.status, 1);
@@ -214,7 +214,7 @@ describe('bin: errors', () => {
 
   test('wrapped.html path occupied by a directory → exit 1, no stack trace', (t) => {
     const out = mkdtempSync(join(tmp, 'occupied-'));
-    t.after(() => rmSync(out, { recursive: true, force: true }));
+    t.after(() => rmSync(out, { recursive: true, force: true, maxRetries: 5 }));
     mkdirSync(join(out, 'wrapped.html'));
     const r = bin([fixture.dir, '--out', out]);
     assert.equal(r.status, 1);
@@ -224,7 +224,7 @@ describe('bin: errors', () => {
 
   test('<out>/png occupied by a file → exit 1 before anything is written (PNG export on)', (t) => {
     const out = mkdtempSync(join(tmp, 'pngfile-'));
-    t.after(() => rmSync(out, { recursive: true, force: true }));
+    t.after(() => rmSync(out, { recursive: true, force: true, maxRetries: 5 }));
     writeFileSync(join(out, 'png'), 'x');
     const r = bin([fixture.dir, '--out', out], {}, { png: true });
     assert.equal(r.status, 1);
@@ -235,7 +235,7 @@ describe('bin: errors', () => {
 
   test('<out>/cards occupied by a file → exit 1, clear message, nothing written', (t) => {
     const out = mkdtempSync(join(tmp, 'cardsfile-'));
-    t.after(() => rmSync(out, { recursive: true, force: true }));
+    t.after(() => rmSync(out, { recursive: true, force: true, maxRetries: 5 }));
     writeFileSync(join(out, 'cards'), 'x');
     const r = bin([fixture.dir, '--out', out]);
     assert.equal(r.status, 1);
@@ -245,7 +245,7 @@ describe('bin: errors', () => {
 
   test('a card file occupied by a directory → exit 1 before anything is written', (t) => {
     const out = mkdtempSync(join(tmp, 'cardisdir-'));
-    t.after(() => rmSync(out, { recursive: true, force: true }));
+    t.after(() => rmSync(out, { recursive: true, force: true, maxRetries: 5 }));
     mkdirSync(join(out, 'cards', CARD_FILES[3]), { recursive: true });
     const r = bin([fixture.dir, '--out', out]);
     assert.equal(r.status, 1);
@@ -277,7 +277,7 @@ describe('viewer inline script', () => {
 
   test('the script passes `node --check`', (t) => {
     const dir = mkdtempSync(join(tmpdir(), 'gw-check-'));
-    t.after(() => rmSync(dir, { recursive: true, force: true }));
+    t.after(() => rmSync(dir, { recursive: true, force: true, maxRetries: 5 }));
     const file = join(dir, 'viewer.cjs');
     writeFileSync(file, scripts[0]);
     const r = spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' });
@@ -623,7 +623,7 @@ describe('stale PNG cleanup', () => {
       assert.equal(existsSync(join(out, 'png', 'keep-me.txt')), true);
       assert.equal(existsSync(join(out, 'share.svg')), true);
     } finally {
-      rmSync(out, { recursive: true, force: true });
+      rmSync(out, { recursive: true, force: true, maxRetries: 5 });
       fx.cleanup();
     }
   });

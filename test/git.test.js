@@ -2,7 +2,7 @@ import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { buildLogArgs, parseLog, readCommits, readHistory, versionAtLeast, DEFAULT_LIMIT, LOG_FORMAT } from '../src/git.js';
 
@@ -152,7 +152,7 @@ describe('readCommits', () => {
 
   after(() => {
     for (const d of [dir, emptyDir, notRepo]) {
-      if (d) rmSync(d, { recursive: true, force: true });
+      if (d) rmSync(d, { recursive: true, force: true, maxRetries: 5 });
     }
   });
 
@@ -224,7 +224,7 @@ describe('readCommits', () => {
 
   test('a repo owned by another user gives a safe.directory hint', { skip: process.getuid?.() === 0 ? false : 'needs root to chown' }, async (t) => {
     const owned = mkdtempSync(join(tmpdir(), 'gitwrapped-dubious-'));
-    t.after(() => rmSync(owned, { recursive: true, force: true }));
+    t.after(() => rmSync(owned, { recursive: true, force: true, maxRetries: 5 }));
     git(owned, ['init', '-q']);
     execFileSync('chown', ['-R', '65534', owned]);
     const saved = { GIT_CONFIG_GLOBAL: process.env.GIT_CONFIG_GLOBAL, GIT_CONFIG_NOSYSTEM: process.env.GIT_CONFIG_NOSYSTEM };
@@ -329,7 +329,7 @@ describe('readCommits edge cases', () => {
   });
 
   after(() => {
-    if (root) rmSync(root, { recursive: true, force: true });
+    if (root) rmSync(root, { recursive: true, force: true, maxRetries: 5 });
   });
 
   test('works for a repo path containing spaces, with no opts', async () => {
@@ -429,7 +429,7 @@ describe('readCommits review fixes', () => {
   });
 
   after(() => {
-    for (const d of [dir, other]) if (d) rmSync(d, { recursive: true, force: true });
+    for (const d of [dir, other]) if (d) rmSync(d, { recursive: true, force: true, maxRetries: 5 });
   });
 
   test('--since YYYY-MM-DD includes commits early that day (local midnight)', async () => {
@@ -521,6 +521,8 @@ describe('--since uses author-date semantics on new and old git', () => {
     commitAt('ancient-in-the-middle', '2022-01-01T12:00:00Z');
     commitAt('new', '2024-08-01T12:00:00Z');
     // A fake git 2.30 (no --since-as-filter) that forwards everything else to the real git.
+    // It is a POSIX shell script, so it is only built where the test using it runs.
+    if (process.platform === 'win32') return;
     fakeBin = mkdtempSync(join(tmpdir(), 'gw-oldgit-'));
     const realGit = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
     writeFileSync(
@@ -533,8 +535,8 @@ describe('--since uses author-date semantics on new and old git', () => {
   });
 
   after(() => {
-    rmSync(dir, { recursive: true, force: true });
-    rmSync(fakeBin, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
+    if (fakeBin) rmSync(fakeBin, { recursive: true, force: true, maxRetries: 5 });
   });
 
   test('a commit authored after --since but committed a few days before it is kept', async () => {
@@ -550,7 +552,7 @@ const capped = await readHistory(${JSON.stringify(dir)}, { since: '2024-01-01', 
 console.log(JSON.stringify([r.commits.map((c) => c.subject), capped.commits.map((c) => c.subject), capped.truncated]));`;
     const out = execFileSync(process.execPath, ['--input-type=module', '-e', script], {
       encoding: 'utf8',
-      env: { ...env(), PATH: `${fakeBin}:${process.env.PATH}` },
+      env: { ...env(), PATH: `${fakeBin}${delimiter}${process.env.PATH}` },
     });
     assert.deepEqual(JSON.parse(out), [['new', 'skewed'], ['new'], true]);
   });

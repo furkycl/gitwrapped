@@ -209,7 +209,7 @@ describe('run', () => {
     const out = mkdtempSync(join(tmpdir(), 'gw-out-'));
     t.after(() => {
       fixture.cleanup();
-      rmSync(out, { recursive: true, force: true });
+      rmSync(out, { recursive: true, force: true, maxRetries: 5 });
     });
     const dest = join(out, 'nested', 'dir');
     const r = await runCaptured([fixture.dir, '--out', dest, '--no-png'], { today: '2024-03-14' });
@@ -237,7 +237,7 @@ describe('run', () => {
     const out = mkdtempSync(join(tmpdir(), 'gw-out-'));
     t.after(() => {
       fixture.cleanup();
-      rmSync(out, { recursive: true, force: true });
+      rmSync(out, { recursive: true, force: true, maxRetries: 5 });
     });
     const r = await runCaptured([fixture.dir, '--author', 'nobody@example.com', '--out', out, '--no-png']);
     assert.equal(r.code, 0, r.stderr);
@@ -248,7 +248,7 @@ describe('run', () => {
 
   test('a path that is not a git repo exits 1 with a message on stderr', async (t) => {
     const dir = mkdtempSync(join(tmpdir(), 'gw-norepo-'));
-    t.after(() => rmSync(dir, { recursive: true, force: true }));
+    t.after(() => rmSync(dir, { recursive: true, force: true, maxRetries: 5 }));
     const out = join(dir, 'out');
     const r = await runCaptured([dir, '--out', out]);
     assert.equal(r.code, 1);
@@ -259,7 +259,7 @@ describe('run', () => {
 
   test('a missing path or a file path exits 1 with a specific message', async (t) => {
     const dir = mkdtempSync(join(tmpdir(), 'gw-norepo-'));
-    t.after(() => rmSync(dir, { recursive: true, force: true }));
+    t.after(() => rmSync(dir, { recursive: true, force: true, maxRetries: 5 }));
     const out = join(dir, 'out');
     const missing = join(dir, 'missing');
     let r = await runCaptured([missing, '--out', out]);
@@ -276,7 +276,7 @@ describe('run', () => {
 
   test('an empty repo (git init, no commits) exits 0 with a "No commits found" notice', async (t) => {
     const dir = mkdtempSync(join(tmpdir(), 'gw-empty-'));
-    t.after(() => rmSync(dir, { recursive: true, force: true }));
+    t.after(() => rmSync(dir, { recursive: true, force: true, maxRetries: 5 }));
     spawnSync('git', ['init', '-q', dir]);
     const out = join(dir, 'out');
     const r = await runCaptured([dir, '--out', out, '--no-png']);
@@ -293,7 +293,7 @@ describe('run', () => {
     const out = mkdtempSync(join(tmpdir(), 'gw-out-'));
     t.after(() => {
       fixture.cleanup();
-      rmSync(out, { recursive: true, force: true });
+      rmSync(out, { recursive: true, force: true, maxRetries: 5 });
     });
     const r = await runCaptured([fixture.dir, '--out', out, '--no-png', '--max-commits', '3'], { today: '2024-03-14' });
     assert.equal(r.code, 0, r.stderr);
@@ -309,7 +309,7 @@ describe('run', () => {
     const out = mkdtempSync(join(tmpdir(), 'gw-out-'));
     t.after(() => {
       fixture.cleanup();
-      rmSync(out, { recursive: true, force: true });
+      rmSync(out, { recursive: true, force: true, maxRetries: 5 });
     });
     const args = [fixture.dir, '--out', out, '--no-png'];
     const forced = await runCaptured(args, { env: { FORCE_COLOR: '1' }, today: '2024-03-14' });
@@ -331,7 +331,7 @@ describe('run', () => {
     const out = mkdtempSync(join(tmpdir(), 'gw-out-'));
     t.after(() => {
       fixture.cleanup();
-      rmSync(out, { recursive: true, force: true });
+      rmSync(out, { recursive: true, force: true, maxRetries: 5 });
     });
     const boom = { toJSON() { throw 'boom'; }, toString() { throw 'boom'; } }; // eslint-disable-line no-throw-literal
     const r = await runCaptured([fixture.dir, '--out', out, '--no-png'], { today: boom });

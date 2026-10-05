@@ -39,7 +39,8 @@ function newRepo(prefix) {
 const commit = (dir, msg, extra = []) => git(dir, ['commit', '-q', '--no-verify', ...extra, '-m', msg]);
 const paths = (c) => c.files.map((x) => x.path);
 
-describe('numstat: paths and subjects that look like numstat lines or headers', () => {
+// Windows file names cannot contain tabs, newlines or other control characters.
+describe('numstat: paths and subjects that look like numstat lines or headers', { skip: process.platform === 'win32' && 'file names with tabs/newlines/control chars are invalid on Windows' }, () => {
   const hex40 = '0123456789abcdef0123456789abcdef01234567';
   const tricky = ['1\t2\tx', '42 starts with digits', `a\x1fb\x1fc\x1fd\x1fe`, hex40, 'p\n3\t4\tfake', '-\t-\tbin', 'trail\n'];
   let dir;
@@ -60,7 +61,7 @@ describe('numstat: paths and subjects that look like numstat lines or headers', 
     commits = await readCommits(dir);
   });
 
-  after(() => rmSync(dir, { recursive: true, force: true }));
+  after(() => rmSync(dir, { recursive: true, force: true, maxRetries: 5 }));
 
   test('commit count and subjects are intact', () => {
     assert.deepEqual(commits.map((c) => c.subject), ['-\t-\tlooks binary', '', '12\t34\tfoo', 'base']);
@@ -128,7 +129,7 @@ describe('numstat: deletes, big counts, merges, submodules', () => {
     commits = await readCommits(dir);
   });
 
-  after(() => rmSync(dir, { recursive: true, force: true }));
+  after(() => rmSync(dir, { recursive: true, force: true, maxRetries: 5 }));
 
   const by = (s) => commits.find((c) => c.subject === s);
 
@@ -241,7 +242,7 @@ describe('numstat: many commits / files', () => {
         assert.equal(c.linesRemoved, 15);
       }
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
     }
   });
 });
@@ -254,7 +255,7 @@ describe('makeFixtureRepo: safety and determinism', () => {
       assert.throws(() => makeFixtureRepo({ dir }), /not empty/);
       assert.deepEqual(readdirSync(dir), ['keep.txt']);
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
     }
   });
 
@@ -267,7 +268,7 @@ describe('makeFixtureRepo: safety and determinism', () => {
       assert.ok(existsSync(join(dir, 'sub')));
       assert.equal(existsSync(join(dir, '.git')), false);
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
     }
   });
 

@@ -6,7 +6,7 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -43,7 +43,7 @@ before(() => {
 });
 after(() => {
   fixture?.cleanup();
-  if (tmp) rmSync(tmp, { recursive: true, force: true });
+  if (tmp) rmSync(tmp, { recursive: true, force: true, maxRetries: 5 });
 });
 
 describe('bin: 9 cards end to end', () => {
@@ -76,8 +76,12 @@ describe('bin: 9 cards end to end', () => {
       writeFileSync(join(cards, `${s}.svg`), 'old');
       writeFileSync(join(pngs, `${s}.png`), 'old');
     }
-    // User files that must survive.
-    const userCards = ['notes.txt', '05-custom.svg', '05-Hot-Files.svg', '05-hot-files.svg.bak', '5-hot-files.svg', '05-hot-files.png', 'hot-files.svg'];
+    // User files that must survive. On a case-insensitive file system (macOS, Windows)
+    // 05-Hot-Files.svg is the same file as the old 05-hot-files.svg, so it is left out.
+    writeFileSync(join(out, 'case-probe'), '');
+    const caseInsensitive = existsSync(join(out, 'CASE-PROBE'));
+    rmSync(join(out, 'case-probe'));
+    const userCards = ['notes.txt', '05-custom.svg', ...(caseInsensitive ? [] : ['05-Hot-Files.svg']), '05-hot-files.svg.bak', '5-hot-files.svg', '05-hot-files.png', 'hot-files.svg'];
     const userPngs = ['notes.txt', '05-custom.png', '08-outro.svg', 'my-08-outro.png'];
     for (const f of userCards) writeFileSync(join(cards, f), 'mine');
     for (const f of userPngs) writeFileSync(join(pngs, f), 'mine');

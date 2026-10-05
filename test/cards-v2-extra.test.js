@@ -148,7 +148,7 @@ describe('viewer with v2 cards', () => {
     });
     after(() => {
       fixture?.cleanup();
-      if (out) rmSync(out, { recursive: true, force: true });
+      if (out) rmSync(out, { recursive: true, force: true, maxRetries: 5 });
     });
 
     test('every id in wrapped.html is unique and the CSP matches', async () => {

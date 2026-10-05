@@ -33,3 +33,43 @@ jobs:
           git config --global user.email ci@example.com
       - run: npm ci
       - run: npm test
+
+  # Packs the tarball, installs it into a fresh temp project and runs the installed
+  # `gitwrapped` on the fixture repo (PNG export included, so resvg's native binary must
+  # resolve from the install). Node 22 only: what this checks (package contents, bin link,
+  # native optional dependency per OS) does not depend on the Node major, and the test job
+  # already covers Node 20 for the code itself.
+  pack-smoke:
+    name: pack-smoke (${{ matrix.os }}, node 22)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: Keep LF line endings on checkout (Windows)
+        if: runner.os == 'Windows'
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Set git identity (the fixture repo is a throwaway repo)
+        shell: bash
+        run: |
+          git config --global user.name ci
+          git config --global user.email ci@example.com
+      # No `npm ci`: the script uses only Node built-ins and scripts/make-fixture-repo.js,
+      # and installs the packed tarball (with its dependencies) into its own temp project.
+      - run: npm run pack-smoke
+        env:
+          PACK_SMOKE_DIR: ${{ runner.temp }}/pack-smoke
+      - name: Upload the pack-smoke work dir on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pack-smoke-${{ matrix.os }}
+          path: ${{ runner.temp }}/pack-smoke
+          if-no-files-found: ignore
+          retention-days: 7

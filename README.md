@@ -296,6 +296,7 @@ node scripts/make-fixture-repo.js      # build the deterministic fixture repo, p
 node scripts/preview-cards.js [dir]    # render fixture cards to ./cards-preview to eyeball them
 npm run self-wrapped                   # regenerate docs/self-wrapped/ from this repo's history
 npm run hero-gif                       # rebuild docs/hero.gif from docs/self-wrapped/cards
+npm run pack-smoke                     # npm pack, install the tarball in a temp dir, run it on the fixture (needs registry access)
 ```
 
 `npm run hero-gif` (`scripts/make-hero-gif.js`) rasterizes every `*.svg` card in

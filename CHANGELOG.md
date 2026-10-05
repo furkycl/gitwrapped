@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- CI: a `pack-smoke` job on Linux, macOS and Windows (`npm run pack-smoke`,
+  `scripts/pack-smoke.js`) packs the tarball, installs it into a fresh temp project and
+  runs the installed `gitwrapped` on the fixture repo, checking the tarball contents, the
+  bin link, `--version`, the HTML, SVG cards, PNGs (so the native renderer resolves from
+  the install) and `stats.json`.
 - `--until YYYY-MM-DD`: only include commits authored on or before that day
   (inclusive). Combines with `--since`; `--since` after `--until` is an error. git's
   committer-date `--until` is not used: a cheap first `git log` pass of hashes and author

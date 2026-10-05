@@ -52,5 +52,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] `--open`: open `wrapped.html` in the default browser after generating (open/xdg-open/start, no network, failure is a warning); tests
 - [x] Packed-tarball smoke test: CI job that `npm pack`s, installs the tarball in a temp dir and runs `gitwrapped` on a fixture repo on all three OSes
 - 1.1.0 release prep (split in turn 024):
-  - [ ] Fix the pre-1.1.0 cold audit findings (see STATE turn 024 note): --no-png stale-PNG cleanup outside owned out dir, symlinked output targets, future-dated commits vs current streak/activity window, viewer hover tooltips blocked by tap zones, --author email privacy on images, --open non-zero exit, dormant-repo activity copy, steady-shipper span with mixed offsets, recap nits, viewer a11y
+  - Fix the pre-1.1.0 cold audit findings (see STATE turn 024 note) — split in turn 025:
+    - [ ] HIGH/MED: --no-png stale-PNG cleanup outside owned out dir, symlinked output targets, future-dated commits vs current streak/activity window, viewer hover tooltips blocked by tap zones
+    - [ ] LOW: --author email privacy on images, --open non-zero exit, dormant-repo activity copy, steady-shipper span with mixed offsets, recap nits (−0, bidi chars), viewer a11y
   - [ ] CHANGELOG 1.1.0 + version bump, regenerate docs/self-wrapped + hero GIF (10 cards), README in sync

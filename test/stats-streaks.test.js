@@ -118,7 +118,9 @@ describe('computeStreaks', () => {
   test('current is dead two days later or when the last day is 2+ days after today', () => {
     const input = days('2024-06-27', '2024-06-28');
     assert.deepEqual(computeStreaks(input, { today: '2024-06-30' }).current, NONE);
-    assert.deepEqual(computeStreaks(input, { today: '2024-06-26' }).current, NONE);
+    // today 06-26: 06-28 is 2 days ahead and ignored; 06-27 (the grace day) alone is current.
+    assert.deepEqual(computeStreaks(input, { today: '2024-06-26' }).current, run(1, '2024-06-27', '2024-06-27'));
+    assert.deepEqual(computeStreaks(input, { today: '2024-06-25' }).current, NONE);
     assert.deepEqual(computeStreaks(input, { today: '2024-06-01' }).current, NONE);
     // longest is unaffected by today
     assert.deepEqual(computeStreaks(input, { today: '2024-06-01' }).longest, run(2, '2024-06-27', '2024-06-28'));

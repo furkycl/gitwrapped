@@ -618,6 +618,10 @@ describe('stale PNG cleanup', () => {
       writeFileSync(join(out, 'png', '01-intro.png'), 'old');
       writeFileSync(join(out, 'png', 'keep-me.txt'), 'user file');
       writeFileSync(join(out, 'share.png'), 'old');
+      // Only a folder an earlier run made (it has wrapped.html) is cleaned up.
+      await generate({ path: fx.dir, out, png: false }, { today: '2024-03-14' });
+      assert.equal(existsSync(join(out, 'share.png')), true, 'not ours yet: nothing deleted');
+      assert.equal(existsSync(join(out, 'png', '01-intro.png')), true);
       await generate({ path: fx.dir, out, png: false }, { today: '2024-03-14' });
       assert.equal(existsSync(join(out, 'share.png')), false);
       assert.equal(existsSync(join(out, 'png', '01-intro.png')), false);

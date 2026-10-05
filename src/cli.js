@@ -1,6 +1,6 @@
 import { parseArgs, promisify } from 'node:util';
 import { execFile, spawn } from 'node:child_process';
-import { accessSync, constants as fsConstants, mkdirSync, readdirSync, readFileSync, rmdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { accessSync, constants as fsConstants, lstatSync, mkdirSync, readdirSync, readFileSync, rmdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { buildCards, CARD_IDS, renderShareCard, windowLabel } from './cards/index.js';
 import { DEFAULT_LIMIT, readHistory } from './git.js';
@@ -274,51 +274,84 @@ function ensureDir(dir, label = dir) {
   }
 }
 
+/** fs.Stats for `p` itself (a symlink is not followed), or null if nothing is there. */
+function lstatOrNull(p) {
+  try {
+    return lstatSync(p);
+  } catch {
+    return null;
+  }
+}
+
+/** The error for an output path inside <out> that is a symlink. */
+function symlinkError(p) {
+  return outputError(`refusing to write through a symlink: ${p} (remove it or choose another --out)`);
+}
+
 /**
  * Check where the output will go before writing anything: `out` must be (or be creatable
  * as) a directory, every subdirectory (<out>/cards, <out>/png) a directory if it exists,
  * and no output file (wrapped.html, share.*, card files) may be occupied by a directory.
+ * Symlinks: `out` itself may be one (the user named it), but gitwrapped never writes
+ * through a symlink inside it. A subdirectory or output file that is a symlink (even a
+ * dangling one) fails the run here, before anything is written, so nothing outside the
+ * out dir is ever created, overwritten or deleted through a link.
  */
 function checkOutputPaths(out, dirs, filePaths) {
   const outSt = statOrNull(out);
   if (outSt && !outSt.isDirectory()) throw outputError(`output path is not a directory: ${out}`);
   for (const { dir, what } of dirs) {
+    if (lstatOrNull(dir)?.isSymbolicLink()) throw symlinkError(dir);
     const st = statOrNull(dir);
     if (st && !st.isDirectory()) throw outputError(`cannot write ${what}: ${dir} exists and is not a directory`);
   }
   for (const p of filePaths) {
+    if (lstatOrNull(p)?.isSymbolicLink()) throw symlinkError(p);
     if (statOrNull(p)?.isDirectory()) throw outputError(`cannot write ${p}: a directory is in the way`);
   }
 }
 
+// O_NOFOLLOW (POSIX): even if a symlink appears after checkOutputPaths, the write fails
+// instead of following it. Not available on Windows, where the check above still applies.
+const WRITE_FLAGS = fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_TRUNC | (fsConstants.O_NOFOLLOW ?? 0);
+
 function writeOutput(file, data) {
   try {
-    writeFileSync(file, data);
+    writeFileSync(file, data, { flag: WRITE_FLAGS });
   } catch (err) {
+    if (err?.code === 'ELOOP') throw symlinkError(file);
     throw outputError(`cannot write ${file}: ${err?.code ?? err?.message ?? err}`);
   }
 }
 
-/** True when `file` exists and is a regular file. */
+/** True when `file` exists and is a regular file (not a symlink). */
 function isFile(file) {
+  return Boolean(lstatOrNull(file)?.isFile());
+}
+
+/** True when `dir` exists and is a real directory (not a symlink to one). */
+function isRealDir(dir) {
+  return Boolean(lstatOrNull(dir)?.isDirectory());
+}
+
+/** Delete `f` only if it is a regular file (never a symlink or its target); else leave it. */
+function removeRegularFile(f) {
   try {
-    return statSync(file).isFile();
+    if (isFile(f)) unlinkSync(f);
   } catch {
-    return false;
+    // not removable: leave it
   }
 }
 
-/** Remove share.png and this card set's png/NN-<id>.png files (and png/ if left empty). */
+/**
+ * Remove share.png and this card set's png/NN-<id>.png files (and png/ if left empty).
+ * Only called when the out dir is ours (see generate). Only regular files are removed,
+ * and nothing inside png/ is touched when png/ is a symlink.
+ */
 function removeStalePngs(pngDir, sharePngPath, names) {
-  const rmFile = (f) => {
-    try {
-      if (statSync(f).isFile()) unlinkSync(f);
-    } catch {
-      // missing or not removable: leave it
-    }
-  };
-  rmFile(sharePngPath);
-  for (const n of names) rmFile(join(pngDir, n));
+  removeRegularFile(sharePngPath);
+  if (!isRealDir(pngDir)) return;
+  for (const n of names) removeRegularFile(join(pngDir, n));
   try {
     rmdirSync(pngDir); // only succeeds when empty
   } catch {
@@ -329,10 +362,12 @@ function removeStalePngs(pngDir, sharePngPath, names) {
 /**
  * Remove card files an earlier run (possibly an older version with different numbering,
  * e.g. 05-hot-files.svg before the activity card) left in `dir`: only `NN-<card id>.<ext>`
- * names with a known card id that are not in `keep`. Anything else is left alone.
- * Only called when `<out>/wrapped.html` existed before this run (the folder is ours).
+ * names with a known card id that are not in `keep`, and only regular files (symlinks are
+ * left alone, and so is everything when `dir` itself is a symlink). Anything else is left
+ * alone. Only called when `<out>/wrapped.html` existed before this run (the folder is ours).
  */
 function removeOldCardFiles(dir, ext, keep) {
+  if (!isRealDir(dir)) return;
   let names;
   try {
     names = readdirSync(dir);
@@ -343,11 +378,7 @@ function removeOldCardFiles(dir, ext, keep) {
   for (const n of names) {
     const m = /^\d{2}-([a-z-]+)\.([a-z]+)$/.exec(n);
     if (!m || m[2] !== ext || !CARD_IDS.includes(m[1]) || keepSet.has(n)) continue;
-    try {
-      if (statSync(join(dir, n)).isFile()) unlinkSync(join(dir, n));
-    } catch {
-      // not removable: leave it
-    }
+    removeRegularFile(join(dir, n));
   }
 }
 
@@ -421,8 +452,9 @@ export async function generate({ path, since, until, author, out, png = true, ma
     }
   }
 
-  // A wrapped.html from an earlier run marks the folder as gitwrapped output: only then
-  // are old-numbered card files from an earlier card set cleaned up.
+  // A wrapped.html from an earlier run (a regular file, not a symlink) marks the folder as
+  // gitwrapped output. gitwrapped only ever deletes files in a folder it owns: old-numbered
+  // card files from an earlier card set, and with --no-png the PNGs a previous run left.
   const ownsOut = isFile(html);
   ensureDir(out);
   ensureDir(cardsDir);
@@ -437,9 +469,12 @@ export async function generate({ path, since, until, author, out, png = true, ma
     for (const { file, data } of pngs) writeOutput(file, data);
     if (ownsOut) removeOldCardFiles(pngDir, 'png', pngs.map((p) => basename(p.file)));
   } else {
-    // No PNGs this run: drop ones a previous run left behind so nothing stale remains.
-    if (ownsOut) removeOldCardFiles(pngDir, 'png', []);
-    removeStalePngs(pngDir, sharePngPath, cards.map(({ id }, i) => `${stem(id, i)}.png`));
+    // No PNGs this run: drop ones a previous run left behind so nothing stale remains
+    // (only in a folder that is ours: a first run into a user's folder deletes nothing).
+    if (ownsOut) {
+      removeOldCardFiles(pngDir, 'png', []);
+      removeStalePngs(pngDir, sharePngPath, cards.map(({ id }, i) => `${stem(id, i)}.png`));
+    }
   }
   const pngFiles = pngs.map((p) => p.file).filter((f) => f !== sharePngPath);
   return {

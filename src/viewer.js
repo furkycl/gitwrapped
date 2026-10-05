@@ -62,6 +62,7 @@ body{display:flex;flex-direction:column;height:100vh;height:100svh;height:100dvh
 .nav.next{right:0;width:66.667%}
 .nav:focus{outline:none}
 .nav:focus-visible{outline:3px solid var(--focus);outline-offset:-6px;border-radius:12px}
+@media (any-hover:hover){.story{cursor:pointer}.nav{pointer-events:none}}
 .pause{position:absolute;top:calc(22px + env(safe-area-inset-top,0px));right:calc(12px + env(safe-area-inset-right,0px));z-index:4;width:40px;height:40px;border:0;border-radius:50%;background:rgba(0,0,0,.45);color:var(--fg);font:600 16px/1 system-ui,sans-serif;cursor:pointer}
 .pause:focus{outline:none}
 .pause:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
@@ -411,6 +412,9 @@ const SCRIPT = `
   // pointer's click may be retargeted to the story, taps navigate here on pointerup and
   // the click that follows is swallowed; the buttons' own click handlers then only see
   // keyboard / assistive-tech activations. The toolbar lives outside the story.
+  // With a hover-capable pointer (mouse, trackpad) the tap zones are pointer-events:none
+  // (see CSS), so hovering the card reaches the SVG and its <title> tooltips (calendar
+  // days, chart bars) show; taps still navigate by x-position in endPointer below.
   var holdTimer = null;
   var swallowClickUntil = 0;
   story.addEventListener('pointerdown', function (e) {

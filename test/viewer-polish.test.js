@@ -655,3 +655,96 @@ describe('viewer polish fixes', () => {
     assert.equal(row.hidden, true);
   });
 });
+
+describe('tap zones do not block card tooltips (loop 025)', () => {
+  const css = inline(html, 'style')[0];
+
+  test('hover-capable pointers: tap zones are pointer-events:none, the story shows the pointer cursor', () => {
+    assert.ok(css.includes('@media (any-hover:hover){.story{cursor:pointer}.nav{pointer-events:none}}'));
+    // Touch-only devices keep the tap zones as hit targets: the base rule has no pointer-events.
+    const base = /\.nav\{[^}]*\}/.exec(css)[0];
+    assert.doesNotMatch(base, /pointer-events/);
+    // The tap zones are still in the markup, focusable buttons for keyboard / AT.
+    assert.match(html, /<button type="button" class="nav prev" id="prev" aria-label="Previous card"><\/button>/);
+    assert.match(html, /<button type="button" class="nav next" id="next" aria-label="Next card"><\/button>/);
+  });
+
+  test('a mouse click on the card itself (the SVG, not a tap zone) navigates by x-position', () => {
+    const v = boot();
+    const svg = v.slides[0];
+    v.story.fire('pointerdown', { pointerId: 1, pointerType: 'mouse', button: 0, target: svg, clientX: 80, clientY: 50 });
+    v.story.fire('pointerup', { pointerId: 1, target: svg, clientX: 80, clientY: 50 });
+    assert.equal(v.active, 1, 'right two thirds: next');
+    assert.equal(v.story.fire('click', { target: svg }).prevented, true, 'the follow-up click is swallowed');
+    v.story.fire('pointerdown', { pointerId: 2, pointerType: 'mouse', button: 0, target: v.slides[1], clientX: 10, clientY: 50 });
+    v.story.fire('pointerup', { pointerId: 2, target: v.slides[1], clientX: 10, clientY: 50 });
+    assert.equal(v.active, 0, 'left third: previous');
+  });
+
+  test('keyboard arrows and tap-zone activation (keyboard / AT click) still navigate', () => {
+    const v = boot();
+    v.key('ArrowRight');
+    assert.equal(v.active, 1);
+    v.key('ArrowLeft');
+    assert.equal(v.active, 0);
+    v.ids.next.fire('click');
+    assert.equal(v.active, 1);
+    v.ids.prev.fire('click');
+    assert.equal(v.active, 0);
+  });
+});
+
+describe('tap zones vs tooltips: tester edge cases (loop 025)', () => {
+  const css = inline(html, 'style')[0];
+
+  test('the hover rule comes after the base .nav rules and nothing re-enables pointer-events on .nav', () => {
+    const hoverAt = css.indexOf('@media (any-hover:hover){');
+    assert.ok(hoverAt > css.indexOf('.nav.next{'), 'cascade: hover rule wins over base .nav rules');
+    const navPe = [...css.matchAll(/\.nav[^{]*\{[^}]*pointer-events:([a-z]+)/g)].map((m) => m[1]);
+    assert.deepEqual(navPe, ['none'], 'only the hover rule sets pointer-events on .nav');
+    // The slides / story never swallow pointer events themselves (tooltips need the SVG hit).
+    assert.doesNotMatch(css, /\.(slide|story)\{[^}]*pointer-events:none/);
+  });
+
+  test('a touch tap on the SVG (hybrid hover-capable device) still navigates', () => {
+    const v = boot();
+    v.story.fire('pointerdown', { pointerId: 1, pointerType: 'touch', target: v.slides[0], clientX: 70, clientY: 50 });
+    v.story.fire('pointerup', { pointerId: 1, target: v.slides[0], clientX: 70, clientY: 50 });
+    assert.equal(v.active, 1);
+  });
+
+  test('right / middle mouse buttons on the SVG do not navigate', () => {
+    const v = boot();
+    for (const button of [1, 2]) {
+      v.story.fire('pointerdown', { pointerId: 5 + button, pointerType: 'mouse', button, target: v.slides[0], clientX: 80, clientY: 50 });
+      v.story.fire('pointerup', { pointerId: 5 + button, target: v.slides[0], clientX: 80, clientY: 50 });
+    }
+    assert.equal(v.active, 0);
+  });
+
+  test('a mouse drag over the SVG (e.g. selecting / moving to a tooltip) is not a tap', () => {
+    const v = boot();
+    v.story.fire('pointerdown', { pointerId: 1, pointerType: 'mouse', button: 0, target: v.slides[0], clientX: 50, clientY: 50 });
+    v.story.fire('pointerup', { pointerId: 1, target: v.slides[0], clientX: 50, clientY: 75 });
+    assert.equal(v.active, 0);
+  });
+
+  test('the left-third boundary: x exactly at width/3 goes forward, just below goes back', () => {
+    const v = boot();
+    v.story.fire('pointerdown', { pointerId: 1, pointerType: 'mouse', button: 0, target: v.slides[0], clientX: 30, clientY: 50 });
+    v.story.fire('pointerup', { pointerId: 1, target: v.slides[0], clientX: 30, clientY: 50 });
+    assert.equal(v.active, 1, 'x=30 of 90 → next (matches the 66.667% next zone)');
+    v.story.fire('pointerdown', { pointerId: 2, pointerType: 'mouse', button: 0, target: v.slides[1], clientX: 29, clientY: 50 });
+    v.story.fire('pointerup', { pointerId: 2, target: v.slides[1], clientX: 29, clientY: 50 });
+    assert.equal(v.active, 0);
+  });
+
+  test('a mouse click on the SVG navigates exactly once (pointerup, then the swallowed click)', () => {
+    const v = boot();
+    v.story.fire('pointerdown', { pointerId: 1, pointerType: 'mouse', button: 0, target: v.slides[0], clientX: 80, clientY: 50 });
+    v.story.fire('pointerup', { pointerId: 1, target: v.slides[0], clientX: 80, clientY: 50 });
+    const r = v.story.fire('click', { target: v.slides[0] });
+    assert.equal(r.prevented, true);
+    assert.equal(v.active, 1, 'not advanced twice');
+  });
+});

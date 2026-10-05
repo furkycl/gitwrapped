@@ -393,7 +393,7 @@ describe('end-to-end bin', () => {
 
 describe('package metadata', () => {
   test('package.json has bin, type module, engines >=20, test script', () => {
-    assert.equal(PKG.name, 'gitwrapped');
+    assert.equal(PKG.name, '@furkycl/gitwrapped');
     assert.equal(PKG.type, 'module');
     assert.equal(PKG.bin?.gitwrapped, 'bin/gitwrapped.js');
     assert.equal(PKG.engines?.node, '>=20');

@@ -6,7 +6,7 @@
 set of shareable story cards. Everything runs locally, and you don't need an API key.
 
 ```bash
-npx gitwrapped
+npx @furkycl/gitwrapped
 ```
 
 <!-- TODO: replace with docs/hero.gif (screen recording of wrapped.html) -->
@@ -52,9 +52,12 @@ gitwrapped-out/
 ## Install
 
 ```bash
-npx gitwrapped            # run without installing
-npm i -g gitwrapped       # or install the `gitwrapped` command globally
+npx @furkycl/gitwrapped        # run without installing
+npm i -g @furkycl/gitwrapped   # or install the `gitwrapped` command globally
 ```
+
+The package is published under the `@furkycl` scope. The unscoped `gitwrapped` package
+on npm is a different project. Either way, the installed command is `gitwrapped`.
 
 Requirements:
 
@@ -90,19 +93,19 @@ is easy to grep. The recap is in color on a terminal and plain when piped.
 
 ```bash
 # This year only
-npx gitwrapped --since 2026-01-01
+npx @furkycl/gitwrapped --since 2026-01-01
 
 # Just you, in a shared repo
-npx gitwrapped --author you@example.com
+npx @furkycl/gitwrapped --author you@example.com
 
 # Another repo, into a folder of your choice
-npx gitwrapped ~/code/my-app --out ~/Desktop/my-app-wrapped
+npx @furkycl/gitwrapped ~/code/my-app --out ~/Desktop/my-app-wrapped
 
 # Fast mode: skip PNG rendering
-npx gitwrapped --no-png
+npx @furkycl/gitwrapped --no-png
 
 # CI or logs: no color, first line is machine-friendly
-NO_COLOR=1 npx gitwrapped --no-png | head -1
+NO_COLOR=1 npx @furkycl/gitwrapped --no-png | head -1
 ```
 
 ## Privacy

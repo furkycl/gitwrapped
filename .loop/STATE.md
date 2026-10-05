@@ -1,6 +1,6 @@
 # STATE
 
-Next turn: 016 — activity heatmap card
+Next turn: 017 — viewer polish
 
 | Turn | Date (UTC) | Task | PR | Result | Note for next turn |
 |------|------------|------|----|--------|--------------------|
@@ -21,3 +21,4 @@ Next turn: 016 — activity heatmap card
 | 013 | 2026-10-05 | M6: system audit + fixes | https://github.com/furkycl/gitwrapped/pull/16 | done (580 tests, CI green Node 20+22) | 12 audit findings fixed (since-as-filter+7d slack, mailmap, %P merges, shallow, submodules, linear wrap, emoji clusters, recap control chars, viewer Space). PNG font reuse impossible in resvg-js 2.6.2. Remote branch delete still 403. |
 | 014 | 2026-10-05 | M6: rename to @furkycl/gitwrapped | https://github.com/furkycl/gitwrapped/pull/17 | done (581 tests, CI green Node 20+22) | Unscoped 'gitwrapped' on npm is DavidAmunga's project. README test guards against unscoped install lines. |
 | 015 | 2026-10-05 | M6: card design v2 | https://github.com/furkycl/gitwrapped/pull/18 | done (659 tests, CI green Node 20+22) | Layout engine v2 (bars/hbars/split/callout/tiles), shrink order big→charts compact→sentences→drop chart. svg.js exports layoutCard for collision tests. |
+| 016 | 2026-10-05 | M6: activity heatmap card | https://github.com/furkycl/gitwrapped/pull/19 | done (709 tests, CI green Node 20+22) | 9 cards now (05-activity). Old-numbered file cleanup only when <out>/wrapped.html pre-exists. Clipped (>53w) copy uses window-only stats. |

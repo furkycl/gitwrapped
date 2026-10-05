@@ -40,4 +40,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] Activity heatmap card: GitHub-style calendar of commits per day
 - [x] Viewer polish: wrapped.html design, card download/share actions, accessibility pass
 - [x] Hero GIF in `docs/hero.gif`, regenerate `docs/self-wrapped/`, README refresh
-- [ ] v1.0.0 readiness: CHANGELOG, CI on Linux/macOS/Windows, tag-triggered npm publish workflow (needs `NPM_TOKEN` secret), version bump
+- v1.0.0 readiness (split in turn 019):
+  - [x] CI on Linux/macOS/Windows × Node 20/22, suite passes on all six
+  - [ ] Fix macOS PNG emoji misplacement (resvg-js 2.6.2 draws Apple Color Emoji ~830px off; see README known issue and test/png.test.js darwin swap) — e.g. strip/replace emoji in PNG text on darwin or upgrade resvg once 2.7 is stable; drop the test workaround
+  - [ ] CHANGELOG.md + tag-triggered npm publish workflow (`v*` tags, needs `NPM_TOKEN` secret) + version bump to 1.0.0

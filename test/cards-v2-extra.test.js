@@ -78,7 +78,7 @@ const titles = (svg) => [...svg.matchAll(/<title>([^<]*)<\/title>/g)].map((m) =>
 
 describe('PNG rendering of every v2 card', () => {
   for (const [name, make, opts] of SCENARIOS) {
-    test(`${name}: all 8 cards rasterize to 1080x1920, share to 1200x630`, async (t) => {
+    test(`${name}: all 9 cards rasterize to 1080x1920, share to 1200x630`, async (t) => {
       if (!Resvg) {
         t.skip(`resvg unavailable: ${resvgError}`);
         return;

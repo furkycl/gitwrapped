@@ -39,5 +39,5 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] Card design v2: hour-of-day + weekday bar charts on the power-hour card, fuller layouts, no decoration overlapping content, no duplicated footer text
 - [x] Activity heatmap card: GitHub-style calendar of commits per day
 - [x] Viewer polish: wrapped.html design, card download/share actions, accessibility pass
-- [ ] Hero GIF in `docs/hero.gif`, regenerate `docs/self-wrapped/`, README refresh
+- [x] Hero GIF in `docs/hero.gif`, regenerate `docs/self-wrapped/`, README refresh
 - [ ] v1.0.0 readiness: CHANGELOG, CI on Linux/macOS/Windows, tag-triggered npm publish workflow (needs `NPM_TOKEN` secret), version bump

@@ -30,6 +30,8 @@ const KEYCAP = /^[0-9#*]️?⃣$/u;
 const EMOJI_PRESENTATION = /\p{Emoji_Presentation}/u;
 const SPECIAL_REF = new Set([0x26, 0x3c, 0x3e, 0x22, 0x27]); // & < > " '
 const ASCII_SPACE = /^[ \t\n\r]+$/;
+// Any code point that can start or make a color-emoji cluster (cheap pre-check).
+const EMOJI_CANDIDATE = /[\p{Extended_Pictographic}\p{Regional_Indicator}\p{Emoji_Presentation}\u20E3]/u;
 const TEXT_OPEN = /^<text\b/;
 const TEXT_CLOSE = /^<\/text\s*>$/;
 
@@ -53,6 +55,24 @@ function decodeNumericRefs(s) {
 }
 
 /**
+ * Split `text` into items { text, emoji, space }: ASCII-whitespace runs, tokens without
+ * an emoji candidate (kept whole), and the grapheme clusters of tokens that have one.
+ * Emoji clusters never contain ASCII whitespace, so segmenting per token is equivalent
+ * and keeps the cost proportional to the tokens that need it (Intl.Segmenter is slow
+ * on long strings in Node 20).
+ */
+function emojiItems(text) {
+  const items = [];
+  for (const token of text.split(/([ \t\n\r]+)/)) {
+    if (!token) continue;
+    if (ASCII_SPACE.test(token)) items.push({ text: token, emoji: false, space: true });
+    else if (!EMOJI_CANDIDATE.test(token)) items.push({ text: token, emoji: false, space: false });
+    else for (const g of graphemes(token)) items.push({ text: g, emoji: isColorEmoji(g), space: false });
+  }
+  return items;
+}
+
+/**
  * Remove color-emoji clusters from one run of XML character data. A stretch of emoji and
  * ASCII whitespace (with at least one emoji) becomes one space when it had whitespace,
  * or nothing when it had none; at an edge where `trimStart` / `trimEnd` is set (the run
@@ -60,26 +80,29 @@ function decodeNumericRefs(s) {
  * Text without emoji is returned unchanged.
  */
 function stripEmojiRun(raw, trimStart, trimEnd) {
-  const clusters = graphemes(decodeNumericRefs(raw));
-  const emoji = clusters.map(isColorEmoji);
-  if (!emoji.includes(true)) return raw;
+  const text = decodeNumericRefs(raw);
+  if (!EMOJI_CANDIDATE.test(text)) return raw;
+  const items = emojiItems(text);
+  if (!items.some((it) => it.emoji)) return raw;
   let out = '';
   let i = 0;
-  while (i < clusters.length) {
-    if (!emoji[i] && !ASCII_SPACE.test(clusters[i])) {
-      out += clusters[i++];
+  while (i < items.length) {
+    if (!items[i].emoji && !items[i].space) {
+      out += items[i++].text;
       continue;
     }
-    // A stretch of emoji / whitespace clusters: [i, j).
+    // A stretch of emoji / whitespace items: [i, j).
     let j = i;
     let hasEmoji = false;
     let hasSpace = false;
-    for (; j < clusters.length && (emoji[j] || ASCII_SPACE.test(clusters[j])); j++) {
-      if (emoji[j]) hasEmoji = true;
+    let kept = '';
+    for (; j < items.length && (items[j].emoji || items[j].space); j++) {
+      if (items[j].emoji) hasEmoji = true;
       else hasSpace = true;
+      kept += items[j].text;
     }
-    const atTrimmedEdge = (i === 0 && trimStart) || (j === clusters.length && trimEnd);
-    if (!hasEmoji) out += clusters.slice(i, j).join('');
+    const atTrimmedEdge = (i === 0 && trimStart) || (j === items.length && trimEnd);
+    if (!hasEmoji) out += kept;
     else if (hasSpace && !atTrimmedEdge) out += ' ';
     i = j;
   }

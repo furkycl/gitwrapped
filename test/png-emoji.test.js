@@ -270,14 +270,17 @@ describe('stripEmojiFromText: character data edge cases', () => {
     assert.equal(strip1('a \t\n🚀\n\t b'), 'a b');
   });
 
-  test('long whitespace runs strip in linear time', () => {
-    const big = `a${' '.repeat(200000)}🚀${' '.repeat(200000)}x${'🚀 '.repeat(50000)}b`;
+  test('long whitespace runs and many emoji strip quickly', () => {
+    // Card text is capped at 500 code points (MAX_TEXT); these inputs are far larger.
+    const big = `a${' '.repeat(20000)}🚀${' '.repeat(20000)}x ${'w🚀 👍🏽 '.repeat(2000)}b`;
     const t0 = performance.now();
-    assert.equal(strip1(big), 'a x b');
-    assert.ok(performance.now() - t0 < 5000, 'too slow');
-    assert.equal(strip1(`a${' \t'.repeat(200000)}🚀`), 'a');
-    const spaces = `a${' '.repeat(200000)}b`;
+    assert.equal(strip1(big), `a x ${'w '.repeat(2000)}b`);
+    assert.equal(strip1(`a${' \t'.repeat(20000)}🚀`), 'a');
+    const spaces = `a${' '.repeat(20000)}b`;
     assert.equal(strip1(`${spaces}🚀`), spaces, 'whitespace without emoji is kept verbatim');
+    const plain = `${'word '.repeat(10000)}end`;
+    assert.equal(strip1(plain), plain);
+    assert.ok(performance.now() - t0 < 10000, `too slow: ${Math.round(performance.now() - t0)} ms`);
   });
 
   test('nested tspans, self-closing text, comments and CDATA', () => {

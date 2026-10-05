@@ -121,3 +121,12 @@ describe('formatSummary', () => {
     assert.match(out, /Hottest file …[^ ]*\/file\.js \(1 commit\)/);
   });
 });
+
+describe('formatSummary: terminal escape injection', () => {
+  test('control characters in repo-derived text are stripped', () => {
+    const evil = 'x\x1b]0;PWNED\x07\x1b[31m\x9b2J\r';
+    const stats = computeStats([commit('2024-03-13T10:00:00+00:00', `${evil} word word`, [{ path: `${evil}.txt`, added: 1, removed: 0, binary: false }])], { today: TODAY });
+    const out = formatSummary(stats, { repoName: evil, paths: PATHS, notes: [evil] });
+    assert.ok(!/[\x00-\x09\x0b-\x1f\x7f-\x9f]/.test(out), JSON.stringify(out));
+  });
+});

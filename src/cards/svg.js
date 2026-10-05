@@ -63,10 +63,15 @@ const ASCII_WIDTHS = [
   716, 716, 493, 595, 478, 712, 652, 924, 645, 652, 582, 712, 365, 712, 838,
 ];
 const ZERO_WIDTH = /[\u0300-\u036F\u200B-\u200F\u20D0-\u20FF\uFE00-\uFE0F]|\p{M}/u;
-const FULL_WIDTH = /\p{Extended_Pictographic}|\p{Regional_Indicator}|[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6]|[\u{20000}-\u{3fffd}]/u;
+const PICTO = /\p{Extended_Pictographic}/u;
+const PICTO_OR_RI = /[\p{Extended_Pictographic}\p{Regional_Indicator}]/u;
+const RI = /\p{Regional_Indicator}/u;
+const FULL_WIDTH = /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6]|[\u{20000}-\u{3fffd}]/u;
 const LETTER = /\p{L}/u;
+/** A color emoji renders wider than a CJK ideograph in most emoji fonts: ~1.3em. */
+const EMOJI_WIDTH = 1.3;
 
-/** Width of one code point, in em. */
+/** Width of one code point, in em (emoji clusters are handled by measureText). */
 function charWidth(ch) {
   const cp = ch.codePointAt(0);
   if (cp >= 0x20 && cp <= 0x7e) return ASCII_WIDTHS[cp - 0x20] / 1000;
@@ -74,14 +79,47 @@ function charWidth(ch) {
   if (FULL_WIDTH.test(ch)) return 1;
   if (cp === 0x2026 || cp === 0x2014) return 1; // ellipsis, em dash
   if (cp < 0x20) return 0;
-  // Other letters (accented Latin, Greek, Cyrillic ...) as a wide capital; symbols as '+'.
+  // Other letters (accented Latin, Greek, Cyrillic ...) as a wide capital; symbols
+  // (including text-style pictographs such as (c), (R), TM and arrows) as '+'.
   return LETTER.test(ch) ? 0.85 : 0.84;
 }
 
-/** Approximate rendered width of `text` in px at `fontSize`. */
-export function measureText(text, fontSize) {
+/**
+ * True for a grapheme cluster that renders as one color emoji: it has a pictograph at
+ * U+1F000 or above, a pictograph followed by U+FE0F (emoji presentation), or a
+ * regional indicator (flags).
+ */
+function isEmojiCluster(cluster) {
+  const cps = Array.from(cluster);
+  for (let i = 0; i < cps.length; i++) {
+    const ch = cps[i];
+    if (RI.test(ch)) return true;
+    if (PICTO.test(ch) && (ch.codePointAt(0) >= 0x1f000 || cps[i + 1] === '\uFE0F')) return true;
+  }
+  return false;
+}
+
+/** Width of one grapheme cluster, in em: an emoji counts EMOJI_WIDTH once. */
+function clusterWidth(cluster) {
+  if (isEmojiCluster(cluster)) return EMOJI_WIDTH;
   let em = 0;
-  for (const ch of String(text ?? '')) em += charWidth(ch);
+  for (const ch of cluster) em += charWidth(ch);
+  return em;
+}
+
+/**
+ * Approximate rendered width of `text` in px at `fontSize`. Text with pictographs or
+ * regional indicators is measured per grapheme cluster, so a ZWJ family or a flag
+ * counts as one emoji.
+ */
+export function measureText(text, fontSize) {
+  const s = String(text ?? '');
+  let em = 0;
+  if (PICTO_OR_RI.test(s)) {
+    for (const g of graphemeIter(s)) em += clusterWidth(g);
+  } else {
+    for (const ch of s) em += charWidth(ch);
+  }
   return em * fontSize;
 }
 
@@ -93,20 +131,48 @@ function graphemes(text) {
   return Array.from(text);
 }
 
-/** Longest prefix of `word` (as graphemes) that fits `maxWidth`; at least one grapheme. */
-function hardBreak(word, maxWidth, fontSize) {
-  const gs = graphemes(word);
+/** Iterate the grapheme clusters of `text` lazily (stops early when the caller does). */
+function* graphemeIter(text) {
+  if (segmenter) for (const s of segmenter.segment(text)) yield s.segment;
+  else yield* text;
+}
+
+/**
+ * Hard-break `word` (wider than `maxWidth`) into chunks that each fit, pushing full
+ * chunks onto `lines` until `lines` holds `limit` lines. Each chunk is the longest prefix
+ * that fits (at least one grapheme), cut right after a '/' (file paths) when that keeps a
+ * reasonable chunk. Returns the last, fitting remainder ('' when the limit was reached
+ * first). Reads the word once, and only as far as the kept lines need.
+ */
+function hardBreak(word, maxWidth, fontSize, lines, limit) {
+  let chunk = []; // graphemes of the current chunk
   let width = 0;
-  let n = 0;
-  while (n < gs.length && width + measureText(gs[n], fontSize) <= maxWidth) {
-    width += measureText(gs[n], fontSize);
-    n += 1;
+  let slash = -1; // index in `chunk` of the last '/'
+  for (const g of graphemeIter(word)) {
+    if (lines.length >= limit) return '';
+    const w = measureText(g, fontSize);
+    if (chunk.length > 0 && width + w > maxWidth) {
+      // Break; carry the part after a reasonable '/' over to the next chunk.
+      const cut = slash >= Math.floor(chunk.length / 3) && slash < chunk.length - 1 ? slash + 1 : chunk.length;
+      lines.push(chunk.slice(0, cut).join(''));
+      chunk = chunk.slice(cut);
+      width = measureText(chunk.join(''), fontSize);
+      slash = chunk.lastIndexOf('/');
+      if (lines.length >= limit) return '';
+      // The carried part plus `g` may still be too wide (only when `g` is huge): flush it.
+      if (chunk.length > 0 && width + w > maxWidth) {
+        lines.push(chunk.join(''));
+        chunk = [];
+        width = 0;
+        slash = -1;
+        if (lines.length >= limit) return '';
+      }
+    }
+    chunk.push(g);
+    width += w;
+    if (g === '/') slash = chunk.length - 1;
   }
-  n = Math.max(1, n);
-  // Prefer breaking right after a '/' (file paths), if that keeps a reasonable chunk.
-  const slash = gs.slice(0, n).lastIndexOf('/');
-  if (n < gs.length && slash >= Math.floor(n / 3) && slash < n - 1) n = slash + 1;
-  return [gs.slice(0, n).join(''), gs.slice(n).join('')];
+  return chunk.join('');
 }
 
 /** `line` shortened (from the end) so that `line + '…'` fits `maxWidth`. */
@@ -120,9 +186,15 @@ function ellipsize(line, maxWidth, fontSize) {
 export function truncateStart(text, { maxWidth, fontSize }) {
   text = String(text ?? '').replace(/\s+/g, ' ').trim();
   if (measureText(text, fontSize) <= maxWidth) return text;
+  // Keep graphemes from the end while they fit next to the ellipsis (linear).
   const gs = graphemes(text);
-  while (gs.length > 0 && measureText(ELLIPSIS + gs.join(''), fontSize) > maxWidth) gs.shift();
-  return ELLIPSIS + gs.join('').trimStart();
+  let width = measureText(ELLIPSIS, fontSize);
+  let start = gs.length;
+  while (start > 0 && width + measureText(gs[start - 1], fontSize) <= maxWidth) {
+    start -= 1;
+    width += measureText(gs[start], fontSize);
+  }
+  return ELLIPSIS + gs.slice(start).join('').trimStart();
 }
 
 /**
@@ -134,24 +206,27 @@ export function truncateStart(text, { maxWidth, fontSize }) {
 export function wrapText(text, { maxWidth, fontSize, maxLines = Infinity } = {}) {
   if (!(maxWidth > 0) || !(fontSize > 0)) throw new TypeError('wrapText needs positive maxWidth and fontSize');
   const words = String(text ?? '').split(/\s+/).filter(Boolean);
+  // One line past maxLines is enough to know the text must be ellipsized: stop there, so
+  // a huge input costs no more than the lines that are kept.
+  const limit = Math.max(1, maxLines) + 1;
   const lines = [];
   let line = '';
-  for (let word of words) {
-    const candidate = line ? `${line} ${word}` : word;
-    if (measureText(candidate, fontSize) <= maxWidth) {
-      line = candidate;
+  for (const word of words) {
+    if (lines.length >= limit) break;
+    // A word wider than the whole text box can be (all kept lines) is not measured in full.
+    const wordWidth = word.length > 4096 ? Infinity : measureText(word, fontSize);
+    if (line && measureText(line, fontSize) + measureText(' ', fontSize) + wordWidth <= maxWidth) {
+      line = `${line} ${word}`;
+      continue;
+    }
+    if (!line && wordWidth <= maxWidth) {
+      line = word;
       continue;
     }
     if (line) lines.push(line);
-    line = '';
-    while (measureText(word, fontSize) > maxWidth) {
-      const [head, rest] = hardBreak(word, maxWidth, fontSize);
-      lines.push(head);
-      word = rest;
-    }
-    line = word;
+    line = wordWidth > maxWidth ? hardBreak(word, maxWidth, fontSize, lines, limit) : word;
   }
-  if (line) lines.push(line);
+  if (line && lines.length < limit) lines.push(line);
   if (lines.length <= maxLines) return lines;
   const kept = lines.slice(0, Math.max(1, maxLines));
   kept[kept.length - 1] = ellipsize(kept[kept.length - 1], maxWidth, fontSize);

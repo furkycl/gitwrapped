@@ -32,6 +32,16 @@ describe('isIgnoredPath', () => {
     }
   });
 
+  test('vendored code (root vendor/, third_party/) and test snapshots', () => {
+    for (const p of ['vendor/github.com/x/y.go', 'vendor/autoload.php', 'third_party/lib/a.c', 'src/__snapshots__/App.test.js.snap',
+      '__snapshots__/x.js', 'test/a.test.ts.snap', 'App.snap']) {
+      assert.equal(isIgnoredPath(p), true, p);
+    }
+    for (const p of ['src/vendor/a.js', 'app/third_party/b.py', 'vendor', 'snapshots/a.js', 'src/snap.js', 'a.snapshot', 'vendors/x.js']) {
+      assert.equal(isIgnoredPath(p), false, p);
+    }
+  });
+
   test('look-alikes are not ignored', () => {
     for (const p of ['src/dist.js', 'builds/x', 'distribution/a.js', 'lock.json', 'README.md', 'src/app.js',
       'my-dist/a.js', 'yarn.lock.md', 'Package-lock.json', 'admin.js', 'sitemap.xml', 'src/map.js', 'notes/my notes.txt']) {

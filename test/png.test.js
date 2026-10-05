@@ -380,6 +380,10 @@ describe('rendered PNGs keep text inside the padding', () => {
       ['big Friday Deployer', renderCard({ big: 'Friday Deployer', title: 'WWWW MMMM '.repeat(6), subtitle: 'mmmm wwww '.repeat(12) })],
       ['big MMMMWWWW', renderCard({ big: 'MMMMWWWW', lines: [{ label: `Longest: “${'refactor: move app to main '.repeat(3)}”` }, { label: 'WWWWWWWWWWWWWWWWWWWWWWWWW', value: '9,007,199,254' }] })],
       ['big digits', renderCard({ eyebrow: 'W'.repeat(60), big: '9,007,199', footer: `${'w'.repeat(40)} · 2024-03-04 → 2024-03-13` })],
+      // Language names starting with "J" (its hook reaches left of the glyph origin).
+      ['languages J', buildCards({ languages: { totalLines: 60, totalFiles: 4, basis: 'lines', languages: [
+        { name: 'Java', lines: 30, files: 1, share: 50 }, { name: 'JSON', lines: 15, files: 1, share: 25 },
+        { name: 'Julia', lines: 10, files: 1, share: 17 }, { name: 'JavaScript', lines: 5, files: 1, share: 8 }] } })[CARD_IDS.indexOf('languages')].svg],
     ];
     for (const [label, svg] of cards) await check(svg, 96, label);
   });

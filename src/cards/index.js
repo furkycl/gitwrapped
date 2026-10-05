@@ -6,12 +6,13 @@ import { calendarWindow, formatNumber, renderCard } from './svg.js';
 export { formatNumber };
 import { renderShareSvg } from './share.js';
 import { epochDay, hourLabel, mondayOf, WEEKDAY_NAMES } from '../stats/time.js';
+import { languageHeadline } from '../stats/languages.js';
 
 export { renderCard, layoutCard, wrapText, escapeXml, measureText, truncateStart, THEMES, CARD_WIDTH, CARD_HEIGHT } from './svg.js';
 export { renderShareSvg, SHARE_WIDTH, SHARE_HEIGHT } from './share.js';
 
 /** Card ids in display order. */
-export const CARD_IDS = Object.freeze(['intro', 'totals', 'peak-hour', 'streak', 'activity', 'hot-files', 'messages', 'personality', 'outro']);
+export const CARD_IDS = Object.freeze(['intro', 'totals', 'peak-hour', 'streak', 'activity', 'hot-files', 'languages', 'messages', 'personality', 'outro']);
 
 const EMPTY_LINE = 'No commits yet — go ship something!';
 
@@ -353,6 +354,96 @@ function hotFiles(s) {
   };
 }
 
+/** A whole-number share as text; a non-zero amount that rounds to 0% reads "<1%". */
+const pctText = (share, amount) => (num(share) === 0 && num(amount) > 0 ? '<1%' : `${Math.round(num(share))}%`);
+
+const LANGUAGE_QUIPS = {
+  JavaScript: 'Runs everywhere, including your commit log.',
+  TypeScript: 'Types all the way down.',
+  Python: 'Indentation is a lifestyle.',
+  Go: 'if err != nil { keepShipping() }',
+  Rust: 'The borrow checker approves.',
+  Java: 'AbstractSingletonCommitFactoryBean energy.',
+  Kotlin: 'Null safety, but make it fun.',
+  Swift: 'Swift by name, swift by nature.',
+  C: 'Living dangerously, one pointer at a time.',
+  'C++': 'Template wizardry detected.',
+  'C#': 'Semicolons and LINQ, a classic duo.',
+  Ruby: 'Optimized for developer happiness.',
+  PHP: 'Still powering half the web.',
+  Shell: 'chmod +x and hope for the best.',
+  HTML: 'Hypertext is still the best text.',
+  CSS: 'Centering divs since day one.',
+  SCSS: 'Nesting like a pro.',
+  Markdown: 'Docs-driven development. Respect.',
+  JSON: 'Config is code, apparently.',
+  YAML: 'Indentation-sensitive config whisperer.',
+  SQL: 'SELECT * FROM good_decisions.',
+  Dart: 'Hot reload, hot streak.',
+  Haskell: 'Pure, lazy, and proud of it.',
+  Elixir: 'Let it crash, then commit again.',
+};
+
+/** "A and B", "A, B and C". */
+const andList = (names) => (names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
+
+/**
+ * Up to five languages as bars (the headline language always among them), the rest and
+ * unknown file types folded into one "Other" bar. No bar reads 100% while others exist.
+ */
+function languageBars(h) {
+  const { rows, basis } = h;
+  const known = rows.filter((l) => l.name !== 'Other');
+  let top = known.slice(0, 5);
+  if (!top.some((l) => l.name === h.name)) top = [...top.slice(0, 4), known.find((l) => l.name === h.name)];
+  const rest = rows.filter((l) => !top.includes(l));
+  const cap = (share) => (rows.length > 1 ? Math.min(99, share) : share);
+  const row = (label, amount, files, lines, share) => {
+    const pct = pctText(cap(share), amount);
+    return { label, sub: plural(files, 'file'), value: pct, amount, title: `${label}: ${plural(lines, 'line')} changed in ${plural(files, 'file')} (${pct})` };
+  };
+  const items = top.map((l) => row(l.name, l[basis], l.files, l.lines, l.share));
+  if (rest.length > 0) {
+    const sum = (k) => rest.reduce((n, l) => n + l[k], 0);
+    items.push(row('Other', sum(basis), sum('files'), sum('lines'), sum('share')));
+  }
+  return { kind: 'hbars', title: basis === 'files' ? 'Share of files touched' : 'Share of lines changed', items };
+}
+
+function languages(s) {
+  const l = s.languages ?? {};
+  const h = languageHeadline(l);
+  const eyebrow = 'Your languages';
+  if (!h) {
+    const files = (Array.isArray(l.languages) ? l.languages : []).reduce((n, x) => n + num(x?.files), 0);
+    return {
+      eyebrow,
+      big: 'None',
+      title: 'No code languages detected',
+      subtitle: files > 0
+        ? `${plural(files, 'file')} changed, none in a language we recognize. Mysterious.`
+        : 'Write some code and your languages will show up here.',
+    };
+  }
+  // The share is the headline number (a language name as the big word would start with a
+  // glyph like "J" whose hook reaches past the left padding at that size).
+  let title;
+  if (h.tied.length > 3) title = `${h.tied.length}-way tie at the top`;
+  else if (h.tied.length > 1) title = `Tied at the top: ${andList(h.tied)}`;
+  else if (h.only) title = `All ${h.name}, all the time`;
+  else title = h.rawShare >= 50 ? `Mostly ${h.name}` : `Led by ${h.name}`;
+  const code = h.rows.some((x) => x.type === 'programming');
+  const quip = LANGUAGE_QUIPS[h.name] ?? (!code ? 'No code this time, just words and data.' : h.count === 1 ? 'One language, total commitment.' : 'Polyglot energy.');
+  const files = num(l.totalFiles) || h.rows.reduce((n, x) => n + x.files, 0);
+  return {
+    eyebrow,
+    big: pctText(h.share, h.amount),
+    title,
+    subtitle: `${quip} ${h.count === 1 ? 'You stuck to 1 language' : `You wrote in ${plural(h.count, 'language')}`} across ${plural(files, 'file')}.`,
+    chart: languageBars(h),
+  };
+}
+
 function messages(s) {
   const m = s.messages ?? {};
   const longest = clip(text(m.longest?.subject));
@@ -443,8 +534,8 @@ function outro(s, ctx) {
   };
 }
 
-const BUILDERS = { intro, totals, 'peak-hour': peakHour, streak, activity, 'hot-files': hotFiles, messages, personality, outro };
-const CARD_THEMES = { intro: 'pulse', totals: 'ocean', 'peak-hour': 'cosmic', streak: 'ember', activity: 'cosmic', 'hot-files': 'mint', messages: 'neon', personality: 'sunset', outro: 'gold' };
+const BUILDERS = { intro, totals, 'peak-hour': peakHour, streak, activity, 'hot-files': hotFiles, languages, messages, personality, outro };
+const CARD_THEMES = { intro: 'pulse', totals: 'ocean', 'peak-hour': 'cosmic', streak: 'ember', activity: 'cosmic', 'hot-files': 'mint', languages: 'ocean', messages: 'neon', personality: 'sunset', outro: 'gold' };
 
 /**
  * Footer text: "<repo> · <date range>", or the requested window when --since / --until

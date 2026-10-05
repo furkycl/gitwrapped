@@ -1,6 +1,8 @@
 // The console recap printed after a run: a short Wrapped-style summary plus where the
 // output went. Pure string building; colors are raw ANSI escapes (no dependencies).
 
+import { languageHeadline } from './stats/languages.js';
+
 const ESC = '\x1b[';
 const STYLES = {
   bold: [1, 22],
@@ -119,6 +121,14 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     const hot = stats?.hotFiles?.[0];
     if (hot?.path) {
       lines.push(`  ${label('Hottest file')}${c('cyan', shortPath(hot.path))} ${c('dim', `(${plural(hot.commits, 'commit')})`)}`);
+    }
+
+    const lang = languageHeadline(stats?.languages);
+    if (lang) {
+      const share = lang.share > 0 ? `${lang.share}%` : '<1%';
+      const of = lang.basis === 'files' ? 'of files' : 'of lines';
+      const tie = lang.tied.length > 1 ? `, tied with ${lang.tied.length - 1} more` : '';
+      lines.push(`  ${label('Top language')}${c('cyan', shortWord(lang.name))} ${c('dim', `(${share} ${of}${tie})`)}`);
     }
 
     const m = stats?.messages ?? {};

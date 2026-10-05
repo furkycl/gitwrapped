@@ -28,7 +28,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   documented shape (`schemaVersion`, `generator`, `repo`, `asOf`, `filters`,
   `truncated`, `stats`), with no generation timestamp and no machine paths.
 
+- A **Languages** card (card 7 of 10, after hot files): your top programming language's
+  share of the lines you changed ("72% · Mostly TypeScript", "Led by" under 50%, ties named
+  as "Tied at the top: Go, JavaScript and Python" or "4-way tie at the top"), bars for
+  the top five languages plus "Other", and a one-liner. Data formats and prose (JSON,
+  YAML, Markdown, ...) appear in the bars but only lead when there's no code. No share
+  reads 100% while other languages exist. Languages come from a built-in table of about
+  85 languages by file extension and well-known file names (`Dockerfile`, `Makefile`,
+  `Gemfile`, `CMakeLists.txt`, ...). The messages, personality and outro cards move to
+  08-10; re-running into an earlier output folder removes the old-numbered files.
+- `stats.languages` in `stats.json` (`totalLines`, `totalFiles`, `basis`, and per
+  language `name`, `type`, `lines`, `files`, `share`; equal amounts get equal shares), and
+  a "Top language" line in the terminal recap.
+- `--open`: open `<out>/wrapped.html` in the default browser when the run is done and
+  print `Opening <path>` (`open` on macOS, `xdg-open` on Linux and others, `rundll32
+  url.dll,FileProtocolHandler <file:// URL>` on Windows, which involves no `cmd.exe`
+  quoting). The opener is started detached and never blocks the run; if it can't start,
+  gitwrapped prints a one-line warning with the path and still exits 0.
+
 ### Changed
+
+- Hot files (and languages) also ignore vendored code in a repo-root `vendor/` or
+  `third_party/` folder and test snapshots (`*.snap`, anything under `__snapshots__/`).
 
 - `--since` now compares each commit's author-local calendar day (the day the stats use)
   instead of the machine's local midnight, so a date window gives the same commits in

@@ -168,13 +168,13 @@ describe('formatNumber', () => {
 });
 
 describe('buildCards', () => {
-  test('returns 9 cards in CARD_IDS order with unique ids', () => {
-    assert.deepEqual(CARD_IDS, ['intro', 'totals', 'peak-hour', 'streak', 'activity', 'hot-files', 'messages', 'personality', 'outro']);
+  test('returns 10 cards in CARD_IDS order with unique ids', () => {
+    assert.deepEqual(CARD_IDS, ['intro', 'totals', 'peak-hour', 'streak', 'activity', 'hot-files', 'languages', 'messages', 'personality', 'outro']);
     assert.ok(Object.isFrozen(CARD_IDS));
     for (const [name, cards] of scenarios()) {
-      assert.equal(cards.length, 9, name);
+      assert.equal(cards.length, 10, name);
       assert.deepEqual(cards.map((c) => c.id), CARD_IDS, name);
-      assert.equal(new Set(cards.map((c) => c.id)).size, 9, name);
+      assert.equal(new Set(cards.map((c) => c.id)).size, 10, name);
       for (const c of cards) {
         assert.equal(typeof c.svg, 'string');
         assert.ok(c.svg.startsWith('<svg'), `${name}/${c.id}`);
@@ -232,7 +232,7 @@ describe('buildCards', () => {
     assert.ok(all.includes('&lt;script&gt;'));
   });
 
-  test('every element id is unique across the 9 cards (safe to inline together)', () => {
+  test('every element id is unique across the 10 cards (safe to inline together)', () => {
     for (const [name, cards] of scenarios()) {
       const ids = cards.flatMap((c) => [...c.svg.matchAll(/\sid="([^"]*)"/g)].map((m) => m[1]));
       assert.ok(ids.length >= 16, `${name}: ${ids.length} ids`);
@@ -412,16 +412,16 @@ describe('integration: fixture repo → cards', () => {
 });
 
 describe('scripts/preview-cards.js', () => {
-  test('writes 9 SVGs plus an empty/ set', async () => {
+  test('writes 10 SVGs plus an empty/ set', async () => {
     const out = mkdtempSync(join(tmpdir(), 'gitwrapped-preview-'));
     try {
       const { stdout } = await promisify(execFile)(process.execPath, [join(ROOT, 'scripts/preview-cards.js'), out], { cwd: ROOT });
       const svgs = readdirSync(out).filter((f) => f.endsWith('.svg')).sort();
-      assert.equal(svgs.length, 9);
+      assert.equal(svgs.length, 10);
       assert.deepEqual(svgs, CARD_IDS.map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}.svg`));
       const empty = readdirSync(join(out, 'empty')).filter((f) => f.endsWith('.svg'));
-      assert.equal(empty.length, 9);
-      assert.equal(stdout.trim().split('\n').length, 18);
+      assert.equal(empty.length, 10);
+      assert.equal(stdout.trim().split('\n').length, 20);
       for (const f of svgs) assert.equal(xmlError(readFileSync(join(out, f), 'utf8')), null, f);
     } finally {
       rmSync(out, { recursive: true, force: true, maxRetries: 5 });

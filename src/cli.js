@@ -1,5 +1,5 @@
 import { parseArgs, promisify } from 'node:util';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { accessSync, constants as fsConstants, mkdirSync, readdirSync, readFileSync, rmdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { buildCards, CARD_IDS, renderShareCard, windowLabel } from './cards/index.js';
@@ -7,7 +7,7 @@ import { DEFAULT_LIMIT, readHistory } from './git.js';
 import { buildStatsJson } from './json.js';
 import { renderPng } from './png.js';
 import { computeStats, localToday } from './stats/index.js';
-import { formatSummary, shouldUseColor } from './summary.js';
+import { formatSummary, shouldUseColor, stripControl } from './summary.js';
 import { buildViewerHtml } from './viewer.js';
 
 const execFileAsync = promisify(execFile);
@@ -32,6 +32,8 @@ Options:
                        (default: 50000)
   --no-png             Skip PNG rendering (faster; SVG + HTML only)
   --json               Also write every stat to <out>/stats.json
+  --open               Open <out>/wrapped.html in your default browser
+                       when done
   --no-color           Plain console output (also: NO_COLOR=1;
                        FORCE_COLOR=1 forces color)
   -h, --help           Show this help and exit
@@ -47,6 +49,7 @@ const OPTIONS = {
   'max-commits': { type: 'string' },
   'no-png': { type: 'boolean' },
   json: { type: 'boolean' },
+  open: { type: 'boolean' },
   'no-color': { type: 'boolean' },
   help: { type: 'boolean', short: 'h' },
   version: { type: 'boolean', short: 'v' },
@@ -124,7 +127,8 @@ function normalizeArgv(argv) {
  * Parse CLI arguments (without node/script prefix).
  * Returns {help:true}, {version:true}, or {path, since, author, out, png, maxCommits}
  * plus, only when given: color (false for --no-color; absent = auto), until, year
- * (--year YYYY also sets since/until to Jan 1 / Dec 31 of that year) and json (true).
+ * (--year YYYY also sets since/until to Jan 1 / Dec 31 of that year), json (true) and
+ * open (true).
  * Throws an Error with a user-facing message on invalid input.
  */
 export function parseCli(argv) {
@@ -177,6 +181,7 @@ export function parseCli(argv) {
     ...(until ? { until } : {}),
     ...(year ? { year } : {}),
     ...(values.json ? { json: true } : {}),
+    ...(values.open ? { open: true } : {}),
   };
 }
 
@@ -458,6 +463,64 @@ export async function generate({ path, since, until, author, out, png = true, ma
   };
 }
 
+/**
+ * A Windows path as a file:// URL, the same as url.pathToFileURL() gives on Windows, but
+ * on any platform (so it is testable everywhere): "C:\\a b\\x.html" →
+ * "file:///C:/a%20b/x.html", "\\\\server\\share\\x.html" → "file://server/share/x.html".
+ */
+export function windowsFileUrl(file) {
+  let p = String(file).replace(/\\/g, '/');
+  const url = new URL('file:///');
+  const unc = /^\/\/([^/]+)(\/.*)?$/.exec(p);
+  if (unc) {
+    url.hostname = unc[1];
+    p = unc[2] ?? '/';
+  } else if (!p.startsWith('/')) {
+    p = `/${p}`;
+  }
+  // The pathname setter encodes spaces, # and ?, but leaves a literal % alone.
+  url.pathname = p.replace(/%/g, '%25');
+  return url.href;
+}
+
+/**
+ * The command that opens `file` with the system's default handler (a browser for .html)
+ * on `platform` (process.platform), as `{command, args}` for spawn() without a shell:
+ * - darwin: `open <file>`
+ * - win32: `rundll32 url.dll,FileProtocolHandler <file:// URL>` (see windowsFileUrl). No
+ *   cmd.exe is involved, so characters like & ^ % in the path are never parsed as shell
+ *   syntax (`cmd /c start` would), and unlike `explorer.exe` it does not misread paths
+ *   containing commas. A percent-encoded URL keeps spaces, # and ? intact.
+ * - anything else: `xdg-open <file>`
+ */
+export function openCommand(file, platform = process.platform) {
+  if (platform === 'darwin') return { command: 'open', args: [file] };
+  if (platform === 'win32') return { command: 'rundll32', args: ['url.dll,FileProtocolHandler', windowsFileUrl(file)] };
+  return { command: 'xdg-open', args: [file] };
+}
+
+/**
+ * Open `file` in the default browser: spawn openCommand() detached, with stdio ignored
+ * and unref'd, so it never keeps gitwrapped running. Resolves once the process started;
+ * rejects with the spawn error (e.g. ENOENT when xdg-open is missing). Never waits for
+ * the browser. `spawn` and `platform` can be replaced for tests.
+ */
+export function openInBrowser(file, { platform = process.platform, spawn: spawnFn = spawn } = {}) {
+  const { command, args } = openCommand(file, platform);
+  return new Promise((resolvePromise, reject) => {
+    let child;
+    try {
+      child = spawnFn(command, args, { detached: true, stdio: 'ignore', windowsHide: true });
+    } catch (err) {
+      reject(err);
+      return;
+    }
+    child.once('error', reject);
+    child.once('spawn', () => resolvePromise());
+    child.unref?.();
+  });
+}
+
 /** The date / author filters of `opts` as CLI flags, e.g. "--year 2025 --author a@b.c". */
 function filterText({ since, until, year, author }) {
   const parts = year ? [`--year ${year}`] : [since && `--since ${since}`, until && `--until ${until}`];
@@ -467,8 +530,11 @@ function filterText({ since, until, year, author }) {
 
 /**
  * Run the CLI. Resolves to a process exit code.
+ * `openFile(path)` (default openInBrowser) opens wrapped.html for --open; it may return a
+ * promise. If it throws or rejects, a one-line warning goes to stderr and the run still
+ * succeeds. Tests pass their own so no real browser is launched.
  */
-export async function run(argv, { stdout = process.stdout, stderr = process.stderr, env = process.env, today, renderPng: rasterize } = {}) {
+export async function run(argv, { stdout = process.stdout, stderr = process.stderr, env = process.env, today, renderPng: rasterize, openFile = openInBrowser } = {}) {
   let opts;
   try {
     opts = parseCli(argv);
@@ -531,5 +597,15 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
     }),
   );
   if (result.pngSkipped) stderr.write(`gitwrapped: PNG export skipped: ${result.pngSkipped}\n`);
+  if (opts.open) {
+    const target = resolve(result.html);
+    try {
+      await openFile(target);
+      stdout.write(`Opening ${stripControl(target)}\n`);
+    } catch (err) {
+      const why = err?.code ?? (String(err?.message ?? err).split('\n')[0] || 'unknown error');
+      stderr.write(`gitwrapped: could not open a browser (${why}); open ${target} yourself\n`);
+    }
+  }
   return 0;
 }

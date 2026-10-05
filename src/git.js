@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { readFileSync, statSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
 import { promisify } from 'node:util';
+import { localParts } from './stats/time.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -46,27 +47,71 @@ const pad2 = (n) => String(n).padStart(2, '0');
 /**
  * Git-side since bound: SINCE_SLACK_DAYS before `since` (a bare YYYY-MM-DD is local
  * midnight). git filters on the committer date, which can be slightly older than the
- * author date (clock skew, `git commit --date`), so git gets a looser bound and the exact
+ * author date (clock skew, `git commit --date`), and the author's own calendar day can
+ * start up to a day before the machine's, so git gets a looser bound and the exact
  * author-date filter runs in JS. An unparseable value is passed through unchanged.
+ * Returns null when the bound would fall before 1970-01-01 (git cannot parse it, and no
+ * commit is older anyway): then no git-side filter is needed.
  */
 function gitSince(since) {
   if (DATE_ONLY.test(since)) {
     const [y, m, d] = since.split('-').map(Number);
     const t = new Date(y, m - 1, d - SINCE_SLACK_DAYS);
+    if (t.getTime() < 0) return null;
     return `${t.getFullYear()}-${pad2(t.getMonth() + 1)}-${pad2(t.getDate())} 00:00:00`;
   }
   const ms = Date.parse(since);
-  return Number.isNaN(ms) ? since : new Date(ms - SINCE_SLACK_DAYS * 86_400_000).toISOString();
+  if (Number.isNaN(ms)) return since;
+  const t = ms - SINCE_SLACK_DAYS * 86_400_000;
+  return t < 0 ? null : new Date(t).toISOString();
 }
 
-/** Since as epoch ms (local midnight for YYYY-MM-DD), or NaN if unparseable. */
-function sinceMs(since) {
-  if (DATE_ONLY.test(since)) {
-    const [y, m, d] = since.split('-').map(Number);
-    return new Date(y, m - 1, d).getTime();
-  }
-  return Date.parse(since);
+/** A commit's author-local calendar day ('YYYY-MM-DD', as in the stats), or null. */
+const authorDay = (c) => localParts(c.date)?.dayKey ?? null;
+
+/**
+ * The exact author-date window as a predicate on parsed commits. A YYYY-MM-DD bound is
+ * compared with the commit's author-local calendar day (the day every stat uses), so the
+ * window does not depend on the machine's timezone; any other value is read as an
+ * instant (Date.parse), and an unparseable one is ignored. Commits with an unparseable
+ * date never match a set bound.
+ */
+function windowFilter(since, until) {
+  const bound = (value, cmpDay, cmpMs) => {
+    if (!value) return null;
+    if (DATE_ONLY.test(value)) {
+      return (c) => {
+        const day = authorDay(c);
+        return day !== null && cmpDay(day, value);
+      };
+    }
+    const ms = Date.parse(value);
+    return Number.isNaN(ms) ? null : (c) => cmpMs(Date.parse(c.date), ms);
+  };
+  const tests = [
+    bound(since, (d, v) => d >= v, (t, ms) => t >= ms),
+    bound(until, (d, v) => d <= v, (t, ms) => t <= ms),
+  ].filter(Boolean);
+  return (c) => tests.every((t) => t(c));
 }
+
+/** Format of the index pass: hash and strict ISO author date. */
+const INDEX_FORMAT = '%H%x1f%aI';
+
+/** The full-record part of the `git log` arguments (format, numstat and diff settings). */
+const DETAIL_ARGS = [
+  `--format=${LOG_FORMAT}`,
+  // Per-file stats. --no-renames keeps paths independent of diff.renames config;
+  // diff.relative is disabled via `-c` in readCommits (works on any git version).
+  '--numstat',
+  '--no-renames',
+  // --root: log.showRoot=false would otherwise drop the root commit's files.
+  // -O/dev/null: ignore diff.orderFile so files stay in git's path order.
+  '--root',
+  '-O/dev/null',
+  // A submodule bump (gitlink) is not a file edit.
+  '--ignore-submodules=all',
+];
 
 /** Largest value git accepts for --max-count (a C int). */
 const GIT_INT_MAX = 2 ** 31 - 1;
@@ -81,7 +126,7 @@ const GIT_INT_MAX = 2 ** 31 - 1;
  * the exact author-date filter. With `sinceAsFilter: false` (older git) no date filter is
  * sent at all.
  */
-export function buildLogArgs({ since, author, maxCount, sinceAsFilter = true } = {}) {
+export function buildLogArgs({ since, author, maxCount, sinceAsFilter = true, index = false } = {}) {
   const args = [
     'log',
     '-z',
@@ -90,23 +135,19 @@ export function buildLogArgs({ since, author, maxCount, sinceAsFilter = true } =
     '--encoding=UTF-8',
     // Apply .mailmap to --author matching even when log.mailmap=false is configured.
     '--use-mailmap',
-    `--format=${LOG_FORMAT}`,
-    // Per-file stats. --no-renames keeps paths independent of diff.renames config;
-    // diff.relative is disabled via `-c` in readCommits (works on any git version).
-    '--numstat',
-    '--no-renames',
-    // --root: log.showRoot=false would otherwise drop the root commit's files.
-    // -O/dev/null: ignore diff.orderFile so files stay in git's path order.
-    '--root',
-    '-O/dev/null',
-    // A submodule bump (gitlink) is not a file edit.
-    '--ignore-submodules=all',
   ];
+  if (index) {
+    // Hash and author date only: the cheap first pass of a windowed read (see readHistory).
+    args.push(`--format=${INDEX_FORMAT}`);
+  } else {
+    args.push(...DETAIL_ARGS);
+  }
   if (maxCount !== undefined) {
     if (!Number.isSafeInteger(maxCount) || maxCount < 1) throw new TypeError(`maxCount must be a positive integer, got ${maxCount}`);
     args.push(`--max-count=${maxCount}`);
   }
-  if (since && sinceAsFilter) args.push(`--since-as-filter=${gitSince(since)}`);
+  const gitBound = since && sinceAsFilter ? gitSince(since) : null;
+  if (gitBound) args.push(`--since-as-filter=${gitBound}`);
   if (author) {
     // Exact email match, case-insensitive: git matches --author against "Name <email>".
     args.push('--fixed-strings', '--regexp-ignore-case', `--author=<${author}>`);
@@ -260,41 +301,54 @@ async function shallowBoundary(repoPath) {
  * `{commits, truncated, limit, shallow}` where `truncated` is true when more than `limit`
  * commits matched the filters, and `shallow` is true for a shallow clone (its boundary
  * commits get empty file stats: git would otherwise count their whole tree as added).
- * `since` filters on the author date (from local midnight for YYYY-MM-DD). On git >= 2.37
- * git pre-filters with --since-as-filter (committer date) so --max-count still caps the
- * output; older git gets no date filter and everything is filtered in JS.
+ * `since` / `until` (inclusive) filter on the author date: a YYYY-MM-DD bound compares the
+ * commit's author-local calendar day, the same day the stats use, so a window gives the
+ * same commits in every machine timezone. On git >= 2.37 git pre-filters `since` with
+ * --since-as-filter (committer date, with slack) so --max-count still caps the output;
+ * older git gets no date filter and everything is filtered in JS.
+ * `until` has no git-side filter: git's --until checks the committer date, which can be
+ * any amount later than the author date (rebase, cherry-pick, squash merge). Instead a
+ * cheap first pass lists hashes and author dates only, the window and cap are applied to
+ * that list, and only the selected commits are read in full (see readWindow).
  * `commits` is [] for a repo without commits. Throws a TypeError for an invalid
  * `limit`, and a user-facing Error for: a missing path ("path does not exist: <path>"),
  * a file ("not a directory: <path>"), a folder that is not a repo ("not a git repository:
  * <path>"), git's safe.directory ownership check, a missing git, or oversized output.
  */
-export async function readHistory(repoPath, { since, author, limit = DEFAULT_LIMIT, maxBuffer = MAX_BUFFER } = {}) {
+export async function readHistory(repoPath, { since, until, author, limit = DEFAULT_LIMIT, maxBuffer = MAX_BUFFER } = {}) {
   if (limit !== Infinity && (!Number.isSafeInteger(limit) || limit < 1)) {
     throw new TypeError(`limit must be a positive integer or Infinity, got ${limit}`);
   }
   checkRepoPath(repoPath);
   const sinceAsFilter = since ? versionAtLeast(await gitVersion(), 2, 37) : true;
-  // Ask git for one extra commit so a history of exactly `limit` commits is not
-  // "truncated". git parses --max-count as a C int (newer git rejects larger values), so
-  // a limit that big is the same as no cap: skip --max-count and cut in JS below.
-  // Without a git-side date filter (old git), git cannot cap a --since run at all.
-  const canCap = limit + 1 <= GIT_INT_MAX && (!since || sinceAsFilter);
-  const min = since ? sinceMs(since) : NaN;
-  const byAuthorDate = (list) => (Number.isNaN(min) ? list : list.filter((c) => Date.parse(c.date) >= min));
+  const inWindow = windowFilter(since, until);
+  const log = { since, author, maxBuffer, sinceAsFilter, windowed: Boolean(since || until) };
 
-  let commits = await runLog(repoPath, { since, author, maxBuffer, sinceAsFilter, maxCount: canCap ? limit + 1 : undefined });
-  if (commits === null) return { commits: [], truncated: false, limit, shallow: false };
-  let filtered = byAuthorDate(commits);
-  // git's pre-filter checks the committer date with some slack: a rebased commit (old
-  // author date, new committer date) or one inside the slack window can use up a capped
-  // slot and then fail the author-date filter. If fewer than limit + 1 commits survive,
-  // the cap may have hidden matching ones: read again without it. (When limit + 1
-  // survive, the capped read is a prefix of the full one, so the result is the same.)
-  if (canCap && since && commits.length === limit + 1 && filtered.length <= limit) {
-    commits = (await runLog(repoPath, { since, author, maxBuffer, sinceAsFilter })) ?? [];
-    filtered = byAuthorDate(commits);
+  let commits;
+  if (until) {
+    commits = await readWindow(repoPath, log, inWindow, limit);
+  } else {
+    // Ask git for one extra commit so a history of exactly `limit` commits is not
+    // "truncated". git parses --max-count as a C int (newer git rejects larger values), so
+    // a limit that big is the same as no cap: skip --max-count and cut in JS below.
+    // Without a git-side date filter (old git), git cannot cap a --since run at all.
+    const canCap = limit + 1 <= GIT_INT_MAX && (!since || sinceAsFilter);
+    commits = await runLog(repoPath, { ...log, maxCount: canCap ? limit + 1 : undefined });
+    if (commits !== null) {
+      let filtered = commits.filter(inWindow);
+      // git's pre-filter checks the committer date with some slack: a rebased commit (old
+      // author date, new committer date) or one inside the slack window can use up a
+      // capped slot and then fail the author-date filter. If fewer than limit + 1 commits
+      // survive, the cap may have hidden matching ones: read again without it. (When
+      // limit + 1 survive, the capped read is a prefix of the full one, so the result is
+      // the same.)
+      if (canCap && since && commits.length === limit + 1 && filtered.length <= limit) {
+        filtered = ((await runLog(repoPath, log)) ?? []).filter(inWindow);
+      }
+      commits = filtered;
+    }
   }
-  commits = filtered;
+  if (commits === null) return { commits: [], truncated: false, limit, shallow: false };
   const truncated = commits.length > limit;
   if (truncated) commits = commits.slice(0, limit);
   const boundary = await shallowBoundary(repoPath);
@@ -307,24 +361,67 @@ export async function readHistory(repoPath, { since, author, limit = DEFAULT_LIM
   return { commits, truncated, limit, shallow: Boolean(boundary) };
 }
 
-/** Run `git log` and parse it; null for a repo without commits. Maps errors to user-facing ones. */
-async function runLog(repoPath, { since, author, maxBuffer, sinceAsFilter, maxCount }) {
-  const args = ['-C', repoPath, '-c', 'diff.relative=false', ...buildLogArgs({ since, author, maxCount, sinceAsFilter })];
+/**
+ * A windowed read in two passes, so an --until run never parses numstat for commits
+ * outside the window: (1) `git log --format=%H %aI` with the same pre-filters lists every
+ * candidate (small: ~70 bytes a commit); the exact window applies to that list in git's
+ * order and the first limit + 1 hashes are kept; (2) only those are read in full with
+ * `git log --no-walk=unsorted --stdin` (hashes on stdin: no command-line length limit),
+ * which keeps the given order. Same result as a full read filtered in JS. Returns the
+ * window's commits (at most limit + 1), or null for a repo without commits.
+ */
+async function readWindow(repoPath, log, inWindow, limit) {
+  const out = await gitLog(repoPath, buildLogArgs({ ...log, index: true }), log);
+  if (out === null) return null;
+  const picked = [];
+  for (const rec of out.split('\0')) {
+    const [hash, date] = rec.replace(/^[\r\n]+/, '').split(US);
+    if (!hash || date === undefined) continue;
+    if (!inWindow({ date: date.replace(/Z$/i, '+00:00') })) continue;
+    picked.push(hash);
+    if (picked.length > limit) break;
+  }
+  if (picked.length === 0) return [];
+  const detail = await gitLog(repoPath, ['log', '--no-walk=unsorted', '--stdin', ...buildLogArgs({}).slice(1)], {
+    ...log,
+    maxCount: picked.length,
+    input: `${picked.join('\n')}\n`,
+  });
+  return parseLog(detail ?? '');
+}
+
+/** Run `git log` and parse it; null for a repo without commits. */
+async function runLog(repoPath, { since, author, maxBuffer, sinceAsFilter, maxCount, windowed }) {
+  const out = await gitLog(repoPath, buildLogArgs({ since, author, maxCount, sinceAsFilter }), { maxBuffer, maxCount, windowed });
+  return out === null ? null : parseLog(out);
+}
+
+/**
+ * Run git with `args` (after `-C <path> -c diff.relative=false`), optionally feeding
+ * `input` on stdin; resolves to stdout, or null for a repo without commits. Maps errors
+ * to user-facing ones (`maxCount` / `windowed` pick the advice for oversized output).
+ */
+async function gitLog(repoPath, args, { maxBuffer, maxCount, windowed, input }) {
   let stdout;
   try {
-    ({ stdout } = await execFileAsync('git', args, {
+    const run = execFileAsync('git', ['-C', repoPath, '-c', 'diff.relative=false', ...args], {
       maxBuffer,
       encoding: 'utf8',
       // LC_ALL=C forces English messages so the error checks below are reliable.
       env: gitEnv(),
-    }));
+    });
+    if (input !== undefined) {
+      run.child.stdin.on('error', () => {}); // git exiting early (EPIPE) surfaces below
+      run.child.stdin.end(input);
+    }
+    ({ stdout } = await run);
   } catch (err) {
     const spawn = spawnError(err);
     if (spawn) throw spawn;
     if (err.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
       const mb = Math.round(maxBuffer / (1024 * 1024));
       // Only suggest what can shrink the output: --max-commits only helps when git caps it.
-      const tips = [since ? 'a later --since' : '--since', '--author'];
+      const tips = windowed ? ['a narrower --since/--until/--year window', '--author'] : ['--since', '--author'];
       const narrow = `narrow it down with ${tips.join(' or ')}`;
       throw new Error(`git log output is larger than ${mb} MB; ${maxCount !== undefined ? `${narrow}, or lower --max-commits` : narrow}`);
     }
@@ -342,7 +439,7 @@ async function runLog(repoPath, { since, author, maxBuffer, sinceAsFilter, maxCo
     }
     throw new Error(`git log failed: ${stderr.trim() || err.message}`);
   }
-  return parseLog(stdout);
+  return stdout;
 }
 
 /**

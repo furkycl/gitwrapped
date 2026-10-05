@@ -3,7 +3,7 @@ import { epochDay, localParts } from './time.js';
 const EMPTY = Object.freeze({ length: 0, start: null, end: null });
 
 /** The machine's local calendar date as 'YYYY-MM-DD'. */
-function localToday() {
+export function localToday() {
   const d = new Date();
   const pad = (n) => String(n).padStart(2, '0');
   return `${String(d.getFullYear()).padStart(4, '0')}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -20,7 +20,10 @@ function localToday() {
  *   length 0. The day after counts because days are author-local: an author in a timezone
  *   ahead of the machine can already be on tomorrow. Two or more days ahead (clock skew,
  *   future-dated commits) is not alive.
- *   For a past-period wrapped (e.g. --since last year) current is usually 0.
+ *   For a past window (--until / --year) the CLI passes the window end as `today` with
+ *   `todayComplete: true`: that day is over, so there is no grace day and the run is
+ *   current only when it reaches the window end (current = the streak running when the
+ *   window closed).
  * - No active days → both `{length: 0, start: null, end: null}`.
  *
  * `today` ('YYYY-MM-DD') defaults to the machine's local calendar date. That default is
@@ -28,7 +31,7 @@ function localToday() {
  * Invalid input policy: an invalid `today` (wrong type/shape, impossible date) throws a
  * TypeError; commits with an unparseable date are skipped.
  */
-export function computeStreaks(commits, { today } = {}) {
+export function computeStreaks(commits, { today, todayComplete = false } = {}) {
   commits = commits ?? [];
   if (today === undefined) today = localToday();
   const todayDay = epochDay(today);
@@ -60,7 +63,7 @@ export function computeStreaks(commits, { today } = {}) {
   for (const run of runs) if (run.length > longest.length) longest = run;
 
   const last = sorted[sorted.length - 1];
-  const alive = last >= todayDay - 1 && last <= todayDay + 1;
+  const alive = last >= (todayComplete ? todayDay : todayDay - 1) && last <= todayDay + 1;
   const current = alive ? runs[runs.length - 1] : EMPTY;
   return { longest: { ...longest }, current: { ...current } };
 }

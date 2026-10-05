@@ -49,6 +49,8 @@ You also get:
   previews and social posts.
 - **Terminal recap**: commits, active days, lines, power hour, streak, hottest file,
   top word and personality, printed right after the run.
+- **JSON** (optional, `--json`): every computed stat in `stats.json`, for your own
+  dashboards and scripts.
 
 ```
 gitwrapped-out/
@@ -57,6 +59,7 @@ gitwrapped-out/
   png/01-intro.png      # the same cards as PNG, ready to post
   share.png             # 1200x630 summary image
   share.svg             # the same summary as SVG
+  stats.json            # only with --json: every stat as JSON
 ```
 
 ## Install
@@ -87,11 +90,14 @@ gitwrapped [path] [options]
 | Argument / option     | What it does                                                                           |
 |-----------------------|----------------------------------------------------------------------------------------|
 | `path`                | Path to the git repository (default: `.`; an empty path also means `.`)               |
-| `--since YYYY-MM-DD`  | Only include commits on or after this date (from your local midnight)                  |
+| `--since YYYY-MM-DD`  | Only include commits made on or after this day (the author's local calendar day)       |
+| `--until YYYY-MM-DD`  | Only include commits made on or before this day, inclusive (the author's local calendar day) |
+| `--year YYYY`         | One calendar year, the classic Wrapped: same as `--since YYYY-01-01 --until YYYY-12-31` (can't be combined with them) |
 | `--author <email>`    | Only include commits by this author email (exact, case-insensitive match against the email after `.mailmap` is applied) |
 | `--out <dir>`         | Output directory (default: `gitwrapped-out`, created if needed)                        |
-| `--max-commits <n>`   | Analyze at most the n most recent commits (default: 50000; also applies with `--since`) |
+| `--max-commits <n>`   | Analyze at most the n most recent commits that match the other filters (default: 50000) |
 | `--no-png`            | Skip PNG rendering (faster; SVG + HTML only)                                           |
+| `--json`              | Also write every computed stat to `<out>/stats.json` (see [JSON output](#json-output)) |
 | `--no-color`          | Plain console output (also: `NO_COLOR=1`; `FORCE_COLOR=1` forces color)               |
 | `-h`, `--help`        | Show help and exit                                                                     |
 | `-v`, `--version`     | Show the version and exit                                                              |
@@ -104,6 +110,15 @@ is easy to grep. The recap is in color on a terminal and plain when piped.
 ```bash
 # This year only
 npx @furkycl/gitwrapped --since 2026-01-01
+
+# Your 2025 in git (Jan 1 – Dec 31)
+npx @furkycl/gitwrapped --year 2025
+
+# A custom window: the first quarter
+npx @furkycl/gitwrapped --since 2026-01-01 --until 2026-03-31
+
+# Also export the raw numbers as JSON
+npx @furkycl/gitwrapped --json
 
 # Just you, in a shared repo
 npx @furkycl/gitwrapped --author you@example.com
@@ -118,6 +133,43 @@ npx @furkycl/gitwrapped --no-png
 NO_COLOR=1 npx @furkycl/gitwrapped --no-png | head -1
 ```
 
+## JSON output
+
+With `--json`, gitwrapped also writes `<out>/stats.json`: 2-space indented, with a fixed
+key order and no generation timestamp, so the same history, options and `asOf` day give
+the same file. It contains no paths from your machine (`repo` is just the folder name),
+but it does contain commit subjects and hashes and repo-relative file paths (see
+[Privacy](#privacy)).
+
+| Key             | What it holds                                                                 |
+|-----------------|-------------------------------------------------------------------------------|
+| `schemaVersion` | `1`; bumped only when a key is removed or changes meaning                     |
+| `generator`     | `{"name": "@furkycl/gitwrapped", "version": "<version>"}`                     |
+| `repo`          | The repository's folder name                                                  |
+| `asOf`          | `YYYY-MM-DD` the current streak is counted up to: today, or the end of a past `--until` / `--year` window |
+| `filters`       | `{since, until, author, maxCommits}` as used (`--year` shows as since/until); dates and author are `null` when not set, `maxCommits` is the cap in effect |
+| `truncated`     | `true` when `--max-commits` cut the history short                             |
+| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `hotFiles`, `messages`, `personality` |
+
+```json
+{
+  "schemaVersion": 1,
+  "generator": { "name": "@furkycl/gitwrapped", "version": "1.0.0" },
+  "repo": "my-app",
+  "asOf": "2025-12-31",
+  "filters": { "since": "2025-01-01", "until": "2025-12-31", "author": null, "maxCommits": 50000 },
+  "truncated": false,
+  "stats": {
+    "totals": { "commits": 412, "activeDays": 131, "linesAdded": 30211, "...": "..." },
+    "streaks": { "longest": { "length": 9, "start": "2025-03-02", "end": "2025-03-10" }, "...": "..." },
+    "...": "..."
+  }
+}
+```
+
+Without `--json` no stats.json is written, and one left over from an earlier `--json` run
+is left as it is.
+
 ## Privacy
 
 - **100% local.** gitwrapped reads `git log` and writes files. It makes no network
@@ -125,12 +177,17 @@ NO_COLOR=1 npx @furkycl/gitwrapped --no-png | head -1
 - **`wrapped.html` stays offline too.** It inlines all of its CSS, JS and SVG and ships
   a strict Content-Security-Policy (`default-src 'none'`, with hashed inline style and
   script), so the browser won't load anything from the network either.
+- **What the output contains.** Cards, `wrapped.html` and (with `--json`) `stats.json`
+  show commit subjects and repo-relative file paths; `stats.json` also lists commit
+  hashes (the longest and shortest message) and, when you pass `--author`, that email.
+  Check them before you share output from a private repo. No absolute paths from your machine are written.
 
 ## How it works
 
 1. **Read.** One `git log --numstat` call (no shell, arguments passed directly) reads the
    hash, author, email (after `.mailmap`), date, parents, subject and per-file line
-   counts of each commit.
+   counts of each commit. With `--until` / `--year` a cheap hashes-and-dates pass
+   picks the commits in the window first.
 2. **Stats.** Totals, time habits, streaks, commits per day, hot files, message stats and a rule-based
    personality are computed in plain JavaScript. Hours, weekdays and days use each
    commit's **author-local time**, so a 23:00 commit counts as 23:00 for the person
@@ -141,19 +198,34 @@ NO_COLOR=1 npx @furkycl/gitwrapped --no-png | head -1
 ## Edge cases and limits
 
 - **Big repos:** only the 50,000 most recent commits are analyzed by default, and the
-  recap says so. You can change this with `--max-commits n`. If `git log` output is
-  still too large, gitwrapped asks you to narrow it with `--since` or `--author`.
-- **`--since`** keeps every commit *authored* on or after the date, even ones that sit
+  recap says so. You can change this with `--max-commits n`; with a date window or
+  `--author` it counts only matching commits. If `git log` output is still too large,
+  gitwrapped asks you to narrow it with `--since` / `--until` / `--year` or `--author`.
+- **Dates are the author's.** `--since`, `--until` and `--year` compare each commit's
+  *author* date, on the author's own calendar day (the day every card uses). A commit
+  made at 00:30 on Jan 1 in Tokyo belongs to the new year, whatever time zone you run
+  gitwrapped in, so a window gives the same result on every machine.
+- **`--since`** keeps every commit authored on or after the day, even ones that sit
   behind older commits in the history. On git 2.37+ git pre-filters with
   `--since-as-filter` a week before the date (committer dates can lag author dates), and
-  the exact author-date filter runs in JavaScript. Older git does all the filtering in
-  JavaScript, so `--max-commits` can't shorten the read there.
+  the exact filter runs in JavaScript. Older git does all the filtering in JavaScript,
+  so `--max-commits` can't shorten the read there.
+- **`--until` / `--year`** keep every commit authored on or before the end day. git's
+  own `--until` checks the committer date, which can be any amount later than the
+  author date after a rebase or squash merge, so it is not used. Instead a cheap first
+  `git log` pass lists only hashes and author dates, the window and `--max-commits` are
+  applied to that list, and only the selected commits are read in full. Dates before
+  1970 are not supported (`--year` takes 1970 to 9999).
+- **Current streak in a past window:** when the window ends before today, the streak is
+  counted up to the window's last day, and that day is over: a streak is "at window
+  end" only if it includes that day. The recap and streak card say so, and
+  `stats.json` records the day as `asOf`.
 - **Authors** are counted by their `.mailmap` identity, so one person with two emails
   mapped together counts once, and `--author` matches the mapped email. If `--author`
   matches nothing and isn't an email address, the recap reminds you it expects one.
-- **Empty repo** (no commits yet) or a filter that matches nothing: you still get a
-  full card set with friendly empty copy. The recap says "No commits found" and the
-  exit code is 0.
+- **Empty repo** (no commits yet) or a filter that matches nothing (`--since`,
+  `--until`, `--year`, `--author`): you still get a full card set with friendly empty
+  copy. The recap says "No commits found", names the filters, and the exit code is 0.
 - **No git:** if `git` isn't on your PATH, gitwrapped says so. On Windows, PATH has to
   point at `git.exe`; a `git.cmd` or `git.bat` wrapper can't be started directly.
 - **Not a repo:** a missing path, a file, or a folder that isn't a git repository each

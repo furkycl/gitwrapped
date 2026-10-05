@@ -184,6 +184,31 @@ function ellipsize(line, maxWidth, fontSize) {
 }
 
 /** `text` shortened from the start ('…' + tail) so that it fits `maxWidth`. */
+/**
+ * `text` on one line within `maxWidth` (as measured by `width`), keeping the part from
+ * the last `sep` on whole and cutting the part before it with '…' first: a footer like
+ * "my-long-repo · Jan 3 – Mar 9, 2025" keeps its date window. When there is no `sep`, or
+ * the tail alone does not fit, returns `fallback(text)`.
+ */
+export function fitKeepTail(text, { maxWidth, width, fallback, sep = ' · ' }) {
+  text = String(text ?? '');
+  if (width(text) <= maxWidth) return text;
+  const i = text.lastIndexOf(sep);
+  if (i <= 0) return fallback(text);
+  const tail = text.slice(i);
+  const gs = graphemes(text.slice(0, i));
+  const fits = (n) => width(`${gs.slice(0, n).join('').trimEnd()}${ELLIPSIS}${tail}`) <= maxWidth;
+  // Binary search the longest head that fits (width grows with the head length).
+  let lo = 0;
+  let hi = gs.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (fits(mid)) lo = mid;
+    else hi = mid - 1;
+  }
+  return lo > 0 ? `${gs.slice(0, lo).join('').trimEnd()}${ELLIPSIS}${tail}` : fallback(text);
+}
+
 export function truncateStart(text, { maxWidth, fontSize }) {
   text = String(text ?? '').replace(/\s+/g, ' ').trim();
   if (measureText(text, fontSize) <= maxWidth) return text;
@@ -1032,8 +1057,13 @@ function fitFooter(text) {
   if (!text) return box;
   const maxWidth = CONTENT_WIDTH - (measureText('gitwrapped', 44) - 10) - 40;
   const size = Math.max(24, Math.min(32, Math.floor(maxWidth / Math.max(measureText(text, 1), 0.01))));
-  const [line] = wrapText(text, { maxWidth, fontSize: size, maxLines: 1 });
-  return { ...box, line: line ?? '', size };
+  // An over-long repo name is cut before the date window after the last " · ".
+  const line = fitKeepTail(text, {
+    maxWidth,
+    width: (t) => measureText(t, size),
+    fallback: (t) => wrapText(t, { maxWidth, fontSize: size, maxLines: 1 })[0] ?? '',
+  });
+  return { ...box, line, size };
 }
 
 /**

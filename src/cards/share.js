@@ -1,7 +1,7 @@
 // Share summary card: one landscape 1200x630 SVG (the usual link-preview / social image
 // size) in the same visual language as the story cards. Pure layout: buildShareCard() in
 // index.js turns stats into the strings drawn here.
-import { escapeXml, fitCount, FONT_FAMILY, measureText, sanitizeIdPrefix, textEl, THEMES, truncateStart, wrapText } from './svg.js';
+import { escapeXml, fitCount, fitKeepTail, FONT_FAMILY, measureText, sanitizeIdPrefix, textEl, THEMES, truncateStart, wrapText } from './svg.js';
 
 export const SHARE_WIDTH = 1200;
 export const SHARE_HEIGHT = 630;
@@ -125,7 +125,8 @@ export function renderShareSvg({ theme: themeName, eyebrow, title, tiles, file, 
   body.push(textEl(PAD, 590, 'gitwrapped', { size: 36, weight: 900, spacing: -1 }));
   const foot = str(footer);
   if (foot) {
-    const line = fitLine(foot, 640, 24);
+    // Like the story cards: an over-long repo name is cut before the date window.
+    const line = fitKeepTail(foot, { maxWidth: 640, width: (t) => widthOf(t, 24), fallback: (t) => fitLine(t, 640, 24) });
     body.push(textEl(PAD + INNER, 588, line, { size: 24, weight: 600, opacity: 0.8, anchor: 'end' }));
   }
 

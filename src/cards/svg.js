@@ -1,6 +1,7 @@
 // Story-card renderer: 1080x1920 standalone SVG strings with a bold gradient style.
 // Pure and deterministic (no randomness, no dates, no I/O). Text uses a system font
 // stack only, so the SVGs need no external fonts, images or stylesheets.
+import { dayKeyFromEpoch, epochDay, mondayOf } from '../stats/time.js';
 
 export const CARD_WIDTH = 1080;
 export const CARD_HEIGHT = 1920;
@@ -224,6 +225,18 @@ export function truncateMiddle(text, { maxWidth, fontSize }) {
   take(false, budget);
   take(true, budget);
   return gs.slice(0, head).join('').trimEnd() + ELLIPSIS + gs.slice(tail).join('').trimStart();
+}
+
+/**
+ * Integer with en-US thousands separators, e.g. 12345 → "12,345". Negatives use U+2212.
+ * Huge values (≥ 1e21) are written out in full, never in scientific notation.
+ * Non-numbers and non-finite values → "0".
+ */
+export function formatNumber(n) {
+  const v = Math.round(typeof n === 'number' && Number.isFinite(n) ? n : 0);
+  // BigInt prints every digit of an integral double, where String() would switch to 1e+21.
+  const digits = BigInt(Math.abs(v)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return v < 0 ? `−${digits}` : digits;
 }
 
 const SUFFIXES = ['K', 'M', 'B', 'T'];
@@ -755,7 +768,202 @@ function tilesBlock(spec) {
   };
 }
 
-const CHARTS = { bars: barsBlock, hbars: hbarsBlock, split: splitBlock, callout: calloutBlock, tiles: tilesBlock };
+// --- calendar heatmap ------------------------------------------------------------------
+
+const CAL = {
+  minWeeks: 8,
+  maxWeeks: 53,
+  maxCell: 72,
+  minCell: 26,
+  minCellCompact: 12,
+  gapRatio: 0.18,
+  radiusRatio: 0.22,
+  head: { size: 26, opacity: 0.75, height: 42 },
+  month: { size: 24, opacity: 0.7, gap: 10 },
+  legend: { size: 24, swatch: 24, gap: 6, height: 26, space: 28 },
+  panelGap: 28,
+  maxPanels: 4,
+  empty: 0.08,
+  levels: [0.3, 0.5, 0.75, 1],
+};
+const CAL_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const CAL_WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+/** 'YYYY-MM-DD' → "Oct 4, 2026" (the year as written, 4 digits). */
+function calDate(key) {
+  const [y, m, d] = key.split('-');
+  return `${CAL_MONTHS[+m - 1]} ${+d}, ${y}`;
+}
+
+/** Month (1-12) of an epoch day; null outside years 0-9999. */
+const monthOf = (e) => {
+  const key = dayKeyFromEpoch(e);
+  return key ? +key.slice(5, 7) : null;
+};
+
+/**
+ * Month labels for rows `first`..`last - 1` of a window starting on Monday `start`:
+ * `[{row, month (1-12)}]`. A row is labelled when it holds the 1st of a month (exactly
+ * when its Sunday falls on day 1-7). The first row is labelled with its Monday's month
+ * too, unless a 1st-of-month label follows within `minGap` rows (they would collide).
+ */
+export function calendarMonthLabels(start, first, last, minGap) {
+  const out = [];
+  for (let w = first; w < last; w++) {
+    const sunday = dayKeyFromEpoch(start + w * 7 + 6);
+    if (sunday && +sunday.slice(8) <= 7) out.push({ row: w, month: +sunday.slice(5, 7) });
+  }
+  const month = monthOf(start + first * 7);
+  if (first < last && month && !(out.length > 0 && out[0].row - first < minGap)) out.unshift({ row: first, month });
+  return out;
+}
+
+/**
+ * Heat level (index into CAL.levels) per count: the busiest count is always the top
+ * level; the rest split at the nearest-rank quartiles of all active-day counts. All
+ * counts equal → every day is the top level.
+ */
+export function calendarLevels(counts) {
+  const sorted = [...counts].sort((a, b) => a - b);
+  const n = sorted.length;
+  const q = (p) => sorted[Math.max(0, Math.ceil(p * n) - 1)];
+  const [q1, q2, q3, max] = [q(0.25), q(0.5), q(0.75), sorted[n - 1]];
+  return (c) => (c >= max || c > q3 ? 3 : c > q2 ? 2 : c > q1 ? 1 : 0);
+}
+
+/**
+ * The calendar window for active `days` ([{day, commits}]): Monday-first weeks from the
+ * week of the first active day to the week of the last, at most CAL.maxWeeks (the most
+ * recent ones) and at least CAL.minWeeks (padded with older weeks). Returns
+ * `{start (epoch day of the first Monday), weeks, counts: Map(epoch day → commits),
+ * clipped}`; with no valid days, start is null and the window is CAL.minWeeks empty weeks.
+ */
+export function calendarWindow(days) {
+  const counts = new Map();
+  for (const d of Array.isArray(days) ? days : []) {
+    const e = epochDay(typeof d?.day === 'string' ? d.day.trim() : null);
+    const c = clampNum(d?.commits);
+    if (e === null || c <= 0 || dayKeyFromEpoch(e) === null) continue;
+    counts.set(e, (counts.get(e) ?? 0) + c);
+  }
+  if (counts.size === 0) return { start: null, weeks: CAL.minWeeks, counts, clipped: false };
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (const e of counts.keys()) {
+    lo = Math.min(lo, e);
+    hi = Math.max(hi, e);
+  }
+  const endMonday = mondayOf(hi);
+  const span = (endMonday - mondayOf(lo)) / 7 + 1;
+  const weeks = Math.min(CAL.maxWeeks, Math.max(CAL.minWeeks, span));
+  return { start: endMonday - (weeks - 1) * 7, weeks, counts, clipped: span > CAL.maxWeeks };
+}
+
+/**
+ * GitHub-style commit calendar. Spec: `{kind: 'calendar', title, days: [{day:
+ * 'YYYY-MM-DD', commits}]}` (active days; see calendarWindow for the window). Rows are
+ * weeks (oldest on top), the 7 columns are weekdays Monday first. Long windows are split
+ * into side-by-side panels of consecutive weeks so the cells stay large. Cells are white
+ * squares whose opacity encodes the day's heat level (CAL.levels; empty days CAL.empty);
+ * active cells carry a "<date>: N commits" <title>. Month names mark the row holding the
+ * 1st of each month (and each panel's first row), and a Less → More legend sits under
+ * the grid on the right.
+ */
+function calendarBlock(spec, compact = false) {
+  const win = calendarWindow(spec.days);
+  const { weeks, counts } = win;
+  const levelOf = calendarLevels(counts.size ? [...counts.values()] : [1]);
+  const cap = s1(spec.title);
+  const capH = cap ? CAPTION.height : 0;
+  const hasDates = win.start !== null;
+  const gutter = hasDates ? Math.ceil(Math.max(...CAL_MONTHS.map((m) => heavyWidth(m, CAL.month.size)))) + CAL.month.gap : 0;
+  const pitchRatio = 1 + CAL.gapRatio;
+  const gridW = (cell) => 7 * cell + 6 * cell * CAL.gapRatio;
+  const gridH = (rows, cell) => rows * cell * pitchRatio - cell * CAL.gapRatio;
+  const fixed = capH + CAL.head.height + CAL.legend.space + CAL.legend.height;
+  // Largest cell the width allows with `p` panels (capped at CAL.maxCell).
+  const widthCell = (p) => Math.min(CAL.maxCell, (CONTENT_WIDTH - p * gutter - (p - 1) * CAL.panelGap) / p / gridW(1));
+  const rowsOf = (p) => Math.ceil(weeks / p);
+  const heightFor = (p, cell) => fixed + gridH(rowsOf(p), cell);
+  const panelOptions = Array.from({ length: Math.min(CAL.maxPanels, weeks) }, (_, i) => i + 1).filter((p) => widthCell(p) >= CAL.minCellCompact);
+  /** Best {panels, cell} for a block of `height`: the biggest cells, fewer panels unless 10% bigger. */
+  const choose = (height) => {
+    let best = null;
+    for (const p of panelOptions) {
+      const cell = Math.min(widthCell(p), (height - fixed) / (rowsOf(p) * pitchRatio - CAL.gapRatio));
+      if (!best || cell > best.cell * 1.1) best = { panels: p, cell };
+    }
+    return best;
+  };
+  const minCell = compact ? CAL.minCellCompact : CAL.minCell;
+  const minHeight = Math.min(...panelOptions.map((p) => heightFor(p, Math.min(minCell, widthCell(p)))));
+  const maxHeight = Math.max(...panelOptions.map((p) => heightFor(p, widthCell(p))));
+  return {
+    kind: 'calendar',
+    height: minHeight,
+    maxHeight: Math.max(minHeight, maxHeight),
+    render: (y, height) => {
+      const { panels, cell: rawCell } = choose(height);
+      const cell = Math.floor(rawCell * 10) / 10;
+      const gap = Math.floor(cell * CAL.gapRatio * 10) / 10;
+      const pitch = cell + gap;
+      const rx = round(cell * CAL.radiusRatio);
+      const rows = rowsOf(panels);
+      const panelW = gutter + 7 * cell + 6 * gap;
+      const totalW = panels * panelW + (panels - 1) * CAL.panelGap;
+      const used = capH + CAL.head.height + rows * pitch - gap + CAL.legend.space + CAL.legend.height;
+      const x0 = PAD_X + (CONTENT_WIDTH - totalW) / 2;
+      const top = y + Math.max(0, (height - used) / 2);
+      const parts = [caption(top, cap)];
+      const gridTop = top + capH + CAL.head.height;
+      for (let p = 0; p < panels; p++) {
+        const px = x0 + p * (panelW + CAL.panelGap);
+        const gx = px + gutter;
+        const first = p * rows;
+        const last = Math.min(weeks, first + rows);
+        if (first >= last) continue;
+        // Weekday letters shrink with small cells so they never run together.
+        const headSize = Math.round(Math.min(CAL.head.size, Math.max(18, pitch * 0.78)));
+        CAL_WEEKDAYS.forEach((d, col) => {
+          parts.push(textEl(gx + col * pitch + cell / 2, gridTop - 16, d, { size: headSize, weight: 800, opacity: CAL.head.opacity, anchor: 'middle' }));
+        });
+        const labels = hasDates ? calendarMonthLabels(win.start, first, last, Math.ceil((2 * CAL.month.size + 8) / pitch)) : [];
+        for (const { row, month } of labels) {
+          const ry = gridTop + (row - first) * pitch;
+          parts.push(textEl(px, ry + cell / 2 + CAL.month.size * 0.36, CAL_MONTHS[month - 1], { size: CAL.month.size, weight: 700, opacity: CAL.month.opacity }));
+        }
+        for (let w = first; w < last; w++) {
+          const ry = gridTop + (w - first) * pitch;
+          const monday = hasDates ? win.start + w * 7 : null;
+          for (let col = 0; col < 7; col++) {
+            const e = hasDates ? monday + col : null;
+            const n = e === null ? 0 : counts.get(e) ?? 0;
+            const op = n > 0 ? CAL.levels[levelOf(n)] : CAL.empty;
+            const t = n > 0 ? titleEl(`${calDate(dayKeyFromEpoch(e))}: ${n === 1 ? '1 commit' : `${formatNumber(n)} commits`}`) : '';
+            parts.push(`<rect x="${round(gx + col * pitch)}" y="${round(ry)}" width="${cell}" height="${cell}" rx="${rx}" fill-opacity="${op}">${t}</rect>`);
+          }
+        }
+      }
+      // Legend: "Less ▢▢▢▢▢ More", right-aligned under the grid.
+      const L = CAL.legend;
+      const ly = gridTop + rows * pitch - gap + L.space;
+      const right = x0 + totalW;
+      const moreW = heavyWidth('More', L.size);
+      const swEnd = right - moreW - 12;
+      const ops = [CAL.empty, ...CAL.levels];
+      const swStart = swEnd - ops.length * L.swatch - (ops.length - 1) * L.gap;
+      const base = ly + L.height / 2 + L.size * 0.36;
+      parts.push(textEl(swStart - 12, base, 'Less', { size: L.size, weight: 700, opacity: CAL.month.opacity, anchor: 'end' }));
+      ops.forEach((op, i) => {
+        parts.push(`<rect x="${round(swStart + i * (L.swatch + L.gap))}" y="${round(ly + (L.height - L.swatch) / 2)}" width="${L.swatch}" height="${L.swatch}" rx="${round(L.swatch * CAL.radiusRatio)}" fill-opacity="${op}"/>`);
+      });
+      parts.push(textEl(right, base, 'More', { size: L.size, weight: 700, opacity: CAL.month.opacity, anchor: 'end' }));
+      return parts.join('');
+    },
+  };
+}
+
+const CHARTS = { bars: barsBlock, hbars: hbarsBlock, split: splitBlock, callout: calloutBlock, tiles: tilesBlock, calendar: calendarBlock };
 
 /** Chart blocks for `chart` (one spec or an array); `compact` asks for smaller minimums. */
 function chartBlocks(chart, compact = false) {
@@ -915,7 +1123,8 @@ export function layoutCard({ eyebrow, title, big, subtitle, titleSize, lines, ch
  *   truncate 'start' keeps the end of long labels such as file paths). At most 6 rows.
  * - `chart`: one chart spec or an array of them, drawn below the rows; kinds are
  *   'bars' (vertical bar chart), 'hbars' (horizontal bar list), 'split' (one bar split
- *   in two), 'callout' (a panel with one big value) and 'tiles' (2x2 stat tiles). See
+ *   in two), 'callout' (a panel with one big value), 'tiles' (2x2 stat tiles) and 'calendar'
+ *   (a commits-per-day heatmap). See
  *   the *Block functions above for each spec. Charts that do not fit are dropped, last first.
  * `number` is a short card number ("03") drawn as a faint watermark top-right.
  * `theme` is a THEMES key (unknown → 'pulse'). `footer` is small text right of the

@@ -13,10 +13,11 @@ const CARDS = [
   '02-totals',
   '03-peak-hour',
   '04-streak',
-  '05-hot-files',
-  '06-messages',
-  '07-personality',
-  '08-outro',
+  '05-activity',
+  '06-hot-files',
+  '07-messages',
+  '08-personality',
+  '09-outro',
 ];
 
 test('package.json has the self-wrapped script', () => {
@@ -24,9 +25,9 @@ test('package.json has the self-wrapped script', () => {
   assert.equal(pkg.scripts['self-wrapped'], 'node bin/gitwrapped.js . --out docs/self-wrapped --no-color');
 });
 
-test('self-wrapped wrapped.html inlines all 8 cards behind a CSP', () => {
+test('self-wrapped wrapped.html inlines all 9 cards behind a CSP', () => {
   const html = readFileSync(new URL('wrapped.html', dir), 'utf8');
-  assert.equal(html.match(/<svg[\s>]/g)?.length, 8);
+  assert.equal(html.match(/<svg[\s>]/g)?.length, 9);
   assert.match(html, /<meta http-equiv="Content-Security-Policy" content="default-src 'none'/);
 });
 

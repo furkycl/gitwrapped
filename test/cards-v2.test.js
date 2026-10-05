@@ -117,7 +117,7 @@ describe('decoration', () => {
     assert.ok(!renderShareCard(normalStats(), { repoName: 'demo' }).includes('stroke'));
   });
 
-  test('cards carry a faint card-number watermark 01..08', () => {
+  test('cards carry a faint card-number watermark 01..09', () => {
     buildCards(normalStats(), { repoName: 'demo' }).forEach(({ svg }, i) => {
       const n = String(i + 1).padStart(2, '0');
       assert.match(svg, new RegExp(`fill-opacity="0\\.12"[^>]*>${n}</text>`));
@@ -146,7 +146,7 @@ describe('layout', () => {
   for (const [name, make, opts] of SCENARIOS) {
     test(`${name}: blocks stay in the content area, never overlap, and draw inside their box`, () => {
       const cards = buildCards(make(), opts);
-      assert.equal(cards.length, 8);
+      assert.equal(cards.length, 9);
       for (const { id, svg } of cards) {
         assert.ok(!/NaN|undefined|Infinity/.test(svg), `${name}/${id}: bad number`);
       }

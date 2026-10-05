@@ -16,16 +16,17 @@ See gitwrapped's own Wrapped: [docs/self-wrapped/](docs/self-wrapped/) has the c
 
 ## What you get
 
-Eight 1080x1920 story cards:
+Nine 1080x1920 story cards:
 
 1. **Intro**: the repo name, the date range in plain English ("Oct 4 – Oct 5, 2026") and how many commits there are to unwrap, plus whose story it is when you pass `--author`.
 2. **Totals**: commits, a lines added vs. removed bar, active days and files touched (and contributors, when there is more than one).
 3. **Power hour**: the hour of the day you commit the most, with a 24-hour bar chart and a Monday-to-Sunday weekday chart (hover a bar in `wrapped.html` for its count).
 4. **Streak**: your longest run of consecutive days with a commit, with a longest vs. current bar comparison.
-5. **Hot files**: the five files you edit most as a bar list (lockfiles and build output are ignored).
-6. **Message hall of fame**: your favorite word, your longest and shortest messages, and how many "fix", "wip" and "oops" commits you made.
-7. **Personality**: Night Owl, Early Bird, Friday Deployer, Fixaholic, Weekend Warrior or Steady Shipper, with a one-line roast and bars for your top habit scores.
-8. **Outro**: a summary card to post: commits, power hour, best streak and personality tiles, plus your hottest file.
+5. **Activity**: a GitHub-style calendar of commits per day (weeks as rows, Monday to Sunday, brighter the busier the day), with your number of active days and your busiest day. Hover a day in `wrapped.html` for its count. It covers up to the last 53 weeks of your history.
+6. **Hot files**: the five files you edit most as a bar list (lockfiles and build output are ignored).
+7. **Message hall of fame**: your favorite word, your longest and shortest messages, and how many "fix", "wip" and "oops" commits you made.
+8. **Personality**: Night Owl, Early Bird, Friday Deployer, Fixaholic, Weekend Warrior or Steady Shipper, with a one-line roast and bars for your top habit scores.
+9. **Outro**: a summary card to post: commits, power hour, best streak and personality tiles, plus your hottest file.
 
 You also get:
 
@@ -43,7 +44,7 @@ You also get:
 ```
 gitwrapped-out/
   wrapped.html          # the story: open it in any browser
-  cards/01-intro.svg    # 01-intro … 08-outro, 1080x1920 SVG
+  cards/01-intro.svg    # 01-intro … 09-outro, 1080x1920 SVG
   png/01-intro.png      # the same cards as PNG, ready to post
   share.png             # 1200x630 summary image
   share.svg             # the same summary as SVG
@@ -121,7 +122,7 @@ NO_COLOR=1 npx @furkycl/gitwrapped --no-png | head -1
 1. **Read.** One `git log --numstat` call (no shell, arguments passed directly) reads the
    hash, author, email (after `.mailmap`), date, parents, subject and per-file line
    counts of each commit.
-2. **Stats.** Totals, time habits, streaks, hot files, message stats and a rule-based
+2. **Stats.** Totals, time habits, streaks, commits per day, hot files, message stats and a rule-based
    personality are computed in plain JavaScript. Hours, weekdays and days use each
    commit's **author-local time**, so a 23:00 commit counts as 23:00 for the person
    who made it, whatever time zone you run gitwrapped in.

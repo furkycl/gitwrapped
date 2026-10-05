@@ -1,32 +1,23 @@
 // The story-card set: turns computeStats() output into Wrapped-style SVG cards.
 // Pure and deterministic. Every card copes with empty stats (0 commits, null peaks,
 // no hot files, null messages) and never prints "null", "undefined" or "NaN".
-import { renderCard } from './svg.js';
+import { calendarWindow, formatNumber, renderCard } from './svg.js';
+
+export { formatNumber };
 import { renderShareSvg } from './share.js';
-import { epochDay, hourLabel, WEEKDAY_NAMES } from '../stats/time.js';
+import { epochDay, hourLabel, mondayOf, WEEKDAY_NAMES } from '../stats/time.js';
 
 export { renderCard, layoutCard, wrapText, escapeXml, measureText, truncateStart, THEMES, CARD_WIDTH, CARD_HEIGHT } from './svg.js';
 export { renderShareSvg, SHARE_WIDTH, SHARE_HEIGHT } from './share.js';
 
 /** Card ids in display order. */
-export const CARD_IDS = Object.freeze(['intro', 'totals', 'peak-hour', 'streak', 'hot-files', 'messages', 'personality', 'outro']);
+export const CARD_IDS = Object.freeze(['intro', 'totals', 'peak-hour', 'streak', 'activity', 'hot-files', 'messages', 'personality', 'outro']);
 
 const EMPTY_LINE = 'No commits yet — go ship something!';
 
 /** A finite number, else 0. */
 const num = (n) => (typeof n === 'number' && Number.isFinite(n) ? n : 0);
 
-/**
- * Integer with en-US thousands separators, e.g. 12345 → "12,345". Negatives use U+2212.
- * Huge values (≥ 1e21) are written out in full, never in scientific notation.
- * Non-numbers and non-finite values → "0".
- */
-export function formatNumber(n) {
-  const v = Math.round(num(n));
-  // BigInt prints every digit of an integral double, where String() would switch to 1e+21.
-  const digits = BigInt(Math.abs(v)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  return v < 0 ? `−${digits}` : digits;
-}
 
 /** A line count with a leading sign ("+12" / "−3"); 0 → "0". Negatives clamp to 0. */
 const signedLines = (n, sign) => {
@@ -242,6 +233,51 @@ function streak(s) {
   };
 }
 
+/** Busiest day (ties → earliest) and distinct Monday-first weeks of `days` ([{day, commits}]). */
+function dailySummary(days) {
+  let busiest = null;
+  const weeks = new Set();
+  for (const x of [...days].sort((a, b) => epochDay(a.day) - epochDay(b.day))) {
+    if (!busiest || x.commits > busiest.commits) busiest = x;
+    weeks.add(mondayOf(epochDay(x.day)));
+  }
+  return { busiest, activeWeeks: weeks.size };
+}
+
+function activity(s) {
+  const d = s.daily ?? {};
+  let days = (Array.isArray(d.days) ? d.days : [])
+    .filter((x) => parseDay(x?.day) && num(x?.commits) > 0)
+    .map((x) => ({ day: parseDay(x.day).key, commits: num(x.commits) }));
+  if (days.length === 0) {
+    return { eyebrow: 'Your commit calendar', big: '0', title: 'active days', subtitle: EMPTY_LINE, chart: { kind: 'calendar', days: [] } };
+  }
+  const win = calendarWindow(days);
+  let busiest = d.busiest && parseDay(d.busiest.day) && num(d.busiest.commits) > 0 ? d.busiest : null;
+  let weeks = num(d.activeWeeks);
+  let eyebrow;
+  if (win.clipped) {
+    // The grid shows the most recent 53 weeks only: the headline counts that window too.
+    days = days.filter((x) => epochDay(x.day) >= win.start);
+    ({ busiest, activeWeeks: weeks } = dailySummary(days));
+    eyebrow = 'Your last 12 months';
+  } else {
+    const epochs = days.map((x) => epochDay(x.day));
+    const span = Math.max(...epochs) - Math.min(...epochs) + 1;
+    eyebrow = span >= 300 ? 'Your year in commits' : 'Your commit calendar';
+  }
+  const parts = [];
+  if (busiest) parts.push(`Busiest day: ${formatDay(busiest.day)} with ${plural(busiest.commits, 'commit')}.`);
+  if (weeks > 0) parts.push(weeks === 1 ? 'You showed up in 1 week.' : `You showed up in ${formatNumber(weeks)} different weeks.`);
+  return {
+    eyebrow,
+    big: formatNumber(days.length),
+    title: days.length === 1 ? 'active day' : 'active days',
+    subtitle: parts.join(' '),
+    chart: { kind: 'calendar', days },
+  };
+}
+
 function hotFiles(s) {
   const files = (Array.isArray(s.hotFiles) ? s.hotFiles : []).filter((f) => text(f?.path));
   if (files.length === 0) {
@@ -359,8 +395,8 @@ function outro(s, ctx) {
   };
 }
 
-const BUILDERS = { intro, totals, 'peak-hour': peakHour, streak, 'hot-files': hotFiles, messages, personality, outro };
-const CARD_THEMES = { intro: 'pulse', totals: 'ocean', 'peak-hour': 'cosmic', streak: 'ember', 'hot-files': 'mint', messages: 'neon', personality: 'sunset', outro: 'gold' };
+const BUILDERS = { intro, totals, 'peak-hour': peakHour, streak, activity, 'hot-files': hotFiles, messages, personality, outro };
+const CARD_THEMES = { intro: 'pulse', totals: 'ocean', 'peak-hour': 'cosmic', streak: 'ember', activity: 'cosmic', 'hot-files': 'mint', messages: 'neon', personality: 'sunset', outro: 'gold' };
 
 /**
  * Footer text: "<repo> · <date range>" ("<repo> · since <date>" with --since). The repo

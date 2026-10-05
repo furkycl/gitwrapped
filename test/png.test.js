@@ -474,6 +474,6 @@ describe('CLI PNG export', () => {
     assert.deepEqual(seen, [...CARD_IDS.map(() => [1080, '1080x1920']), [1200, '1200x630']]);
     assert.deepEqual(readdirSync(join(dest, 'png')).sort(), svgFiles.map((f) => f.replace(/\.svg$/, '.png')));
     assert.ok(existsSync(join(dest, 'share.png')));
-    assert.ok(r.stdout.includes(`8 PNGs in ${join(dest, 'png')}`), r.stdout);
+    assert.ok(r.stdout.includes(`${CARD_IDS.length} PNGs in ${join(dest, 'png')}`), r.stdout);
   });
 });

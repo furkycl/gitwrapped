@@ -67,33 +67,34 @@ describe('bin: full run on the fixture repo', () => {
     assert.equal(r.stderr, '');
     assert.match(r.stdout, /^gitwrapped: 8 commits → /);
     assert.ok(r.stdout.includes(join(out, 'wrapped.html')), r.stdout);
-    assert.ok(r.stdout.includes(`8 cards in ${join(out, 'cards')}\n`), r.stdout);
+    assert.ok(r.stdout.includes(`9 cards in ${join(out, 'cards')}\n`), r.stdout);
     assert.ok(!r.stdout.includes('\x1b'), 'no ANSI escapes when piped');
   });
 
-  test('writes cards/01-intro.svg .. 08-outro.svg', () => {
+  test('writes cards/01-intro.svg .. 09-outro.svg', () => {
     assert.deepEqual(readdirSync(join(out, 'cards')).sort(), CARD_FILES);
     assert.equal(CARD_FILES[0], '01-intro.svg');
-    assert.equal(CARD_FILES[7], '08-outro.svg');
+    assert.equal(CARD_FILES[4], '05-activity.svg');
+    assert.equal(CARD_FILES[8], '09-outro.svg');
     for (const f of CARD_FILES) {
       assert.ok(statSync(join(out, 'cards', f)).size > 0, `${f} is non-empty`);
     }
   });
 
-  test('writes png/01-intro.png .. 08-outro.png at 1080x1920 and share.png at 1200x630', () => {
+  test('writes png/01-intro.png .. 09-outro.png at 1080x1920 and share.png at 1200x630', () => {
     const pngs = CARD_FILES.map((f) => f.replace(/\.svg$/, '.png'));
     assert.deepEqual(readdirSync(join(out, 'png')).sort(), pngs);
     for (const f of pngs) assert.deepEqual(pngSize(readFileSync(join(out, 'png', f))), { width: 1080, height: 1920 }, f);
     assert.deepEqual(pngSize(readFileSync(join(out, 'share.png'))), { width: 1200, height: 630 });
     assert.match(readFileSync(join(out, 'share.svg'), 'utf8'), /^<svg [^>]*width="1200" height="630"/);
     assert.ok(r.stdout.includes(`share image: ${join(out, 'share.png')}`), r.stdout);
-    assert.ok(r.stdout.includes(`8 PNGs in ${join(out, 'png')}`), r.stdout);
+    assert.ok(r.stdout.includes(`9 PNGs in ${join(out, 'png')}`), r.stdout);
   });
 
-  test('wrapped.html inlines all 8 SVGs', () => {
+  test('wrapped.html inlines all 9 SVGs', () => {
     assert.match(page, /^<!doctype html>/);
-    assert.equal((page.match(/<svg\b/g) ?? []).length, 8);
-    assert.equal(embeddedSvgs(page).length, 8);
+    assert.equal((page.match(/<svg\b/g) ?? []).length, 9);
+    assert.equal(embeddedSvgs(page).length, 9);
   });
 
   test('wrapped.html makes no external requests and has a CSP', () => {

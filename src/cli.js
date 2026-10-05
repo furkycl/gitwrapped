@@ -1,8 +1,8 @@
 import { parseArgs, promisify } from 'node:util';
 import { execFile } from 'node:child_process';
-import { accessSync, constants as fsConstants, mkdirSync, readFileSync, rmdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { accessSync, constants as fsConstants, mkdirSync, readdirSync, readFileSync, rmdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
-import { buildCards, renderShareCard } from './cards/index.js';
+import { buildCards, CARD_IDS, renderShareCard } from './cards/index.js';
 import { DEFAULT_LIMIT, readHistory } from './git.js';
 import { renderPng } from './png.js';
 import { computeStats } from './stats/index.js';
@@ -258,6 +258,15 @@ function writeOutput(file, data) {
   }
 }
 
+/** True when `file` exists and is a regular file. */
+function isFile(file) {
+  try {
+    return statSync(file).isFile();
+  } catch {
+    return false;
+  }
+}
+
 /** Remove share.png and this card set's png/NN-<id>.png files (and png/ if left empty). */
 function removeStalePngs(pngDir, sharePngPath, names) {
   const rmFile = (f) => {
@@ -273,6 +282,31 @@ function removeStalePngs(pngDir, sharePngPath, names) {
     rmdirSync(pngDir); // only succeeds when empty
   } catch {
     // not empty or missing
+  }
+}
+
+/**
+ * Remove card files an earlier run (possibly an older version with different numbering,
+ * e.g. 05-hot-files.svg before the activity card) left in `dir`: only `NN-<card id>.<ext>`
+ * names with a known card id that are not in `keep`. Anything else is left alone.
+ * Only called when `<out>/wrapped.html` existed before this run (the folder is ours).
+ */
+function removeOldCardFiles(dir, ext, keep) {
+  let names;
+  try {
+    names = readdirSync(dir);
+  } catch {
+    return;
+  }
+  const keepSet = new Set(keep);
+  for (const n of names) {
+    const m = /^\d{2}-([a-z-]+)\.([a-z]+)$/.exec(n);
+    if (!m || m[2] !== ext || !CARD_IDS.includes(m[1]) || keepSet.has(n)) continue;
+    try {
+      if (statSync(join(dir, n)).isFile()) unlinkSync(join(dir, n));
+    } catch {
+      // not removable: leave it
+    }
   }
 }
 
@@ -323,16 +357,22 @@ export async function generate({ path, since, author, out, png = true, maxCommit
     }
   }
 
+  // A wrapped.html from an earlier run marks the folder as gitwrapped output: only then
+  // are old-numbered card files from an earlier card set cleaned up.
+  const ownsOut = isFile(html);
   ensureDir(out);
   ensureDir(cardsDir);
   for (const { file, svg } of files) writeOutput(file, svg);
+  if (ownsOut) removeOldCardFiles(cardsDir, 'svg', files.map((f) => basename(f.file)));
   writeOutput(shareSvgPath, shareSvg);
   writeOutput(html, page);
   if (pngs.length > 0) {
     ensureDir(pngDir);
     for (const { file, data } of pngs) writeOutput(file, data);
+    if (ownsOut) removeOldCardFiles(pngDir, 'png', pngs.map((p) => basename(p.file)));
   } else {
     // No PNGs this run: drop ones a previous run left behind so nothing stale remains.
+    if (ownsOut) removeOldCardFiles(pngDir, 'png', []);
     removeStalePngs(pngDir, sharePngPath, cards.map(({ id }, i) => `${stem(id, i)}.png`));
   }
   const pngFiles = pngs.map((p) => p.file).filter((f) => f !== sharePngPath);

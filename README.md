@@ -36,6 +36,12 @@ You also get:
   last card, and you can swipe on touch screens. To pause auto-advance, press and hold
   the card, use the pause button, or press P or K. You can link to a card with
   `wrapped.html#3`. Auto-advance is off when your system prefers reduced motion.
+  A toolbar under the story shows which card you're on (for example `3 / 9`) and saves the
+  current card. **PNG** (or press D) downloads it as a 1080x1920 `NN-<card>.png`, drawn
+  in your browser. If the browser can't draw it, you get the SVG instead. **SVG**
+  downloads `NN-<card>.svg`. **Share** appears only where the browser supports the
+  system share sheet. It shares the PNG when it can, and otherwise the title text, never
+  a link. Press **?** (or the ? button) for the list of keyboard shortcuts.
 - **PNGs**: each card as a 1080x1920 PNG, plus a 1200x630 `share.png` summary for link
   previews and social posts.
 - **Terminal recap**: commits, active days, lines, power hour, streak, hottest file,

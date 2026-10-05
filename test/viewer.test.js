@@ -106,6 +106,61 @@ describe('buildViewerHtml', () => {
     assert.match(script, /mq\.addEventListener\('change'/);
   });
 
+  test('page chrome: header/main/footer landmarks, visible title, card counter', () => {
+    assert.match(html, /<header class="top" id="page-top">\n<h1 class="title">gitwrapped · demo<\/h1>\n<\/header>/);
+    assert.match(html, /<main class="stage" id="page-main">/);
+    assert.match(html, /<footer class="foot" id="page-foot">/);
+    assert.match(html, new RegExp(`<p class="count" id="count" aria-hidden="true">1 / ${CARD_IDS.length}</p>`));
+    assert.equal((html.match(/aria-live=/g) ?? []).length, 1, 'only the status region is live');
+  });
+
+  test('toolbar actions live outside the story (not under the tap zones)', () => {
+    const storyEnd = html.indexOf('</main>');
+    for (const id of ['dl-png', 'dl-svg', 'share', 'help-open']) {
+      const at = html.indexOf(`id="${id}"`);
+      assert.ok(at > storyEnd, `${id} is after </main>`);
+    }
+    // A group, not role="toolbar": arrow keys change cards rather than moving between buttons.
+    assert.match(html, /<div class="actions" role="group" aria-label="Card actions">/);
+    assert.doesNotMatch(html, /role="toolbar"/);
+    // Accessible names: visually hidden "Download " + visible format.
+    assert.match(html, /id="dl-png"[^>]*><span aria-hidden="true">&#8595;<\/span><span class="sr">Download <\/span>PNG<\/button>/);
+    assert.match(html, /id="dl-svg"[^>]*><span aria-hidden="true">&#8595;<\/span><span class="sr">Download <\/span>SVG<\/button>/);
+    assert.match(html, /id="share" hidden>Share<\/button>/);
+    assert.match(html, /id="help-open" aria-label="Keyboard shortcuts" aria-haspopup="dialog"/);
+  });
+
+  test('help dialog lists the shortcuts and has a close button', () => {
+    assert.match(html, /<dialog class="help" id="help" aria-labelledby="help-title">/);
+    assert.match(html, /<h2 id="help-title">Keyboard shortcuts<\/h2>/);
+    for (const k of ['Space', 'Home', 'End', 'P', 'K', 'D', '?', 'Esc']) assert.ok(html.includes(`<kbd>${k}</kbd>`), k);
+    assert.match(html, /<button type="button" class="btn" id="help-close">Close<\/button>/);
+    assert.match(html, /<div id="help-pause-row"><dt><kbd>P<\/kbd> <kbd>K<\/kbd><\/dt>/);
+  });
+
+  test('CSS: 44px touch targets, focus-visible rings, story leaves room for the toolbar', () => {
+    assert.match(html, /\.btn\{[^}]*min-width:44px;height:44px/);
+    assert.match(html, /\.btn:focus-visible\{outline:3px solid var\(--focus\)/);
+    assert.match(html, /\.story\{--avail:calc\(100vh - var\(--head\) - var\(--foot\)/);
+    assert.match(html, /@supports \(height:100dvh\)\{\.story\{--avail:calc\(100dvh/);
+    assert.match(html, /dialog\.help:not\(\[open\]\)\{display:none\}/);
+    // vh → svh → dvh fallbacks for the page and the story's available height
+    assert.match(html, /body\{[^}]*height:100vh;height:100svh;height:100dvh;/);
+    assert.match(html, /@supports \(height:100svh\)\{\.story\{--avail:calc\(100svh[^}]*\}\}\n@supports \(height:100dvh\)/);
+    assert.match(html, /\.keys div\[hidden\]\{display:none\}/);
+  });
+
+  test('script: download/share helpers use blob URLs, revoke them, and no network APIs', () => {
+    const script = html.slice(html.lastIndexOf('<script>'));
+    assert.match(script, /new XMLSerializer\(\)\.serializeToString/);
+    assert.match(script, /canvas\.toBlob/);
+    assert.match(script, /URL\.revokeObjectURL/);
+    assert.match(script, /'AbortError'/);
+    assert.match(script, /case 'd': case 'D':\s+if \(!e\.repeat\) downloadPng\(\)/);
+    assert.match(script, /case '\?':\s+if \(!e\.repeat\) openHelp\(\)/);
+    assert.doesNotMatch(script, /fetch\(|XMLHttpRequest|sendBeacon|WebSocket|location\.href/);
+  });
+
   test('defaults: no cards and no title still give a valid page', () => {
     const empty = buildViewerHtml();
     assert.match(empty, /<title>gitwrapped<\/title>/);

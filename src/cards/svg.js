@@ -88,9 +88,9 @@ function charWidth(ch) {
 /**
  * True for a grapheme cluster that renders as one color emoji: it has a pictograph at
  * U+1F000 or above, a pictograph followed by U+FE0F (emoji presentation), or a
- * regional indicator (flags).
+ * regional indicator (flags). Also used by src/png.js to drop emoji on macOS.
  */
-function isEmojiCluster(cluster) {
+export function isEmojiCluster(cluster) {
   const cps = Array.from(cluster);
   for (let i = 0; i < cps.length; i++) {
     const ch = cps[i];
@@ -127,7 +127,7 @@ export function measureText(text, fontSize) {
 const segmenter = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter('en', { granularity: 'grapheme' }) : null;
 
 /** Split into grapheme clusters (so emoji sequences are never cut in half). */
-function graphemes(text) {
+export function graphemes(text) {
   if (segmenter) return Array.from(segmenter.segment(text), (s) => s.segment);
   return Array.from(text);
 }

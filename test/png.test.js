@@ -5,7 +5,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { inflateSync } from 'node:zlib';
-import { loadResvg, pngSize, renderPng, SANS_FAMILY } from '../src/png.js';
+import { loadResvg, needsEmojiStrip, pngSize, renderPng, SANS_FAMILY, stripEmojiFromText } from '../src/png.js';
 import { buildCards, CARD_IDS, measureText, renderCard, renderShareCard, renderShareSvg } from '../src/cards/index.js';
 import { escapeXml, FONT_FAMILY } from '../src/cards/svg.js';
 import { computeStats } from '../src/stats/index.js';
@@ -245,6 +245,55 @@ describe('renderPng', () => {
   });
 });
 
+describe('stripEmojiFromText / needsEmojiStrip', () => {
+  test('only macOS strips emoji', () => {
+    assert.equal(needsEmojiStrip('darwin'), true);
+    for (const p of ['linux', 'win32', 'freebsd']) assert.equal(needsEmojiStrip(p), false, p);
+    assert.equal(needsEmojiStrip(), process.platform === 'darwin');
+  });
+
+  test('removes emoji clusters from text and collapses the whitespace left behind', () => {
+    const cases = [
+      ['src/🚀 app.js', 'src/ app.js'],
+      ['🚀 Ship it 🚀', 'Ship it'],
+      ['family 👨‍👩‍👧‍👦 time', 'family time'],
+      ['a👍🏽b', 'ab'],
+      ['love ❤️ git', 'love git'],
+      ['✨ feat: sparkle ✨', 'feat: sparkle'],
+      ['tests ✅ pass', 'tests pass'],
+      ['done✅', 'done'],
+      ['press 1️⃣ #️⃣ now', 'press now'],
+      ['from 🇹🇷 and 🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'from and'],
+      ['🚀', ''],
+      ['plain © ™ → text 1 #', 'plain © ™ → text 1 #'],
+    ];
+    for (const [input, want] of cases) {
+      assert.equal(stripEmojiFromText(`<text x="1">${escapeXml(input)}</text>`), `<text x="1">${escapeXml(want)}</text>`, input);
+    }
+  });
+
+  test('leaves markup, entities and non-text content alone', () => {
+    const svg = '<svg id="🚀"><desc>🚀 desc</desc><text data-x="🚀" fill="#fff">R&amp;D 🚀 &lt;ok&gt;</text><text/><text>x<tspan dy="1">&#x1F680;</tspan> &#38; y</text></svg>';
+    assert.equal(
+      stripEmojiFromText(svg),
+      '<svg id="🚀"><desc>🚀 desc</desc><text data-x="🚀" fill="#fff">R&amp;D &lt;ok&gt;</text><text/><text>x<tspan dy="1"></tspan> &#38; y</text></svg>',
+    );
+    const card = renderCard({ big: '42', title: 'commits & more' });
+    assert.equal(stripEmojiFromText(card), card, 'no emoji: unchanged');
+  });
+
+  test('renderPng on darwin renders the stripped SVG', async (t) => {
+    if (!needResvg(t)) return;
+    const svg = renderShareCard(stressStats(), STRESS_OPTS);
+    const [mac, stripped] = await Promise.all([renderPng(svg, { width: 300, platform: 'darwin' }), renderPng(stripEmojiFromText(svg), { width: 300, platform: 'linux' })]);
+    const pre = stripEmojiFromText(svg);
+    assert.notEqual(pre, svg, 'the stress card has emoji to strip');
+    const textOnly = (x) => (x.match(/<text\b[^>]*>[^<]*<\/text>/g) ?? []).join('');
+    assert.ok(textOnly(svg).includes('🚀') && !textOnly(pre).includes('🚀'), 'the emoji is gone from the text');
+    assert.ok(mac.equals(stripped));
+  });
+});
+
 // --- width model calibration -----------------------------------------------------------
 
 describe('width model vs real rendering (resvg)', () => {
@@ -337,17 +386,12 @@ describe('rendered PNGs keep text inside the padding', () => {
 
   test('share card', async (t) => {
     if (!needResvg(t)) return;
-    // resvg-js 2.6.2 misplaces Apple Color Emoji (sbix bitmap) glyphs on macOS: in the
-    // stress card the 🚀 of the hot-file path (text at x=316) is drawn at x≈1145-1170,
-    // past the right edge, while every other glyph lands where the layout put it. That is
-    // an upstream rasterizer bug, not text fitting, so on macOS the stress inputs swap
-    // each emoji for a wide 'W' (keeps the layout under the same pressure). Linux and
-    // Windows rasterize the emoji where they belong and keep checking them.
-    const noEmoji = process.platform === 'darwin' ? (v) => JSON.parse(JSON.stringify(v).replace(/\p{Extended_Pictographic}/gu, 'W')) : (v) => v;
+    // The stress inputs carry emoji; on macOS renderPng leaves them out (resvg-js 2.6.2
+    // misplaces Apple Color Emoji), elsewhere they are rasterized and checked as is.
     for (const [label, svg] of [
       ['fixture', renderShareCard(fixtureStats, { repoName: 'fixture' })],
       ['long', renderShareCard(fixtureStats, { repoName: 'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW', author: 'mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm@example.com' })],
-      ['stress', renderShareCard(noEmoji(stressStats()), noEmoji(STRESS_OPTS))],
+      ['stress', renderShareCard(stressStats(), STRESS_OPTS)],
     ]) {
       await check(svg, 64, label);
     }

@@ -300,7 +300,8 @@ describe('viewer inline script', () => {
 
   // Minimal DOM stub: enough for the IIFE to run, with listeners recorded so tests can
   // dispatch events. `reduced` is the prefers-reduced-motion match.
-  function boot({ hash = '', reduced = true } = {}) {
+  function boot({ hash = '', reduced = true, png = 'ok', share = null, modal = true } = {}) {
+    let focused = null;
     function el(extra = {}) {
       const classes = new Set();
       const attrs = {};
@@ -314,6 +315,9 @@ describe('viewer inline script', () => {
         },
         setAttribute: (k, v) => { attrs[k] = String(v); },
         getAttribute: (k) => attrs[k] ?? null,
+        removeAttribute: (k) => { delete attrs[k]; },
+        focus() { focused = this; },
+        disabled: false,
         addEventListener: (type, fn) => { (listeners[type] ??= []).push(fn); },
         fire(type, ev = {}) {
           const e = { type, target: this, preventDefault() {}, stopPropagation() {}, ...ev };
@@ -328,8 +332,9 @@ describe('viewer inline script', () => {
       };
     }
     const n = 8;
-    const slides = Array.from({ length: n }, (_, i) => el({ i }));
-    slides.forEach((s, i) => s.setAttribute('data-title', `T${i + 1}`));
+    const svgEl = { viewBox: { baseVal: { width: 1080, height: 1920 } }, cloneNode: () => el({ tag: 'svg' }) };
+    const slides = Array.from({ length: n }, (_, i) => el({ i, querySelector: () => svgEl }));
+    slides.forEach((s, i) => { s.setAttribute('data-title', `T${i + 1}`); s.setAttribute('data-card', `c${i + 1}`); });
     const bars = Array.from({ length: n }, () => el());
     const captured = [];
     const story = el({
@@ -339,13 +344,65 @@ describe('viewer inline script', () => {
     });
     const status = el();
     const pause = el();
-    const ids = { story, status, pause, prev: el(), next: el() };
+    const help = el({
+      showModal() { if (!modal) throw new Error('no modal'); this.open = true; },
+      close() { this.open = false; this.fire('close'); },
+      open: false,
+    });
+    const ids = {
+      story, status, pause, prev: el(), next: el(), count: el(), help,
+      'dl-png': el(), 'dl-svg': el(), share: el(), 'help-open': el(), 'help-close': el(),
+    };
+    const saved = []; // [filename, blob] from <a download> clicks
+    const revoked = [];
+    let urls = 0;
+    class Blob { constructor(parts, opts) { this.parts = parts; this.type = opts?.type; } }
+    class Image {
+      set src(v) {
+        this.url = v;
+        queueMicrotask(() => (png === 'decode-error' ? this.onerror() : this.onload()));
+      }
+    }
+    const shares = [];
     const replaced = [];
     const timers = [];
     const mq = el({ matches: reduced });
-    const doc = el({ getElementById: (id) => ids[id], hidden: false });
+    const body = el({ appendChild() {} });
+    const doc = el({
+      getElementById: (id) => ids[id],
+      hidden: false,
+      body,
+      title: 'demo',
+      createElement(tag) {
+        if (tag === 'canvas') {
+          return {
+            getContext: () => ({ drawImage() {} }),
+            toBlob: (cb, type) => queueMicrotask(() => cb(png === 'null-blob' ? null : new Blob(['png'], { type }))),
+          };
+        }
+        const a = el({ tag });
+        a.click = () => saved.push([a.download, blobs.get(a.href)]);
+        a.remove = () => {};
+        return a;
+      },
+    });
+    // (a getter inside el()'s spread would be evaluated once, so define it afterwards)
+    Object.defineProperty(doc, 'activeElement', { get: () => focused ?? body });
+    const blobs = new Map();
     const ctx = {
       document: doc,
+      XMLSerializer: class { serializeToString(node) { return `<svg xmlns="ns" data-tag="${node.tag}"/>`; } },
+      URL: {
+        createObjectURL: (b) => { const u = `blob:${++urls}`; blobs.set(u, b); return u; },
+        revokeObjectURL: (u) => revoked.push(u),
+      },
+      Blob,
+      Image,
+      File: class extends Blob { constructor(parts, name, opts) { super(parts, opts); this.name = name; } },
+      encodeURIComponent,
+      Promise,
+      String,
+      ...(share ? { navigator: { share: (d) => { shares.push(d); return share(d); }, canShare: () => true } } : {}),
       window: { matchMedia: () => mq, addEventListener() {} },
       location: { hash },
       history: { replaceState: (_a, _b, h) => replaced.push(h) },
@@ -355,10 +412,12 @@ describe('viewer inline script', () => {
     };
     vm.runInNewContext(scripts[0], ctx);
     return {
-      slides, bars, story, status, pause, doc, mq, captured, replaced,
+      slides, bars, story, status, pause, doc, mq, captured, replaced, ids, help, saved, revoked, shares,
+      get focused() { return focused; },
       get active() { return slides.findIndex((s) => s.classList.contains('active')); },
       get paused() { return story.classList.contains('paused'); },
       flushTimers() { const fns = timers.splice(0); for (const fn of fns) fn?.(); },
+      settle() { return new Promise((res) => setImmediate(res)); },
       key(k) { doc.fire('keydown', { key: k, target: { tagName: 'BODY' } }); },
     };
   }
@@ -450,6 +509,97 @@ describe('viewer inline script', () => {
     v.mq.fire('change', { matches: true });
     assert.equal(v.story.classList.contains('auto'), false);
     assert.equal(v.pause.hidden, true);
+  });
+
+  test('counter shows N / total and follows navigation', () => {
+    const v = boot({ hash: '#2' });
+    assert.equal(v.ids.count.textContent, '2 / 8');
+    v.key('End');
+    assert.equal(v.ids.count.textContent, '8 / 8');
+  });
+
+  test('"d" downloads the current card as NN-<id>.png, then revokes the blob URL', async () => {
+    const v = boot({ hash: '#3', reduced: false });
+    v.key('d');
+    assert.equal(v.paused, true, 'auto-advance pauses while the action runs');
+    assert.equal(v.ids['dl-png'].disabled, true);
+    await v.settle();
+    assert.equal(v.saved.length, 1);
+    assert.equal(v.saved[0][0], '03-c3.png');
+    assert.equal(v.saved[0][1].type, 'image/png');
+    assert.equal(v.paused, false);
+    assert.equal(v.ids['dl-png'].disabled, false);
+    assert.equal(v.active, 2, 'an action does not navigate');
+    assert.equal(v.status.textContent, 'Saved 03-c3.png');
+    v.flushTimers();
+    assert.deepEqual(v.revoked, ['blob:1']);
+  });
+
+  for (const png of ['decode-error', 'null-blob']) {
+    test(`PNG failure (${png}) falls back to downloading the SVG`, async () => {
+      const v = boot({ png });
+      v.ids['dl-png'].fire('click');
+      await v.settle();
+      assert.equal(v.saved.length, 1);
+      assert.equal(v.saved[0][0], '01-c1.svg');
+      assert.equal(v.saved[0][1].type, 'image/svg+xml');
+    });
+  }
+
+  test('Download SVG keeps the XML prolog and the serialized xmlns', () => {
+    const v = boot({ hash: '#9' });
+    v.ids['dl-svg'].fire('click');
+    assert.equal(v.saved[0][0], '08-c8.svg');
+    const text = v.saved[0][1].parts.join('');
+    assert.match(text, /^<\?xml version="1\.0" encoding="UTF-8"\?>\n<svg xmlns=/);
+  });
+
+  test('Share is hidden without navigator.share; with it, prefers the PNG file and swallows AbortError', async () => {
+    assert.equal(boot().ids.share.hidden, true);
+    const abort = Object.assign(new Error('cancelled'), { name: 'AbortError' });
+    const v = boot({ share: () => Promise.reject(abort) });
+    assert.equal(v.ids.share.hidden, false);
+    v.ids.share.fire('click');
+    await v.settle();
+    assert.equal(v.shares.length, 1);
+    assert.equal(v.shares[0].files[0].name, '01-c1.png');
+    assert.equal(v.shares[0].text, 'demo — T1');
+    assert.ok(!('url' in v.shares[0]), 'never shares a URL');
+    assert.equal(v.status.textContent, '', 'AbortError is silent');
+    assert.equal(v.ids.share.disabled, false);
+  });
+
+  for (const modal of [true, false]) {
+    test(`"?" opens the help dialog (${modal ? 'showModal' : 'fallback'}); shortcuts are inert until Esc; focus returns`, () => {
+      const v = boot({ reduced: false, modal });
+      v.ids['help-open'].focus();
+      v.key('?');
+      assert.equal(modal ? v.help.open : v.help.attrs.open, modal ? true : '');
+      assert.equal(v.focused, v.ids['help-close']);
+      assert.equal(v.paused, true, 'auto-advance pauses behind the dialog');
+      v.key('ArrowRight');
+      v.key('d');
+      assert.equal(v.active, 0);
+      assert.equal(v.saved.length, 0);
+      if (modal) v.help.close(); // the browser closes a modal dialog on Esc
+      else v.key('Escape');
+      assert.equal(v.help.attrs.open, undefined);
+      assert.equal(v.focused, v.ids['help-open']);
+      assert.equal(v.paused, false);
+      v.key('ArrowRight');
+      assert.equal(v.active, 1);
+    });
+  }
+
+  test('Space on a toolbar button activates it instead of navigating; modifiers are ignored', () => {
+    const v = boot();
+    const btn = v.ids['dl-svg'];
+    btn.classList.add('btn');
+    v.doc.fire('keydown', { key: ' ', target: btn });
+    assert.equal(v.active, 0);
+    v.doc.fire('keydown', { key: 'd', ctrlKey: true, target: btn });
+    v.doc.fire('keydown', { key: '?', metaKey: true, target: btn });
+    assert.equal(v.help.open, false);
   });
 });
 

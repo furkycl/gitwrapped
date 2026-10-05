@@ -61,7 +61,7 @@ function bin(args, { env = {}, png = false } = {}) {
 }
 
 const readJson = (out) => JSON.parse(readFileSync(join(out, 'stats.json'), 'utf8'));
-const embeddedSvgs = (page) => [...page.matchAll(/<svg\b[\s\S]*?<\/svg>/g)].map((m) => m[0]);
+const embeddedSvgs = (page) => [...page.matchAll(/<svg\b[\s\S]*?<\/svg>/g)].map((m) => m[0].replace(/ aria-describedby="card-\d+-desc"/, ''));
 
 // Noon UTC, far from any year boundary in every timezone (UTC-12 .. UTC+14).
 const HISTORY = [

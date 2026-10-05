@@ -106,7 +106,7 @@ describe('computeTotals', () => {
     assert.equal(t.lastDay, '2024-06-15');
   });
 
-  test('firstDay / lastDay follow the earliest / latest instants', () => {
+  test('firstDay / lastDay are the earliest / latest local days', () => {
     const t = computeTotals([
       commit('2024-07-02T08:00:00+02:00'),
       commit('2024-06-30T23:30:00-07:00'), // 06:30Z on 07-01

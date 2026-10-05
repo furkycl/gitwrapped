@@ -291,7 +291,8 @@ test('viewer script: Space-forward handling on tap zones', () => {
   const html = buildViewerHtml(buildCards(computeStats([], { today: '2024-03-14' })));
   assert.match(html, /e\.target === pauseBtn/);
   assert.match(html, /addEventListener\('keyup'/);
-  assert.match(html, /addEventListener\('mousedown', function \(e\) \{ e\.preventDefault\(\); \}\)/);
+  // The tap zones take no pointer events (taps are placed by x position on the story).
+  assert.match(html, /\.nav\{[^}]*pointer-events:none/);
   assert.doesNotMatch(html, /onButton/);
 });
 

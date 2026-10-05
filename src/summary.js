@@ -39,12 +39,21 @@ function painter(color) {
 }
 
 // C0 and C1 control characters (incl. ESC, CSI, BEL, CR): a commit message, file name or
-// repo name could otherwise inject terminal escape sequences into the recap.
-const CONTROL = /[\x00-\x1f\x7f-\x9f]/g;
+// repo name could otherwise inject terminal escape sequences into the recap. Also the
+// bidi embedding / override / isolate controls (U+202A-202E, U+2066-2069), which can make
+// text display in a different order than it is stored ("Trojan Source"), and the Unicode
+// line / paragraph separators (U+2028, U+2029).
+const CONTROL = /[\x00-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069\u2028\u2029]/g;
 
 /** `s` as a string with every control character removed (safe to print). */
 export function stripControl(s) {
   return String(s ?? '').replace(CONTROL, '');
+}
+
+/** A line count with a sign, like the cards: 12 → "+12" / "−12"; 0 (or not a number) → "0". */
+function signed(n, sign) {
+  const s = num(n);
+  return s === '0' ? s : `${sign}${s}`;
 }
 
 /** 1234567 → "1,234,567"; anything not a finite number → "0". */
@@ -101,7 +110,7 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     const name = repoName ? `${sc(repoName)} ` : '';
     const win = window ? c('dim', ` · ${sc(window)}`) : '';
     lines.push(`  ${c('bold', c('magenta', `★ ${name}Wrapped`))}${win}`);
-    const lineStats = `${c('green', `+${num(t.linesAdded)}`)} / ${c('red', `−${num(t.linesRemoved)}`)} lines`;
+    const lineStats = `${c('green', signed(t.linesAdded, '+'))} / ${c('red', signed(t.linesRemoved, '−'))} lines`;
     lines.push(`  ${c('bold', plural(commits, 'commit'))} · ${plural(t.activeDays ?? 0, 'active day')} · ${lineStats}`);
 
     const h = stats?.habits ?? {};

@@ -276,6 +276,23 @@ export function versionAtLeast(version, major, minor) {
 }
 
 /**
+ * True when the repo has at least one branch, remote-tracking branch or tag (any ref under
+ * refs/heads, refs/remotes or refs/tags); false when it has none or git fails. Used to
+ * explain an empty run on an unborn / orphan HEAD whose history lives on other branches.
+ */
+export async function hasOtherRefs(repoPath) {
+  try {
+    const { stdout } = await execFileAsync('git', ['-C', repoPath, 'for-each-ref', '--count=1', '--format=%(refname)', 'refs/heads', 'refs/remotes', 'refs/tags'], {
+      encoding: 'utf8',
+      env: gitEnv(),
+    });
+    return stdout.trim() !== '';
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Hashes of a shallow clone's boundary commits (their parents are missing, so git diffs
  * them against an empty tree), or null when the repo is not shallow. Best effort: any
  * failure counts as "not shallow".
@@ -310,7 +327,9 @@ async function shallowBoundary(repoPath) {
  * any amount later than the author date (rebase, cherry-pick, squash merge). Instead a
  * cheap first pass lists hashes and author dates only, the window and cap are applied to
  * that list, and only the selected commits are read in full (see readWindow).
- * `commits` is [] for a repo without commits. Throws a TypeError for an invalid
+ * `commits` is [] for a repo without commits. When HEAD has no commits (a new repo, or an
+ * orphan branch) the result also has `unborn: true` and `otherRefs` (see hasOtherRefs):
+ * only HEAD's history is read, so other branches' commits are not seen. Throws a TypeError for an invalid
  * `limit`, and a user-facing Error for: a missing path ("path does not exist: <path>"),
  * a file ("not a directory: <path>"), a folder that is not a repo ("not a git repository:
  * <path>"), git's safe.directory ownership check, a missing git, or oversized output.
@@ -348,7 +367,9 @@ export async function readHistory(repoPath, { since, until, author, limit = DEFA
       commits = filtered;
     }
   }
-  if (commits === null) return { commits: [], truncated: false, limit, shallow: false };
+  if (commits === null) {
+    return { commits: [], truncated: false, limit, shallow: false, unborn: true, otherRefs: await hasOtherRefs(repoPath) };
+  }
   const truncated = commits.length > limit;
   if (truncated) commits = commits.slice(0, limit);
   const boundary = await shallowBoundary(repoPath);

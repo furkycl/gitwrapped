@@ -13,9 +13,9 @@ const count = (n) => (typeof n === 'number' && Number.isFinite(n) && n > 0 ? n :
  *   files are included, and binary files are included.
  * - firstCommitDate / lastCommitDate: the original ISO strings of the earliest / latest
  *   instants (null when there are none); on equal instants the first one seen wins.
- * - firstDay / lastDay: the author-local dayKey ('YYYY-MM-DD') of those same commits
- *   (null when there are none). Because offsets differ, firstDay can sort after another
- *   commit's local day; it always belongs to the earliest instant.
+ * - firstDay / lastDay: the earliest / latest author-local dayKey ('YYYY-MM-DD') of any
+ *   commit (null when there are none), so firstDay <= lastDay always holds. With mixed
+ *   offsets these need not be the days of firstCommitDate / lastCommitDate.
  * - authors: number of distinct emails, compared lowercased.
  * - linesAdded / linesRemoved: a missing or non-finite / non-number count adds 0.
  * Commits with an unparseable date still count toward commits, lines, files and authors,
@@ -30,6 +30,8 @@ export function computeTotals(commits) {
   let linesRemoved = 0;
   let first = null;
   let last = null;
+  let firstDay = null;
+  let lastDay = null;
   for (const c of commits) {
     for (const f of c.files ?? []) if (f && typeof f.path === 'string') paths.add(f.path);
     linesAdded += count(c.linesAdded);
@@ -38,8 +40,11 @@ export function computeTotals(commits) {
     const t = localParts(c.date);
     if (!t) continue;
     days.add(t.dayKey);
-    if (!first || t.ms < first.ms) first = { ms: t.ms, date: c.date, day: t.dayKey };
-    if (!last || t.ms > last.ms) last = { ms: t.ms, date: c.date, day: t.dayKey };
+    if (!first || t.ms < first.ms) first = { ms: t.ms, date: c.date };
+    if (!last || t.ms > last.ms) last = { ms: t.ms, date: c.date };
+    // dayKeys are zero-padded 'YYYY-MM-DD', so string order is date order.
+    if (firstDay === null || t.dayKey < firstDay) firstDay = t.dayKey;
+    if (lastDay === null || t.dayKey > lastDay) lastDay = t.dayKey;
   }
   return {
     commits: commits.length,
@@ -49,8 +54,8 @@ export function computeTotals(commits) {
     filesTouched: paths.size,
     firstCommitDate: first?.date ?? null,
     lastCommitDate: last?.date ?? null,
-    firstDay: first?.day ?? null,
-    lastDay: last?.day ?? null,
+    firstDay,
+    lastDay,
     authors: emails.size,
   };
 }

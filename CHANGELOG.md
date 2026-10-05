@@ -60,9 +60,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instead of the machine's local midnight, so a date window gives the same commits in
   every time zone.
 - `--since` (and `--until`) dates before 1970 are rejected with a clear message.
+- Privacy: with `--author`, the intro card, share image and `wrapped.html` show only the
+  part of the email before the `@` ("Starring ada."), never the full (or upper-cased)
+  address. `stats.json` still records the full email in `filters.author`.
+- `--open` prints `Opening <path>…` first, then waits up to 1.5 seconds for the opener
+  command (`xdg-open`, `open`, `rundll32`) and warns when it exits with an error in that time, not only when it
+  cannot be started. It never waits for the browser.
+- `totals.firstDay` / `totals.lastDay` are now the earliest / latest author-local days,
+  so `firstDay <= lastDay` always holds with mixed time-zone offsets (before, they were
+  the days of the earliest / latest instants).
+- The activity card of a repo that went quiet more than 30 days ago reads "12 months to
+  <Mon YYYY>" instead of "Your last 12 months".
+- `--since` / `--until` ignore surrounding whitespace, like `--year`.
+- Viewer accessibility: the story is a `region` with the "carousel" role description,
+  the pause button uses only `aria-label` (no `aria-pressed` alongside it), single-key
+  shortcuts are ignored while typing in a text field, and every card has a
+  screen-reader text version of its content (linked with `aria-describedby`).
+- An empty run on a HEAD without commits (a new or orphan branch) while other branches
+  or tags exist adds a note that only HEAD is read, suggesting to check out a branch.
 
 ### Fixed
 
+- A `--no-png` run (or one without the PNG renderer) deleted `share.png` and
+  `png/NN-<card>.png` from any `--out` folder, even one gitwrapped had never written.
+  Stale PNGs are now only removed when the folder already holds a `wrapped.html`.
+- Output never follows symlinks: if `wrapped.html`, `share.*`, `stats.json`, `cards/`,
+  `png/` or a card file inside `--out` is a symlink, the run stops with an error before
+  writing anything (a repo could otherwise commit `gitwrapped-out/share.svg -> ...` to
+  overwrite another file). The default `gitwrapped-out` folder itself must not be a
+  symlink either (a repo could commit one); a `--out` you pass may be one, and a broken
+  one gets a clear error. On POSIX, output files are opened with `O_NOFOLLOW`. Cleanup
+  never follows or deletes symlinks.
+- Future-dated commits (e.g. 2099): the current streak is the run that reaches today or
+  yesterday (or an author-local tomorrow), counted up to that day, instead of the run
+  ending on the latest commit day, so one bad date no longer hides today's streak. The
+  activity calendar ends today rather than being pushed into the future; those days
+  still count in the totals (the activity card notes "+N future-dated days not shown").
+- Hover tooltips on cards in `wrapped.html` (bar counts, calendar days) now show: the
+  invisible tap-zone buttons no longer cover the card (taps are placed by position, as
+  before: left third back, the rest forward). The buttons stay for keyboard and
+  screen-reader users.
+- The Steady Shipper span no longer drops to 0 days when offsets put the earliest
+  commit's day after the latest one's.
+- The recap prints `0` instead of `−0` / `+0` for zero lines, like the cards.
+- Bidi embedding / override / isolate controls (U+202A–202E, U+2066–2069) and the
+  Unicode line / paragraph separators are stripped from the recap and the cards, so a
+  commit message cannot visually reorder text.
+- README: the built-in language count is exact (86).
 - `--since` in the first week of 1970 no longer sends git a pre-1970 bound it cannot parse.
 
 ## [1.0.0] - 2026-10-05

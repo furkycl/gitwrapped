@@ -1,6 +1,6 @@
 import { parseArgs, promisify } from 'node:util';
 import { execFile, spawn } from 'node:child_process';
-import { accessSync, constants as fsConstants, mkdirSync, readdirSync, readFileSync, rmdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { accessSync, closeSync, constants as fsConstants, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, rmdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { buildCards, CARD_IDS, renderShareCard, windowLabel } from './cards/index.js';
 import { DEFAULT_LIMIT, readHistory } from './git.js';
@@ -126,6 +126,7 @@ function normalizeArgv(argv) {
 /**
  * Parse CLI arguments (without node/script prefix).
  * Returns {help:true}, {version:true}, or {path, since, author, out, png, maxCommits}
+ * (plus outExplicit: true when --out was given)
  * plus, only when given: color (false for --no-color; absent = auto), until, year
  * (--year YYYY also sets since/until to Jan 1 / Dec 31 of that year), json (true) and
  * open (true).
@@ -155,8 +156,9 @@ export function parseCli(argv) {
     }
   }
 
-  let since = values.since === undefined ? undefined : validateDate('since', values.since);
-  let until = values.until === undefined ? undefined : validateDate('until', values.until);
+  // Surrounding whitespace is ignored, as for --year (e.g. a quoted " 2025-01-01").
+  let since = values.since === undefined ? undefined : validateDate('since', values.since.trim());
+  let until = values.until === undefined ? undefined : validateDate('until', values.until.trim());
   let year;
   if (values.year !== undefined) {
     if (since || until) throw new Error('--year cannot be combined with --since or --until');
@@ -175,6 +177,8 @@ export function parseCli(argv) {
     since,
     author: values.author?.trim(),
     out: values.out?.trim() ?? 'gitwrapped-out',
+    // Only a --out the user typed may be a symlink (see generate).
+    ...(values.out !== undefined ? { outExplicit: true } : {}),
     png: !values['no-png'],
     maxCommits: values['max-commits'] === undefined ? DEFAULT_LIMIT : validateMaxCommits(values['max-commits']),
     ...(values['no-color'] ? { color: false } : {}),
@@ -274,14 +278,37 @@ function ensureDir(dir, label = dir) {
   }
 }
 
+/** True when `p` itself is a symbolic link (or a Windows junction); false if missing. */
+function isSymlink(p) {
+  try {
+    return lstatSync(p).isSymbolicLink();
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Check where the output will go before writing anything: `out` must be (or be creatable
  * as) a directory, every subdirectory (<out>/cards, <out>/png) a directory if it exists,
  * and no output file (wrapped.html, share.*, card files) may be occupied by a directory.
+ * Nothing gitwrapped manages inside `out` may be a symlink: the default `gitwrapped-out`
+ * often sits inside the analyzed repo, which could commit e.g. `gitwrapped-out/share.svg
+ * -> ../../somewhere` to make a run overwrite a file elsewhere. `out` itself may be a
+ * symlink when the user passed it (`outExplicit`), never the default. Cleanup of paths this run does not write (png/ with
+ * --no-png) never follows or deletes symlinks, so those are not checked here.
  */
-function checkOutputPaths(out, dirs, filePaths) {
+function checkOutputPaths(out, dirs, filePaths, { outExplicit = false } = {}) {
+  if (isSymlink(out)) {
+    // The default "gitwrapped-out" usually sits in the analyzed repo, which may have
+    // committed it as a symlink: only a --out the user typed may be one.
+    if (!outExplicit) throw outputError(`refusing to write through a symlink: ${out} (the default output folder is a symlink; pass --out to choose a folder)`);
+    if (!statOrNull(out)) throw outputError(`output path is a broken symlink: ${out}`);
+  }
   const outSt = statOrNull(out);
   if (outSt && !outSt.isDirectory()) throw outputError(`output path is not a directory: ${out}`);
+  for (const p of [...dirs.map((d) => d.dir), ...filePaths]) {
+    if (isSymlink(p)) throw outputError(`refusing to write through a symlink: ${p} (remove it or choose another --out)`);
+  }
   for (const { dir, what } of dirs) {
     const st = statOrNull(dir);
     if (st && !st.isDirectory()) throw outputError(`cannot write ${what}: ${dir} exists and is not a directory`);
@@ -291,34 +318,56 @@ function checkOutputPaths(out, dirs, filePaths) {
   }
 }
 
+// O_NOFOLLOW (POSIX only): opening a symlink fails with ELOOP instead of writing through
+// it, closing the gap between checkOutputPaths() and the write. Windows has no such flag.
+const NOFOLLOW = fsConstants.O_NOFOLLOW;
+const WRITE_FLAGS = NOFOLLOW ? fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_TRUNC | NOFOLLOW : 'w';
+
 function writeOutput(file, data) {
+  let fd;
   try {
-    writeFileSync(file, data);
+    fd = openSync(file, WRITE_FLAGS, 0o666);
+    writeFileSync(fd, data);
   } catch (err) {
+    if (err?.code === 'ELOOP') throw outputError(`refusing to write through a symlink: ${file}`);
     throw outputError(`cannot write ${file}: ${err?.code ?? err?.message ?? err}`);
+  } finally {
+    if (fd !== undefined) closeSync(fd);
   }
 }
 
-/** True when `file` exists and is a regular file. */
+/** True when `file` exists and is a regular file (not a symlink to one). */
 function isFile(file) {
   try {
-    return statSync(file).isFile();
+    return lstatSync(file).isFile();
   } catch {
     return false;
   }
 }
 
+/** True when `dir` is a real directory (not a symlink to one). */
+function isRealDir(dir) {
+  try {
+    return lstatSync(dir).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+/** Delete `file` only if it is a regular file; symlinks and anything else are left alone. */
+function removeFile(file) {
+  try {
+    if (lstatSync(file).isFile()) unlinkSync(file);
+  } catch {
+    // missing or not removable: leave it
+  }
+}
+
 /** Remove share.png and this card set's png/NN-<id>.png files (and png/ if left empty). */
 function removeStalePngs(pngDir, sharePngPath, names) {
-  const rmFile = (f) => {
-    try {
-      if (statSync(f).isFile()) unlinkSync(f);
-    } catch {
-      // missing or not removable: leave it
-    }
-  };
-  rmFile(sharePngPath);
-  for (const n of names) rmFile(join(pngDir, n));
+  removeFile(sharePngPath);
+  if (!isRealDir(pngDir)) return;
+  for (const n of names) removeFile(join(pngDir, n));
   try {
     rmdirSync(pngDir); // only succeeds when empty
   } catch {
@@ -334,6 +383,7 @@ function removeStalePngs(pngDir, sharePngPath, names) {
  */
 function removeOldCardFiles(dir, ext, keep) {
   let names;
+  if (!isRealDir(dir)) return;
   try {
     names = readdirSync(dir);
   } catch {
@@ -343,11 +393,7 @@ function removeOldCardFiles(dir, ext, keep) {
   for (const n of names) {
     const m = /^\d{2}-([a-z-]+)\.([a-z]+)$/.exec(n);
     if (!m || m[2] !== ext || !CARD_IDS.includes(m[1]) || keepSet.has(n)) continue;
-    try {
-      if (statSync(join(dir, n)).isFile()) unlinkSync(join(dir, n));
-    } catch {
-      // not removable: leave it
-    }
+    removeFile(join(dir, n));
   }
 }
 
@@ -360,18 +406,20 @@ function removeOldCardFiles(dir, ext, keep) {
  * At most `maxCommits` (default 50,000) of the most recent commits are analyzed.
  * `until` (YYYY-MM-DD, inclusive) ends the window; when it is before `today` (default: the
  * machine's local date) the current streak is computed relative to `until` instead.
- * With `json`, <out>/stats.json (see json.js) is written too.
- * Returns {commits, stats, repoName, truncated, limit, shallow, html, cardsDir, cardFiles,
+ * With `json`, <out>/stats.json (see json.js) is written too. `out` may be a symlink only
+ * with `outExplicit` (the user typed --out); nothing managed inside it may be one.
+ * Returns {commits, stats, repoName, truncated, limit, shallow, unbornWithRefs, html, cardsDir, cardFiles,
  * shareSvg, pngDir, pngFiles, sharePng, pngSkipped, statsJson, asOf, pastWindow} with the
  * written paths
  * (joined onto `out`; PNG paths null/[] when skipped, statsJson null without `json`);
  * `truncated` is true when the cap cut the history short, `shallow` when the repo is a
- * shallow clone; `asOf` is the day the current streak is relative to and `pastWindow`
+ * shallow clone, `unbornWithRefs` when HEAD has no commits but other branches / tags
+ * exist; `asOf` is the day the current streak is relative to and `pastWindow`
  * whether that is a past `until`.
  * `renderPng` (svg, {width}) → Promise<Buffer> replaces the PNG renderer (for tests).
  */
-export async function generate({ path, since, until, author, out, png = true, maxCommits = DEFAULT_LIMIT, json = false }, { today, renderPng: rasterize = renderPng } = {}) {
-  const { commits, truncated, limit, shallow } = await readHistory(path, { since, until, author, limit: maxCommits });
+export async function generate({ path, since, until, author, out, outExplicit = false, png = true, maxCommits = DEFAULT_LIMIT, json = false }, { today, renderPng: rasterize = renderPng } = {}) {
+  const { commits, truncated, limit, shallow, unborn = false, otherRefs = false } = await readHistory(path, { since, until, author, limit: maxCommits });
   // A past window's "current" streak is the one running when the window closed; its end
   // day is over, so there is no "today isn't over yet" grace day (todayComplete).
   const ref = today ?? localToday();
@@ -407,7 +455,7 @@ export async function generate({ path, since, until, author, out, png = true, ma
 
   const dirs = [{ dir: cardsDir, what: 'cards' }];
   if (png) dirs.push({ dir: pngDir, what: 'PNGs' });
-  checkOutputPaths(out, dirs, [html, shareSvgPath, ...(statsJsonPath ? [statsJsonPath] : []), ...files.map((f) => f.file), ...pngTargets.map((t) => t.file)]);
+  checkOutputPaths(out, dirs, [html, shareSvgPath, ...(statsJsonPath ? [statsJsonPath] : []), ...files.map((f) => f.file), ...pngTargets.map((t) => t.file)], { outExplicit });
 
   // Rasterize before writing anything, so a renderer failure never leaves half a PNG set.
   let pngs = [];
@@ -437,9 +485,12 @@ export async function generate({ path, since, until, author, out, png = true, ma
     for (const { file, data } of pngs) writeOutput(file, data);
     if (ownsOut) removeOldCardFiles(pngDir, 'png', pngs.map((p) => basename(p.file)));
   } else {
-    // No PNGs this run: drop ones a previous run left behind so nothing stale remains.
-    if (ownsOut) removeOldCardFiles(pngDir, 'png', []);
-    removeStalePngs(pngDir, sharePngPath, cards.map(({ id }, i) => `${stem(id, i)}.png`));
+    // No PNGs this run: drop ones a previous run left behind so nothing stale remains, but
+    // only in a folder an earlier run wrote (a user's own share.png elsewhere is not ours).
+    if (ownsOut) {
+      removeOldCardFiles(pngDir, 'png', []);
+      removeStalePngs(pngDir, sharePngPath, cards.map(({ id }, i) => `${stem(id, i)}.png`));
+    }
   }
   const pngFiles = pngs.map((p) => p.file).filter((f) => f !== sharePngPath);
   return {
@@ -449,6 +500,7 @@ export async function generate({ path, since, until, author, out, png = true, ma
     truncated,
     limit,
     shallow: Boolean(shallow),
+    unbornWithRefs: Boolean(unborn && otherRefs),
     html,
     cardsDir,
     cardFiles: files.map((f) => f.file),
@@ -499,13 +551,19 @@ export function openCommand(file, platform = process.platform) {
   return { command: 'xdg-open', args: [file] };
 }
 
+/** How long --open waits for the opener command to fail before moving on. */
+export const OPEN_WAIT_MS = 1500;
+
 /**
  * Open `file` in the default browser: spawn openCommand() detached, with stdio ignored
- * and unref'd, so it never keeps gitwrapped running. Resolves once the process started;
- * rejects with the spawn error (e.g. ENOENT when xdg-open is missing). Never waits for
- * the browser. `spawn` and `platform` can be replaced for tests.
+ * and unref'd, so it never keeps gitwrapped running past the wait below.
+ * Rejects with the spawn error (e.g. ENOENT when xdg-open is missing), or with an Error
+ * when the opener exits with a non-zero code within `waitMs` (default OPEN_WAIT_MS),
+ * e.g. xdg-open finding no browser. Resolves when it exits with 0, is ended by a signal,
+ * or is still running after `waitMs`: gitwrapped then moves on and never waits for the
+ * browser itself. `spawn`, `platform` and `waitMs` can be replaced for tests.
  */
-export function openInBrowser(file, { platform = process.platform, spawn: spawnFn = spawn } = {}) {
+export function openInBrowser(file, { platform = process.platform, spawn: spawnFn = spawn, waitMs = OPEN_WAIT_MS } = {}) {
   const { command, args } = openCommand(file, platform);
   return new Promise((resolvePromise, reject) => {
     let child;
@@ -515,8 +573,23 @@ export function openInBrowser(file, { platform = process.platform, spawn: spawnF
       reject(err);
       return;
     }
-    child.once('error', reject);
-    child.once('spawn', () => resolvePromise());
+    let timer = null;
+    let settled = false;
+    const settle = (err) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (err) reject(err);
+      else resolvePromise();
+    };
+    child.once('error', settle);
+    child.once('exit', (code) => {
+      settle(typeof code === 'number' && code !== 0 ? new Error(`${command} exited with code ${code}`) : null);
+    });
+    // The timer (not the child) keeps the process alive for at most waitMs.
+    child.once('spawn', () => {
+      if (!settled) timer = setTimeout(() => settle(null), waitMs);
+    });
     child.unref?.();
   });
 }
@@ -572,7 +645,9 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
   if (result.shallow) {
     notes.push('Note: shallow clone: line counts for the oldest (boundary) commit are skipped, and older history is missing.');
   }
-  if (result.commits === 0 && opts.author && !opts.author.includes('@')) {
+  if (result.unbornWithRefs) {
+    notes.push('Note: the current branch (HEAD) has no commits yet, and gitwrapped only reads HEAD\'s history. Check out a branch with commits (e.g. git switch main) and run again.');
+  } else if (result.commits === 0 && opts.author && !opts.author.includes('@')) {
     notes.push(`Note: no commits by "${opts.author}". --author expects an email address (e.g. you@example.com).`);
   } else if (result.commits === 0 && (opts.since || opts.until || opts.author)) {
     notes.push(`Note: no commits match ${filterText(opts)}.`);
@@ -599,9 +674,10 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
   if (result.pngSkipped) stderr.write(`gitwrapped: PNG export skipped: ${result.pngSkipped}\n`);
   if (opts.open) {
     const target = resolve(result.html);
+    // Say so first: the opener may take up to OPEN_WAIT_MS to report a failure.
+    stdout.write(`Opening ${stripControl(target)}…\n`);
     try {
       await openFile(target);
-      stdout.write(`Opening ${stripControl(target)}\n`);
     } catch (err) {
       const why = err?.code ?? (String(err?.message ?? err).split('\n')[0] || 'unknown error');
       stderr.write(`gitwrapped: could not open a browser (${why}); open ${target} yourself\n`);

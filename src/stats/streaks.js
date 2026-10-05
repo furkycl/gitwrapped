@@ -15,11 +15,12 @@ export function localToday() {
  * end are dayKeys ('YYYY-MM-DD') and a run is a sequence of consecutive active days
  * (days with at least one commit).
  * - longest: the longest run; ties go to the earliest run.
- * - current: the run ending on the last active day, but only while it is still alive,
- *   i.e. that last day is `today`, the day before, or the day after `today`; otherwise
- *   length 0. The day after counts because days are author-local: an author in a timezone
- *   ahead of the machine can already be on tomorrow. Two or more days ahead (clock skew,
- *   future-dated commits) is not alive.
+ * - current: the run that reaches the latest active day among the day after `today`,
+ *   `today` and the day before (the anchor), counted up to that anchor; length 0 when none
+ *   of them is active. The day after counts because days are author-local: an author in a
+ *   timezone ahead of the machine can already be on tomorrow. Days two or more ahead
+ *   (clock skew, future-dated commits) never count: a commit dated 2099 does not hide or
+ *   stretch the streak running today.
  *   For a past window (--until / --year) the CLI passes the window end as `today` with
  *   `todayComplete: true`: that day is over, so there is no grace day and the run is
  *   current only when it reaches the window end (current = the streak running when the
@@ -62,8 +63,16 @@ export function computeStreaks(commits, { today, todayComplete = false } = {}) {
   let longest = runs[0];
   for (const run of runs) if (run.length > longest.length) longest = run;
 
-  const last = sorted[sorted.length - 1];
-  const alive = last >= (todayComplete ? todayDay : todayDay - 1) && last <= todayDay + 1;
-  const current = alive ? runs[runs.length - 1] : EMPTY;
+  // The current streak is anchored at the latest active day among tomorrow, today and
+  // yesterday (only today and tomorrow when today is complete), and runs back from it.
+  // Anything after the anchor is ignored, so a future-dated commit (2099) neither keeps a
+  // streak alive nor stretches it.
+  const anchors = todayComplete ? [todayDay + 1, todayDay] : [todayDay + 1, todayDay, todayDay - 1];
+  const anchor = anchors.find((e) => days.has(e));
+  let current = EMPTY;
+  if (anchor !== undefined) {
+    const run = runs.find((r) => epochDay(r.start) <= anchor && anchor <= epochDay(r.end));
+    current = { length: anchor - epochDay(run.start) + 1, start: run.start, end: days.get(anchor) };
+  }
   return { longest: { ...longest }, current: { ...current } };
 }

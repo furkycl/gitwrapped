@@ -35,9 +35,11 @@ export const THEMES = Object.freeze({
 const DEFAULT_THEME = 'pulse';
 
 // Characters not allowed in XML 1.0 (C0 controls except tab/LF/CR, U+FFFE/U+FFFF, lone
-// surrogates), plus DEL and C1 controls, which are legal but never wanted on a card.
+// surrogates), plus DEL and C1 controls, which are legal but never wanted on a card, and
+// the bidi embedding / override / isolate controls (U+202A-202E, U+2066-2069) and line /
+// paragraph separators (U+2028/2029), which could reorder or break a card's text.
 // With the `u` flag a valid surrogate pair is one code point, so only lone halves match.
-const BAD_XML_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\uFFFE\uFFFF\uD800-\uDFFF]/gu;
+const BAD_XML_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u2028\u2029\u202A-\u202E\u2066-\u2069\uFFFE\uFFFF\uD800-\uDFFF]/gu;
 const XML_ENTITIES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' };
 
 /** Escape text for XML content or attribute values; strips XML-invalid control characters. */

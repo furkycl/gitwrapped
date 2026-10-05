@@ -245,7 +245,7 @@ describe('readCommits', () => {
   });
 
   test('readHistory on an empty repo → no commits, not truncated', async () => {
-    assert.deepEqual(await readHistory(emptyDir), { commits: [], truncated: false, limit: DEFAULT_LIMIT, shallow: false });
+    assert.deepEqual(await readHistory(emptyDir), { commits: [], truncated: false, limit: DEFAULT_LIMIT, shallow: false, unborn: true, otherRefs: false });
   });
 
   test('readHistory rejects a non-positive / non-integer limit', async () => {

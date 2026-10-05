@@ -44,7 +44,8 @@ const sumAt = (arr, idx) => idx.reduce((s, i) => s + num(arr[i]), 0);
  *   share − 0.15) / 0.35; fixaholic = (messages.counts.fix / non-merge commits − 0.15) / 0.45
  *   (non-merge commits: the `nonMergeCommits` option, else totals.commits);
  *   steady-shipper = 0.7 × activeDays / span + 0.3 × min(1, longest
- *   streak / 14), where span is firstDay..lastDay inclusive (density capped at 1).
+ *   streak / 14), where span is the days from the earlier to the later of firstDay /
+ *   lastDay, inclusive (density capped at 1).
  * - archetype: the top score, unless fewer than 3 commits are dated or the top score is
  *   below 0.25, in which case steady-shipper. `reason` is a short sentence quoting the
  *   real number behind it; with fewer than 3 dated commits it is "Not enough commits yet."
@@ -71,9 +72,11 @@ export function computePersonality(stats, opts) {
   const fixShare = nonMerge > 0 ? fixes / nonMerge : 0;
 
   const activeDays = num(totals.activeDays);
-  const first = epochDay(totals.firstDay);
-  const last = epochDay(totals.lastDay);
-  const span = first !== null && last !== null && last >= first ? last - first + 1 : 0;
+  // The span runs from the earliest to the latest active day, whatever order the two
+  // days arrive in (mixed offsets can make the earliest instant's day the later one).
+  const a = epochDay(totals.firstDay);
+  const b = epochDay(totals.lastDay);
+  const span = a !== null && b !== null ? Math.abs(b - a) + 1 : 0;
   const density = span > 0 ? Math.min(1, activeDays / span) : 0;
   const longest = num(stats.streaks?.longest?.length);
   const steady = activeDays > 0 ? 0.7 * density + 0.3 * Math.min(1, longest / 14) : 0;

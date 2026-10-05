@@ -5,7 +5,7 @@ import { calendarWindow, formatNumber, renderCard } from './svg.js';
 
 export { formatNumber };
 import { renderShareSvg } from './share.js';
-import { epochDay, hourLabel, mondayOf, WEEKDAY_NAMES } from '../stats/time.js';
+import { dayKeyFromEpoch as dayKeyOf, epochDay, hourLabel, mondayOf, WEEKDAY_NAMES } from '../stats/time.js';
 import { languageHeadline } from '../stats/languages.js';
 
 export { renderCard, layoutCard, wrapText, escapeXml, measureText, truncateStart, THEMES, CARD_WIDTH, CARD_HEIGHT } from './svg.js';
@@ -128,12 +128,24 @@ export function windowLabel({ since, until } = {}) {
   return null;
 }
 
+/**
+ * How an --author email appears on images: only the part before the last "@"
+ * ("ada@example.com" → "ada"), so a shared card does not publish the full address.
+ * A value without "@" (or with nothing before it) is shown as given.
+ */
+export function authorName(author) {
+  const a = text(author);
+  if (!a) return null;
+  const at = a.lastIndexOf('@');
+  return at > 0 ? a.slice(0, at) : a;
+}
+
 function intro(s, ctx) {
   const commits = num(s.totals?.commits);
   const parts = [];
   if (commits === 0) parts.push(EMPTY_LINE);
   else parts.push("Your commits, your chaos, your story. Let's see what you've been up to.");
-  if (ctx.author) parts.push(`Starring ${ctx.author}.`);
+  if (ctx.author) parts.push(`Starring ${authorName(ctx.author)}.`);
   const range = formatDateRange(s.totals?.firstDay, s.totals?.lastDay);
   const year = windowYear(ctx.since, ctx.until);
   const title = year ? `Your ${year} in git` : 'Your story so far';
@@ -293,7 +305,10 @@ function dailySummary(days) {
   return { busiest, activeWeeks: weeks.size };
 }
 
-function activity(s) {
+/** Days a window must end before "today" to count as a dormant repo's final months. */
+const DORMANT_DAYS = 30;
+
+function activity(s, ctx = {}) {
   const d = s.daily ?? {};
   let days = (Array.isArray(d.days) ? d.days : [])
     .filter((x) => parseDay(x?.day) && num(x?.commits) > 0)
@@ -301,15 +316,34 @@ function activity(s) {
   if (days.length === 0) {
     return { eyebrow: 'Your commit calendar', big: '0', title: 'active days', subtitle: EMPTY_LINE, chart: { kind: 'calendar', days: [] } };
   }
+  // Future-dated days (a commit dated 2099) would drag the grid into the future: the
+  // calendar ends at `asOf` and ignores later days (the totals card still counts them).
+  // If every day is in the future there is nothing else to show, so they stay.
+  const asOf = epochDay(ctx.asOf ?? '');
+  let future = 0; // future-dated days left out
+  if (asOf !== null) {
+    const past = days.filter((x) => epochDay(x.day) <= asOf + 1); // +1: an author-local tomorrow
+    if (past.length > 0 && past.length < days.length) {
+      future = days.length - past.length;
+      days = past;
+    }
+  }
   const win = calendarWindow(days);
   let busiest = d.busiest && parseDay(d.busiest.day) && num(d.busiest.commits) > 0 ? d.busiest : null;
   let weeks = num(d.activeWeeks);
+  if (future) ({ busiest, activeWeeks: weeks } = dailySummary(days));
   let eyebrow;
   if (win.clipped) {
     // The grid shows the most recent 53 weeks only: the headline counts that window too.
     days = days.filter((x) => epochDay(x.day) >= win.start);
     ({ busiest, activeWeeks: weeks } = dailySummary(days));
-    eyebrow = 'Your last 12 months';
+    // A repo that went quiet long ago: its grid ends well before today, so "your last 12
+    // months" would be wrong; name the month the window ends instead.
+    const lastDay = Math.max(...days.map((x) => epochDay(x.day)));
+    const end = parseDay(dayKeyOf(lastDay));
+    eyebrow = asOf !== null && end && asOf - lastDay > DORMANT_DAYS
+      ? `12 months to ${MONTHS[end.month - 1]} ${end.year}`
+      : 'Your last 12 months';
   } else {
     const epochs = days.map((x) => epochDay(x.day));
     const span = Math.max(...epochs) - Math.min(...epochs) + 1;
@@ -318,6 +352,7 @@ function activity(s) {
   const parts = [];
   if (busiest) parts.push(`Busiest day: ${formatDay(busiest.day)} with ${plural(busiest.commits, 'commit')}.`);
   if (weeks > 0) parts.push(weeks === 1 ? 'You showed up in 1 week.' : `You showed up in ${formatNumber(weeks)} different weeks.`);
+  if (future > 0) parts.push(`+${plural(future, 'future-dated day')} not shown.`);
   return {
     eyebrow,
     big: formatNumber(days.length),
@@ -554,10 +589,56 @@ export function footerText(stats, { repoName, since, until }) {
  * Options: `repoName` (default "your repo"), `since`, `until` and `author` (as passed
  * to the CLI; shown in the copy when given), and `today` ('YYYY-MM-DD', the date the
  * stats' current streak is relative to): when `until` is before `today`, the streak card
- * talks about the streak at the end of the window instead of "right now". Returns `[{id, svg}]` in CARD_IDS order.
+ * talks about the streak at the end of the window instead of "right now". Returns
+ * `[{id, svg, description}]` in CARD_IDS order; `description` is the card's content as
+ * plain text (see cardDescription).
  */
 export function buildCards(stats, opts = {}) {
-  return buildCardSpecs(stats, opts).map(({ id, spec }) => ({ id, svg: renderCard(spec) }));
+  return buildCardSpecs(stats, opts).map(({ id, spec }) => ({ id, svg: renderCard(spec), description: cardDescription(spec) }));
+}
+
+/** Text for a description: control / bidi characters dropped, whitespace collapsed. */
+const plain = (v) => (v === null || v === undefined ? '' : String(v)
+  .replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069]/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim());
+
+/** "Label: value" (or whichever of the two is present). */
+const pair = (label, value) => [plain(label), plain(value)].filter(Boolean).join(': ');
+
+/**
+ * A plain-text version of a card spec for assistive tech (the viewer links it to the
+ * card with aria-describedby): eyebrow, headline, subtitle, list rows and the chart's
+ * values, as sentences. The calendar is summarized by its active-day count.
+ */
+export function cardDescription(spec = {}) {
+  const out = [];
+  const add = (x) => {
+    const t = plain(x);
+    if (t) out.push(/[.!?…”]$/.test(t) ? t : `${t}.`);
+  };
+  add(spec.eyebrow);
+  // "1,234 commits" reads as one phrase; a title that is its own sentence (a roast) is not.
+  if (/^[A-Z]\S*\s/.test(plain(spec.title))) {
+    add(spec.big);
+    add(spec.title);
+  } else {
+    add([plain(spec.big), plain(spec.title)].filter(Boolean).join(' '));
+  }
+  add(spec.subtitle);
+  for (const l of Array.isArray(spec.lines) ? spec.lines : []) add(pair(l?.label, l?.value));
+  const charts = Array.isArray(spec.chart) ? spec.chart : spec.chart ? [spec.chart] : [];
+  for (const c of charts) {
+    const items = [];
+    if (c.kind === 'callout') items.push(pair(c.title, c.value), plain(c.note));
+    else if (c.kind === 'split') items.push(plain(c.title), ...(c.segments ?? []).map((x) => pair(x?.label, x?.value)));
+    else if (c.kind === 'hbars') items.push(plain(c.title), ...(c.items ?? []).map((x) => plain(x?.title) || pair(x?.label, x?.value)));
+    else if (c.kind === 'bars') items.push(plain(c.title), ...(c.titles ?? []).filter((t, i) => num(c.values?.[i]) > 0).map(plain));
+    else if (c.kind === 'tiles') items.push(...(c.items ?? []).map((x) => pair(x?.label, x?.value)), ...(c.wide ? [pair(c.wide.label, `${plain(c.wide.value)} (${plain(c.wide.note)})`)] : []));
+    else if (c.kind === 'calendar') items.push(plain(c.title) || `Commit calendar of ${plural((c.days ?? []).length, 'active day')}`);
+    for (const x of items) add(x);
+  }
+  return out.join(' ');
 }
 
 /**
@@ -567,6 +648,10 @@ export function buildCards(stats, opts = {}) {
 export function buildCardSpecs(stats, { repoName, since, until, author, today } = {}) {
   stats = stats ?? {};
   const ctx = { repoName: text(repoName) ?? 'your repo', since: text(since), until: text(until), author: text(author), today: text(today) };
+  // The day the cards are "as of": today, or the end of a window that ended before it.
+  const t = parseDay(ctx.today);
+  const u = parseDay(ctx.until);
+  ctx.asOf = t && u && u.key < t.key ? u.key : (t?.key ?? null);
   const footer = footerText(stats, ctx);
   return CARD_IDS.map((id, i) => ({
     id,
@@ -589,7 +674,7 @@ export function renderShareCard(stats, { repoName, since, until, author } = {}) 
   return renderShareSvg({
     theme: 'pulse',
     idPrefix: 'gw-share',
-    eyebrow: ctx.author ? `${year ? `${year} ` : ''}Git Wrapped · ${ctx.author}` : `My ${year ? `${year} ` : ''}Git Wrapped`,
+    eyebrow: ctx.author ? `${year ? `${year} ` : ''}Git Wrapped · ${authorName(ctx.author)}` : `My ${year ? `${year} ` : ''}Git Wrapped`,
     title: ctx.repoName,
     tiles: [c, streakTile, hour, persona],
     file: top ? { label: 'Hottest file', path: top.path, value: plural(top.commits, 'commit') } : null,

@@ -49,7 +49,8 @@ after(() => {
 
 /** The inline SVGs in page order, as they appear in the HTML. */
 function embeddedSvgs(page) {
-  return [...page.matchAll(/<svg\b[\s\S]*?<\/svg>/g)].map((m) => m[0]);
+  // The viewer adds aria-describedby (pointing at the card's text version) to each card.
+  return [...page.matchAll(/<svg\b[\s\S]*?<\/svg>/g)].map((m) => m[0].replace(/ aria-describedby="card-\d+-desc"/, ''));
 }
 
 describe('bin: full run on the fixture repo', () => {
@@ -614,6 +615,7 @@ describe('stale PNG cleanup', () => {
     const fx = makeFixtureRepo();
     const out = mkdtempSync(join(tmpdir(), 'gw-stale-'));
     try {
+      writeFileSync(join(out, 'wrapped.html'), 'an earlier run'); // the folder is ours
       mkdirSync(join(out, 'png'));
       writeFileSync(join(out, 'png', '01-intro.png'), 'old');
       writeFileSync(join(out, 'png', 'keep-me.txt'), 'user file');

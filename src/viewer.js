@@ -21,12 +21,13 @@ export function svgTitle(svg) {
 }
 
 /** Ensure the root <svg> carries role="img" and an aria-label (cards already do). */
-function accessibleSvg(svg, label) {
+function accessibleSvg(svg, label, describedBy) {
   const s = String(svg).replace(/^\s*<\?xml[^>]*\?>\s*/, '').trim();
   return s.replace(/<svg\b([^>]*)>/, (whole, attrs) => {
     let a = attrs;
     if (!/\srole=/.test(a)) a += ' role="img"';
     if (!/\saria-label=/.test(a)) a += ` aria-label="${escapeHtml(label)}"`;
+    if (describedBy && !/\saria-describedby=/.test(a)) a += ` aria-describedby="${escapeHtml(describedBy)}"`;
     return `<svg${a}>`;
   });
 }
@@ -43,7 +44,7 @@ body{display:flex;flex-direction:column;height:100vh;height:100svh;height:100dvh
 .stage{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;padding:var(--gap) var(--side)}
 .story{--avail:calc(100vh - var(--head) - var(--foot) - var(--sat) - var(--sab) - 2 * var(--gap));
   position:relative;flex:none;width:min(calc(100vw - 2 * var(--side)),calc(var(--avail) * 9 / 16));height:min(var(--avail),calc((100vw - 2 * var(--side)) * 16 / 9));
-  overflow:hidden;border-radius:12px;background:#000;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:pan-y}
+  overflow:hidden;border-radius:12px;background:#000;cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:pan-y}
 @supports (height:100svh){.story{--avail:calc(100svh - var(--head) - var(--foot) - var(--sat) - var(--sab) - 2 * var(--gap))}}
 @supports (height:100dvh){.story{--avail:calc(100dvh - var(--head) - var(--foot) - var(--sat) - var(--sab) - 2 * var(--gap))}}
 .slide{position:absolute;inset:0;visibility:hidden;opacity:0;transition:opacity .25s ease}
@@ -57,7 +58,7 @@ body{display:flex;flex-direction:column;height:100vh;height:100svh;height:100dvh
 .auto .bar.current i{width:0;animation:fill var(--dur,6s) linear forwards}
 .paused .bar.current i{animation-play-state:paused}
 @keyframes fill{from{width:0}to{width:100%}}
-.nav{position:absolute;top:0;bottom:0;z-index:2;margin:0;padding:0;border:0;background:transparent;cursor:pointer;color:inherit;-webkit-tap-highlight-color:transparent}
+.nav{position:absolute;top:0;bottom:0;z-index:2;margin:0;padding:0;border:0;background:transparent;color:inherit;pointer-events:none;-webkit-tap-highlight-color:transparent}
 .nav.prev{left:0;width:33.333%}
 .nav.next{right:0;width:66.667%}
 .nav:focus{outline:none}
@@ -149,7 +150,6 @@ const SCRIPT = `
     paused = p;
     story.classList.toggle('paused', p);
     pauseBtn.setAttribute('aria-label', p ? 'Play' : 'Pause');
-    pauseBtn.setAttribute('aria-pressed', p ? 'true' : 'false');
     pauseBtn.textContent = p ? '\\u25B6' : '\\u275A\\u275A';
   }
 
@@ -206,6 +206,7 @@ const SCRIPT = `
   function cardSvg(i) {
     var svg = slides[i].querySelector('svg');
     var clone = svg.cloneNode(true);
+    clone.removeAttribute('aria-describedby'); // points into this page only
     var box = svg.viewBox && svg.viewBox.baseVal;
     var w = (box && box.width) || 1080;
     var h = (box && box.height) || 1920;
@@ -406,7 +407,10 @@ const SCRIPT = `
   helpBtn.addEventListener('click', openHelp);
   helpClose.addEventListener('click', closeHelp);
 
-  // Pointer: tap zones, hold to pause, horizontal swipe. The story captures the pointer
+  // Pointer: tap zones, hold to pause, horizontal swipe. The .nav buttons ignore the
+  // pointer (pointer-events:none, so the card's own <title> tooltips show on hover); a tap
+  // is placed by its x position instead: left third back, the rest forward. The buttons
+  // stay for keyboard and screen-reader users. The story captures the pointer
   // so a release outside it (or a lost capture) still ends the hold. Because a captured
   // pointer's click may be retargeted to the story, taps navigate here on pointerup and
   // the click that follows is swallowed; the buttons' own click handlers then only see
@@ -459,15 +463,18 @@ const SCRIPT = `
   prevBtn.addEventListener('click', userPrev);
   nextBtn.addEventListener('click', userNext);
   pauseBtn.addEventListener('click', togglePause);
-  // A mouse click on a tap zone must not focus it: Space would then activate "previous".
-  [prevBtn, nextBtn].forEach(function (b) {
-    b.addEventListener('mousedown', function (e) { e.preventDefault(); });
-  });
   function isSpace(e) { return e.key === ' ' || e.key === 'Spacebar'; }
   // Toolbar buttons keep their own Space/Enter activation.
   function isToolbarControl(t) { return Boolean(t && t.classList && t.classList.contains('btn')); }
+  // Single-character shortcuts (P, K, D, ?) never fire while typing in a text field.
+  function isEditable(t) {
+    if (!t) return false;
+    var tag = String(t.tagName || '').toLowerCase();
+    return tag === 'input' || tag === 'textarea' || tag === 'select' || Boolean(t.isContentEditable);
+  }
 
   document.addEventListener('keydown', function (e) {
+    // Shortcuts never take a modified key (browser / OS / assistive-tech shortcuts).
     if (e.altKey || e.ctrlKey || e.metaKey) return;
     if (helpOpen) {
       // Only Esc while the dialog is open; a native modal dialog closes itself on Esc.
@@ -476,6 +483,7 @@ const SCRIPT = `
       }
       return;
     }
+    if (isEditable(e.target)) return;
     switch (e.key) {
       case 'ArrowRight': case 'PageDown': userNext(); break;
       case 'ArrowLeft': case 'PageUp': userPrev(); break;
@@ -544,6 +552,8 @@ export const CSP = [
 /**
  * Build a complete, self-contained HTML5 story viewer for `cards` ([{id, svg}] from
  * buildCards). The SVG markup is inlined as-is (it is generated and escaped by us).
+ * A card's optional `description` (plain text, see cardDescription) becomes a visually
+ * hidden paragraph the SVG points to with aria-describedby.
  * No external requests: no fonts, scripts, stylesheets or images by URL.
  */
 export function buildViewerHtml(cards = [], { title } = {}) {
@@ -551,13 +561,17 @@ export function buildViewerHtml(cards = [], { title } = {}) {
   const n = list.length;
   const docTitle = escapeHtml(String(title ?? '').trim() || 'gitwrapped');
   const slides = list
-    .map(({ id, svg }, i) => {
+    .map(({ id, svg, description }, i) => {
       const label = svgTitle(svg) ?? `Card ${i + 1}`;
+      const desc = typeof description === 'string' ? description.trim() : '';
+      const descId = desc ? `card-${i + 1}-desc` : null;
       return [
         `<section class="slide${i === 0 ? ' active' : ''}" id="card-${i + 1}" data-card="${escapeHtml(id ?? '')}"`,
         ` data-title="${escapeHtml(label)}" aria-roledescription="slide" aria-label="${escapeHtml(`${i + 1} of ${n}`)}"`,
         ` aria-hidden="${i === 0 ? 'false' : 'true'}">\n`,
-        accessibleSvg(svg, label),
+        accessibleSvg(svg, label, descId),
+        // aria-hidden: read once, as the SVG's description, not again as page text.
+        desc ? `\n<p class="sr" id="${descId}" aria-hidden="true">${escapeHtml(desc)}</p>` : '',
         '\n</section>',
       ].join('');
     })
@@ -580,12 +594,12 @@ export function buildViewerHtml(cards = [], { title } = {}) {
 <h1 class="title">${docTitle}</h1>
 </header>
 <main class="stage" id="page-main">
-<div class="story" id="story" aria-roledescription="carousel" aria-label="${docTitle}">
+<div class="story" id="story" role="region" aria-roledescription="carousel" aria-label="${docTitle}">
 <div class="bars" aria-hidden="true">${bars}</div>
 ${slides}
 <button type="button" class="nav prev" id="prev" aria-label="Previous card"></button>
 <button type="button" class="nav next" id="next" aria-label="Next card"></button>
-<button type="button" class="pause" id="pause" aria-label="Pause" aria-pressed="false">&#10074;&#10074;</button>
+<button type="button" class="pause" id="pause" aria-label="Pause">&#10074;&#10074;</button>
 <p class="sr" id="status" aria-live="polite"></p>
 </div>
 </main>

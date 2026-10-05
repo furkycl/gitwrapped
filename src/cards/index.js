@@ -293,7 +293,7 @@ function dailySummary(days) {
   return { busiest, activeWeeks: weeks.size };
 }
 
-function activity(s) {
+function activity(s, ctx = {}) {
   const d = s.daily ?? {};
   let days = (Array.isArray(d.days) ? d.days : [])
     .filter((x) => parseDay(x?.day) && num(x?.commits) > 0)
@@ -301,9 +301,25 @@ function activity(s) {
   if (days.length === 0) {
     return { eyebrow: 'Your commit calendar', big: '0', title: 'active days', subtitle: EMPTY_LINE, chart: { kind: 'calendar', days: [] } };
   }
+  // Future-dated days (clock skew) would stretch the grid past today and push real weeks
+  // out of the 53-week window. The calendar ends at the day after `ctx.today` at the
+  // latest (the same author-timezone grace day as the current streak, see streaks.js);
+  // later days are left off the grid (unless every day is in the future: then there is
+  // nothing better to show).
+  const todayKey = parseDay(ctx.today)?.key;
+  let dropped = false;
+  if (todayKey) {
+    const maxDay = epochDay(todayKey) + 1;
+    const kept = days.filter((x) => epochDay(x.day) <= maxDay);
+    if (kept.length > 0 && kept.length < days.length) {
+      days = kept;
+      dropped = true;
+    }
+  }
   const win = calendarWindow(days);
   let busiest = d.busiest && parseDay(d.busiest.day) && num(d.busiest.commits) > 0 ? d.busiest : null;
   let weeks = num(d.activeWeeks);
+  if (dropped) ({ busiest, activeWeeks: weeks } = dailySummary(days));
   let eyebrow;
   if (win.clipped) {
     // The grid shows the most recent 53 weeks only: the headline counts that window too.

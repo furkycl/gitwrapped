@@ -64,6 +64,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `--since` in the first week of 1970 no longer sends git a pre-1970 bound it cannot parse.
+- `--no-png` no longer deletes `share.png` / `png/NN-<card>.png` in an `--out` folder that
+  gitwrapped did not create (one without a `wrapped.html` from an earlier run).
+- Output is never written or deleted through a symlink inside `--out`: a symlinked output
+  file or `cards/` / `png/` folder stops the run with a clear error before anything is
+  written, and cleanup only removes regular files.
+- A future-dated commit (clock skew) no longer resets the current streak or stretches the
+  activity calendar past tomorrow.
+- In `wrapped.html`, hovering a calendar day or chart bar with a mouse shows its tooltip
+  again (the tap zones no longer sit on top of the card for hover-capable pointers).
 
 ## [1.0.0] - 2026-10-05
 

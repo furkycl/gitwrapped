@@ -241,6 +241,18 @@ is left as it is.
   counted up to the window's last day, and that day is over: a streak is "at window
   end" only if it includes that day. The recap and streak card say so, and
   `stats.json` records the day as `asOf`.
+- **Future-dated commits** (a wrong clock or author date): a day more than one day after
+  today can't end or extend your current streak, and the activity calendar stops at
+  tomorrow, so one bad date doesn't hide your real last 12 months. Those commits still
+  count in the totals and the longest streak.
+- **Output folder safety:** gitwrapped only deletes files (old card files, and with
+  `--no-png` the PNGs of an earlier run) in a folder that already holds a `wrapped.html`
+  from an earlier run, and only regular files with its own names. It won't write or
+  delete through a symlink: if an output this run writes (`wrapped.html`, `share.svg`, a
+  card SVG or the `cards/` folder; `share.png`, PNG cards and `png/` only when making PNGs;
+  `stats.json` only with `--json`) is a symlink, the run stops with
+  `refusing to write through a symlink: <path>` before writing anything. This check is
+  best effort (made once, before writing). `--out` itself may be a symlink.
 - **Authors** are counted by their `.mailmap` identity, so one person with two emails
   mapped together counts once, and `--author` matches the mapped email. If `--author`
   matches nothing and isn't an email address, the recap reminds you it expects one.

@@ -15,11 +15,12 @@ export function localToday() {
  * end are dayKeys ('YYYY-MM-DD') and a run is a sequence of consecutive active days
  * (days with at least one commit).
  * - longest: the longest run; ties go to the earliest run.
- * - current: the run ending on the last active day, but only while it is still alive,
- *   i.e. that last day is `today`, the day before, or the day after `today`; otherwise
- *   length 0. The day after counts because days are author-local: an author in a timezone
- *   ahead of the machine can already be on tomorrow. Two or more days ahead (clock skew,
- *   future-dated commits) is not alive.
+ * - current: the run ending on the last active day up to the day after `today`, but only
+ *   while it is still alive, i.e. that day is `today`, the day before, or the day after
+ *   `today`; otherwise length 0. The day after counts because days are author-local: an
+ *   author in a timezone ahead of the machine can already be on tomorrow. Days two or
+ *   more days ahead (clock skew, future-dated commits) are ignored for the current
+ *   streak, so one bad future date cannot reset a running streak.
  *   For a past window (--until / --year) the CLI passes the window end as `today` with
  *   `todayComplete: true`: that day is over, so there is no grace day and the run is
  *   current only when it reaches the window end (current = the streak running when the
@@ -62,8 +63,19 @@ export function computeStreaks(commits, { today, todayComplete = false } = {}) {
   let longest = runs[0];
   for (const run of runs) if (run.length > longest.length) longest = run;
 
-  const last = sorted[sorted.length - 1];
-  const alive = last >= (todayComplete ? todayDay : todayDay - 1) && last <= todayDay + 1;
-  const current = alive ? runs[runs.length - 1] : EMPTY;
+  // Future-dated days (clock skew, a bad GIT_AUTHOR_DATE) cannot end the current streak:
+  // the current run is anchored on the last active day no later than the newest day that
+  // can really be "now" (today, plus the author-timezone grace day unless today is over),
+  // and days after that are ignored for it. The run is cut at that anchor, so future days
+  // never lengthen it either. They still count everywhere else (longest, totals, ...).
+  const maxDay = todayComplete ? todayDay : todayDay + 1;
+  let i = sorted.length - 1;
+  while (i >= 0 && sorted[i] > maxDay) i--;
+  let current = EMPTY;
+  if (i >= 0 && sorted[i] >= (todayComplete ? todayDay : todayDay - 1)) {
+    let j = i;
+    while (j > 0 && sorted[j] - sorted[j - 1] === 1) j--;
+    current = { length: sorted[i] - sorted[j] + 1, start: days.get(sorted[j]), end: days.get(sorted[i]) };
+  }
   return { longest: { ...longest }, current: { ...current } };
 }

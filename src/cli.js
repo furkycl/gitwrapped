@@ -23,7 +23,7 @@ Arguments:
 Options:
   --since YYYY-MM-DD   Only include commits on or after this date
   --author <email>     Only include commits by this author email
-                       (exact email match, case-insensitive)
+                       (exact email match, case-insensitive, after .mailmap)
   --out <dir>          Output directory (default: "gitwrapped-out")
   --max-commits <n>    Analyze at most the n most recent commits
                        (default: 50000)
@@ -133,7 +133,8 @@ export function parseCli(argv) {
   }
 
   return {
-    path: positionals[0] ?? '.',
+    // An empty path ("") means the current directory, like the default.
+    path: positionals[0] || '.',
     since: values.since === undefined ? undefined : validateSince(values.since),
     author: values.author?.trim(),
     out: values.out?.trim() ?? 'gitwrapped-out',
@@ -282,13 +283,14 @@ function removeStalePngs(pngDir, sharePngPath, names) {
  * --out fails before anything is written. If the PNG renderer cannot be loaded or fails,
  * the SVG/HTML output is still written and `pngSkipped` holds the reason.
  * At most `maxCommits` (default 50,000) of the most recent commits are analyzed.
- * Returns {commits, stats, repoName, truncated, limit, html, cardsDir, cardFiles, shareSvg,
- * pngDir, pngFiles, sharePng, pngSkipped} with the written paths (joined onto `out`; PNG
- * paths null/[] when skipped); `truncated` is true when the cap cut the history short.
+ * Returns {commits, stats, repoName, truncated, limit, shallow, html, cardsDir, cardFiles,
+ * shareSvg, pngDir, pngFiles, sharePng, pngSkipped} with the written paths (joined onto
+ * `out`; PNG paths null/[] when skipped); `truncated` is true when the cap cut the history
+ * short, `shallow` when the repo is a shallow clone.
  * `renderPng` (svg, {width}) → Promise<Buffer> replaces the PNG renderer (for tests).
  */
 export async function generate({ path, since, author, out, png = true, maxCommits = DEFAULT_LIMIT }, { today, renderPng: rasterize = renderPng } = {}) {
-  const { commits, truncated, limit } = await readHistory(path, { since, author, limit: maxCommits });
+  const { commits, truncated, limit, shallow } = await readHistory(path, { since, author, limit: maxCommits });
   const stats = computeStats(commits, { today });
   const name = await repoName(path);
   const cards = buildCards(stats, { repoName: name, since, author });
@@ -340,6 +342,7 @@ export async function generate({ path, since, author, out, png = true, maxCommit
     repoName: name,
     truncated,
     limit,
+    shallow: Boolean(shallow),
     html,
     cardsDir,
     cardFiles: files.map((f) => f.file),
@@ -388,6 +391,12 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
         ? `Note: more than ${n} matching commits; only the most recent ${n} were analyzed.`
         : `Note: this repo has more than ${n} commits; only the most recent ${n} were analyzed.`,
     );
+  }
+  if (result.shallow) {
+    notes.push('Note: shallow clone: line counts for the oldest (boundary) commit are skipped, and older history is missing.');
+  }
+  if (result.commits === 0 && opts.author && !opts.author.includes('@')) {
+    notes.push(`Note: no commits by "${opts.author}". --author expects an email address (e.g. you@example.com).`);
   }
   stdout.write(
     formatSummary(result.stats, {

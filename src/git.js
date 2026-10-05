@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
-import { statSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
+import { isAbsolute, join } from 'node:path';
 import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
@@ -19,9 +20,13 @@ const execFileAsync = promisify(execFile);
 // `<a>\t<r>\t\0<old>\0<new>\0`; we pass --no-renames so a rename is reported as a
 // delete plus an add (simpler and stable across user config), but the parser still
 // understands the rename form. Merge commits get no numstat by default, so files: [].
+//
+// Fields: hash, author name and email (mailmapped: %aN/%aE, matching how --author is
+// matched with --use-mailmap), author date, parent hashes (space-separated; >1 = merge),
+// subject.
 const US = '\x1f';
 const NUMSTAT = /^[\r\n]*(\d+|-)\t(\d+|-)\t([\s\S]*)$/;
-export const LOG_FORMAT = '%H%x1f%an%x1f%ae%x1f%aI%x1f%s';
+export const LOG_FORMAT = '%H%x1f%aN%x1f%aE%x1f%aI%x1f%P%x1f%s';
 
 const MAX_BUFFER = 256 * 1024 * 1024;
 
@@ -33,9 +38,25 @@ const STRIPPED_ENV = ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_CEILING
 
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Git-side --since value: a bare YYYY-MM-DD means local midnight of that day. */
+/** Slack for git's pre-filter: committer dates may be a little older than author dates. */
+export const SINCE_SLACK_DAYS = 7;
+
+const pad2 = (n) => String(n).padStart(2, '0');
+
+/**
+ * Git-side since bound: SINCE_SLACK_DAYS before `since` (a bare YYYY-MM-DD is local
+ * midnight). git filters on the committer date, which can be slightly older than the
+ * author date (clock skew, `git commit --date`), so git gets a looser bound and the exact
+ * author-date filter runs in JS. An unparseable value is passed through unchanged.
+ */
 function gitSince(since) {
-  return DATE_ONLY.test(since) ? `${since} 00:00:00` : since;
+  if (DATE_ONLY.test(since)) {
+    const [y, m, d] = since.split('-').map(Number);
+    const t = new Date(y, m - 1, d - SINCE_SLACK_DAYS);
+    return `${t.getFullYear()}-${pad2(t.getMonth() + 1)}-${pad2(t.getDate())} 00:00:00`;
+  }
+  const ms = Date.parse(since);
+  return Number.isNaN(ms) ? since : new Date(ms - SINCE_SLACK_DAYS * 86_400_000).toISOString();
 }
 
 /** Since as epoch ms (local midnight for YYYY-MM-DD), or NaN if unparseable. */
@@ -47,20 +68,28 @@ function sinceMs(since) {
   return Date.parse(since);
 }
 
-/**
- * Build the argument list for `git log` (without `-C <path>`).
- * Arguments are passed straight to execFile (no shell), so values are never interpreted.
- */
 /** Largest value git accepts for --max-count (a C int). */
 const GIT_INT_MAX = 2 ** 31 - 1;
 
-export function buildLogArgs({ since, author, maxCount } = {}) {
+/**
+ * Build the argument list for `git log` (without `-C <path>`).
+ * Arguments are passed straight to execFile (no shell), so values are never interpreted.
+ * `since` is sent as --since-as-filter (git >= 2.37), which checks every commit's
+ * committer date; plain --since would stop walking at the first older commit and drop
+ * newer commits behind it (e.g. merged from an old branch). The bound is
+ * SINCE_SLACK_DAYS looser than `since`: it is only a pre-filter, and the caller applies
+ * the exact author-date filter. With `sinceAsFilter: false` (older git) no date filter is
+ * sent at all.
+ */
+export function buildLogArgs({ since, author, maxCount, sinceAsFilter = true } = {}) {
   const args = [
     'log',
     '-z',
     '--no-color',
     '--no-show-signature',
     '--encoding=UTF-8',
+    // Apply .mailmap to --author matching even when log.mailmap=false is configured.
+    '--use-mailmap',
     `--format=${LOG_FORMAT}`,
     // Per-file stats. --no-renames keeps paths independent of diff.renames config;
     // diff.relative is disabled via `-c` in readCommits (works on any git version).
@@ -70,12 +99,14 @@ export function buildLogArgs({ since, author, maxCount } = {}) {
     // -O/dev/null: ignore diff.orderFile so files stay in git's path order.
     '--root',
     '-O/dev/null',
+    // A submodule bump (gitlink) is not a file edit.
+    '--ignore-submodules=all',
   ];
   if (maxCount !== undefined) {
     if (!Number.isSafeInteger(maxCount) || maxCount < 1) throw new TypeError(`maxCount must be a positive integer, got ${maxCount}`);
     args.push(`--max-count=${maxCount}`);
   }
-  if (since) args.push(`--since=${gitSince(since)}`);
+  if (since && sinceAsFilter) args.push(`--since-as-filter=${gitSince(since)}`);
   if (author) {
     // Exact email match, case-insensitive: git matches --author against "Name <email>".
     args.push('--fixed-strings', '--regexp-ignore-case', `--author=<${author}>`);
@@ -85,8 +116,9 @@ export function buildLogArgs({ since, author, maxCount } = {}) {
 
 /**
  * Parse `git log -z --numstat --format=LOG_FORMAT` output into commit objects:
- * `{hash, author, email, date, subject, files: [{path, added, removed, binary}],
- * filesChanged, linesAdded, linesRemoved}`. Binary files count as 0 lines.
+ * `{hash, author, email, date, parents, subject, files: [{path, added, removed, binary}],
+ * filesChanged, linesAdded, linesRemoved}` (parents: array of hashes; a merge has more
+ * than one). Binary files count as 0 lines.
  * Output without numstat entries also parses (files: []). Pure function: returns [] for empty output.
  */
 export function parseLog(stdout) {
@@ -118,14 +150,15 @@ export function parseLog(stdout) {
     const trimmed = token.replace(/^[\r\n]+|[\r\n]+$/g, '');
     if (trimmed === '') continue;
     const fields = trimmed.split(US);
-    if (fields.length < 5) continue;
-    const [hash, author, email, date, ...rest] = fields;
+    if (fields.length < 6) continue;
+    const [hash, author, email, date, parents, ...rest] = fields;
     current = {
       hash,
       author,
       email,
       // git >= 2.5x prints UTC as "Z", older git as "+00:00": normalize so output is stable.
       date: date.replace(/Z$/i, '+00:00'),
+      parents: parents.split(' ').filter(Boolean),
       subject: rest.join(US),
       files: [],
       filesChanged: 0,
@@ -162,13 +195,75 @@ export function quoteForShell(p, platform = process.platform) {
   return `'${s.replace(/'/g, "'\\''")}'`;
 }
 
+/** A user-facing Error when the git executable itself cannot be started, else null. */
+function spawnError(err) {
+  if (err?.code === 'ENOENT') return new Error('git not found on PATH; install git and try again');
+  // EINVAL: on Windows, Node refuses to spawn a .cmd/.bat "git" shim without a shell.
+  // EACCES: a "git" on PATH that is not executable.
+  if (err?.code === 'EINVAL' || err?.code === 'EACCES') {
+    return new Error(
+      `could not run git (${err.code}): the "git" found on PATH cannot be started directly. ` +
+        'On Windows, make sure PATH points at git.exe (Git for Windows), not a git.cmd or git.bat wrapper.',
+    );
+  }
+  return null;
+}
+
+let gitVersionPromise = null;
+
+/**
+ * The installed git version as [major, minor, patch] (e.g. "git version 2.39.3 (Apple
+ * Git-145)" → [2, 39, 3]), read once per process. Rejects when git cannot be started.
+ */
+export function gitVersion() {
+  gitVersionPromise ??= execFileAsync('git', ['--version'], { encoding: 'utf8', env: gitEnv() }).then(
+    ({ stdout }) => {
+      const m = /(\d+)\.(\d+)(?:\.(\d+))?/.exec(stdout);
+      return m ? [Number(m[1]), Number(m[2]), Number(m[3] ?? 0)] : [0, 0, 0];
+    },
+    (err) => {
+      gitVersionPromise = null;
+      throw spawnError(err) ?? new Error(`git --version failed: ${err?.message ?? err}`);
+    },
+  );
+  return gitVersionPromise;
+}
+
+/** True when `version` ([major, minor, ...]) is at least major.minor. */
+export function versionAtLeast(version, major, minor) {
+  return version[0] > major || (version[0] === major && version[1] >= minor);
+}
+
+/**
+ * Hashes of a shallow clone's boundary commits (their parents are missing, so git diffs
+ * them against an empty tree), or null when the repo is not shallow. Best effort: any
+ * failure counts as "not shallow".
+ */
+async function shallowBoundary(repoPath) {
+  try {
+    const { stdout } = await execFileAsync('git', ['-C', repoPath, 'rev-parse', '--is-shallow-repository', '--git-path', 'shallow'], {
+      encoding: 'utf8',
+      env: gitEnv(),
+    });
+    const [flag, file] = stdout.split('\n');
+    if (flag.trim() !== 'true' || !file) return null;
+    const text = readFileSync(isAbsolute(file) ? file : join(repoPath, file), 'utf8');
+    return new Set(text.split('\n').map((l) => l.trim()).filter(Boolean));
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Read the history of the repo at `repoPath`, newest first, capped at `limit` commits
  * (default 50,000: the most recent ones; `Infinity` means no cap). Returns
- * `{commits, truncated, limit}` where `truncated` is true when more than `limit` commits
- * matched the filters. `since` filters on the author date: git's own --since uses the
- * committer date, so it is only a pre-filter; the cap is applied after the author-date
- * filter. `commits` is [] for a repo without commits. Throws a TypeError for an invalid
+ * `{commits, truncated, limit, shallow}` where `truncated` is true when more than `limit`
+ * commits matched the filters, and `shallow` is true for a shallow clone (its boundary
+ * commits get empty file stats: git would otherwise count their whole tree as added).
+ * `since` filters on the author date (from local midnight for YYYY-MM-DD). On git >= 2.37
+ * git pre-filters with --since-as-filter (committer date) so --max-count still caps the
+ * output; older git gets no date filter and everything is filtered in JS.
+ * `commits` is [] for a repo without commits. Throws a TypeError for an invalid
  * `limit`, and a user-facing Error for: a missing path ("path does not exist: <path>"),
  * a file ("not a directory: <path>"), a folder that is not a repo ("not a git repository:
  * <path>"), git's safe.directory ownership check, a missing git, or oversized output.
@@ -178,14 +273,43 @@ export async function readHistory(repoPath, { since, author, limit = DEFAULT_LIM
     throw new TypeError(`limit must be a positive integer or Infinity, got ${limit}`);
   }
   checkRepoPath(repoPath);
-  // Without `since`, ask git for one extra commit so a history of exactly `limit` commits
-  // is not "truncated". With
-  // `since`, git cannot cap: its --since checks the committer date, and a rebased commit
-  // (old author date, new committer date) would use up a slot before the author-date filter.
-  // git parses --max-count as a C int (newer git rejects larger values), so a limit that
-  // big is the same as no cap: skip --max-count and cut in JS below.
-  const maxCount = since || limit + 1 > GIT_INT_MAX ? undefined : limit + 1;
-  const args = ['-C', repoPath, '-c', 'diff.relative=false', ...buildLogArgs({ since, author, maxCount })];
+  const sinceAsFilter = since ? versionAtLeast(await gitVersion(), 2, 37) : true;
+  // Ask git for one extra commit so a history of exactly `limit` commits is not
+  // "truncated". git parses --max-count as a C int (newer git rejects larger values), so
+  // a limit that big is the same as no cap: skip --max-count and cut in JS below.
+  // Without a git-side date filter (old git), git cannot cap a --since run at all.
+  const canCap = limit + 1 <= GIT_INT_MAX && (!since || sinceAsFilter);
+  const min = since ? sinceMs(since) : NaN;
+  const byAuthorDate = (list) => (Number.isNaN(min) ? list : list.filter((c) => Date.parse(c.date) >= min));
+
+  let commits = await runLog(repoPath, { since, author, maxBuffer, sinceAsFilter, maxCount: canCap ? limit + 1 : undefined });
+  if (commits === null) return { commits: [], truncated: false, limit, shallow: false };
+  let filtered = byAuthorDate(commits);
+  // git's pre-filter checks the committer date with some slack: a rebased commit (old
+  // author date, new committer date) or one inside the slack window can use up a capped
+  // slot and then fail the author-date filter. If fewer than limit + 1 commits survive,
+  // the cap may have hidden matching ones: read again without it. (When limit + 1
+  // survive, the capped read is a prefix of the full one, so the result is the same.)
+  if (canCap && since && commits.length === limit + 1 && filtered.length <= limit) {
+    commits = (await runLog(repoPath, { since, author, maxBuffer, sinceAsFilter })) ?? [];
+    filtered = byAuthorDate(commits);
+  }
+  commits = filtered;
+  const truncated = commits.length > limit;
+  if (truncated) commits = commits.slice(0, limit);
+  const boundary = await shallowBoundary(repoPath);
+  if (boundary) {
+    for (const c of commits) {
+      if (!boundary.has(c.hash)) continue;
+      Object.assign(c, { files: [], filesChanged: 0, linesAdded: 0, linesRemoved: 0 });
+    }
+  }
+  return { commits, truncated, limit, shallow: Boolean(boundary) };
+}
+
+/** Run `git log` and parse it; null for a repo without commits. Maps errors to user-facing ones. */
+async function runLog(repoPath, { since, author, maxBuffer, sinceAsFilter, maxCount }) {
+  const args = ['-C', repoPath, '-c', 'diff.relative=false', ...buildLogArgs({ since, author, maxCount, sinceAsFilter })];
   let stdout;
   try {
     ({ stdout } = await execFileAsync('git', args, {
@@ -195,17 +319,17 @@ export async function readHistory(repoPath, { since, author, limit = DEFAULT_LIM
       env: gitEnv(),
     }));
   } catch (err) {
-    if (err.code === 'ENOENT') {
-      throw new Error('git is not installed or not on PATH');
-    }
+    const spawn = spawnError(err);
+    if (spawn) throw spawn;
     if (err.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
       const mb = Math.round(maxBuffer / (1024 * 1024));
-      throw new Error(`git log output is larger than ${mb} MB; narrow it down with --since or --author, or lower --max-commits`);
+      // Only suggest what can shrink the output: --max-commits only helps when git caps it.
+      const tips = [since ? 'a later --since' : '--since', '--author'];
+      const narrow = `narrow it down with ${tips.join(' or ')}`;
+      throw new Error(`git log output is larger than ${mb} MB; ${maxCount !== undefined ? `${narrow}, or lower --max-commits` : narrow}`);
     }
     const stderr = String(err.stderr ?? '');
-    if (/does not have any commits yet|bad default revision 'HEAD'/.test(stderr)) {
-      return { commits: [], truncated: false, limit };
-    }
+    if (/does not have any commits yet|bad default revision 'HEAD'/.test(stderr)) return null;
     if (/detected dubious ownership/i.test(stderr)) {
       const at = /dubious ownership in repository at '([^\n]+)'[ \t]*$/im.exec(stderr)?.[1] ?? repoPath;
       throw new Error(
@@ -218,12 +342,7 @@ export async function readHistory(repoPath, { since, author, limit = DEFAULT_LIM
     }
     throw new Error(`git log failed: ${stderr.trim() || err.message}`);
   }
-  let commits = parseLog(stdout);
-  const min = since ? sinceMs(since) : NaN;
-  if (!Number.isNaN(min)) commits = commits.filter((c) => Date.parse(c.date) >= min);
-  const truncated = commits.length > limit;
-  if (truncated) commits = commits.slice(0, limit);
-  return { commits, truncated, limit };
+  return parseLog(stdout);
 }
 
 /**

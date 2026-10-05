@@ -41,7 +41,8 @@ const sumAt = (arr, idx) => idx.reduce((s, i) => s + num(arr[i]), 0);
  *   clamped to 0..1: night-owl = (share in hours 22-03 − 0.10) / 0.40;
  *   early-bird = (share in hours 05-08 − 0.08) / 0.40; friday-deployer = (Friday share −
  *   0.20) / 0.25 (0.20 = a uniform Mon–Fri week; ≥45% → 1); weekend-warrior = (Sat+Sun
- *   share − 0.15) / 0.35; fixaholic = (messages.counts.fix / totals.commits − 0.15) / 0.45;
+ *   share − 0.15) / 0.35; fixaholic = (messages.counts.fix / non-merge commits − 0.15) / 0.45
+ *   (non-merge commits: the `nonMergeCommits` option, else totals.commits);
  *   steady-shipper = 0.7 × activeDays / span + 0.3 × min(1, longest
  *   streak / 14), where span is firstDay..lastDay inclusive (density capped at 1).
  * - archetype: the top score, unless fewer than 3 commits are dated or the top score is
@@ -50,8 +51,9 @@ const sumAt = (arr, idx) => idx.reduce((s, i) => s + num(arr[i]), 0);
  * Invalid input policy: never throws; missing / malformed parts count as empty, so
  * `computePersonality()` → steady-shipper, "Not enough commits yet.", all scores 0.
  */
-export function computePersonality(stats) {
+export function computePersonality(stats, opts) {
   stats = stats ?? {};
+  const nonMergeCommits = opts?.nonMergeCommits;
   const totals = stats.totals ?? {};
   const byHour = Array.isArray(stats.habits?.byHour) ? stats.habits.byHour : [];
   const byWeekday = Array.isArray(stats.habits?.byWeekday) ? stats.habits.byWeekday : [];
@@ -63,8 +65,10 @@ export function computePersonality(stats) {
   const morning = share(sumAt(byHour, MORNING_HOURS));
   const friday = share(sumAt(byWeekday, [5]));
   const weekend = share(sumAt(byWeekday, [0, 6]));
-  const fixes = Math.min(num(stats.messages?.counts?.fix), commits);
-  const fixShare = commits > 0 ? fixes / commits : 0;
+  // Fix share is of non-merge commits: merges never carry the author's own message.
+  const nonMerge = typeof nonMergeCommits === 'number' ? Math.min(num(nonMergeCommits), commits) : commits;
+  const fixes = Math.min(num(stats.messages?.counts?.fix), nonMerge);
+  const fixShare = nonMerge > 0 ? fixes / nonMerge : 0;
 
   const activeDays = num(totals.activeDays);
   const first = epochDay(totals.firstDay);

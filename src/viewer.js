@@ -188,19 +188,25 @@ const SCRIPT = `
     e.preventDefault();
   }, true);
 
-  document.getElementById('prev').addEventListener('click', userPrev);
-  document.getElementById('next').addEventListener('click', userNext);
+  var prevBtn = document.getElementById('prev');
+  var nextBtn = document.getElementById('next');
+  prevBtn.addEventListener('click', userPrev);
+  nextBtn.addEventListener('click', userNext);
   pauseBtn.addEventListener('click', togglePause);
+  // A mouse click on a tap zone must not focus it: Space would then activate "previous".
+  [prevBtn, nextBtn].forEach(function (b) {
+    b.addEventListener('mousedown', function (e) { e.preventDefault(); });
+  });
+  function isSpace(e) { return e.key === ' ' || e.key === 'Spacebar'; }
 
   document.addEventListener('keydown', function (e) {
     if (e.altKey || e.ctrlKey || e.metaKey) return;
-    var t = e.target;
-    var onButton = t && t.tagName === 'BUTTON';
     switch (e.key) {
       case 'ArrowRight': case 'PageDown': userNext(); break;
       case 'ArrowLeft': case 'PageUp': userPrev(); break;
       case ' ': case 'Spacebar':
-        if (onButton) return; // let the focused button activate itself
+        if (e.target === pauseBtn) return; // let the pause button toggle itself
+        // Anywhere else, even on a focused tap zone, Space goes forward (Shift+Space back).
         if (e.shiftKey) userPrev(); else userNext();
         break;
       case 'Home': show(0, true); break;
@@ -211,6 +217,10 @@ const SCRIPT = `
       default: return;
     }
     e.preventDefault();
+  });
+  // Buttons activate on Space keyup: stop the tap zones from also navigating then.
+  document.addEventListener('keyup', function (e) {
+    if (isSpace(e) && (e.target === prevBtn || e.target === nextBtn)) e.preventDefault();
   });
 
   window.addEventListener('hashchange', function () {

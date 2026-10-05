@@ -40,6 +40,23 @@ const basename = (path) => String(path).split('/').filter(Boolean).pop() ?? Stri
 const quote = (s) => `“${s}”`;
 const text = (s) => (typeof s === 'string' && s.trim() ? s.trim() : null);
 
+/** Cap very long text (a 100 KB commit subject) at MAX_TEXT code points before layout; null stays null. */
+const MAX_TEXT = 500;
+const clip = (s) => {
+  if (s === null || s.length <= MAX_TEXT) return s;
+  // Count code points (not UTF-16 units) up to one past the cap; never split a pair.
+  const cps = [];
+  for (const ch of s) {
+    cps.push(ch);
+    if (cps.length > MAX_TEXT) break;
+  }
+  // At most MAX_TEXT code points, the ellipsis included.
+  return cps.length <= MAX_TEXT ? s : `${cps.slice(0, MAX_TEXT - 1).join('')}…`;
+};
+
+/** An average with at most one decimal, e.g. 42.53 → "42.5", 23 → "23", 1234.5 → "1,234.5". */
+const formatAverage = (n) => (Math.round(num(n) * 10) / 10).toLocaleString('en-US', { maximumFractionDigits: 1 });
+
 function hourQuip(hour) {
   if (hour === null || hour === undefined) return '';
   if (hour < 5) return 'The bugs come out at night, and so do you.';
@@ -148,24 +165,25 @@ function hotFiles(s) {
 
 function messages(s) {
   const m = s.messages ?? {};
-  const longest = text(m.longest?.subject);
-  const shortest = text(m.shortest?.subject);
+  const longest = clip(text(m.longest?.subject));
+  const shortest = clip(text(m.shortest?.subject));
   if (!longest || !shortest) {
     return { eyebrow: 'Message hall of fame', big: '…', title: 'No commit messages yet', subtitle: EMPTY_LINE };
   }
   // A "favorite" word needs to show up at least twice; otherwise use the average-length copy.
-  const word = num(m.topWord?.count) >= 2 ? text(m.topWord?.word) : null;
+  const word = num(m.topWord?.count) >= 2 ? clip(text(m.topWord?.word)) : null;
   const counts = m.counts ?? {};
   const oops = num(counts.oops);
   const quip = oops > 0
     ? `“Oops” happened ${oops === 1 ? 'once' : `${formatNumber(oops)} times`}. We've all been there.`
-    : `Your messages average ${num(m.averageLength)} characters.`;
+    : `Your messages average ${formatAverage(m.averageLength)} characters.`;
   // With a single commit, longest and shortest are the same message: show it once.
   const rows = [{ label: `Longest: ${quote(longest)}` }];
   if (shortest !== longest) rows.push({ label: `Shortest: ${quote(shortest)}` });
   return {
     eyebrow: 'Message hall of fame',
-    big: word ? quote(word) : formatNumber(m.averageLength),
+    // Same rounding as the subtitle, so the two numbers always agree.
+    big: word ? quote(word) : formatAverage(m.averageLength),
     title: word ? `was your favorite word (${plural(m.topWord.count, 'time')})` : 'characters per message, on average',
     subtitle: quip,
     lines: [

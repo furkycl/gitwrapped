@@ -62,9 +62,14 @@ describe('measureText', () => {
     assert.ok(Math.abs(measureText('hellohello', 40) - 2 * a) < 1e-9);
   });
 
-  test('wide glyphs are wider than narrow ones; emoji count once', () => {
+  test('wide glyphs are wider than narrow ones; emoji ~1.3em, CJK 1em', () => {
     assert.ok(measureText('MMMM', 10) > measureText('iiii', 10));
-    assert.equal(measureText('🚀', 10), 10);
+    assert.equal(measureText('🚀', 10), 13);
+    assert.equal(measureText('🇹🇷', 10), 13); // a flag (regional-indicator pair) is one emoji
+    assert.equal(measureText('👨‍👩‍👧‍👦', 10), 13); // a ZWJ family is one emoji
+    assert.equal(measureText('李', 10), 10);
+    assert.equal(measureText('©', 10), 8.4); // text-style symbol: normal symbol width
+    assert.equal(measureText('❤️', 10), 13); // pictograph + U+FE0F
     assert.equal(measureText('é', 10), measureText('e', 10)); // combining mark is zero-width
   });
 });

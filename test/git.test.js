@@ -4,12 +4,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { buildLogArgs, parseLog, readCommits, readHistory, DEFAULT_LIMIT, LOG_FORMAT } from '../src/git.js';
+import { buildLogArgs, parseLog, readCommits, readHistory, versionAtLeast, DEFAULT_LIMIT, LOG_FORMAT } from '../src/git.js';
 
 const US = '\x1f';
 
-function rec(...fields) {
-  return fields.join(US) + '\0';
+// One log record: hash, author, email, date, then the subject; parents (%P) are empty.
+function rec(hash, author, email, date, ...subject) {
+  return [hash, author, email, date, '', ...subject].join(US) + '\0';
 }
 
 describe('buildLogArgs', () => {
@@ -18,7 +19,9 @@ describe('buildLogArgs', () => {
     assert.equal(args[0], 'log');
     assert.ok(args.includes('--no-color'));
     assert.ok(args.includes(`--format=${LOG_FORMAT}`));
-    assert.equal(LOG_FORMAT, '%H%x1f%an%x1f%ae%x1f%aI%x1f%s');
+    assert.equal(LOG_FORMAT, '%H%x1f%aN%x1f%aE%x1f%aI%x1f%P%x1f%s');
+    assert.ok(args.includes('--use-mailmap'));
+    assert.ok(args.includes('--ignore-submodules=all'));
     assert.ok(args.includes('-z'));
     assert.ok(args.includes('--encoding=UTF-8'));
     assert.ok(args.includes('--numstat'));
@@ -34,8 +37,12 @@ describe('buildLogArgs', () => {
   });
 
   test('--since date is sent as local midnight in a single arg', () => {
-    assert.ok(buildLogArgs({ since: '2025-01-15' }).includes('--since=2025-01-15 00:00:00'));
-    assert.ok(buildLogArgs({ since: '2025-01-15T10:00:00Z' }).includes('--since=2025-01-15T10:00:00Z'));
+    // git gets a bound 7 days looser (a pre-filter); the exact author-date filter is in JS.
+    assert.ok(buildLogArgs({ since: '2025-01-15' }).includes('--since-as-filter=2025-01-08 00:00:00'));
+    assert.ok(buildLogArgs({ since: '2025-03-03' }).includes('--since-as-filter=2025-02-24 00:00:00'));
+    assert.ok(buildLogArgs({ since: '2025-01-15T10:00:00Z' }).includes('--since-as-filter=2025-01-08T10:00:00.000Z'));
+    // Older git (no --since-as-filter): no git-side date filter at all.
+    assert.ok(!buildLogArgs({ since: '2025-01-15', sinceAsFilter: false }).some((a) => a.startsWith('--since')));
   });
 
   test('--author matches the exact email as a case-insensitive fixed string', () => {
@@ -47,7 +54,7 @@ describe('buildLogArgs', () => {
 
   test('shell-looking values stay inside one argument', () => {
     const args = buildLogArgs({ since: '2025-01-01; rm -rf /', author: '$(whoami)' });
-    assert.ok(args.includes('--since=2025-01-01; rm -rf /'));
+    assert.ok(args.includes('--since-as-filter=2025-01-01; rm -rf /'));
     assert.ok(args.includes('--author=<$(whoami)>'));
   });
 });
@@ -68,6 +75,7 @@ describe('parseLog', () => {
         author: 'Ada',
         email: 'ada@x.io',
         date: '2025-01-02T03:04:05+01:00',
+        parents: [],
         subject: 'init',
         files: [],
         filesChanged: 0,
@@ -237,7 +245,7 @@ describe('readCommits', () => {
   });
 
   test('readHistory on an empty repo → no commits, not truncated', async () => {
-    assert.deepEqual(await readHistory(emptyDir), { commits: [], truncated: false, limit: DEFAULT_LIMIT });
+    assert.deepEqual(await readHistory(emptyDir), { commits: [], truncated: false, limit: DEFAULT_LIMIT, shallow: false });
   });
 
   test('readHistory rejects a non-positive / non-integer limit', async () => {
@@ -248,7 +256,7 @@ describe('readCommits', () => {
 
 describe('parseLog edge cases', () => {
   test('a \\x1f inside the subject is kept (subject is the last field)', () => {
-    const [c] = parseLog(['h', 'A', 'a@x', '2025-01-01T00:00:00Z', 'a', 'b'].join(US) + '\0');
+    const [c] = parseLog(['h', 'A', 'a@x', '2025-01-01T00:00:00Z', '', 'a', 'b'].join(US) + '\0');
     assert.equal(c.subject, `a${US}b`);
   });
 
@@ -264,7 +272,7 @@ describe('parseLog edge cases', () => {
   });
 
   test('records without a trailing NUL are handled', () => {
-    const out = `h1${US}A${US}a@x${US}2025-01-01T00:00:00Z${US}one\0h2${US}B${US}b@x${US}2025-01-02T00:00:00Z${US}two`;
+    const out = `h1${US}A${US}a@x${US}2025-01-01T00:00:00Z${US}${US}one\0h2${US}B${US}b@x${US}2025-01-02T00:00:00Z${US}${US}two`;
     assert.deepEqual(parseLog(out).map((c) => [c.hash, c.subject]), [['h1', 'one'], ['h2', 'two']]);
   });
 
@@ -477,6 +485,73 @@ describe('readCommits review fixes', () => {
 });
 
 test('parseLog normalizes a UTC "Z" author date to +00:00 (git 2.55 vs older git)', () => {
-  const [c] = parseLog('h\x1fA\x1fa@x\x1f2025-01-01T00:00:00Z\x1fs\0');
+  const [c] = parseLog('h\x1fA\x1fa@x\x1f2025-01-01T00:00:00Z\x1f\x1fs\0');
   assert.equal(c.date, '2025-01-01T00:00:00+00:00');
+});
+
+test('versionAtLeast compares major.minor', () => {
+  assert.equal(versionAtLeast([2, 37, 0], 2, 37), true);
+  assert.equal(versionAtLeast([2, 43, 1], 2, 37), true);
+  assert.equal(versionAtLeast([3, 0, 0], 2, 37), true);
+  assert.equal(versionAtLeast([2, 36, 9], 2, 37), false);
+  assert.equal(versionAtLeast([1, 99, 0], 2, 37), false);
+  assert.equal(versionAtLeast([0, 0, 0], 2, 37), false);
+});
+
+describe('--since uses author-date semantics on new and old git', () => {
+  let dir;
+  let fakeBin;
+  const env = (extra = {}) => {
+    const e = { ...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_AUTHOR_NAME: 'T', GIT_AUTHOR_EMAIL: 't@x.io', GIT_COMMITTER_NAME: 'T', GIT_COMMITTER_EMAIL: 't@x.io', ...extra };
+    for (const k of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_CEILING_DIRECTORIES', 'GIT_COMMON_DIR']) delete e[k];
+    return e;
+  };
+  const commitAt = (subject, author, committer = author) =>
+    execFileSync('git', ['commit', '-q', '--allow-empty', '--no-gpg-sign', '-m', subject], {
+      cwd: dir,
+      env: env({ GIT_AUTHOR_DATE: author, GIT_COMMITTER_DATE: committer }),
+    });
+
+  before(() => {
+    dir = mkdtempSync(join(tmpdir(), 'gw-since-skew-'));
+    execFileSync('git', ['init', '-q', dir], { env: env() });
+    commitAt('old', '2023-06-01T12:00:00Z');
+    // Committer clock behind the author's: committed before --since, authored after it.
+    commitAt('skewed', '2024-07-01T12:00:00Z', '2023-12-28T12:00:00Z');
+    commitAt('ancient-in-the-middle', '2022-01-01T12:00:00Z');
+    commitAt('new', '2024-08-01T12:00:00Z');
+    // A fake git 2.30 (no --since-as-filter) that forwards everything else to the real git.
+    fakeBin = mkdtempSync(join(tmpdir(), 'gw-oldgit-'));
+    const realGit = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
+    writeFileSync(
+      join(fakeBin, 'git'),
+      `#!/bin/sh\nif [ "$1" = "--version" ]; then echo "git version 2.30.1"; exit 0; fi\n` +
+        `for a in "$@"; do case "$a" in --since-as-filter*) echo "fatal: unrecognized argument: $a" >&2; exit 128;; esac; done\n` +
+        `exec "${realGit}" "$@"\n`,
+      { mode: 0o755 },
+    );
+  });
+
+  after(() => {
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(fakeBin, { recursive: true, force: true });
+  });
+
+  test('a commit authored after --since but committed a few days before it is kept', async () => {
+    const { commits } = await readHistory(dir, { since: '2024-01-01' });
+    assert.deepEqual(commits.map((c) => c.subject), ['new', 'skewed']);
+  });
+
+  test('old git (no --since-as-filter): same commits, filtered in JS', { skip: process.platform === 'win32' && 'POSIX shell wrapper' }, () => {
+    // A child process, so the cached git version of this process is not reused.
+    const script = `import { readHistory } from ${JSON.stringify(new URL('../src/git.js', import.meta.url).href)};
+const r = await readHistory(${JSON.stringify(dir)}, { since: '2024-01-01' });
+const capped = await readHistory(${JSON.stringify(dir)}, { since: '2024-01-01', limit: 1 });
+console.log(JSON.stringify([r.commits.map((c) => c.subject), capped.commits.map((c) => c.subject), capped.truncated]));`;
+    const out = execFileSync(process.execPath, ['--input-type=module', '-e', script], {
+      encoding: 'utf8',
+      env: { ...env(), PATH: `${fakeBin}:${process.env.PATH}` },
+    });
+    assert.deepEqual(JSON.parse(out), [['new', 'skewed'], ['new'], true]);
+  });
 });

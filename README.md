@@ -214,6 +214,26 @@ dev dependency only and is not part of the published package.
 Tests create throwaway git repos, so git needs a `user.name` and `user.email`. Keep the
 project local-only, dependency-light, and plain ESM on Node >= 20.
 
+### Releasing
+
+Changes for each version are listed in [CHANGELOG.md](CHANGELOG.md).
+
+1. Add a `## [X.Y.Z] - YYYY-MM-DD` section to `CHANGELOG.md`.
+2. Bump `version` in `package.json` (`npm version X.Y.Z --no-git-tag-version` also
+   updates `package-lock.json`).
+3. Merge to `main`, then push a matching tag: `git tag vX.Y.Z && git push origin vX.Y.Z`.
+
+The tag starts the [Publish workflow](.github/workflows/publish.yml). It checks that the
+tagged commit is on `main`, that the tag matches the `package.json` version and that
+`CHANGELOG.md` has an entry for it, runs the tests, and publishes to npm with provenance.
+A prerelease tag such as `v1.1.0-beta.1` is published under the `next` dist-tag instead
+of `latest`.
+
+Before the first release, the repo owner has to create an npm granular access token with
+read and write access to the `@furkycl` scope (or all packages) and "bypass 2FA" enabled,
+and save it as the `NPM_TOKEN` Actions secret. Granular write tokens expire, so rotate the
+secret before it does.
+
 ## License
 
 [MIT](LICENSE)

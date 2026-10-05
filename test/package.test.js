@@ -49,7 +49,7 @@ test('engines requires Node >= 20', () => {
 });
 
 test('files whitelist ships only the runtime', () => {
-  assert.deepEqual([...pkg.files].sort(), ['LICENSE', 'README.md', 'bin', 'src']);
+  assert.deepEqual([...pkg.files].sort(), ['CHANGELOG.md', 'LICENSE', 'README.md', 'bin', 'src']);
 });
 
 test('bin target exists, has a node shebang and is executable', () => {
@@ -68,13 +68,13 @@ test('npm pack contains the runtime and nothing else', (t) => {
     t.skip('npm is not available');
     return;
   }
-  for (const f of ['bin/gitwrapped.js', 'src/cli.js', 'package.json', 'README.md', 'LICENSE']) {
+  for (const f of ['bin/gitwrapped.js', 'src/cli.js', 'package.json', 'README.md', 'CHANGELOG.md', 'LICENSE']) {
     assert.ok(files.includes(f), `pack includes ${f}`);
   }
   for (const f of files) {
     assert.doesNotMatch(f, /^(test|scripts|\.loop|\.github|docs|node_modules)\//, `pack must not include ${f}`);
     assert.ok(
-      ['package.json', 'README.md', 'LICENSE'].includes(f) || /^(bin|src)\//.test(f),
+      ['package.json', 'README.md', 'CHANGELOG.md', 'LICENSE'].includes(f) || /^(bin|src)\//.test(f),
       `unexpected file in pack: ${f}`,
     );
   }

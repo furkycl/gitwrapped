@@ -35,9 +35,14 @@ export const THEMES = Object.freeze({
 const DEFAULT_THEME = 'pulse';
 
 // Characters not allowed in XML 1.0 (C0 controls except tab/LF/CR, U+FFFE/U+FFFF, lone
-// surrogates), plus DEL and C1 controls, which are legal but never wanted on a card.
+// surrogates), plus DEL and C1 controls, which are legal but never wanted on a card, and
+// the bidi embedding / override / isolate controls (U+202A-202E, U+2066-2069) and line /
+// paragraph separators (U+2028/2029), which could reorder or break a card's text.
 // With the `u` flag a valid surrogate pair is one code point, so only lone halves match.
-const BAD_XML_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\uFFFE\uFFFF\uD800-\uDFFF]/gu;
+const BAD_XML_CLASS = '[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F-\\u009F\\u2028\\u2029\\u202A-\\u202E\\u2066-\\u2069\\uFFFE\\uFFFF\\uD800-\\uDFFF]';
+const BAD_XML_CHARS = new RegExp(BAD_XML_CLASS, 'gu');
+// One character escapeXml() strips: it is never drawn, so it measures 0 wide.
+const STRIPPED_CHAR = new RegExp(`^${BAD_XML_CLASS}$`, 'u');
 const XML_ENTITIES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' };
 
 /** Escape text for XML content or attribute values; strips XML-invalid control characters. */
@@ -76,7 +81,7 @@ const EMOJI_WIDTH = 1.3;
 function charWidth(ch) {
   const cp = ch.codePointAt(0);
   if (cp >= 0x20 && cp <= 0x7e) return ASCII_WIDTHS[cp - 0x20] / 1000;
-  if (ZERO_WIDTH.test(ch)) return 0;
+  if (ZERO_WIDTH.test(ch) || STRIPPED_CHAR.test(ch)) return 0;
   if (FULL_WIDTH.test(ch)) return 1;
   if (cp === 0x2026 || cp === 0x2014) return 1; // ellipsis, em dash
   if (cp < 0x20) return 0;

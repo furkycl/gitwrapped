@@ -95,7 +95,7 @@ describe('parseCli', () => {
   });
 
   describe('--since validation', () => {
-    for (const bad of ['2025-1-5', '25-01-05', '2025/01/05', '20250105', 'yesterday', '2025-01-05T00:00', ' 2025-01-05']) {
+    for (const bad of ['2025-1-5', '25-01-05', '2025/01/05', '20250105', 'yesterday', '2025-01-05T00:00']) {
       test(`rejects bad format ${JSON.stringify(bad)}`, () => {
         assert.throws(() => parseCli(['--since', bad]), /invalid --since .*YYYY-MM-DD/);
       });
@@ -106,6 +106,11 @@ describe('parseCli', () => {
         assert.throws(() => parseCli(['--since', impossible]), /not a real calendar date/);
       });
     }
+
+    test('surrounding whitespace is trimmed, like --year', () => {
+      assert.equal(parseCli(['--since', ' 2025-01-05 ']).since, '2025-01-05');
+      assert.equal(parseCli(['--until', '\t2025-02-01\n']).until, '2025-02-01');
+    });
 
     test('accepts leap day 2024-02-29', () => {
       assert.equal(parseCli(['--since', '2024-02-29']).since, '2024-02-29');

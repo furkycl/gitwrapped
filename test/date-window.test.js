@@ -339,7 +339,7 @@ describe('window text', () => {
     const intro = specs.find((s) => s.id === 'intro').spec;
     assert.equal(intro.chart.title, 'Your 2023 in git');
     assert.equal(intro.chart.value, 'A quiet year');
-    assert.match(renderShareCard(stats, { repoName: 'demo', since: '2023-01-01', until: '2023-12-31', author: 'a@b.c' }), /2023 Git Wrapped · a@b\.c/i);
+    assert.match(renderShareCard(stats, { repoName: 'demo', since: '2023-01-01', until: '2023-12-31', author: 'a@b.c' }), /2023 Git Wrapped · a</i);
   });
 
   test('the viewer title names the window', async () => {

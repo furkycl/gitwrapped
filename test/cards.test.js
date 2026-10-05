@@ -217,7 +217,10 @@ describe('buildCards', () => {
     assert.ok(!all.includes(INJECT));
     const m = byId(cards);
     assert.ok(m.intro.includes(`my${INJECT_ESCAPED}repo`), 'repo name escaped on intro');
-    assert.ok(m.intro.includes(`Ada ${INJECT_ESCAPED}`), 'author on intro');
+    // An author with "<" reads as "Name <email>": only the name is shown (see authorName).
+    assert.ok(m.intro.includes('Starring Ada.'), 'author on intro');
+    const amp = byId(buildCards(fixtureStats, { repoName: 'r', author: 'Ada & "Bob"' }));
+    assert.ok(amp.intro.includes('Starring Ada &amp; &quot;Bob&quot;.'), 'author escaped on intro');
     // Footer is limited to one line: the repo name is ellipsized first, the window is kept.
     assert.ok(m.totals.includes(`>my${INJECT_ESCAPED}`), 'footer starts with the escaped repo name');
     assert.ok(m.totals.includes(`… · since 2024 ${INJECT_ESCAPED}<`), 'footer keeps the escaped window');

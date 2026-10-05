@@ -396,7 +396,7 @@ describe('--open', () => {
       setImmediate(() => child.emit('spawn'));
       return child;
     };
-    await openInBrowser('/x/wrapped.html', { platform: 'linux', spawn: fakeSpawn });
+    await openInBrowser('/x/wrapped.html', { platform: 'linux', spawn: fakeSpawn, waitMs: 10 });
     assert.deepEqual(calls, [{ command: 'xdg-open', args: ['/x/wrapped.html'], opts: { detached: true, stdio: 'ignore', windowsHide: true } }]);
     assert.ok(unrefd);
   });
@@ -440,7 +440,7 @@ describe('--open', () => {
       assert.equal(opened.length, 1);
       assert.equal(opened[0].p, resolve(out, 'wrapped.html'));
       assert.match(opened[0].html, /^<!doctype html>/);
-      assert.ok(stdout.text.endsWith(`\nOpening ${resolve(out, 'wrapped.html')}\n`), stdout.text);
+      assert.ok(stdout.text.endsWith(`\nOpening ${resolve(out, 'wrapped.html')}…\n`), stdout.text);
     });
 
     test('no --open → the opener is never called', async () => {
@@ -462,7 +462,8 @@ describe('--open', () => {
         const code = await run([fixture.dir, '--no-png', '--open', '--out', out], { stdout, stderr, env: {}, today: TODAY, openFile });
         assert.equal(code, 0);
         assert.match(stdout.text, /^gitwrapped: 8 commits → /);
-        assert.ok(!stdout.text.includes('Opening'), stdout.text);
+        // Announced before the opener runs; the failure follows on stderr.
+        assert.ok(stdout.text.includes('Opening '), stdout.text);
         const lines = stderr.text.split('\n').filter(Boolean);
         assert.equal(lines.length, 1, stderr.text);
         assert.ok(lines[0].startsWith('gitwrapped: could not open a browser ('), lines[0]);

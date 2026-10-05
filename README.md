@@ -21,13 +21,13 @@ summary image it made for link previews.
 
 Ten 1080x1920 story cards:
 
-1. **Intro**: the repo name, the date range in plain English ("Oct 4 – Oct 5, 2026") and how many commits there are to unwrap, plus whose story it is when you pass `--author`.
+1. **Intro**: the repo name, the date range in plain English ("Oct 4 – Oct 5, 2026") and how many commits there are to unwrap, plus whose story it is when you pass `--author` (the part of the email before the `@` only: "Starring ada.").
 2. **Totals**: commits, a lines added vs. removed bar, active days and files touched (and contributors, when there is more than one).
 3. **Power hour**: the hour of the day you commit the most, with a 24-hour bar chart and a Monday-to-Sunday weekday chart (hover a bar in `wrapped.html` for its count).
 4. **Streak**: your longest run of consecutive days with a commit, with a longest vs. current bar comparison.
-5. **Activity**: a GitHub-style calendar of commits per day (weeks as rows, Monday to Sunday, brighter the busier the day), with your number of active days and your busiest day. Hover a day in `wrapped.html` for its count. It covers up to the last 53 weeks of your history.
+5. **Activity**: a GitHub-style calendar of commits per day (weeks as rows, Monday to Sunday, brighter the busier the day), with your number of active days and your busiest day. Hover a day in `wrapped.html` for its count. It covers up to the last 53 weeks of your history. For a repo that went quiet more than a month ago it says "12 months to Apr 2021" instead of "Your last 12 months".
 6. **Hot files**: the five files you edit most as a bar list. Lockfiles, build output (`dist/`, `build/`, ...), dependency folders, vendored code (a root `vendor/` or `third_party/`), minified files and test snapshots (`*.snap`, `__snapshots__/`) are ignored.
-7. **Languages**: your top programming language and its share of the lines you changed ("72% · Mostly TypeScript", or "Led by" under half, with ties named), with bars for your top five languages plus "Other". Data formats (JSON, YAML, ...) and prose (Markdown, ...) show in the bars, but they only lead the card when there's no code at all. Languages come from file extensions and well-known names like `Dockerfile` and `Makefile` (about 85 built in); lockfiles, build output, vendored code, test snapshots and binary files are left out, as for hot files.
+7. **Languages**: your top programming language and its share of the lines you changed ("72% · Mostly TypeScript", or "Led by" under half, with ties named), with bars for your top five languages plus "Other". Data formats (JSON, YAML, ...) and prose (Markdown, ...) show in the bars, but they only lead the card when there's no code at all. Languages come from file extensions and well-known names like `Dockerfile` and `Makefile` (86 built in); lockfiles, build output, vendored code, test snapshots and binary files are left out, as for hot files.
 8. **Message hall of fame**: your favorite word, your longest and shortest messages, and how many "fix", "wip" and "oops" commits you made.
 9. **Personality**: Night Owl, Early Bird, Friday Deployer, Fixaholic, Weekend Warrior or Steady Shipper, with a one-line roast and bars for your top habit scores.
 10. **Outro**: a summary card to post: commits, power hour, best streak and personality tiles, plus your hottest file.
@@ -45,7 +45,9 @@ You also get:
   in your browser. If the browser can't draw it, you get the SVG instead. **SVG**
   downloads `NN-<card>.svg`. **Share** appears only where the browser supports the
   system share sheet. It shares the PNG when it can, and otherwise the title text, never
-  a link. Press **?** (or the ? button) for the list of keyboard shortcuts.
+  a link. Press **?** (or the ? button) for the list of keyboard shortcuts. Single-key
+  shortcuts never fire with Ctrl, Alt or Cmd held, or while typing in a text field.
+  Screen readers get each card's content as text too (its headline, numbers and lists).
 - **PNGs**: each card as a 1080x1920 PNG, plus a 1200x630 `share.png` summary for link
   previews and social posts.
 - **Terminal recap**: commits, active days, lines, power hour, streak, hottest file,
@@ -99,7 +101,7 @@ gitwrapped [path] [options]
 | `--max-commits <n>`   | Analyze at most the n most recent commits that match the other filters (default: 50000) |
 | `--no-png`            | Skip PNG rendering (faster; SVG + HTML only)                                           |
 | `--json`              | Also write every computed stat to `<out>/stats.json` (see [JSON output](#json-output)) |
-| `--open`              | Open `<out>/wrapped.html` in your default browser when done and print `Opening <path>` (`open` on macOS, `xdg-open` on Linux, `rundll32 url.dll,FileProtocolHandler <file:// URL>` on Windows). If that fails, gitwrapped prints a one-line warning with the path and still exits 0 |
+| `--open`              | Open `<out>/wrapped.html` in your default browser when done, printing `Opening <path>…` first (`open` on macOS, `xdg-open` on Linux, `rundll32 url.dll,FileProtocolHandler <file:// URL>` on Windows). It waits at most 1.5 seconds for that command (never for the browser): if it can't be started or exits with an error in that time, gitwrapped prints a one-line warning with the path and still exits 0 |
 | `--no-color`          | Plain console output (also: `NO_COLOR=1`; `FORCE_COLOR=1` forces color)               |
 | `-h`, `--help`        | Show help and exit                                                                     |
 | `-v`, `--version`     | Show the version and exit                                                              |
@@ -200,8 +202,13 @@ is left as it is.
   script), so the browser won't load anything from the network either.
 - **What the output contains.** Cards, `wrapped.html` and (with `--json`) `stats.json`
   show commit subjects and repo-relative file paths; `stats.json` also lists commit
-  hashes (the longest and shortest message) and, when you pass `--author`, that email.
-  Check them before you share output from a private repo. No absolute paths from your machine are written.
+  hashes (the longest and shortest message) and, when you pass `--author`, that email in
+  `filters.author`. The cards, share image and `wrapped.html` show only the part of the
+  `--author` email before the first `@` ("ada" for `ada@example.com`), never an address
+  or domain: for `Name <email>` just the name, for a regex alternation (`a@x.io|b@y.io`)
+  the first alternative's local part, and for `@example.com` no author at all.
+  Check the output before you share it from a private repo. No absolute paths from your
+  machine are written.
 
 ## How it works
 
@@ -243,8 +250,11 @@ is left as it is.
   `stats.json` records the day as `asOf`.
 - **Future-dated commits** (a wrong clock or author date): a day more than one day after
   today can't end or extend your current streak, and the activity calendar stops at
-  tomorrow, so one bad date doesn't hide your real last 12 months. Those commits still
-  count in the totals and the longest streak.
+  tomorrow, so one bad date doesn't hide your real last 12 months. Nor does it stretch
+  the date range on the cards (intro, footers, share image), and days after tomorrow
+  never make the longest streak shown on the cards and in the recap, or the Steady
+  Shipper span and streak. Those commits still count in the totals, and `stats.json`
+  keeps the raw values (`totals.lastDay`, `streaks.longest`).
 - **Output folder safety:** gitwrapped only deletes files (old card files, and with
   `--no-png` the PNGs of an earlier run) in a folder that already holds a `wrapped.html`
   from an earlier run, and only regular files with its own names. It won't write or
@@ -259,6 +269,9 @@ is left as it is.
 - **Empty repo** (no commits yet) or a filter that matches nothing (`--since`,
   `--until`, `--year`, `--author`): you still get a full card set with friendly empty
   copy. The recap says "No commits found", names the filters, and the exit code is 0.
+- **Only the current branch is read** (`git log` from HEAD). If HEAD has no commits
+  yet (a new or orphan branch) but other branches or tags exist, the recap says so and
+  suggests checking out a branch with history.
 - **No git:** if `git` isn't on your PATH, gitwrapped says so. On Windows, PATH has to
   point at `git.exe`; a `git.cmd` or `git.bat` wrapper can't be started directly.
 - **Not a repo:** a missing path, a file, or a folder that isn't a git repository each

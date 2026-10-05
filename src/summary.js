@@ -1,6 +1,7 @@
 // The console recap printed after a run: a short Wrapped-style summary plus where the
 // output went. Pure string building; colors are raw ANSI escapes (no dependencies).
 
+import { shownLongest } from './stats/daily.js';
 import { languageHeadline } from './stats/languages.js';
 
 const ESC = '\x1b[';
@@ -39,17 +40,32 @@ function painter(color) {
 }
 
 // C0 and C1 control characters (incl. ESC, CSI, BEL, CR): a commit message, file name or
-// repo name could otherwise inject terminal escape sequences into the recap.
-const CONTROL = /[\x00-\x1f\x7f-\x9f]/g;
+// repo name could otherwise inject terminal escape sequences into the recap. Also the
+// bidi embedding / override / isolate controls (U+202A-202E, U+2066-2069), which can make
+// text display in a different order than it is stored ("Trojan Source"), and the Unicode
+// line / paragraph separators (U+2028, U+2029).
+const CONTROL = /[\x00-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069\u2028\u2029]/g;
 
 /** `s` as a string with every control character removed (safe to print). */
 export function stripControl(s) {
   return String(s ?? '').replace(CONTROL, '');
 }
 
-/** 1234567 → "1,234,567"; anything not a finite number → "0". */
+/**
+ * A line count with a sign, like the cards: 12 → "+12" / "−12". 0, anything that rounds
+ * to 0, a negative count (never valid) or not a number → "0", so the recap never prints
+ * "−0", "+-3" or "−-3".
+ */
+function signed(n, sign) {
+  const s = num(Number.isFinite(n) && n > 0 ? n : 0);
+  return s === '0' ? s : `${sign}${s}`;
+}
+
+/** 1234567 → "1,234,567"; anything not a finite number → "0"; never "-0" (−0.4 → "0"). */
 function num(n) {
-  return Number.isFinite(n) ? Math.round(n).toLocaleString('en-US') : '0';
+  if (!Number.isFinite(n)) return '0';
+  const r = Math.round(n);
+  return (r === 0 ? 0 : r).toLocaleString('en-US');
 }
 
 function plural(n, one, many = `${one}s`) {
@@ -80,11 +96,13 @@ function shortWord(w, max = 32) {
  * - paths: {html, cardsDir, cardCount, pngDir, pngCount, sharePng, shareSvg, statsJson}
  *   (pngDir / sharePng null when PNGs were not written; statsJson only with --json)
  * - notes: extra notice lines (e.g. the commit cap), shown in yellow
+ * - today: 'YYYY-MM-DD'; when given, the longest streak leaves out future-dated days
+ *   (after today + 1), as on the cards (see stats/daily.js shownLongest)
  * The first line is always `gitwrapped: N commits → <html>` (no color), so it is easy
  * to grep. Every text value is stripped of control characters (stripControl), so repo
  * data cannot inject terminal escapes. Returns the whole recap, newline-terminated.
  */
-export function formatSummary(stats, { color = false, repoName, window, streakAtWindowEnd = false, paths = {}, notes = [] } = {}) {
+export function formatSummary(stats, { color = false, repoName, window, streakAtWindowEnd = false, paths = {}, notes = [], today } = {}) {
   const c = painter(color);
   const t = stats?.totals ?? {};
   const commits = Number.isFinite(t.commits) ? t.commits : 0;
@@ -101,7 +119,7 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     const name = repoName ? `${sc(repoName)} ` : '';
     const win = window ? c('dim', ` · ${sc(window)}`) : '';
     lines.push(`  ${c('bold', c('magenta', `★ ${name}Wrapped`))}${win}`);
-    const lineStats = `${c('green', `+${num(t.linesAdded)}`)} / ${c('red', `−${num(t.linesRemoved)}`)} lines`;
+    const lineStats = `${c('green', signed(t.linesAdded, '+'))} / ${c('red', signed(t.linesRemoved, '−'))} lines`;
     lines.push(`  ${c('bold', plural(commits, 'commit'))} · ${plural(t.activeDays ?? 0, 'active day')} · ${lineStats}`);
 
     const h = stats?.habits ?? {};
@@ -111,7 +129,8 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     }
 
     const s = stats?.streaks ?? {};
-    const longest = s.longest?.length ?? 0;
+    // Like the cards: with `today`, future-dated days do not make the longest streak.
+    const longest = shownLongest(stats, today)?.length ?? 0;
     if (longest > 0) {
       const current = s.current?.length ?? 0;
       const cur = current > 0 ? ` · ${streakAtWindowEnd ? 'at window end' : 'current'} ${plural(current, 'day')}` : '';

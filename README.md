@@ -9,10 +9,13 @@ set of shareable story cards. Everything runs locally, and you don't need an API
 npx @furkycl/gitwrapped
 ```
 
-<!-- TODO: replace with docs/hero.gif (screen recording of wrapped.html) -->
-![gitwrapped story cards](docs/self-wrapped/share.png)
+<p align="center">
+  <img src="docs/hero.gif" width="360" alt="gitwrapped's nine story cards playing one after another, like a story reel">
+</p>
 
-See gitwrapped's own Wrapped: [docs/self-wrapped/](docs/self-wrapped/) has the cards from running it on this repo.
+See gitwrapped's own Wrapped: [docs/self-wrapped/](docs/self-wrapped/) has the cards from
+running it on this repo, plus the 1200x630 [`share.png`](docs/self-wrapped/share.png)
+summary image it made for link previews.
 
 ## What you get
 
@@ -195,7 +198,15 @@ npm ci
 npm test                               # node:test, no extra test framework
 node scripts/make-fixture-repo.js      # build the deterministic fixture repo, print its path
 node scripts/preview-cards.js [dir]    # render fixture cards to ./cards-preview to eyeball them
+npm run self-wrapped                   # regenerate docs/self-wrapped/ from this repo's history
+npm run hero-gif                       # rebuild docs/hero.gif from docs/self-wrapped/cards
 ```
+
+`npm run hero-gif` (`scripts/make-hero-gif.js`) rasterizes every `*.svg` card in
+`--cards` (in file-name order) to 360x640 frames and encodes a looping GIF, offline. It
+takes `--cards <dir>`, `--out <file>`, `--width <px>` (up to 1080) and `--help`. Frames use
+your system fonts, so a rebuild on another OS can differ slightly. Its GIF encoder, [`gifenc`](https://github.com/mattdesl/gifenc), is a
+dev dependency only and is not part of the published package.
 
 Tests create throwaway git repos, so git needs a `user.name` and `user.email`. Keep the
 project local-only, dependency-light, and plain ESM on Node >= 20.

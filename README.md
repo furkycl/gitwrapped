@@ -168,6 +168,9 @@ NO_COLOR=1 npx @furkycl/gitwrapped --no-png | head -1
 - **Fonts:** cards use the system sans-serif stack. Missing fonts fall back to DejaVu
   Sans on Linux, Helvetica on macOS or Segoe UI on Windows, so PNGs can look slightly
   different from one machine to another.
+- **Known issue (macOS PNGs):** resvg 2.6.2 can draw a color emoji (e.g. 🚀 in a file
+  name or repo name) far to the right of its text, sometimes past the card edge. The
+  SVG cards and `wrapped.html` are not affected. A fix is tracked in the roadmap.
 
 ## Built by an autonomous agent loop
 
@@ -185,7 +188,7 @@ time. Everything the agent knows lives in [`.loop/`](.loop/):
 A scheduled task starts a new session every hour. Each turn creates a `loop/NNN-*`
 branch and runs three subagents: a **builder** implements the task, a **tester** writes
 `node:test` tests and runs `npm test`, and a **reviewer** reads the diff cold against
-the task and the rules. The turn then opens a PR once tests pass (and waits for CI on Node 20 and 22),
+the task and the rules. The turn then opens a PR once tests pass (and waits for CI on Linux, macOS and Windows × Node 20 and 22),
 squash-merges it, and records the result in `STATE.md`. A `.loop/STOP` file halts the
 loop, and `.loop/DONE` marks the project finished.
 

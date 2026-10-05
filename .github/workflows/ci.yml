@@ -19,6 +19,7 @@ jobs:
         node-version: [20, 22]
     steps:
       - name: Keep LF line endings on checkout (Windows)
+        if: runner.os == 'Windows'
         run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

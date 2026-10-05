@@ -73,11 +73,11 @@ gitwrapped [path] [options]
 
 | Argument / option     | What it does                                                                           |
 |-----------------------|----------------------------------------------------------------------------------------|
-| `path`                | Path to the git repository (default: `.`)                                              |
+| `path`                | Path to the git repository (default: `.`; an empty path also means `.`)               |
 | `--since YYYY-MM-DD`  | Only include commits on or after this date (from your local midnight)                  |
-| `--author <email>`    | Only include commits by this author email (exact email match, case-insensitive)        |
+| `--author <email>`    | Only include commits by this author email (exact, case-insensitive match against the email after `.mailmap` is applied) |
 | `--out <dir>`         | Output directory (default: `gitwrapped-out`, created if needed)                        |
-| `--max-commits <n>`   | Analyze at most the n most recent commits (default: 50000)                             |
+| `--max-commits <n>`   | Analyze at most the n most recent commits (default: 50000; also applies with `--since`) |
 | `--no-png`            | Skip PNG rendering (faster; SVG + HTML only)                                           |
 | `--no-color`          | Plain console output (also: `NO_COLOR=1`; `FORCE_COLOR=1` forces color)               |
 | `-h`, `--help`        | Show help and exit                                                                     |
@@ -116,7 +116,8 @@ NO_COLOR=1 npx gitwrapped --no-png | head -1
 ## How it works
 
 1. **Read.** One `git log --numstat` call (no shell, arguments passed directly) reads the
-   hash, author, email, date, subject and per-file line counts of each commit.
+   hash, author, email (after `.mailmap`), date, parents, subject and per-file line
+   counts of each commit.
 2. **Stats.** Totals, time habits, streaks, hot files, message stats and a rule-based
    personality are computed in plain JavaScript. Hours, weekdays and days use each
    commit's **author-local time**, so a 23:00 commit counts as 23:00 for the person
@@ -129,15 +130,28 @@ NO_COLOR=1 npx gitwrapped --no-png | head -1
 - **Big repos:** only the 50,000 most recent commits are analyzed by default, and the
   recap says so. You can change this with `--max-commits n`. If `git log` output is
   still too large, gitwrapped asks you to narrow it with `--since` or `--author`.
+- **`--since`** keeps every commit *authored* on or after the date, even ones that sit
+  behind older commits in the history. On git 2.37+ git pre-filters with
+  `--since-as-filter` a week before the date (committer dates can lag author dates), and
+  the exact author-date filter runs in JavaScript. Older git does all the filtering in
+  JavaScript, so `--max-commits` can't shorten the read there.
+- **Authors** are counted by their `.mailmap` identity, so one person with two emails
+  mapped together counts once, and `--author` matches the mapped email. If `--author`
+  matches nothing and isn't an email address, the recap reminds you it expects one.
 - **Empty repo** (no commits yet) or a filter that matches nothing: you still get a
   full card set with friendly empty copy. The recap says "No commits found" and the
   exit code is 0.
+- **No git:** if `git` isn't on your PATH, gitwrapped says so. On Windows, PATH has to
+  point at `git.exe`; a `git.cmd` or `git.bat` wrapper can't be started directly.
 - **Not a repo:** a missing path, a file, or a folder that isn't a git repository each
   exit with code 1 and a one-line error. If git refuses a repo owned by another user
   ("dubious ownership"), gitwrapped prints the `git config --global --add safe.directory`
   command that allows it.
-- **Renames** are counted as a delete plus an add, and merge commits are skipped in the
-  message stats.
+- **Renames** are counted as a delete plus an add. Merge commits (more than one parent)
+  are skipped in the message stats and in the Fixaholic share.
+- **Submodules:** bumping a submodule is not counted as a file edit.
+- **Shallow clones** (`git clone --depth`): the oldest fetched commit would otherwise
+  count the whole tree as added, so its line counts are skipped and the recap says so.
 - **Fonts:** cards use the system sans-serif stack. Missing fonts fall back to DejaVu
   Sans on Linux, Helvetica on macOS or Segoe UI on Windows, so PNGs can look slightly
   different from one machine to another.

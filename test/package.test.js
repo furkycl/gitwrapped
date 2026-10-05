@@ -26,7 +26,7 @@ function npmPackFiles() {
 }
 
 test('package.json has the fields npm publish needs', () => {
-  assert.equal(pkg.name, 'gitwrapped');
+  assert.equal(pkg.name, '@furkycl/gitwrapped');
   assert.match(pkg.version, /^\d+\.\d+\.\d+$/);
   assert.equal(pkg.type, 'module');
   assert.equal(pkg.license, 'MIT');
@@ -42,6 +42,25 @@ test('package.json has the fields npm publish needs', () => {
   }
   // CLI-only package: no library entry point to keep in sync.
   assert.equal(pkg.main, undefined);
+});
+
+test('package is scoped, publishes publicly, and keeps the gitwrapped command', () => {
+  // `gitwrapped` on npm belongs to someone else, so the package is scoped.
+  assert.equal(pkg.name, '@furkycl/gitwrapped');
+  // Scoped packages are private by default; public access is required to publish.
+  assert.equal(pkg.publishConfig?.access, 'public');
+  // The installed command name stays `gitwrapped`.
+  assert.deepEqual(pkg.bin, { gitwrapped: 'bin/gitwrapped.js' });
+  const lock = JSON.parse(readFileSync(new URL('../package-lock.json', import.meta.url), 'utf8'));
+  assert.equal(lock.name, pkg.name);
+  assert.equal(lock.packages[''].name, pkg.name);
+});
+
+test('README install/run instructions use the scoped package name', () => {
+  assert.doesNotMatch(readme, /npx\s+gitwrapped\b/, 'no bare `npx gitwrapped`');
+  assert.doesNotMatch(readme, /npm\s+(i|install)\s+(-g|--global)\s+gitwrapped\b/, 'no bare `npm i -g gitwrapped`');
+  assert.ok(readme.includes('npx @furkycl/gitwrapped'));
+  assert.ok(readme.includes('npm i -g @furkycl/gitwrapped'));
 });
 
 test('engines requires Node >= 20', () => {

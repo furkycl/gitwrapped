@@ -5,7 +5,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildCards, buildCardSpecs, footerText, formatDateRange, formatDay, renderCard, renderShareCard, layoutCard } from '../src/cards/index.js';
 import { compactNumber, CONTENT_BOTTOM, CONTENT_TOP, FOOTER_TOP, fitCount, measureText, truncateMiddle } from '../src/cards/svg.js';
-import { computeStats } from '../src/stats/index.js';
+import { computeStats, percentShares } from '../src/stats/index.js';
 
 const TODAY = '2026-10-05';
 const INJECT = `<script>&"'`;
@@ -58,6 +58,22 @@ function emojiStats() {
   return s;
 }
 
+/** normalStats() with a hand-made languages stat: `[name, lines, files]` rows. */
+function languageStats(rows, basis = 'lines') {
+  const s = normalStats();
+  const shares = percentShares(rows.map(([, lines, files]) => (basis === 'files' ? files : lines)));
+  s.languages = {
+    totalLines: rows.reduce((n, r) => n + r[1], 0),
+    totalFiles: rows.reduce((n, r) => n + r[2], 0),
+    basis,
+    languages: rows.map(([name, lines, files], i) => ({ name, lines, files, share: shares[i] })),
+  };
+  return s;
+}
+
+const MANY_LANGUAGES = ['TypeScript', 'JavaScript', 'Python', 'Go', 'Rust', 'Java', 'Kotlin', 'Swift', 'C++', 'Ruby', 'Other']
+  .map((name, i) => [name, 9_007_199_254_740 - i * 1_000_000_000, 1e9 - i]);
+
 const SCENARIOS = [
   ['normal', () => normalStats(), { repoName: 'demo' }],
   ['empty', () => computeStats([], { today: TODAY }), { repoName: 'empty-repo' }],
@@ -66,6 +82,12 @@ const SCENARIOS = [
   ['emoji', emojiStats, { repoName: '🚀🚀🚀 rocket repo 🚀🚀🚀', author: '👩‍💻' }],
   ['window + long repo', () => normalStats(), { repoName: 'my-really-quite-long-repository-name'.repeat(3), since: '2025-01-03', until: '2025-03-09', author: 'ada@example.com', today: TODAY }],
   ['year + long repo', () => normalStats(), { repoName: 'R'.repeat(120), since: '2025-01-01', until: '2025-12-31', today: TODAY }],
+  ['many languages', () => languageStats(MANY_LANGUAGES), { repoName: 'polyglot' }],
+  ['long language names', () => languageStats([[`Protocol Buffers ${'W'.repeat(80)}`, 50, 3], [`${INJECT} ${'M'.repeat(120)}`, 50, 2], ['Jupyter Notebook', 1, 1], ['Other', 7, 900]]), { repoName: 'long' }],
+  ['single language', () => languageStats([['Rust', 1234, 12]]), { repoName: 'one' }],
+  ['no code languages', () => languageStats([['Other', 40, 3]]), { repoName: 'none' }],
+  ['four-way tie + data', () => languageStats([['JSON', 900, 4], ['Go', 5, 1], ['Rust', 5, 1], ['Zig', 5, 1], ['C', 5, 1], ['YAML', 1, 1]]), { repoName: 'tie' }],
+  ['languages by files', () => languageStats([['Markdown', 0, 3], ['Shell', 0, 1]], 'files'), { repoName: 'zero-lines' }],
 ];
 
 describe('footer keeps the date window whole', () => {
@@ -136,7 +158,7 @@ describe('decoration', () => {
     assert.ok(!renderShareCard(normalStats(), { repoName: 'demo' }).includes('stroke'));
   });
 
-  test('cards carry a faint card-number watermark 01..09', () => {
+  test('cards carry a faint card-number watermark 01..10', () => {
     buildCards(normalStats(), { repoName: 'demo' }).forEach(({ svg }, i) => {
       const n = String(i + 1).padStart(2, '0');
       assert.match(svg, new RegExp(`fill-opacity="0\\.12"[^>]*>${n}</text>`));
@@ -165,7 +187,7 @@ describe('layout', () => {
   for (const [name, make, opts] of SCENARIOS) {
     test(`${name}: blocks stay in the content area, never overlap, and draw inside their box`, () => {
       const cards = buildCards(make(), opts);
-      assert.equal(cards.length, 9);
+      assert.equal(cards.length, 10);
       for (const { id, svg } of cards) {
         assert.ok(!/NaN|undefined|Infinity/.test(svg), `${name}/${id}: bad number`);
       }

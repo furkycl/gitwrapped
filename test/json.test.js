@@ -109,7 +109,7 @@ describe('generate / run with --json', () => {
     // maxCommits is the cap in effect (the default here).
     assert.deepEqual(doc.filters, { since: null, until: null, author: null, maxCommits: 50000 });
     assert.equal(doc.truncated, false);
-    assert.deepEqual(Object.keys(doc.stats), ['totals', 'habits', 'streaks', 'daily', 'hotFiles', 'messages', 'personality']);
+    assert.deepEqual(Object.keys(doc.stats), ['totals', 'habits', 'streaks', 'daily', 'hotFiles', 'languages', 'messages', 'personality']);
     assert.deepEqual(doc.stats, toJsonSafe(r.stats));
     assert.equal(doc.stats.totals.commits, fx.commits.length);
     assert.deepEqual(doc.stats, JSON.parse(JSON.stringify(r.stats)));

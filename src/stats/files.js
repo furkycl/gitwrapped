@@ -29,6 +29,7 @@ const ALWAYS_IGNORED_DIRS = new Set([
   '.turbo',
   '.parcel-cache',
   '.svelte-kit',
+  '__snapshots__',
 ]);
 
 /**
@@ -39,19 +40,30 @@ const ALWAYS_IGNORED_DIRS = new Set([
 const BUILD_DIRS = new Set(['dist', 'build', 'out', 'coverage', 'target']);
 const MONOREPO_ROOTS = new Set(['packages', 'apps']);
 
+/**
+ * Vendored third-party code. `vendor/` is also a common app folder name in some
+ * frameworks deeper in the tree, so only the repo-root folder counts.
+ */
+const ROOT_VENDOR_DIRS = new Set(['vendor', 'third_party']);
+
 /** Minified bundles and JS/CSS source maps, matched against the basename. */
-const GENERATED = /\.(?:min\.js|min\.css|(?:js|mjs|cjs|css)\.map)$/;
+const GENERATED = /\.(?:min\.js|min\.css|(?:js|mjs|cjs|css)\.map|snap)$/;
 
 /** A line count as a non-negative finite number; anything else → 0. */
 const count = (n) => (typeof n === 'number' && Number.isFinite(n) && n > 0 ? n : 0);
 
 /**
- * True for paths that should not count as "hot files": lockfiles (by basename), anything
- * under a dependency / cache directory at any depth (`node_modules`, `.next`, ...), anything
- * under a generic build directory (`dist`, `build`, `out`, `coverage`, `target`) at the repo
- * root or a monorepo package root (`packages/x/dist/...`), and minified / source-map files
- * (`*.min.js`, `*.min.css`, `*.js.map`, `*.css.map`). Only directory segments are checked,
- * never the file name. Paths use '/' as git prints them.
+ * True for paths that should not count as "hot files" (or toward languages):
+ * - lockfiles, by basename;
+ * - anything under a dependency / cache directory at any depth (`node_modules`, `.next`,
+ *   `__pycache__`, jest `__snapshots__`, ...);
+ * - anything under a repo-root `vendor/` or `third_party/` directory (vendored code);
+ * - anything under a generic build directory (`dist`, `build`, `out`, `coverage`, `target`)
+ *   at the repo root or a monorepo package root (`packages/x/dist/...`);
+ * - minified files, JS/CSS source maps and test snapshots (`*.min.js`, `*.min.css`,
+ *   `*.js.map`, `*.css.map`, `*.snap`).
+ * Only directory segments are checked against the directory rules, never the file name.
+ * Paths use '/' as git prints them.
  * Invalid input policy: a non-string or empty path → true (ignored, never throws).
  */
 export function isIgnoredPath(path) {
@@ -61,7 +73,7 @@ export function isIgnoredPath(path) {
   if (LOCKFILES.has(base) || GENERATED.test(base)) return true;
   const dirs = segments.slice(0, -1);
   if (dirs.some((s) => ALWAYS_IGNORED_DIRS.has(s))) return true;
-  if (BUILD_DIRS.has(dirs[0])) return true;
+  if (BUILD_DIRS.has(dirs[0]) || ROOT_VENDOR_DIRS.has(dirs[0])) return true;
   return MONOREPO_ROOTS.has(dirs[0]) && dirs.length >= 3 && BUILD_DIRS.has(dirs[2]);
 }
 

@@ -19,17 +19,18 @@ summary image it made for link previews.
 
 ## What you get
 
-Nine 1080x1920 story cards:
+Ten 1080x1920 story cards:
 
 1. **Intro**: the repo name, the date range in plain English ("Oct 4 – Oct 5, 2026") and how many commits there are to unwrap, plus whose story it is when you pass `--author`.
 2. **Totals**: commits, a lines added vs. removed bar, active days and files touched (and contributors, when there is more than one).
 3. **Power hour**: the hour of the day you commit the most, with a 24-hour bar chart and a Monday-to-Sunday weekday chart (hover a bar in `wrapped.html` for its count).
 4. **Streak**: your longest run of consecutive days with a commit, with a longest vs. current bar comparison.
 5. **Activity**: a GitHub-style calendar of commits per day (weeks as rows, Monday to Sunday, brighter the busier the day), with your number of active days and your busiest day. Hover a day in `wrapped.html` for its count. It covers up to the last 53 weeks of your history.
-6. **Hot files**: the five files you edit most as a bar list (lockfiles and build output are ignored).
-7. **Message hall of fame**: your favorite word, your longest and shortest messages, and how many "fix", "wip" and "oops" commits you made.
-8. **Personality**: Night Owl, Early Bird, Friday Deployer, Fixaholic, Weekend Warrior or Steady Shipper, with a one-line roast and bars for your top habit scores.
-9. **Outro**: a summary card to post: commits, power hour, best streak and personality tiles, plus your hottest file.
+6. **Hot files**: the five files you edit most as a bar list. Lockfiles, build output (`dist/`, `build/`, ...), dependency folders, vendored code (a root `vendor/` or `third_party/`), minified files and test snapshots (`*.snap`, `__snapshots__/`) are ignored.
+7. **Languages**: your top programming language and its share of the lines you changed ("72% · Mostly TypeScript", or "Led by" under half, with ties named), with bars for your top five languages plus "Other". Data formats (JSON, YAML, ...) and prose (Markdown, ...) show in the bars, but they only lead the card when there's no code at all. Languages come from file extensions and well-known names like `Dockerfile` and `Makefile` (about 85 built in); lockfiles, build output, vendored code, test snapshots and binary files are left out, as for hot files.
+8. **Message hall of fame**: your favorite word, your longest and shortest messages, and how many "fix", "wip" and "oops" commits you made.
+9. **Personality**: Night Owl, Early Bird, Friday Deployer, Fixaholic, Weekend Warrior or Steady Shipper, with a one-line roast and bars for your top habit scores.
+10. **Outro**: a summary card to post: commits, power hour, best streak and personality tiles, plus your hottest file.
 
 You also get:
 
@@ -39,7 +40,7 @@ You also get:
   last card, and you can swipe on touch screens. To pause auto-advance, press and hold
   the card, use the pause button, or press P or K. You can link to a card with
   `wrapped.html#3`. Auto-advance is off when your system prefers reduced motion.
-  A toolbar under the story shows which card you're on (for example `3 / 9`) and saves the
+  A toolbar under the story shows which card you're on (for example `3 / 10`) and saves the
   current card. **PNG** (or press D) downloads it as a 1080x1920 `NN-<card>.png`, drawn
   in your browser. If the browser can't draw it, you get the SVG instead. **SVG**
   downloads `NN-<card>.svg`. **Share** appears only where the browser supports the
@@ -48,14 +49,14 @@ You also get:
 - **PNGs**: each card as a 1080x1920 PNG, plus a 1200x630 `share.png` summary for link
   previews and social posts.
 - **Terminal recap**: commits, active days, lines, power hour, streak, hottest file,
-  top word and personality, printed right after the run.
+  top language, top word and personality, printed right after the run.
 - **JSON** (optional, `--json`): every computed stat in `stats.json`, for your own
   dashboards and scripts.
 
 ```
 gitwrapped-out/
   wrapped.html          # the story: open it in any browser
-  cards/01-intro.svg    # 01-intro … 09-outro, 1080x1920 SVG
+  cards/01-intro.svg    # 01-intro … 10-outro, 1080x1920 SVG
   png/01-intro.png      # the same cards as PNG, ready to post
   share.png             # 1200x630 summary image
   share.svg             # the same summary as SVG
@@ -98,6 +99,7 @@ gitwrapped [path] [options]
 | `--max-commits <n>`   | Analyze at most the n most recent commits that match the other filters (default: 50000) |
 | `--no-png`            | Skip PNG rendering (faster; SVG + HTML only)                                           |
 | `--json`              | Also write every computed stat to `<out>/stats.json` (see [JSON output](#json-output)) |
+| `--open`              | Open `<out>/wrapped.html` in your default browser when done and print `Opening <path>` (`open` on macOS, `xdg-open` on Linux, `rundll32 url.dll,FileProtocolHandler <file:// URL>` on Windows). If that fails, gitwrapped prints a one-line warning with the path and still exits 0 |
 | `--no-color`          | Plain console output (also: `NO_COLOR=1`; `FORCE_COLOR=1` forces color)               |
 | `-h`, `--help`        | Show help and exit                                                                     |
 | `-v`, `--version`     | Show the version and exit                                                              |
@@ -116,6 +118,9 @@ npx @furkycl/gitwrapped --year 2025
 
 # A custom window: the first quarter
 npx @furkycl/gitwrapped --since 2026-01-01 --until 2026-03-31
+
+# Generate and open the story in your browser right away
+npx @furkycl/gitwrapped --open
 
 # Also export the raw numbers as JSON
 npx @furkycl/gitwrapped --json
@@ -149,7 +154,7 @@ but it does contain commit subjects and hashes and repo-relative file paths (see
 | `asOf`          | `YYYY-MM-DD` the current streak is counted up to: today, or the end of a past `--until` / `--year` window |
 | `filters`       | `{since, until, author, maxCommits}` as used (`--year` shows as since/until); dates and author are `null` when not set, `maxCommits` is the cap in effect |
 | `truncated`     | `true` when `--max-commits` cut the history short                             |
-| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `hotFiles`, `messages`, `personality` |
+| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `hotFiles`, `languages`, `messages`, `personality` |
 
 ```json
 {
@@ -162,10 +167,26 @@ but it does contain commit subjects and hashes and repo-relative file paths (see
   "stats": {
     "totals": { "commits": 412, "activeDays": 131, "linesAdded": 30211, "...": "..." },
     "streaks": { "longest": { "length": 9, "start": "2025-03-02", "end": "2025-03-10" }, "...": "..." },
+    "languages": {
+      "totalLines": 41020, "totalFiles": 212, "basis": "lines",
+      "languages": [{ "name": "TypeScript", "type": "programming", "lines": 29534, "files": 140, "share": 72 }, "..."]
+    },
     "...": "..."
   }
 }
 ```
+
+`stats.languages` lists every language found, most lines first, with `"Other"` (file
+types gitwrapped doesn't know) always last. `type` is `"programming"`, `"data"` (JSON,
+YAML, TOML, XML, INI, CSV, Protocol Buffers), `"prose"` (Markdown, MDX, Text,
+reStructuredText, AsciiDoc, TeX) or `"other"` (the Other row). `lines` is lines added plus
+removed, `files` counts distinct paths, and `share` is a whole percent of `basis`
+(`"lines"`, or `"files"` when no lines changed at all). Shares use largest-remainder
+rounding, and languages with equal amounts always get equal shares: the shares add up to
+exactly 100 unless a tie makes that impossible, and then to the closest total those
+equal shares allow (three languages tied at 1 line each: 33 + 33 + 33). `.h` headers
+count as C++ when the history has C++ sources and no `.c` files, else as C. Jupyter
+notebooks (`.ipynb`) are JSON with outputs inside, so their line counts run high.
 
 Without `--json` no stats.json is written, and one left over from an earlier `--json` run
 is left as it is.
@@ -188,7 +209,7 @@ is left as it is.
    hash, author, email (after `.mailmap`), date, parents, subject and per-file line
    counts of each commit. With `--until` / `--year` a cheap hashes-and-dates pass
    picks the commits in the window first.
-2. **Stats.** Totals, time habits, streaks, commits per day, hot files, message stats and a rule-based
+2. **Stats.** Totals, time habits, streaks, commits per day, hot files, languages, message stats and a rule-based
    personality are computed in plain JavaScript. Hours, weekdays and days use each
    commit's **author-local time**, so a 23:00 commit counts as 23:00 for the person
    who made it, whatever time zone you run gitwrapped in.

@@ -218,8 +218,9 @@ describe('buildCards', () => {
     const m = byId(cards);
     assert.ok(m.intro.includes(`my${INJECT_ESCAPED}repo`), 'repo name escaped on intro');
     assert.ok(m.intro.includes(`Ada ${INJECT_ESCAPED}`), 'author on intro');
-    // Footer is limited to 560px on one line, so the tail may be ellipsized.
-    assert.ok(m.totals.includes(`my${INJECT_ESCAPED}repo · since`), 'footer');
+    // Footer is limited to one line: the repo name is ellipsized first, the window is kept.
+    assert.ok(m.totals.includes(`>my${INJECT_ESCAPED}`), 'footer starts with the escaped repo name');
+    assert.ok(m.totals.includes(`… · since 2024 ${INJECT_ESCAPED}<`), 'footer keeps the escaped window');
     const short = byId(buildCards(fixtureStats, { repoName: 'r', since: `${INJECT}` }));
     assert.ok(short.totals.includes(`r · since ${INJECT_ESCAPED}`), 'short footer fully escaped');
     assert.ok(m.outro.includes(`my${INJECT_ESCAPED}repo`));

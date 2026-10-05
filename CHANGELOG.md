@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `--until YYYY-MM-DD`: only include commits authored on or before that day
+  (inclusive). Combines with `--since`; `--since` after `--until` is an error. git's
+  committer-date `--until` is not used: a cheap first `git log` pass of hashes and author
+  dates picks the window (and the `--max-commits` cap inside it), and only those
+  commits are read in full.
+- `--year YYYY` (1970 to 9999): a calendar-year window, the classic Wrapped (same as
+  `--since YYYY-01-01 --until YYYY-12-31`). The intro card reads "Your YYYY in git" and
+  the share image "My YYYY Git Wrapped".
+- Cards, the share image, the `wrapped.html` title and the terminal recap show the
+  requested window (e.g. "my-app · 2025", "until Mar 9, 2025"). A long repo name is
+  shortened in the footer before the window is.
+- For a window that ended before today, the current streak is the one running on the
+  window's last day (a complete day, so no grace day), shown as "at window end".
+- When a date or author filter matches nothing, the recap names the filters, and an
+  oversized `git log` suggests a narrower `--since` / `--until` / `--year` window.
+- `--json`: also write `<out>/stats.json` with every computed stat, in a stable,
+  documented shape (`schemaVersion`, `generator`, `repo`, `asOf`, `filters`,
+  `truncated`, `stats`), with no generation timestamp and no machine paths.
+
+### Changed
+
+- `--since` now compares each commit's author-local calendar day (the day the stats use)
+  instead of the machine's local midnight, so a date window gives the same commits in
+  every time zone.
+- `--since` (and `--until`) dates before 1970 are rejected with a clear message.
+
+### Fixed
+
+- `--since` in the first week of 1970 no longer sends git a pre-1970 bound it cannot parse.
+
 ## [1.0.0] - 2026-10-05
 
 First public release on npm as `@furkycl/gitwrapped`.

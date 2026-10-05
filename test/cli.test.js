@@ -111,9 +111,10 @@ describe('parseCli', () => {
       assert.equal(parseCli(['--since', '2024-02-29']).since, '2024-02-29');
     });
 
-    test('accepts leap day 2000-02-29 but rejects 1900-02-29', () => {
+    test('accepts leap day 2000-02-29 but rejects 2100-02-29; dates before 1970 are refused', () => {
       assert.equal(parseCli(['--since=2000-02-29']).since, '2000-02-29');
-      assert.throws(() => parseCli(['--since=1900-02-29']), /not a real calendar date/);
+      assert.throws(() => parseCli(['--since=2100-02-29']), /not a real calendar date/);
+      assert.throws(() => parseCli(['--since=1900-02-29']), /invalid --since "1900-02-29": dates before 1970 are not supported/);
     });
 
     test('accepts month/year boundaries', () => {

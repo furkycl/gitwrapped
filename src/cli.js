@@ -2,10 +2,11 @@ import { parseArgs, promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import { accessSync, constants as fsConstants, mkdirSync, readdirSync, readFileSync, rmdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
-import { buildCards, CARD_IDS, renderShareCard } from './cards/index.js';
+import { buildCards, CARD_IDS, renderShareCard, windowLabel } from './cards/index.js';
 import { DEFAULT_LIMIT, readHistory } from './git.js';
+import { buildStatsJson } from './json.js';
 import { renderPng } from './png.js';
-import { computeStats } from './stats/index.js';
+import { computeStats, localToday } from './stats/index.js';
 import { formatSummary, shouldUseColor } from './summary.js';
 import { buildViewerHtml } from './viewer.js';
 
@@ -22,12 +23,15 @@ Arguments:
 
 Options:
   --since YYYY-MM-DD   Only include commits on or after this date
+  --until YYYY-MM-DD   Only include commits on or before this date
+  --year YYYY          One calendar year: --since YYYY-01-01 --until YYYY-12-31
   --author <email>     Only include commits by this author email
                        (exact email match, case-insensitive, after .mailmap)
   --out <dir>          Output directory (default: "gitwrapped-out")
   --max-commits <n>    Analyze at most the n most recent commits
                        (default: 50000)
   --no-png             Skip PNG rendering (faster; SVG + HTML only)
+  --json               Also write every stat to <out>/stats.json
   --no-color           Plain console output (also: NO_COLOR=1;
                        FORCE_COLOR=1 forces color)
   -h, --help           Show this help and exit
@@ -36,30 +40,44 @@ Options:
 
 const OPTIONS = {
   since: { type: 'string' },
+  until: { type: 'string' },
+  year: { type: 'string' },
   author: { type: 'string' },
   out: { type: 'string' },
   'max-commits': { type: 'string' },
   'no-png': { type: 'boolean' },
+  json: { type: 'boolean' },
   'no-color': { type: 'boolean' },
   help: { type: 'boolean', short: 'h' },
   version: { type: 'boolean', short: 'v' },
 };
 
-function validateSince(value) {
+function validateDate(name, value) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!m) {
-    throw new Error(`invalid --since "${value}": expected format YYYY-MM-DD`);
+    throw new Error(`invalid --${name} "${value}": expected format YYYY-MM-DD`);
   }
   const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  // Same range as --year (and git cannot represent earlier dates anyway).
+  if (y < 1970) throw new Error(`invalid --${name} "${value}": dates before 1970 are not supported`);
   const date = new Date(Date.UTC(y, mo - 1, d));
   if (
     date.getUTCFullYear() !== y ||
     date.getUTCMonth() !== mo - 1 ||
     date.getUTCDate() !== d
   ) {
-    throw new Error(`invalid --since "${value}": not a real calendar date`);
+    throw new Error(`invalid --${name} "${value}": not a real calendar date`);
   }
   return value;
+}
+
+function validateYear(value) {
+  const v = value.trim();
+  const n = Number(v);
+  if (!/^\d{4}$/.test(v) || n < 1970) {
+    throw new Error(`invalid --year "${value}": expected a four-digit year from 1970 to 9999`);
+  }
+  return v;
 }
 
 function validateMaxCommits(value) {
@@ -104,8 +122,9 @@ function normalizeArgv(argv) {
 
 /**
  * Parse CLI arguments (without node/script prefix).
- * Returns {help:true}, {version:true}, or {path, since, author, out, png, maxCommits, color}
- * (color: false for --no-color, else undefined = auto).
+ * Returns {help:true}, {version:true}, or {path, since, author, out, png, maxCommits}
+ * plus, only when given: color (false for --no-color; absent = auto), until, year
+ * (--year YYYY also sets since/until to Jan 1 / Dec 31 of that year) and json (true).
  * Throws an Error with a user-facing message on invalid input.
  */
 export function parseCli(argv) {
@@ -126,21 +145,38 @@ export function parseCli(argv) {
     throw new Error(`expected at most one path, got ${positionals.length}: ${positionals.join(' ')}`);
   }
 
-  for (const name of ['since', 'author', 'out', 'max-commits']) {
+  for (const name of ['since', 'until', 'year', 'author', 'out', 'max-commits']) {
     if (values[name] !== undefined && values[name].trim() === '') {
       throw new Error(`--${name} requires a non-empty value`);
     }
   }
 
+  let since = values.since === undefined ? undefined : validateDate('since', values.since);
+  let until = values.until === undefined ? undefined : validateDate('until', values.until);
+  let year;
+  if (values.year !== undefined) {
+    if (since || until) throw new Error('--year cannot be combined with --since or --until');
+    year = validateYear(values.year);
+    since = `${year}-01-01`;
+    until = `${year}-12-31`;
+  }
+  // Both are validated YYYY-MM-DD, so string order is date order.
+  if (since && until && since > until) {
+    throw new Error(`--since ${since} is after --until ${until}`);
+  }
+
   return {
     // An empty path ("") means the current directory, like the default.
     path: positionals[0] || '.',
-    since: values.since === undefined ? undefined : validateSince(values.since),
+    since,
     author: values.author?.trim(),
     out: values.out?.trim() ?? 'gitwrapped-out',
     png: !values['no-png'],
     maxCommits: values['max-commits'] === undefined ? DEFAULT_LIMIT : validateMaxCommits(values['max-commits']),
     ...(values['no-color'] ? { color: false } : {}),
+    ...(until ? { until } : {}),
+    ...(year ? { year } : {}),
+    ...(values.json ? { json: true } : {}),
   };
 }
 
@@ -317,25 +353,48 @@ function removeOldCardFiles(dir, ext, keep) {
  * --out fails before anything is written. If the PNG renderer cannot be loaded or fails,
  * the SVG/HTML output is still written and `pngSkipped` holds the reason.
  * At most `maxCommits` (default 50,000) of the most recent commits are analyzed.
+ * `until` (YYYY-MM-DD, inclusive) ends the window; when it is before `today` (default: the
+ * machine's local date) the current streak is computed relative to `until` instead.
+ * With `json`, <out>/stats.json (see json.js) is written too.
  * Returns {commits, stats, repoName, truncated, limit, shallow, html, cardsDir, cardFiles,
- * shareSvg, pngDir, pngFiles, sharePng, pngSkipped} with the written paths (joined onto
- * `out`; PNG paths null/[] when skipped); `truncated` is true when the cap cut the history
- * short, `shallow` when the repo is a shallow clone.
+ * shareSvg, pngDir, pngFiles, sharePng, pngSkipped, statsJson, asOf, pastWindow} with the
+ * written paths
+ * (joined onto `out`; PNG paths null/[] when skipped, statsJson null without `json`);
+ * `truncated` is true when the cap cut the history short, `shallow` when the repo is a
+ * shallow clone; `asOf` is the day the current streak is relative to and `pastWindow`
+ * whether that is a past `until`.
  * `renderPng` (svg, {width}) → Promise<Buffer> replaces the PNG renderer (for tests).
  */
-export async function generate({ path, since, author, out, png = true, maxCommits = DEFAULT_LIMIT }, { today, renderPng: rasterize = renderPng } = {}) {
-  const { commits, truncated, limit, shallow } = await readHistory(path, { since, author, limit: maxCommits });
-  const stats = computeStats(commits, { today });
+export async function generate({ path, since, until, author, out, png = true, maxCommits = DEFAULT_LIMIT, json = false }, { today, renderPng: rasterize = renderPng } = {}) {
+  const { commits, truncated, limit, shallow } = await readHistory(path, { since, until, author, limit: maxCommits });
+  // A past window's "current" streak is the one running when the window closed; its end
+  // day is over, so there is no "today isn't over yet" grace day (todayComplete).
+  const ref = today ?? localToday();
+  const pastWindow = Boolean(until && /^\d{4}-\d{2}-\d{2}$/.test(until) && until < ref);
+  const asOf = pastWindow ? until : ref;
+  const stats = computeStats(commits, { today: asOf, todayComplete: pastWindow });
   const name = await repoName(path);
-  const cards = buildCards(stats, { repoName: name, since, author });
-  const shareSvg = renderShareCard(stats, { repoName: name, since, author });
+  const cards = buildCards(stats, { repoName: name, since, until, author, today: ref });
+  const shareSvg = renderShareCard(stats, { repoName: name, since, until, author });
 
   const cardsDir = join(out, 'cards');
   const pngDir = join(out, 'png');
   const html = join(out, 'wrapped.html');
   const shareSvgPath = join(out, 'share.svg');
   const sharePngPath = join(out, 'share.png');
-  const page = buildViewerHtml(cards, { title: `gitwrapped · ${name}` });
+  const statsJsonPath = json ? join(out, 'stats.json') : null;
+  const statsJson = json
+    ? buildStatsJson({
+      stats,
+      repoName: name,
+      version: readVersion(),
+      asOf,
+      filters: { since, until, author, maxCommits: limit },
+      truncated,
+    })
+    : null;
+  const label = windowLabel({ since, until });
+  const page = buildViewerHtml(cards, { title: `gitwrapped · ${name}${label ? ` · ${label}` : ''}` });
   const stem = (id, i) => `${String(i + 1).padStart(2, '0')}-${id}`;
   const files = cards.map(({ id, svg }, i) => ({ file: join(cardsDir, `${stem(id, i)}.svg`), svg }));
   const pngTargets = png ? cards.map(({ id, svg }, i) => ({ file: join(pngDir, `${stem(id, i)}.png`), svg, width: 1080 })) : [];
@@ -343,7 +402,7 @@ export async function generate({ path, since, author, out, png = true, maxCommit
 
   const dirs = [{ dir: cardsDir, what: 'cards' }];
   if (png) dirs.push({ dir: pngDir, what: 'PNGs' });
-  checkOutputPaths(out, dirs, [html, shareSvgPath, ...files.map((f) => f.file), ...pngTargets.map((t) => t.file)]);
+  checkOutputPaths(out, dirs, [html, shareSvgPath, ...(statsJsonPath ? [statsJsonPath] : []), ...files.map((f) => f.file), ...pngTargets.map((t) => t.file)]);
 
   // Rasterize before writing anything, so a renderer failure never leaves half a PNG set.
   let pngs = [];
@@ -366,6 +425,8 @@ export async function generate({ path, since, author, out, png = true, maxCommit
   if (ownsOut) removeOldCardFiles(cardsDir, 'svg', files.map((f) => basename(f.file)));
   writeOutput(shareSvgPath, shareSvg);
   writeOutput(html, page);
+  // Without --json an existing stats.json is left alone (like any file that is not a card).
+  if (statsJsonPath) writeOutput(statsJsonPath, statsJson);
   if (pngs.length > 0) {
     ensureDir(pngDir);
     for (const { file, data } of pngs) writeOutput(file, data);
@@ -391,7 +452,17 @@ export async function generate({ path, since, author, out, png = true, maxCommit
     pngFiles,
     sharePng: pngs.length > 0 ? sharePngPath : null,
     pngSkipped,
+    statsJson: statsJsonPath,
+    asOf,
+    pastWindow,
   };
+}
+
+/** The date / author filters of `opts` as CLI flags, e.g. "--year 2025 --author a@b.c". */
+function filterText({ since, until, year, author }) {
+  const parts = year ? [`--year ${year}`] : [since && `--since ${since}`, until && `--until ${until}`];
+  if (author) parts.push(`--author ${author}`);
+  return parts.filter(Boolean).join(' ');
 }
 
 /**
@@ -427,7 +498,7 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
   if (result.truncated) {
     const n = result.limit.toLocaleString('en-US');
     notes.push(
-      opts.since || opts.author
+      opts.since || opts.until || opts.author
         ? `Note: more than ${n} matching commits; only the most recent ${n} were analyzed.`
         : `Note: this repo has more than ${n} commits; only the most recent ${n} were analyzed.`,
     );
@@ -437,11 +508,15 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
   }
   if (result.commits === 0 && opts.author && !opts.author.includes('@')) {
     notes.push(`Note: no commits by "${opts.author}". --author expects an email address (e.g. you@example.com).`);
+  } else if (result.commits === 0 && (opts.since || opts.until || opts.author)) {
+    notes.push(`Note: no commits match ${filterText(opts)}.`);
   }
   stdout.write(
     formatSummary(result.stats, {
       color: shouldUseColor({ stream: stdout, env, flag: opts.color }),
       repoName: result.repoName,
+      window: windowLabel(opts),
+      streakAtWindowEnd: result.pastWindow,
       notes,
       paths: {
         html: result.html,
@@ -451,6 +526,7 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
         pngCount: result.pngFiles.length,
         sharePng: result.sharePng,
         shareSvg: result.shareSvg,
+        statsJson: result.statsJson,
       },
     }),
   );

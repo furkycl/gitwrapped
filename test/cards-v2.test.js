@@ -64,7 +64,26 @@ const SCENARIOS = [
   ['huge', hugeStats, { repoName: 'W'.repeat(300), author: `Ada ${'M'.repeat(200)}` }],
   ['long paths', longPathStats, { repoName: `my${INJECT}repo`, since: '2026-01-01' }],
   ['emoji', emojiStats, { repoName: '🚀🚀🚀 rocket repo 🚀🚀🚀', author: '👩‍💻' }],
+  ['window + long repo', () => normalStats(), { repoName: 'my-really-quite-long-repository-name'.repeat(3), since: '2025-01-03', until: '2025-03-09', author: 'ada@example.com', today: TODAY }],
+  ['year + long repo', () => normalStats(), { repoName: 'R'.repeat(120), since: '2025-01-01', until: '2025-12-31', today: TODAY }],
 ];
+
+describe('footer keeps the date window whole', () => {
+  test('a long repo name is ellipsized, the window label is not (cards and share image)', () => {
+    for (const [opts, label] of [
+      [SCENARIOS[5][2], 'Jan 3 – Mar 9, 2025'],
+      [SCENARIOS[6][2], '2025'],
+    ]) {
+      const s = normalStats();
+      for (const { id, spec } of buildCardSpecs(s, opts)) {
+        const { line } = layoutCard(spec).footer;
+        assert.ok(line.endsWith(`… · ${label}`), `${id}: ${line}`);
+      }
+      const share = renderShareCard(s, opts);
+      assert.match(share, new RegExp(`… · ${label}</text>`));
+    }
+  });
+});
 
 // --- dates & footer --------------------------------------------------------------------
 

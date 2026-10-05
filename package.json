@@ -41,7 +41,8 @@
     "prepublishOnly": "npm test",
     "preview": "node scripts/preview-cards.js",
     "self-wrapped": "node bin/gitwrapped.js . --out docs/self-wrapped --no-color",
-    "hero-gif": "node scripts/make-hero-gif.js"
+    "hero-gif": "node scripts/make-hero-gif.js",
+    "pack-smoke": "node scripts/pack-smoke.js"
   },
   "engines": {
     "node": ">=20"

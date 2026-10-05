@@ -1,6 +1,6 @@
 # STATE
 
-Next turn: 024 — M7: packed-tarball smoke test
+Next turn: 025 — M7: audit fixes
 
 | Turn | Date (UTC) | Task | PR | Result | Note for next turn |
 |------|------------|------|----|--------|--------------------|
@@ -30,3 +30,4 @@ Next turn: 024 — M7: packed-tarball smoke test
 | 022 | 2026-10-05 | M7: --until/--year + --json | https://github.com/furkycl/gitwrapped/pull/25 | done (916 tests, CI green on ubuntu/macos/windows × Node 20+22) | Window filter = author-local dayKey (git.js windowFilter), --until uses two-pass readWindow (hashes, then --no-walk --stdin numstat). Past windows: todayComplete (no grace). Footer fitKeepTail keeps window label. stats.json has asOf; maxCommits always numeric. Next: languages card (card count 9→10: update viewer/hero/self-wrapped/README) + --open. |
 | 022b | 2026-10-05 | (duplicate) M7: --until/--year | https://github.com/furkycl/gitwrapped/pull/26 | closed, not merged | Scheduled run overlapped with another loop session (session_014o34…) that shipped the same task in #25 while this run built it. No new task started this turn to avoid another collision. Next: languages card (as noted in turn 022). |
 | 023 | 2026-10-05 | M7: languages card + --open | https://github.com/furkycl/gitwrapped/pull/27 | done (978 tests, CI green on ubuntu/macos/windows × Node 20+22) | 10 cards now (07-languages). Language rows typed programming/data/prose; headline from code only; percentShares gives equal shares to ties (sum may be ≠100 with ties). --open: rundll32 + file:// on Windows. self-wrapped/hero tests still pin 9 cards — the 1.1.0 prep task must regenerate docs and update them + README hero alt. |
+| 024 | 2026-10-05 | M7: packed-tarball smoke test | https://github.com/furkycl/gitwrapped/pull/28 | done (991 tests, CI green: test ×6 + pack-smoke ×3) | scripts/pack-smoke.js + pack-smoke CI job (Node 22, 3 OSes). Cold audit run: HIGH --no-png removeStalePngs not gated by ownsOut (cli.js ~442); HIGH/MED writes follow symlinks in out dir; MED future-dated commit kills current streak + activity window; MED viewer .nav tap zones block SVG <title> hover; LOW docs 9 cards, --author email on images, --open exit code, dormant 'last 12 months' copy, personality span w/ mixed offsets, recap −0, bidi chars, a11y. 1.1.0 task split into fixes + release. |

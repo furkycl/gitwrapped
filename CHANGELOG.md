@@ -25,6 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   its output is unchanged; an unknown code is an error (exit 2). `stats.json` is
   language-neutral and identical for every `--lang`. All strings live in one table per
   language under `src/i18n/`, and a test checks every key exists in every language.
+- `--theme default|mono|neon` (also `--theme=mono`): color themes for the story cards,
+  the PNGs, the share image and the `wrapped.html` viewer chrome. `mono` is grayscale,
+  `neon` near-black with one vivid neon glow and accent bar per card; only colors
+  change, never the layout. `default` (and no `--theme`) output is byte-identical to
+  before; an unknown name is an error (exit 2). Full-opacity white text keeps a WCAG contrast of at
+  least 4.5:1 on every `mono` / `neon` background, also under panels and glows.
+  `src/cards/themes.js` exports the tables (`COLOR_THEMES`) and `contrastRatio()`.
 
 ## [1.1.0] - 2026-10-06
 

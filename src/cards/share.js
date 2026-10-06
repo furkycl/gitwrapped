@@ -2,6 +2,7 @@
 // size) in the same visual language as the story cards. Pure layout: buildShareCard() in
 // index.js turns stats into the strings drawn here.
 import { getStrings } from '../i18n/index.js';
+import { getColorTheme } from './themes.js';
 import { escapeXml, fitCount, fitKeepTail, FONT_FAMILY, measureText, sanitizeIdPrefix, textEl, THEMES, truncateStart, wrapText } from './svg.js';
 
 export const SHARE_WIDTH = 1200;
@@ -44,12 +45,12 @@ function fitSize(text, width, max, min) {
   return size >= min ? size : null;
 }
 
-function background(id, t) {
+function background(id, t, glowOpacity = 0.5) {
   const stops = t.stops.map((c, i) => `<stop offset="${(i / (t.stops.length - 1)).toFixed(2)}" stop-color="${c}"/>`).join('');
   return [
     '<defs>',
     `<linearGradient id="${id}-bg" x1="0" y1="0" x2="1" y2="1">${stops}</linearGradient>`,
-    `<radialGradient id="${id}-glow"><stop offset="0" stop-color="${t.glow}" stop-opacity="0.5"/><stop offset="1" stop-color="${t.glow}" stop-opacity="0"/></radialGradient>`,
+    `<radialGradient id="${id}-glow"><stop offset="0" stop-color="${t.glow}" stop-opacity="${glowOpacity}"/><stop offset="1" stop-color="${t.glow}" stop-opacity="0"/></radialGradient>`,
     '</defs>',
     `<rect width="${SHARE_WIDTH}" height="${SHARE_HEIGHT}" fill="url(#${id}-bg)"/>`,
     `<circle cx="1080" cy="60" r="320" fill="url(#${id}-glow)"/>`,
@@ -85,16 +86,19 @@ function tile(x, width, { label, value }, L) {
  * `{label, value}`) and `file` (`{label, path, value}` or null; `path` is shortened from
  * the start, `note` replaces the whole pill text when there is no file). Deterministic;
  * all text XML-escaped; every id starts with `idPrefix` (default `gw-share`). `lang` (an
- * src/i18n code, default 'en') sets the upper-casing rules and number format.
+ * src/i18n code, default 'en') sets the upper-casing rules and number format. `theme` is a
+ * gradient name (default 'pulse') and `colorTheme` a themes.js color theme (default
+ * 'default') it resolves in.
  */
-export function renderShareSvg({ theme: themeName, eyebrow, title, tiles, file, note, footer, idPrefix, lang } = {}) {
+export function renderShareSvg({ theme: themeName, colorTheme, eyebrow, title, tiles, file, note, footer, idPrefix, lang } = {}) {
   const L = getStrings(lang);
-  const t = Object.hasOwn(THEMES, themeName ?? '') ? THEMES[themeName] : THEMES.pulse;
+  const palette = getColorTheme(colorTheme);
+  const t = palette.gradients[Object.hasOwn(THEMES, themeName ?? '') ? themeName : 'pulse'];
   const ids = sanitizeIdPrefix(idPrefix) || 'gw-share';
   const body = [];
 
   const eb = L.upper(str(eyebrow));
-  body.push(`<rect x="${PAD}" y="56" width="56" height="8" rx="4" fill="#ffffff"/>`);
+  body.push(`<rect x="${PAD}" y="56" width="56" height="8" rx="4" fill="${t.accent ?? '#ffffff'}"/>`);
   if (eb) {
     body.push(textEl(PAD, 112, fitLine(eb, INNER, 26, 4), { size: 26, weight: 800, opacity: 0.9, spacing: 4 }));
   }
@@ -142,7 +146,7 @@ export function renderShareSvg({ theme: themeName, eyebrow, title, tiles, file, 
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${SHARE_WIDTH}" height="${SHARE_HEIGHT}" viewBox="0 0 ${SHARE_WIDTH} ${SHARE_HEIGHT}" role="img" aria-label="${label}">`,
     `<title>${label}</title>`,
-    background(ids, t),
+    background(ids, t, palette.glowOpacity?.share),
     `<g fill="#ffffff" font-family="${escapeXml(FONT_FAMILY)}">`,
     ...body,
     '</g>',

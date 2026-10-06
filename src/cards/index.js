@@ -11,9 +11,11 @@ import { daysUpTo, shownLongest } from '../stats/daily.js';
 import { hasTeamCard, shareLabel, TOP_CONTRIBUTORS } from '../stats/contributors.js';
 import { personalityReason } from '../stats/personality.js';
 import { DEFAULT_LANG, getStrings } from '../i18n/index.js';
+import { DEFAULT_COLOR_THEME, isColorTheme } from './themes.js';
 
 export { renderCard, layoutCard, wrapText, escapeXml, measureText, truncateStart, THEMES, CARD_WIDTH, CARD_HEIGHT } from './svg.js';
 export { renderShareSvg, SHARE_WIDTH, SHARE_HEIGHT } from './share.js';
+export { COLOR_THEMES, COLOR_THEME_NAMES, DEFAULT_COLOR_THEME, GRADIENT_NAMES, isColorTheme, getColorTheme, contrastRatio, relativeLuminance, blendHex } from './themes.js';
 
 /**
  * Every card id, in display order. Optional cards (OPTIONAL_CARD_IDS) are left out of a
@@ -708,6 +710,7 @@ function outro(s, ctx) {
 }
 
 const BUILDERS = { intro, totals, 'peak-hour': peakHour, streak, activity, 'hot-files': hotFiles, languages, contributors, messages, personality, outro };
+/** Each card's gradient name (resolved in the run's color theme, see themes.js). */
 const CARD_THEMES = { intro: 'pulse', totals: 'ocean', 'peak-hour': 'cosmic', streak: 'ember', activity: 'cosmic', 'hot-files': 'mint', languages: 'ocean', contributors: 'ember', messages: 'neon', personality: 'sunset', outro: 'gold' };
 
 /**
@@ -727,6 +730,8 @@ export function footerText(stats, { repoName, since, until, today, lang }) {
 /**
  * Build the full card set from computeStats() output.
  * Options: `lang` (an src/i18n code, default 'en': every string on the cards),
+ * `colorTheme` (a themes.js color theme, default 'default': the colors only; specs carry
+ * it only when it is not the default, so default output is unchanged),
  * `repoName` (default "your repo"), `since`, `until` and `author` (as passed
  * to the CLI; shown in the copy when given), and `today` ('YYYY-MM-DD', the date the
  * stats' current streak is relative to): when `until` is before `today`, the streak card
@@ -784,12 +789,15 @@ export function cardDescription(spec = {}) {
   return out.join(' ');
 }
 
+/** `{colorTheme}` for a known non-default color theme, else nothing (default specs stay as they were). */
+const colorThemeField = (name) => (isColorTheme(name) && name !== DEFAULT_COLOR_THEME ? { colorTheme: name } : {});
+
 /**
  * The renderCard() input for every card of the set (same arguments as buildCards), as
  * `[{id, spec}]` for cardIdsFor(stats), numbered 01, 02, ... in that order;
  * buildCards() renders exactly these. Useful for layout checks.
  */
-export function buildCardSpecs(stats, { repoName, since, until, author, today, lang } = {}) {
+export function buildCardSpecs(stats, { repoName, since, until, author, today, lang, colorTheme } = {}) {
   stats = stats ?? {};
   const L = getStrings(lang);
   const ctx = { L, lang: L.code, repoName: text(repoName) ?? L.yourRepo, since: text(since), until: text(until), author: text(author), today: text(today) };
@@ -800,7 +808,7 @@ export function buildCardSpecs(stats, { repoName, since, until, author, today, l
   const footer = footerText(stats, ctx);
   return cardIdsFor(stats).map((id, i) => ({
     id,
-    spec: { theme: CARD_THEMES[id], footer, number: String(i + 1).padStart(2, '0'), idPrefix: `gw-${id}`, ...(L === EN ? {} : { lang: L.code }), ...BUILDERS[id](stats, ctx) },
+    spec: { theme: CARD_THEMES[id], footer, number: String(i + 1).padStart(2, '0'), idPrefix: `gw-${id}`, ...(L === EN ? {} : { lang: L.code }), ...colorThemeField(colorTheme), ...BUILDERS[id](stats, ctx) },
   }));
 }
 
@@ -809,7 +817,7 @@ export function buildCardSpecs(stats, { repoName, since, until, author, today, l
  * repo name, four stat tiles (commits, longest streak, power hour, personality) and the
  * hottest file. Same options as buildCards(); copes with empty stats. Returns an SVG string.
  */
-export function renderShareCard(stats, { repoName, since, until, author, today, lang } = {}) {
+export function renderShareCard(stats, { repoName, since, until, author, today, lang, colorTheme } = {}) {
   stats = stats ?? {};
   const L = getStrings(lang);
   const ctx = { L, lang: L.code, repoName: text(repoName) ?? L.yourRepo, since: text(since), until: text(until), author: text(author), today: text(today) };
@@ -827,5 +835,6 @@ export function renderShareCard(stats, { repoName, since, until, author, today, 
     note: commits > 0 ? L.share.noHotFiles : L.empty,
     footer: footerText(stats, ctx),
     ...(L === EN ? {} : { lang: L.code }),
+    ...colorThemeField(colorTheme),
   });
 }

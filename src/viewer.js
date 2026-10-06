@@ -2,6 +2,7 @@
 
 import { createHash } from 'node:crypto';
 import { DEFAULT_LANG, getStrings } from './i18n/index.js';
+import { DEFAULT_COLOR_THEME, getColorTheme, isColorTheme } from './cards/themes.js';
 
 export const AUTO_ADVANCE_MS = 6000;
 
@@ -42,13 +43,16 @@ function accessibleSvg(svg, label, describedBy) {
   });
 }
 
-const CSS = `
-:root{--dur:${AUTO_ADVANCE_MS}ms;color-scheme:dark;--bg:#07070b;--fg:#fff;--muted:#c4c4d4;--track:rgba(255,255,255,.35);--focus:#ffd84d;--btn:rgba(255,255,255,.1);--btn-hover:rgba(255,255,255,.18);--line:rgba(255,255,255,.14);
+/** The page stylesheet in color theme `name`'s viewer colors (see cards/themes.js). */
+function cssFor(name) {
+  const c = getColorTheme(name).viewer;
+  return `
+:root{--dur:${AUTO_ADVANCE_MS}ms;color-scheme:dark;--bg:${c.bg};--fg:#fff;--muted:${c.muted};--track:rgba(255,255,255,.35);--focus:${c.focus};--btn:rgba(255,255,255,.1);--btn-hover:rgba(255,255,255,.18);--line:rgba(255,255,255,.14);
   --head:0px;--foot:60px;--side:0px;--gap:0px;--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px)}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden}
 body{display:flex;flex-direction:column;height:100vh;height:100svh;height:100dvh;padding-top:var(--sat);
-  background:radial-gradient(55% 45% at 50% 42%,rgba(124,92,255,.24),transparent 72%),radial-gradient(35% 35% at 85% 95%,rgba(255,61,119,.12),transparent 70%),radial-gradient(35% 35% at 12% 8%,rgba(0,200,255,.08),transparent 70%),var(--bg)}
+  background:radial-gradient(55% 45% at 50% 42%,${c.glowCenter},transparent 72%),radial-gradient(35% 35% at 85% 95%,${c.glowCorner},transparent 70%),radial-gradient(35% 35% at 12% 8%,${c.glowTop},transparent 70%),var(--bg)}
 .top{flex:none;height:var(--head);padding:0 16px;display:flex;align-items:center;justify-content:center;gap:12px;min-width:0}
 .title{margin:0;font-size:15px;font-weight:600;letter-spacing:.02em;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stage{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;padding:var(--gap) var(--side)}
@@ -90,7 +94,7 @@ body{display:flex;flex-direction:column;height:100vh;height:100svh;height:100dvh
 .btn:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
 .sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 dialog.help:not([open]){display:none}
-dialog.help{max-width:min(440px,calc(100vw - 32px));max-height:calc(100% - 32px);overflow:auto;padding:20px 22px;border:1px solid var(--line);border-radius:16px;background:#15151f;color:var(--fg);box-shadow:0 24px 80px rgba(0,0,0,.7)}
+dialog.help{max-width:min(440px,calc(100vw - 32px));max-height:calc(100% - 32px);overflow:auto;padding:20px 22px;border:1px solid var(--line);border-radius:16px;background:${c.dialog};color:var(--fg);box-shadow:0 24px 80px rgba(0,0,0,.7)}
 dialog.help.fallback{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10;margin:0}
 dialog.help::backdrop{background:rgba(0,0,0,.6)}
 .help h2{margin:0 0 12px;font-size:18px}
@@ -102,11 +106,12 @@ dialog.help::backdrop{background:rgba(0,0,0,.6)}
 kbd{display:inline-block;min-width:1.8em;padding:2px 6px;border:1px solid rgba(255,255,255,.3);border-bottom-width:2px;border-radius:6px;background:rgba(255,255,255,.08);font:600 12px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;text-align:center;color:var(--fg)}
 .help p{margin:14px 0 0;font-size:14px;line-height:1.45;color:var(--muted)}
 .help .btn{margin-top:16px;float:right}
-@media (min-width:600px) and (min-height:520px){:root{--head:48px;--foot:68px;--side:16px;--gap:8px}.story{border-radius:18px;box-shadow:0 0 0 1px rgba(255,255,255,.08),0 24px 70px rgba(0,0,0,.65),0 0 140px rgba(124,92,255,.28)}}
+@media (min-width:600px) and (min-height:520px){:root{--head:48px;--foot:68px;--side:16px;--gap:8px}.story{border-radius:18px;box-shadow:0 0 0 1px rgba(255,255,255,.08),0 24px 70px rgba(0,0,0,.65),0 0 140px ${c.halo}}}
 @media (max-width:599px),(max-height:519px){.top{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0)}.btn{padding:0 11px}}
 @media (max-width:359px){.foot{gap:6px}.actions{gap:6px}.btn{padding:0 8px;font-size:13px}.count{min-width:2.8em;font-size:13px}}
 @media (prefers-reduced-motion:reduce){.slide{transition:none}.auto .bar.current i{animation:none;width:100%}}
 `;
+}
 
 /** `s` as a single-quoted JavaScript string literal. */
 const jsString = (s) => `'${String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/[\u2028\u2029]/g, (c) => `\\u${c.charCodeAt(0).toString(16)}`).replace(/<\//g, '<\\/')}'`;
@@ -579,33 +584,42 @@ export function cspHash(text) {
   return `'sha256-${createHash('sha256').update(text, 'utf8').digest('base64')}'`;
 }
 
-/** The page's inline script and its Content-Security-Policy, per language (cached). */
+/**
+ * The page's inline script, stylesheet and Content-Security-Policy, per language and
+ * color theme (cached).
+ */
 const PAGES = new Map();
-function pageParts(lang) {
+function pageParts(lang, colorTheme) {
   const L = getStrings(lang);
-  let parts = PAGES.get(L.code);
+  const theme = isColorTheme(colorTheme) ? colorTheme : DEFAULT_COLOR_THEME;
+  const key = `${L.code}/${theme}`;
+  let parts = PAGES.get(key);
   if (!parts) {
     const script = scriptFor(L.viewer);
+    const css = cssFor(theme);
     const csp = [
       "default-src 'none'",
-      `style-src ${cspHash(CSS)}`,
+      `style-src ${cspHash(css)}`,
       `script-src ${cspHash(script)}`,
       'img-src data:',
       "base-uri 'none'",
       "form-action 'none'",
     ].join('; ');
-    parts = { script, csp };
-    PAGES.set(L.code, parts);
+    parts = { script, css, csp };
+    PAGES.set(key, parts);
   }
   return parts;
 }
 
-/** The English page's Content-Security-Policy (other languages hash their own script). */
+/**
+ * The English, default-theme page's Content-Security-Policy (other languages hash their
+ * own script, other color themes their own stylesheet).
+ */
 export const CSP = pageParts(DEFAULT_LANG).csp;
 
-/** The Content-Security-Policy of the page built for `lang` (see buildViewerHtml). */
-export function cspFor(lang) {
-  return pageParts(lang).csp;
+/** The Content-Security-Policy of the page built for `lang` and `colorTheme` (see buildViewerHtml). */
+export function cspFor(lang, colorTheme) {
+  return pageParts(lang, colorTheme).csp;
 }
 
 /**
@@ -615,13 +629,14 @@ export function cspFor(lang) {
  * hidden paragraph the SVG points to with aria-describedby.
  * No external requests: no fonts, scripts, stylesheets or images by URL.
  * `lang` (an src/i18n code, default 'en') sets <html lang> and every label, button and
- * message of the page.
+ * message of the page. `colorTheme` (a cards/themes.js color theme, default 'default')
+ * sets the page's background, glow, muted-text, dialog, halo and focus colors to match the cards.
  */
-export function buildViewerHtml(cards = [], { title, lang } = {}) {
+export function buildViewerHtml(cards = [], { title, lang, colorTheme } = {}) {
   const L = getStrings(lang);
   const V = L.viewer;
   const h = escapeHtml;
-  const { script, csp } = pageParts(L.code);
+  const { script, css, csp } = pageParts(L.code, colorTheme);
   const list = Array.isArray(cards) ? cards : [];
   const n = list.length;
   const docTitle = escapeHtml(String(title ?? '').trim() || 'gitwrapped');
@@ -652,7 +667,7 @@ export function buildViewerHtml(cards = [], { title, lang } = {}) {
 <meta http-equiv="Content-Security-Policy" content="${csp}">
 <meta name="color-scheme" content="dark">
 <title>${docTitle}</title>
-<style>${CSS}</style>
+<style>${css}</style>
 </head>
 <body>
 <header class="top" id="page-top">

@@ -102,6 +102,7 @@ gitwrapped [path] [options]
 | `--author <email>`    | Only include commits by this author email (exact, case-insensitive match against the email after `.mailmap` is applied) |
 | `--out <dir>`         | Output directory (default: `gitwrapped-out`, created if needed)                        |
 | `--lang <code>`       | Language of the cards, share image, viewer and terminal recap: `en` (English, default) or `tr` (Türkçe). Also `--lang=tr`; an unknown code is an error. `stats.json` and file names stay the same in every language |
+| `--theme <name>`      | Color theme of the cards, share image, PNGs and viewer: `default` (the colorful gradients), `mono` (grayscale) or `neon` (near-black with neon glows). Also `--theme=mono`; an unknown name is an error. Only colors change: the layout, `stats.json` and file names are the same in every theme |
 | `--max-commits <n>`   | Analyze at most the n most recent commits that match the other filters (default: 50000) |
 | `--no-png`            | Skip PNG rendering (faster; SVG + HTML only)                                           |
 | `--json`              | Also write every computed stat to `<out>/stats.json` (see [JSON output](#json-output)) |
@@ -137,6 +138,10 @@ npx @furkycl/gitwrapped --author you@example.com
 # Kartlar Türkçe: cards, viewer and recap in Turkish
 npx @furkycl/gitwrapped --lang tr
 
+# Grayscale or neon cards instead of the default gradients
+npx @furkycl/gitwrapped --theme mono
+npx @furkycl/gitwrapped --theme neon
+
 # Another repo, into a folder of your choice
 npx @furkycl/gitwrapped ~/code/my-app --out ~/Desktop/my-app-wrapped
 
@@ -157,6 +162,20 @@ upper-casing (i → İ) on the eyebrows and labels. English is the default. Erro
 stay in English, and so does `stats.json`: its keys and values (archetype names, hour
 labels) are the same whatever `--lang` says. The strings live in `src/i18n/` (one table
 per language, same keys); adding a language means adding a table there and registering it in `src/i18n/index.js`.
+
+## Color themes (`--theme`)
+
+`--theme` picks the colors of every story card, the PNGs, the share image and the
+`wrapped.html` viewer (its background, glows and focus ring):
+
+- `default`: a different bold gradient per card (what you get without `--theme`).
+- `mono`: grayscale, charcoal to near-black, for a quiet black-and-white story.
+- `neon`: near-black backgrounds with one vivid neon glow and accent per card.
+
+Themes change colors only, never the layout, so every card says the same thing in
+every theme. Full-opacity white text keeps a WCAG contrast of at least 4.5:1 on every
+`mono` and `neon` background, including under the translucent panels and glows. The theme tables
+live in `src/cards/themes.js`.
 
 ## JSON output
 

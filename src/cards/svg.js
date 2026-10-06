@@ -3,6 +3,7 @@
 // stack only, so the SVGs need no external fonts, images or stylesheets.
 import { dayKeyFromEpoch, epochDay, mondayOf } from '../stats/time.js';
 import { formatInteger, getStrings } from '../i18n/index.js';
+import { DEFAULT_GRADIENTS, getColorTheme } from './themes.js';
 
 export const CARD_WIDTH = 1080;
 export const CARD_HEIGHT = 1920;
@@ -17,23 +18,12 @@ const ELLIPSIS = '…';
 /** The default string table (see src/i18n). */
 const EN = getStrings('en');
 
-const theme = (stops, glow, angle) => Object.freeze({ stops: Object.freeze(stops), glow, angle });
-
 /**
- * Named gradient themes. Each has `stops` (3 colors, top-left → bottom-right), `glow`
- * (the color of the soft decorative blobs) and `angle` (0 = diagonal, 1 = mostly
- * vertical). All are dark or saturated enough for white text.
+ * The default gradients by name ('pulse', 'ocean', …), see themes.js. Each has `stops`
+ * (3 colors, top-left → bottom-right), `glow` and `angle`. Other color themes (`--theme`)
+ * map the same names to other colors (COLOR_THEMES in themes.js).
  */
-export const THEMES = Object.freeze({
-  pulse: theme(['#ff3d77', '#9b2ff7', '#2a0a6b'], '#ffb3d1', 0),
-  ocean: theme(['#00c6ff', '#0063e6', '#14125e'], '#7ae8ff', 1),
-  cosmic: theme(['#8e2de2', '#4a00e0', '#10002f'], '#d59bff', 0),
-  ember: theme(['#ff6a2f', '#e0245e', '#4a0d2e'], '#ffd166', 1),
-  mint: theme(['#16b89a', '#0d6e78', '#0b1f3a'], '#9dffc9', 0),
-  neon: theme(['#f72585', '#b5179e', '#3a0ca3'], '#4cc9f0', 1),
-  sunset: theme(['#ff9a00', '#e52e71', '#5b0f4d'], '#ffe08a', 0),
-  gold: theme(['#f7b42c', '#d35400', '#3b1206'], '#fff3b0', 1),
-});
+export const THEMES = DEFAULT_GRADIENTS;
 
 const DEFAULT_THEME = 'pulse';
 
@@ -1025,13 +1015,13 @@ export function textEl(x, y, text, { size, weight = 700, opacity = 1, anchor = '
   return `<text ${attrs.join(' ')}>${escapeXml(text)}</text>`;
 }
 
-function background(id, t) {
+function background(id, t, glowOpacity = 0.55) {
   const [x2, y2] = t.angle ? ['0.35', '1'] : ['1', '1'];
   const stops = t.stops.map((c, i) => `<stop offset="${(i / (t.stops.length - 1)).toFixed(2)}" stop-color="${c}"/>`).join('');
   return [
     '<defs>',
     `<linearGradient id="${id}-bg" x1="0" y1="0" x2="${x2}" y2="${y2}">${stops}</linearGradient>`,
-    `<radialGradient id="${id}-glow"><stop offset="0" stop-color="${t.glow}" stop-opacity="0.55"/><stop offset="1" stop-color="${t.glow}" stop-opacity="0"/></radialGradient>`,
+    `<radialGradient id="${id}-glow"><stop offset="0" stop-color="${t.glow}" stop-opacity="${glowOpacity}"/><stop offset="1" stop-color="${t.glow}" stop-opacity="0"/></radialGradient>`,
     '</defs>',
     `<rect width="${CARD_WIDTH}" height="${CARD_HEIGHT}" fill="url(#${id}-bg)"/>`,
     `<circle cx="930" cy="250" r="460" fill="url(#${id}-glow)"/>`,
@@ -1167,7 +1157,9 @@ export function layoutCard({ eyebrow, title, big, subtitle, titleSize, lines, ch
  * `number` is a short card number ("03") drawn as a faint watermark top-right.
  * `lang` (an src/i18n code, default 'en') sets the upper-casing rules, the number format
  * of compacted counts and the calendar's month / weekday / legend labels.
- * `theme` is a THEMES key (unknown → 'pulse'). `footer` is small text right of the
+ * `theme` is a gradient name, a THEMES key (unknown → 'pulse'). `colorTheme` is a color
+ * theme from themes.js ('default', 'mono', 'neon'; unknown → 'default') that the gradient
+ * name resolves in; only colors change, never the layout. `footer` is small text right of the
  * "gitwrapped" brand. `idPrefix` prefixes every element id (default `gw-<theme>`);
  * pass a unique one per card when several SVGs are inlined into one HTML page.
  * All text is XML-escaped; output is deterministic.
@@ -1175,6 +1167,8 @@ export function layoutCard({ eyebrow, title, big, subtitle, titleSize, lines, ch
 export function renderCard(opts = {}) {
   opts = opts ?? {};
   const name = Object.hasOwn(THEMES, opts.theme ?? '') ? opts.theme : DEFAULT_THEME;
+  const palette = getColorTheme(opts.colorTheme);
+  const grad = palette.gradients[name];
   const ids = sanitizeIdPrefix(opts.idPrefix) || `gw-${name}`;
   const layout = layoutCard(opts);
 
@@ -1184,7 +1178,7 @@ export function renderCard(opts = {}) {
   }
   const eb = layout.eyebrow;
   if (eb) {
-    body.push(`<rect x="${PAD_X}" y="150" width="72" height="10" rx="5" fill="#ffffff"/>`);
+    body.push(`<rect x="${PAD_X}" y="150" width="72" height="10" rx="5" fill="${grad.accent ?? '#ffffff'}"/>`);
     body.push(textEl(PAD_X, EYEBROW.baseline, eb.line, { size: eb.size, weight: 800, opacity: 0.9, spacing: EYEBROW.spacing }));
   }
   for (const b of layout.blocks) body.push(b.svg);
@@ -1196,7 +1190,7 @@ export function renderCard(opts = {}) {
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${CARD_WIDTH}" height="${CARD_HEIGHT}" viewBox="0 0 ${CARD_WIDTH} ${CARD_HEIGHT}" role="img" aria-label="${label}">`,
     `<title>${label}</title>`,
-    background(ids, THEMES[name]),
+    background(ids, grad, palette.glowOpacity?.card),
     `<g fill="#ffffff" font-family="${escapeXml(FONT_FAMILY)}">`,
     ...body,
     '</g>',

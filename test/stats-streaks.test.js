@@ -9,6 +9,7 @@ const at = (date) => ({ hash: 'h', author: 'A', email: 'a@x.io', date, subject: 
 const days = (...keys) => keys.map((k) => at(`${k}T12:00:00Z`));
 const run = (length, start, end) => ({ length, start, end });
 const NONE = run(0, null, null);
+const NO_BREAK = { days: 0, from: null, to: null };
 
 describe('epochDay', () => {
   test('epoch 0 and neighbours', () => {
@@ -39,7 +40,7 @@ describe('computeStreaks', () => {
 
   test('empty input → zero-length runs with null days', () => {
     for (const input of [[], undefined, null]) {
-      assert.deepEqual(computeStreaks(input, { today }), { longest: NONE, current: NONE });
+      assert.deepEqual(computeStreaks(input, { today }), { longest: NONE, current: NONE, longestBreak: NO_BREAK });
     }
   });
 
@@ -47,6 +48,7 @@ describe('computeStreaks', () => {
     assert.deepEqual(computeStreaks(days('2024-06-30'), { today }), {
       longest: run(1, '2024-06-30', '2024-06-30'),
       current: run(1, '2024-06-30', '2024-06-30'),
+      longestBreak: NO_BREAK,
     });
   });
 
@@ -136,8 +138,8 @@ describe('computeStreaks', () => {
 
   test('unparseable dates are skipped', () => {
     const s = computeStreaks([at('nope'), at(null), at('2024-02-30T10:00:00Z'), at('2024-06-30T10:00:00'), ...days('2024-06-30')], { today });
-    assert.deepEqual(s, { longest: run(1, '2024-06-30', '2024-06-30'), current: run(1, '2024-06-30', '2024-06-30') });
-    assert.deepEqual(computeStreaks([at('nope')], { today }), { longest: NONE, current: NONE });
+    assert.deepEqual(s, { longest: run(1, '2024-06-30', '2024-06-30'), current: run(1, '2024-06-30', '2024-06-30'), longestBreak: NO_BREAK });
+    assert.deepEqual(computeStreaks([at('nope')], { today }), { longest: NONE, current: NONE, longestBreak: NO_BREAK });
   });
 
   test('results are fresh objects (no shared frozen state)', () => {

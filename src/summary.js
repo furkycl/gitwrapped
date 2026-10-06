@@ -1,7 +1,7 @@
 // The console recap printed after a run: a short Wrapped-style summary plus where the
 // output went. Pure string building; colors are raw ANSI escapes (no dependencies).
 
-import { shownLongest } from './stats/daily.js';
+import { shownLongest, shownLongestBreak } from './stats/daily.js';
 import { languageHeadline } from './stats/languages.js';
 import { hasTeamCard, shareLabel } from './stats/contributors.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from './i18n/index.js';
@@ -160,6 +160,8 @@ function shortText(s, maxWidth = 48) {
  * per repo (commits and lines; the first five, then "…and N more").
  * A --year run with a comparison (stats.yearOverYear) gets a "vs <previous year>" line
  * with the change in commits, lines changed and active days.
+ * A "Break" line shows the longest break between two active days (stats.streaks.longestBreak,
+ * future-dated days left out with `today` as on the streak card) when there is one.
  * A "Biggest" line shows the biggest commit (stats.biggestCommit: subject, lines added /
  * removed and its day) when there is one.
  * A "Team" line (top contributor, or the --author's rank) appears exactly when the
@@ -224,6 +226,17 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
       const current = s.current?.length ?? 0;
       const cur = current > 0 ? ` · ${streakAtWindowEnd ? R.atWindowEnd : R.current} ${plural(current, 'day', L)}` : '';
       lines.push(`  ${label(R.streak)}${R.longest} ${c('cyan', plural(longest, 'day', L))}${cur}`);
+    }
+
+    // The longest break between two active days, as on the streak card (future-dated days
+    // left out with `today`); only when there is one.
+    const pause = shownLongestBreak(stats, today);
+    if (Number.isInteger(pause?.days) && pause.days > 0) {
+      const day = (k) => (typeof k === 'string' && epochDay(k) !== null ? L.date(...k.split('-').map(Number).reverse()) : null);
+      const from = day(pause.from);
+      const to = day(pause.to);
+      const when = from && to ? ` ${c('dim', `(${from} – ${to})`)}` : '';
+      lines.push(`  ${label(R.breakLabel)}${R.longest} ${c('cyan', plural(pause.days, 'day', L))}${when}`);
     }
 
     const hot = stats?.hotFiles?.[0];

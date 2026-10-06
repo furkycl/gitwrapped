@@ -178,6 +178,9 @@ export default {
     wasNone: (end) => `No streak was running ${end}.`,
     isOn: (days) => `You're on a ${num(days)}-day streak right now. Keep it alive!`,
     isNone: 'No streak running right now — today is a great day to start one.',
+    breakTitle: 'Longest break',
+    breakValue: (days) => `${plural(days, UNITS.day)} off`,
+    breakNote: (from, to) => `Between ${from} and ${to}`,
   },
 
   activity: {
@@ -401,6 +404,8 @@ export default {
     longest: 'longest',
     current: 'current',
     atWindowEnd: 'at window end',
+    /** The longest-break line: label, then "longest 12 days (Mar 3, 2025 – Mar 16, 2025)". */
+    breakLabel: 'Break',
     hottestFile: 'Hottest file',
     topLanguage: 'Top language',
     /** "(74% of lines, tied with 1 more)". */

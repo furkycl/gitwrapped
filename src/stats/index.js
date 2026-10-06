@@ -1,7 +1,7 @@
 // Stats engine: pure functions over readCommits() output. No git calls, no I/O.
 import { computeBiggestCommit, shownBiggestLines } from './biggest.js';
 import { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONTRIBUTORS } from './contributors.js';
-import { computeDaily, daysUpTo, longestRun, shownLongest } from './daily.js';
+import { computeDaily, daysUpTo, longestGap, longestRun, shownLongest, shownLongestBreak } from './daily.js';
 import { computeHotFiles, isIgnoredPath, repoRelativePath } from './files.js';
 import { computeTimeHabits } from './habits.js';
 import { computeLanguages, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER as OTHER_LANGUAGE, percentShares } from './languages.js';
@@ -13,7 +13,7 @@ import { computeRepos } from './repos.js';
 import { computeTotals } from './totals.js';
 import { computeYearOverYear, yearOverYear } from './yoy.js';
 
-export { computeTotals, computeTimeHabits, computeStreaks, computeDaily, daysUpTo, longestRun, shownLongest, computeHotFiles, isIgnoredPath, repoRelativePath, computeRepos, computeYearOverYear, yearOverYear };
+export { computeTotals, computeTimeHabits, computeStreaks, computeDaily, daysUpTo, longestGap, longestRun, shownLongest, shownLongestBreak, computeHotFiles, isIgnoredPath, repoRelativePath, computeRepos, computeYearOverYear, yearOverYear };
 export { computeLanguages, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER_LANGUAGE, percentShares };
 export { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONTRIBUTORS };
 export { computeBiggestCommit, shownBiggestLines, computeMessages, computePersonality, isMergeCommit, ARCHETYPES, localToday };

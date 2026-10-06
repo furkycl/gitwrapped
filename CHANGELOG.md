@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Longest break: the streak card now shows the longest gap between two consecutive
+  active days (idle days, and the active days before and after it) in a panel under
+  the bars, the recap gets a "Break" line, and `stats.json` gets
+  `stats.streaks.longestBreak` (`{days, from, to}`; `days` counts the idle days in
+  between, ties go to the earliest gap, `{days: 0, from: null, to: null}` without one).
+  Like the longest streak, the card and recap leave out future-dated days. Without a
+  break the card is unchanged. English and Turkish.
+
 ## [1.3.0] - 2026-10-06
 
 ### Added

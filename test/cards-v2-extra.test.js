@@ -16,6 +16,10 @@ import { buildViewerHtml, CSP } from '../src/viewer.js';
 import { generate } from '../src/cli.js';
 import { makeFixtureRepo } from '../scripts/make-fixture-repo.js';
 
+// The full card set of a team whose commits fall in one calendar month (the fixtures):
+// every card but the monthly timeline (see cardIdsFor).
+const TEAM_IDS = cardIdsFor({ contributors: { total: 2 } });
+
 const TODAY = '2026-10-05';
 const INJECT = `<script>&"'`;
 
@@ -92,7 +96,7 @@ describe('PNG rendering of every v2 card', () => {
       }
       const cards = buildCards(make(), opts);
       // The stress stats have a team (11 cards), normal and empty ones a single author (10).
-      assert.deepEqual(cards.map((c) => c.id), name === 'stress' ? [...CARD_IDS] : cardIdsFor({}));
+      assert.deepEqual(cards.map((c) => c.id), name === 'stress' ? [...TEAM_IDS] : cardIdsFor({}));
       for (const { id, svg } of cards) {
         const png = await renderPng(svg, { width: 1080 });
         assert.deepEqual(pngSize(png), { width: 1080, height: 1920 }, `${name}/${id}`);
@@ -108,7 +112,7 @@ describe('PNG rendering of every v2 card', () => {
 
 const sha = (s) => `'sha256-${createHash('sha256').update(s, 'utf8').digest('base64')}'`;
 
-function checkViewer(html, where, cardIds = CARD_IDS) {
+function checkViewer(html, where, cardIds = TEAM_IDS) {
   const ids = [...html.matchAll(/\sid="([^"]*)"/g)].map((m) => m[1]);
   const dupes = ids.filter((id, i) => ids.indexOf(id) !== i);
   assert.deepEqual(dupes, [], `${where}: duplicate ids`);
@@ -163,7 +167,7 @@ describe('viewer with v2 cards', () => {
       await generate({ path: fixture.dir, out, png: false }, { today: '2024-03-14' });
       const html = readFileSync(join(out, 'wrapped.html'), 'utf8');
       checkViewer(html, 'wrapped.html');
-      assert.equal((html.match(/<section class="slide/g) ?? []).length, CARD_IDS.length);
+      assert.equal((html.match(/<section class="slide/g) ?? []).length, TEAM_IDS.length);
       // The v2 charts made it into the page.
       for (const cap of ['COMMITS BY HOUR', 'BY WEEKDAY', 'LINES CHANGED', 'LONGEST VS. CURRENT', 'HOTTEST FILE']) assert.ok(html.includes(`>${cap}<`), cap);
     });

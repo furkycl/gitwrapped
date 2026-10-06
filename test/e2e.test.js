@@ -15,10 +15,14 @@ import { buildViewerHtml } from '../src/viewer.js';
 import { pngSize } from '../src/png.js';
 import { makeFixtureRepo } from '../scripts/make-fixture-repo.js';
 
+// The full card set of a team whose commits fall in one calendar month (the fixtures):
+// every card but the monthly timeline (see cardIdsFor).
+const TEAM_IDS = cardIdsFor({ contributors: { total: 2 } });
+
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const BIN = fileURLToPath(new URL('../bin/gitwrapped.js', import.meta.url));
 // The fixture has two authors: every card, contributors included (11).
-const CARD_FILES = CARD_IDS.map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}.svg`);
+const CARD_FILES = TEAM_IDS.map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}.svg`);
 // Fewer than two contributors (e.g. an empty window): no contributors card (10).
 const SOLO_FILES = cardIdsFor({}).map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}.svg`);
 
@@ -126,7 +130,7 @@ describe('bin: full run on the fixture repo', () => {
 
   test('slides are in CARD_IDS order', () => {
     const ids = [...page.matchAll(/<section class="slide[^"]*" id="card-\d+" data-card="([^"]+)"/g)].map((m) => m[1]);
-    assert.deepEqual(ids, CARD_IDS);
+    assert.deepEqual(ids, TEAM_IDS);
   });
 
   test('running twice into the same --out overwrites cleanly', () => {

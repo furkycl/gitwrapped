@@ -22,7 +22,8 @@ import { fileURLToPath } from 'node:url';
 import { makeFixtureRepo } from './make-fixture-repo.js';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-// Every card, the contributors card included: the fixture repo has two authors.
+// Every card the fixture repo gets: the contributors card included (two authors), the
+// optional monthly timeline not (all its commits fall in March 2024).
 export const CARD_COUNT = 11;
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 

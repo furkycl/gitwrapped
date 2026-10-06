@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import {
   blendHex,
   buildCards,
-  CARD_IDS,
+  CARD_IDS, cardIdsFor,
   COLOR_THEME_NAMES,
   COLOR_THEMES,
   contrastRatio,
@@ -29,6 +29,10 @@ import { buildViewerHtml, CSP, cspFor } from '../src/viewer.js';
 import { generate, HELP_TEXT, parseCli, run } from '../src/cli.js';
 import { loadResvg, pngSize, renderPng } from '../src/png.js';
 import { makeFixtureRepo } from '../scripts/make-fixture-repo.js';
+
+// The full card set of a team whose commits fall in one calendar month (the fixtures):
+// every card but the monthly timeline (see cardIdsFor).
+const TEAM_IDS = cardIdsFor({ contributors: { total: 2 } });
 
 const TODAY = '2024-03-14';
 const OTHER = ['mono', 'neon'];
@@ -263,7 +267,7 @@ describe('layout invariance: only colors differ between themes', () => {
   ];
 
   test('the fixture triggers the contributors card (team case)', () => {
-    assert.deepEqual(buildCards(fixtureStats, { today: TODAY }).map((c) => c.id), [...CARD_IDS]);
+    assert.deepEqual(buildCards(fixtureStats, { today: TODAY }).map((c) => c.id), [...TEAM_IDS]);
   });
 
   for (const [label, statsOf, opts] of variants) {
@@ -444,14 +448,14 @@ describe('end to end', () => {
     };
     const r = await generate({ path: fixture.dir, out, theme: 'neon' }, { today: TODAY, renderPng: fakePng });
     const neon = COLOR_THEMES.neon.gradients;
-    assert.equal(r.cardFiles.length, CARD_IDS.length);
+    assert.equal(r.cardFiles.length, TEAM_IDS.length);
     for (const f of r.cardFiles) {
       const svg = readFileSync(f, 'utf8');
       assert.ok(Object.values(neon).some((g) => svg.includes(`stop-color="${g.stops[0]}"`)), f);
     }
     assert.ok(readFileSync(r.shareSvg, 'utf8').includes(`stop-color="${neon.pulse.stops[0]}"`));
     assert.ok(readFileSync(r.html, 'utf8').includes(`--bg:${COLOR_THEMES.neon.viewer.bg};`));
-    assert.equal(seen.length, CARD_IDS.length + 1);
+    assert.equal(seen.length, TEAM_IDS.length + 1);
     for (const { svg } of seen) assert.ok(Object.values(neon).some((g) => svg.includes(`stop-color="${g.stops[0]}"`)));
   });
 
@@ -460,7 +464,7 @@ describe('end to end', () => {
     const r = await runCaptured([fixture.dir, '--theme', ' MONO ', '--no-png', '--out', out], { today: TODAY });
     assert.equal(r.code, 0, r.stderr);
     const files = readdirSync(join(out, 'cards'));
-    assert.equal(files.length, CARD_IDS.length);
+    assert.equal(files.length, TEAM_IDS.length);
     for (const f of files) for (const c of hexColors(readFileSync(join(out, 'cards', f), 'utf8'))) assert.ok(isGray(c), `${f}: ${c}`);
     assert.ok(readFileSync(join(out, 'wrapped.html'), 'utf8').includes(`--bg:${COLOR_THEMES.mono.viewer.bg};`));
   });

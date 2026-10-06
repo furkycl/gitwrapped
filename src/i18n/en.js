@@ -49,6 +49,8 @@ export default {
   compact: { sep: ',', point: '.', suffixes: ['K', 'M', 'B', 'T'] },
   units: UNITS,
   months: MONTHS,
+  /** Full month names, January first. */
+  monthNames: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
   /** Sunday first. */
   weekdays: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   /** One letter per weekday, Sunday first (the weekday bar chart). */
@@ -186,6 +188,27 @@ export default {
     title: (days) => (days === 1 ? 'active day' : 'active days'),
     busiest: (date, commits) => `Busiest day: ${date} with ${plural(commits, UNITS.commit)}.`,
     weeks: (weeks) => (weeks === 1 ? 'You showed up in 1 week.' : `You showed up in ${num(weeks)} different weeks.`),
+  },
+
+  /** The monthly timeline card (commits per calendar month). */
+  monthly: {
+    eyebrow: 'Month by month',
+    /** The eyebrow when only the most recent `n` months are shown. */
+    lastMonths: (n) => `Your last ${num(n)} months`,
+    /** The eyebrow of a clipped timeline that ends before this month: "24 months to Apr 2019". */
+    monthsTo: (n, month, year) => `${num(n)} months to ${MONTHS[month - 1]} ${year}`,
+    /** The title when every active month has the same count (no peak to call out). */
+    steadyTitle: (commits) => `${commits === 1 ? 'commit' : 'commits'} in every active month`,
+    /** The big word: "Mar 2026". */
+    big: (month, year) => `${MONTHS[month - 1]} ${year}`,
+    title: 'was your peak month',
+    titleTied: 'is tied for your peak month',
+    /** The peak month's commits (the big word already names the month). */
+    peak: (commits) => `${plural(commits, UNITS.commit)} in a single month.`,
+    active: (active, total) => `You committed in ${num(active)} of ${num(total)} months.`,
+    everyMonth: (total) => `You committed in every one of these ${num(total)} months.`,
+    chartTitle: 'Commits per month',
+    barTitle: (name, commits) => `${name}: ${plural(commits, UNITS.commit)}`,
   },
 
   hotFiles: {

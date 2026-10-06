@@ -51,6 +51,7 @@ export default {
   compact: { sep: '.', point: ',', suffixes: ['B', 'Mn', 'Mr', 'Tn'] },
   units: UNITS,
   months: MONTHS,
+  monthNames: ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'],
   weekdays: ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'],
   weekLetters: ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'],
   calendarWeekdays: ['P', 'S', 'Ç', 'P', 'C', 'C', 'P'],
@@ -170,6 +171,21 @@ export default {
     title: (_days) => 'aktif gün', // no plural after a number
     busiest: (date, commits) => `En yoğun gün: ${date}, ${plural(commits, UNITS.commit)}.`,
     weeks: (weeks) => (weeks === 1 ? 'Yalnızca 1 haftada boy gösterdin.' : `${num(weeks)} farklı haftada boy gösterdin.`),
+  },
+
+  monthly: {
+    eyebrow: 'Ay ay commit',
+    lastMonths: (n) => `Son ${num(n)} ay`,
+    monthsTo: (n, month, year) => `${MONTHS[month - 1]} ${year} itibarıyla ${num(n)} ay`,
+    steadyTitle: (_commits) => 'commit, her aktif ayda',
+    big: (month, year) => `${MONTHS[month - 1]} ${year}`,
+    title: 'en yoğun ayındı',
+    titleTied: 'en yoğun aylarından biri',
+    peak: (commits) => `Tek ayda ${plural(commits, UNITS.commit)}.`,
+    active: (active, total) => `${num(total)} ayın ${num(active)} tanesinde commit attın.`,
+    everyMonth: (total) => `Bu ${num(total)} ayın her birinde commit attın.`,
+    chartTitle: 'Aylık commit',
+    barTitle: (name, commits) => `${name}: ${plural(commits, UNITS.commit)}`,
   },
 
   hotFiles: {

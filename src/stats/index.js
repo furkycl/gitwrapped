@@ -5,6 +5,7 @@ import { computeHotFiles, isIgnoredPath, repoRelativePath } from './files.js';
 import { computeTimeHabits } from './habits.js';
 import { computeLanguages, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER as OTHER_LANGUAGE, percentShares } from './languages.js';
 import { computeMessages, isMergeCommit } from './messages.js';
+import { computeMonths, monthsFromDays } from './months.js';
 import { ARCHETYPES, computePersonality } from './personality.js';
 import { computeStreaks, localToday } from './streaks.js';
 import { computeRepos } from './repos.js';
@@ -15,6 +16,7 @@ export { computeTotals, computeTimeHabits, computeStreaks, computeDaily, daysUpT
 export { computeLanguages, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER_LANGUAGE, percentShares };
 export { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONTRIBUTORS };
 export { computeMessages, computePersonality, isMergeCommit, ARCHETYPES, localToday };
+export { computeMonths, monthsFromDays };
 export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAMES } from './time.js';
 
 /**
@@ -25,6 +27,8 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * of non-merge commits, and its Steady Shipper span ignores future-dated days (after
  * `today` + 1, see daily.js daysUpTo). `daily` is commits per author-local day (see daily.js);
  * `languages` is lines / files per language (see languages.js).
+ * `months` is commits per author-local calendar month, zero-filled from the first to the
+ * last active month, with the peak month (see months.js).
  * `contributors` ranks who made the commits (see contributors.js). It is computed from
  * `team` when given (the unfiltered history of an --author run, so "you" can be ranked
  * against everyone), else from `commits`; `author` (the --author email) picks "you";
@@ -44,6 +48,7 @@ export function computeStats(commits = [], { today, todayComplete, team, author,
     habits: computeTimeHabits(commits),
     streaks: computeStreaks(commits, { today, todayComplete }),
     daily: computeDaily(commits),
+    months: computeMonths(commits),
     hotFiles: computeHotFiles(commits),
     languages: computeLanguages(commits),
     contributors: computeContributors(team ?? commits, { author, truncated: teamTruncated }),

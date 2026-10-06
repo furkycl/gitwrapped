@@ -1,4 +1,4 @@
-// End-to-end tests for the languages stat / 07-languages card and --open, through the real
+// End-to-end tests for the languages stat / languages card and --open, through the real
 // binary (`node bin/gitwrapped.js ...`) against throwaway repos with mixed file types,
 // lockfiles, build output, a binary file, a file name with spaces, a cross-language rename
 // and a deleted file. --open is exercised with an injected opener via run() (no browser
@@ -6,7 +6,7 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,7 +18,8 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const BIN = fileURLToPath(new URL('../bin/gitwrapped.js', import.meta.url));
 const WIN = process.platform === 'win32';
 const TODAY = '2026-10-05';
-// The main repo has two authors (all 11 cards); single-author repos skip the contributors card.
+// The main repo has two authors and spans several months (all 12 cards); single-author
+// repos skip the contributors card.
 const STEMS = CARD_IDS.map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}`);
 const SOLO_STEMS = cardIdsFor({}).map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}`);
 
@@ -82,7 +83,8 @@ function sink() {
 
 const readJson = (out) => JSON.parse(readFileSync(join(out, 'stats.json'), 'utf8'));
 const langRows = (out) => readJson(out).stats.languages.languages.map((l) => [l.name, l.lines, l.files, l.share]);
-const card7 = (out) => readFileSync(join(out, 'cards', '07-languages.svg'), 'utf8');
+/** The languages card of a run (07 or 08: the monthly timeline before it is optional). */
+const card7 = (out) => readFileSync(join(out, 'cards', readdirSync(join(out, 'cards')).find((f) => /^\d\d-languages\.svg$/.test(f))), 'utf8');
 /** The visible <text> runs of an SVG, entity-decoded. */
 const svgTexts = (svg) => [...svg.matchAll(/<text\b[^>]*>([^<]*)<\/text>/g)].map((m) => m[1].replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&amp;/g, '&'));
 /** The hbars rows of the languages card: "<label> <value>" from each bar's <title>. */
@@ -161,14 +163,14 @@ describe('bin: languages from a mixed repo', () => {
     assert.ok(r.stdout.includes('Top language TypeScript (31% of lines)'), r.stdout);
   });
 
-  test('wrapped.html embeds the 11 cards in order; 07-languages shows the top language and percent', () => {
+  test('wrapped.html embeds the 12 cards in order; 08-languages shows the top language and percent', () => {
     const o = out('all');
     const page = readFileSync(join(o, 'wrapped.html'), 'utf8');
     const ids = [...page.matchAll(/<section class="slide[^"]*" id="card-(\d+)" data-card="([^"]*)"/g)].map((m) => [Number(m[1]), m[2]]);
     assert.deepEqual(ids, CARD_IDS.map((id, i) => [i + 1, id]));
-    assert.equal(CARD_IDS.length, 11);
-    assert.equal(CARD_IDS[6], 'languages');
-    assert.equal((page.match(/<svg\b/g) ?? []).length >= 11, true);
+    assert.equal(CARD_IDS.length, 12);
+    assert.equal(CARD_IDS[7], 'languages');
+    assert.equal((page.match(/<svg\b/g) ?? []).length >= 12, true);
     for (const stem of STEMS) assert.ok(existsSync(join(o, 'cards', `${stem}.svg`)), stem);
 
     const svg = card7(o);
@@ -186,8 +188,8 @@ describe('bin: languages from a mixed repo', () => {
       'Ruby: 10 lines changed in 1 file (8%)',
       'Other: 9 lines changed in 2 files (7%)',
     ]);
-    // The same card is the one embedded as slide 7.
-    const slide7 = page.split('<section').find((s) => s.includes('id="card-7"'));
+    // The same card is the one embedded as slide 8.
+    const slide7 = page.split('<section').find((s) => s.includes('id="card-8"'));
     assert.ok(slide7.includes('Led by TypeScript'));
     assert.ok(!/NaN|undefined|\[object/.test(texts.join(' ')));
   });
@@ -256,12 +258,12 @@ describe('bin: languages from a mixed repo', () => {
     assert.deepEqual(barTitles(card7(o)), []);
   });
 
-  test('PNG render of 07-languages succeeds (1080x1920)', () => {
+  test('PNG render of 08-languages succeeds (1080x1920)', () => {
     const o = out('png');
     const r = bin([repo, '--out', o], { png: true });
     assert.equal(r.status, 0, r.stderr);
     assert.ok(!r.stderr.includes('PNG export skipped'), r.stderr);
-    const png = readFileSync(join(o, 'png', '07-languages.png'));
+    const png = readFileSync(join(o, 'png', '08-languages.png'));
     assert.deepEqual(pngSize(png), { width: 1080, height: 1920 });
     for (const stem of STEMS) assert.ok(existsSync(join(o, 'png', `${stem}.png`)), stem);
   });

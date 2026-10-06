@@ -19,19 +19,21 @@ summary image it made for link previews.
 
 ## What you get
 
-Ten 1080x1920 story cards, or eleven in a repo with more than one contributor:
+Ten 1080x1920 story cards, plus a monthly timeline when your commits span two or more
+calendar months and a team card in a repo with more than one contributor (up to twelve):
 
 1. **Intro**: the repo name, the date range in plain English ("Oct 4 – Oct 5, 2026") and how many commits there are to unwrap, plus whose story it is when you pass `--author` (the part of the email before the `@` only: "Starring ada.").
 2. **Totals**: commits, a lines added vs. removed bar, active days and files touched (and contributors, when there is more than one).
 3. **Power hour**: the hour of the day you commit the most, with a 24-hour bar chart and a Monday-to-Sunday weekday chart (hover a bar in `wrapped.html` for its count).
 4. **Streak**: your longest run of consecutive days with a commit, with a longest vs. current bar comparison.
 5. **Activity**: a GitHub-style calendar of commits per day (weeks as rows, Monday to Sunday, brighter the busier the day), with your number of active days and your busiest day. Hover a day in `wrapped.html` for its count. It covers up to the last 53 weeks of your history. For a repo that went quiet more than a month ago it says "12 months to Apr 2021" instead of "Your last 12 months".
-6. **Hot files**: the five files you edit most as a bar list. Lockfiles, build output (`dist/`, `build/`, ...), dependency folders, vendored code (a root `vendor/` or `third_party/`), minified files and test snapshots (`*.snap`, `__snapshots__/`) are ignored.
-7. **Languages**: your top programming language and its share of the lines you changed ("72% · Mostly TypeScript", or "Led by" under half, with ties named), with bars for your top five languages plus "Other". Data formats (JSON, YAML, ...) and prose (Markdown, ...) show in the bars, but they only lead the card when there's no code at all. Languages come from file extensions and well-known names like `Dockerfile` and `Makefile` (86 built in); lockfiles, build output, vendored code, test snapshots and binary files are left out, as for hot files.
-8. **The team** (only when the history has two or more contributors): how many people committed and the top five by commits as bars ("Ada Lovelace leads the pack with 54% of the commits"). With `--author` it ranks you against everyone in the same window: "#2 of 7 contributors", your share of the commits and lines, and a "you" marker on your bar (a sixth bar when you're outside the top five). Contributors are counted per email after `.mailmap`, and only their git author names are shown, never an email. A single-author repo skips this card, and so does an `--author` with no commits in the window (there's no "you" to rank); the cards after it then move up a number.
-9. **Message hall of fame**: your favorite word, your longest and shortest messages, and how many "fix", "wip" and "oops" commits you made.
-10. **Personality**: Night Owl, Early Bird, Friday Deployer, Fixaholic, Weekend Warrior or Steady Shipper, with a one-line roast and bars for your top habit scores.
-11. **Outro**: a summary card to post: commits, power hour, best streak and personality tiles, plus your hottest file.
+6. **Month by month** (only when your commits span two or more calendar months): commits per month as a bar chart, from your first active month to your last (months without commits show as empty bars), with the peak month among the months shown called out ("Mar 2026 was your peak month"; a tie goes to the earliest month, and when every active month has the same count it says so instead) and how many of those months had commits. It shows your most recent 24 months at most ("Your last 24 months", or "24 months to Apr 2019" for a repo that went quiet); `stats.json` keeps every month, and its `peak` is over all of them. Months are the author's own calendar months, like the activity calendar, and commits dated after tomorrow are left off. A history inside one calendar month skips this card, and the cards after it then move up a number.
+7. **Hot files**: the five files you edit most as a bar list. Lockfiles, build output (`dist/`, `build/`, ...), dependency folders, vendored code (a root `vendor/` or `third_party/`), minified files and test snapshots (`*.snap`, `__snapshots__/`) are ignored.
+8. **Languages**: your top programming language and its share of the lines you changed ("72% · Mostly TypeScript", or "Led by" under half, with ties named), with bars for your top five languages plus "Other". Data formats (JSON, YAML, ...) and prose (Markdown, ...) show in the bars, but they only lead the card when there's no code at all. Languages come from file extensions and well-known names like `Dockerfile` and `Makefile` (86 built in); lockfiles, build output, vendored code, test snapshots and binary files are left out, as for hot files.
+9. **The team** (only when the history has two or more contributors): how many people committed and the top five by commits as bars ("Ada Lovelace leads the pack with 54% of the commits"). With `--author` it ranks you against everyone in the same window: "#2 of 7 contributors", your share of the commits and lines, and a "you" marker on your bar (a sixth bar when you're outside the top five). Contributors are counted per email after `.mailmap`, and only their git author names are shown, never an email. A single-author repo skips this card, and so does an `--author` with no commits in the window (there's no "you" to rank); the cards after it then move up a number.
+10. **Message hall of fame**: your favorite word, your longest and shortest messages, and how many "fix", "wip" and "oops" commits you made.
+11. **Personality**: Night Owl, Early Bird, Friday Deployer, Fixaholic, Weekend Warrior or Steady Shipper, with a one-line roast and bars for your top habit scores.
+12. **Outro**: a summary card to post: commits, power hour, best streak and personality tiles, plus your hottest file.
 
 You also get:
 
@@ -61,7 +63,7 @@ You also get:
 ```
 gitwrapped-out/
   wrapped.html          # the story: open it in any browser
-  cards/01-intro.svg    # 01-intro … 11-outro (10-outro without the team card), 1080x1920 SVG
+  cards/01-intro.svg    # 01-intro … 10-outro (up to 12-outro with the months / team cards), 1080x1920 SVG
   png/01-intro.png      # the same cards as PNG, ready to post
   share.png             # 1200x630 summary image
   share.svg             # the same summary as SVG
@@ -277,7 +279,7 @@ but it does contain commit subjects and hashes and repo-relative file paths (see
 | `asOf`          | `YYYY-MM-DD` the current streak is counted up to: today, or the end of a past `--until` / `--year` window |
 | `filters`       | `{since, until, author, maxCommits, exclude}` as used (`--year` shows as since/until); dates and author are `null` when not set, `maxCommits` is the cap in effect, `exclude` the `--exclude` patterns in order (`[]` when none) |
 | `truncated`     | `true` when `--max-commits` cut the history short                             |
-| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `hotFiles`, `languages`, `contributors`, `messages`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
+| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `months`, `hotFiles`, `languages`, `contributors`, `messages`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
 
 ```json
 {
@@ -305,6 +307,13 @@ but it does contain commit subjects and hashes and repo-relative file paths (see
   }
 }
 ```
+
+`stats.months` is commits per author-local calendar month: `months` is
+`[{"month": "YYYY-MM", "commits": n}]`, oldest first, contiguous from the first to the last
+month with commits (months without commits are listed with `0`; `[]` when there are no
+commits), and `peak` is the month with the most commits as `{month, commits}` (a tie goes
+to the earliest month; `null` without commits). It counts every commit, including ones
+dated in the future, and covers every month, not just the 24 the card shows.
 
 `stats.languages` lists every language found, most lines first, with `"Other"` (file
 types gitwrapped doesn't know) always last. `type` is `"programming"`, `"data"` (JSON,

@@ -6,10 +6,14 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { buildCards, CARD_IDS, formatNumber, renderCard } from '../src/cards/index.js';
+import { buildCards, CARD_IDS, cardIdsFor, formatNumber, renderCard } from '../src/cards/index.js';
 import { computeStats } from '../src/stats/index.js';
 import { readCommits } from '../src/git.js';
 import { makeFixtureRepo } from '../scripts/make-fixture-repo.js';
+
+// The full card set of a team whose commits fall in one calendar month (the fixtures):
+// every card but the monthly timeline (see cardIdsFor).
+const TEAM_IDS = cardIdsFor({ contributors: { total: 2 } });
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const TODAY = '2024-03-14';
@@ -177,12 +181,12 @@ describe('formatNumber', () => {
 
 describe('buildCards', () => {
   test('returns 11 cards with a team, 10 without, in CARD_IDS order with unique ids', () => {
-    assert.deepEqual(CARD_IDS, ['intro', 'totals', 'peak-hour', 'streak', 'activity', 'hot-files', 'languages', 'contributors', 'messages', 'personality', 'outro']);
+    assert.deepEqual(CARD_IDS, ['intro', 'totals', 'peak-hour', 'streak', 'activity', 'months', 'hot-files', 'languages', 'contributors', 'messages', 'personality', 'outro']);
     assert.ok(Object.isFrozen(CARD_IDS));
     for (const [name, cards] of scenarios()) {
       // The fixture (two authors) and the stress stats have a team; the rest do not.
       const team = name.startsWith('fixture') || name === 'stress';
-      const expected = team ? [...CARD_IDS] : CARD_IDS.filter((id) => id !== 'contributors');
+      const expected = team ? [...TEAM_IDS] : TEAM_IDS.filter((id) => id !== 'contributors');
       assert.equal(cards.length, team ? 11 : 10, name);
       assert.deepEqual(cards.map((c) => c.id), expected, name);
       assert.equal(new Set(cards.map((c) => c.id)).size, cards.length, name);
@@ -432,7 +436,7 @@ describe('scripts/preview-cards.js', () => {
       const { stdout } = await promisify(execFile)(process.execPath, [join(ROOT, 'scripts/preview-cards.js'), out], { cwd: ROOT });
       const svgs = readdirSync(out).filter((f) => f.endsWith('.svg')).sort();
       assert.equal(svgs.length, 11);
-      assert.deepEqual(svgs, CARD_IDS.map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}.svg`));
+      assert.deepEqual(svgs, TEAM_IDS.map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}.svg`));
       const empty = readdirSync(join(out, 'empty')).filter((f) => f.endsWith('.svg'));
       assert.equal(empty.length, 10);
       assert.equal(stdout.trim().split('\n').length, 21);

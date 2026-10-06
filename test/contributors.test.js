@@ -16,6 +16,10 @@ import { computeContributors, computeStats, computeTotals, contributorName, hasT
 import { formatSummary } from '../src/summary.js';
 import { makeFixtureRepo } from '../scripts/make-fixture-repo.js';
 
+// The full card set of a team whose commits fall in one calendar month (the fixtures):
+// every card but the monthly timeline (see cardIdsFor).
+const TEAM_IDS = cardIdsFor({ contributors: { total: 2 } });
+
 const TODAY = '2026-10-05';
 const pad = (n) => String(n).padStart(2, '0');
 const stems = (ids) => ids.map((id, i) => `${pad(i + 1)}-${id}`);
@@ -157,13 +161,13 @@ const svgText = (svg) => [...svg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((m
 
 describe('contributors card', () => {
   test('is optional and sits after languages', () => {
-    assert.deepEqual(OPTIONAL_CARD_IDS, ['contributors']);
+    assert.deepEqual(OPTIONAL_CARD_IDS, ['months', 'contributors']);
     assert.equal(CARD_IDS.indexOf('contributors'), CARD_IDS.indexOf('languages') + 1);
-    assert.equal(CARD_IDS.length, 11);
-    assert.deepEqual(cardIdsFor({}), CARD_IDS.filter((id) => id !== 'contributors'));
+    assert.equal(CARD_IDS.length, 12);
+    assert.deepEqual(cardIdsFor({}), CARD_IDS.filter((id) => id !== 'contributors' && id !== 'months'));
     assert.deepEqual(cardIdsFor(null), cardIdsFor({}));
     assert.deepEqual(cardIdsFor({ contributors: { total: 1 } }), cardIdsFor({}));
-    assert.deepEqual(cardIdsFor({ contributors: { total: 2 } }), [...CARD_IDS]);
+    assert.deepEqual(cardIdsFor({ contributors: { total: 2 } }), CARD_IDS.filter((id) => id !== 'months'));
     assert.deepEqual(cardIdsFor({ contributors: { total: '7' } }), cardIdsFor({}), 'a non-number total is no team');
   });
 
@@ -178,7 +182,7 @@ describe('contributors card', () => {
   test('two authors: card 08 of 11, numbering contiguous, later cards shift by one', () => {
     const cards = buildCards(statsOf([c('Ada', 'ada@x.io'), c('Bob', 'bob@x.io')]), { today: TODAY });
     const specs = buildCardSpecs(statsOf([c('Ada', 'ada@x.io'), c('Bob', 'bob@x.io')]), { today: TODAY });
-    assert.deepEqual(cards.map((x) => x.id), [...CARD_IDS]);
+    assert.deepEqual(cards.map((x) => x.id), TEAM_IDS);
     assert.deepEqual(specs.map((s) => s.spec.number), times(11, (i) => pad(i + 1)));
     assert.equal(specs.find((s) => s.id === 'contributors').spec.number, '08');
     assert.equal(specs.find((s) => s.id === 'outro').spec.number, '11');
@@ -381,7 +385,7 @@ describe('end to end', () => {
     assert.equal(team.you.added, r.stats.totals.linesAdded);
     assert.equal(team.you.removed, r.stats.totals.linesRemoved);
 
-    assert.deepEqual(readdirSync(join(o, 'cards')).sort(), stems(CARD_IDS).map((s) => `${s}.svg`));
+    assert.deepEqual(readdirSync(join(o, 'cards')).sort(), stems(TEAM_IDS).map((s) => `${s}.svg`));
     const svg = readFileSync(join(o, 'cards', '08-contributors.svg'), 'utf8');
     const text = svgText(svg);
     assert.match(text, /#2 \| of 2 contributors/);
@@ -445,7 +449,7 @@ describe('end to end', () => {
     const fake = async () => Buffer.from('png');
     const a = await generate({ path: fixture.dir, out: o, png: true }, { today: TODAY, renderPng: fake });
     assert.equal(a.cardFiles.length, 11);
-    assert.deepEqual(readdirSync(join(o, 'png')).sort(), [...stems(CARD_IDS).map((s) => `${s}.png`), ].sort());
+    assert.deepEqual(readdirSync(join(o, 'png')).sort(), [...stems(TEAM_IDS).map((s) => `${s}.png`), ].sort());
     // Only Ada's last day: one author, 10 cards; 08-contributors and 09..11 are gone.
     const b = await generate({ path: fixture.dir, out: o, png: true, since: '2024-03-13' }, { today: TODAY, renderPng: fake });
     assert.equal(b.stats.contributors.total, 1);
@@ -457,7 +461,7 @@ describe('end to end', () => {
     assert.equal((readFileSync(b.html, 'utf8').match(/<section class="slide/g) ?? []).length, 10);
     // And back to 11, without PNGs this time: the PNG folder is cleared, cards renumbered.
     await generate({ path: fixture.dir, out: o, png: false }, { today: TODAY });
-    assert.deepEqual(readdirSync(join(o, 'cards')).sort(), stems(CARD_IDS).map((s) => `${s}.svg`));
+    assert.deepEqual(readdirSync(join(o, 'cards')).sort(), stems(TEAM_IDS).map((s) => `${s}.svg`));
     assert.ok(!existsSync(join(o, 'png')));
   });
 });

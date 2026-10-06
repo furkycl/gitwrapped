@@ -410,11 +410,14 @@ describe('end to end', () => {
     assert.equal(r.stats.contributors.total, 2);
     assert.equal(r.stats.contributors.you.commits, 2);
     assert.equal(r.stats.contributors.you.share, 50);
-    // --max-commits 3: Ada's 3 latest commits, but only the latest 3 of everyone's for the team.
+    // --max-commits 3: Ada's 3 latest commits; everyone since the oldest of them is still
+    // over the cap, so the team is the latest 3 of everyone's, Ada counted within them.
     const capped = await generate({ path: fixture.dir, out: out('capped'), png: false, maxCommits: 3, author: 'ada@example.com' }, { today: TODAY });
     assert.equal(capped.truncated, true);
     assert.equal(capped.teamTruncated, true);
+    assert.equal(capped.teamSpan.capped, true);
     assert.equal(capped.stats.contributors.top.reduce((n, p) => n + p.commits, 0), 3);
+    assert.ok(capped.stats.contributors.you.commits <= capped.stats.totals.commits);
     assert.equal(capped.stats.contributors.truncated, true);
     assert.equal(r.stats.contributors.truncated, false);
     // Without --author the contributors come from the main read: its cap is theirs.
@@ -424,15 +427,15 @@ describe('end to end', () => {
     const solo = await generate({ path: fixture.dir, out: out('capped4'), png: false, maxCommits: 4, author: 'ada@example.com' }, { today: TODAY });
     assert.equal(solo.truncated, false);
     assert.equal(solo.teamTruncated, true);
-    // The recap says so only when the author's own read was not capped (that note covers it).
+    // The recap says so whenever the team card is built from a capped team read.
     let text = '';
     const stdout = { write: (x) => { text += x; return true; } };
     const code = await run([fixture.dir, '--max-commits', '4', '--author', 'ada@example.com', '--no-png', '--out', out('capped-run')], { stdout, stderr: { write: () => true }, env: {}, today: TODAY });
     assert.equal(code, 0);
-    assert.match(text, /Note: the contributors card ranks you within the most recent 4 commits by everyone\./);
+    assert.match(text, /Note: the contributors card ranks only the most recent 4 commits by everyone \(from Mar 10, 2024\), you included\./);
     text = '';
     await run([fixture.dir, '--max-commits', '3', '--author', 'ada@example.com', '--no-png', '--out', out('capped-run3')], { stdout, stderr: { write: () => true }, env: {}, today: TODAY });
-    assert.doesNotMatch(text, /contributors card ranks/);
+    assert.match(text, /contributors card ranks only the most recent 3 commits by everyone/);
     assert.match(text, /only the most recent 3 were analyzed/);
   });
 

@@ -187,6 +187,7 @@ export default {
   languages: {
     eyebrow: 'Dillerin',
     other: 'Diğer',
+    names: { Text: 'Metin' },
     barTitle: (label, lines, files, pct) => `${label}: ${plural(files, UNITS.file)} içinde ${plural(lines, UNITS.line)} değişti (${pct})`,
     shareOfFiles: 'Dokunulan dosya payı',
     shareOfLines: 'Değişen satır payı',
@@ -376,7 +377,8 @@ export default {
     truncated: (n) => `Not: bu repoda ${n} üzerinde commit var; yalnızca en yeni ${n} commit incelendi.`,
     truncatedRepos: (n) => `Not: bu repolarda toplam ${n} üzerinde commit var; yalnızca en yeni ${n} commit incelendi.`,
     previousYearTruncated: (n, year) => `Not: ${year} yılında eşleşen commit sayısı ${n} üzerinde; karşılaştırma o yılın yalnızca en yeni ${n} commit'ini sayıyor.`,
-    teamTruncated: (n) => `Not: katkıcı kartı seni herkesin en yeni ${n} commit'i içinde sıralıyor.`,
+    teamTruncated: (n, from) => `Not: katkıcı kartı yalnızca herkesin (senin de) en yeni ${n} commit'ini sıralıyor${from ? ` (${from} itibarıyla)` : ''}.`,
+    teamSince: (n, from) => `Not: herkesin commit'leri toplamda ${n} üzerinde; katkıcı kartı yalnızca incelenen en eski commit'inden (${from}) bu yana olanları sıralıyor.`,
     shallow: "Not: sığ klon (shallow clone): en eski (sınır) commit'in satır sayıları atlandı ve daha eski geçmiş eksik.",
     unborn: "Not: geçerli dalda (HEAD) henüz commit yok ve gitwrapped yalnızca HEAD'in geçmişini okur. Commit'i olan bir dala geç (ör. git switch main) ve tekrar çalıştır.",
     unbornRepos: (repos) => `Not: şu repolarda geçerli dalda (HEAD) henüz commit yok: ${repos}. gitwrapped yalnızca HEAD'in geçmişini okur. Oradaki commit'i olan bir dala geç (ör. git switch main) ve tekrar çalıştır.`,

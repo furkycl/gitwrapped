@@ -22,6 +22,15 @@ export function getStrings(lang) {
   return isLang(lang) ? TABLES[lang] : TABLES[DEFAULT_LANG];
 }
 
+/**
+ * A language name from the stats (its English form, e.g. "Text") as table `L` shows it
+ * (Turkish: "Metin"); names without an entry in `L.languages.names` are kept as they are.
+ */
+export function languageLabel(name, L = TABLES[DEFAULT_LANG]) {
+  const names = L?.languages?.names ?? {};
+  return typeof name === 'string' && Object.hasOwn(names, name) ? names[name] : name;
+}
+
 /** Short alias of getStrings. */
 export const t = getStrings;
 

@@ -203,6 +203,8 @@ export default {
   languages: {
     eyebrow: 'Your languages',
     other: 'Other',
+    /** Language names shown in another form than stats' (English) one; the rest are kept. */
+    names: { Text: 'Text' },
     barTitle: (label, lines, files, pct) => `${label}: ${plural(lines, UNITS.line)} changed in ${plural(files, UNITS.file)} (${pct})`,
     shareOfFiles: 'Share of files touched',
     shareOfLines: 'Share of lines changed',
@@ -399,7 +401,10 @@ export default {
     truncatedRepos: (n) => `Note: these repos have more than ${n} commits together; only the most recent ${n} were analyzed.`,
     /** --year: the previous year (`year`) hit the commit cap. */
     previousYearTruncated: (n, year) => `Note: ${year} has more than ${n} matching commits; the comparison with it counts only its most recent ${n}.`,
-    teamTruncated: (n) => `Note: the contributors card ranks you within the most recent ${n} commits by everyone.`,
+    /** --author: the team read hit the cap; `from` is the first day it covers (or null). */
+    teamTruncated: (n, from) => `Note: the contributors card ranks only the most recent ${n} commits by everyone${from ? ` (from ${from})` : ''}, you included.`,
+    /** --author: everyone's commits are over the cap, so the card ranks them since `from`, the day of your oldest analyzed commit. */
+    teamSince: (n, from) => `Note: everyone's commits together are over ${n}, so the contributors card ranks only those since your oldest analyzed commit (${from}).`,
     shallow: 'Note: shallow clone: line counts for the oldest (boundary) commit are skipped, and older history is missing.',
     unborn: 'Note: the current branch (HEAD) has no commits yet, and gitwrapped only reads HEAD\'s history. Check out a branch with commits (e.g. git switch main) and run again.',
     /** A multi-repo run; `repos` is the joined list of labels ("api and web"). */

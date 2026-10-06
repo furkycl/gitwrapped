@@ -143,7 +143,7 @@ describe('longest break in stats.json, card and recap', () => {
     const en = formatSummary(stats, { today: TODAY, paths: { html: 'x' } });
     assert.match(en, /\n {2}Break {8}longest 7 days \(Mar 2, 2025 – Mar 10, 2025\)\n/);
     const tr = formatSummary(stats, { today: TODAY, lang: 'tr', paths: { html: 'x' } });
-    assert.match(tr, /\n {2}Mola {11}en uzun 7 gün \(2 Mar 2025 – 10 Mar 2025\)\n/);
+    assert.match(tr, /\n {2}Mola {13}en uzun 7 gün \(2 Mar 2025 – 10 Mar 2025\)\n/);
     const none = formatSummary(computeStats(days('2025-03-01'), { today: TODAY }), { today: TODAY, paths: { html: 'x' } });
     assert.doesNotMatch(none, /Break/);
   });

@@ -193,7 +193,7 @@ describe('recap', () => {
     assert.match(out, /\n {2}Biggest {6}"feat: the giant <refactor> & "rewrite" of every…" \(\+12,345 \/ −678 lines · Mar 4, 2026\)\n/);
     assert.doesNotMatch(out, /‮/);
     const tr = formatSummary(stats, { lang: 'tr' });
-    assert.match(tr, /\n {2}En büyük {7}"feat: .*" \(\+12\.345 \/ −678 satır · 4 Mar 2026\)\n/);
+    assert.match(tr, /\n {2}En büyük {9}"feat: .*" \(\+12\.345 \/ −678 satır · 4 Mar 2026\)\n/);
     // Colored output is the same text.
     assert.equal(formatSummary(stats, { color: true }).replace(/\x1b\[\d+m/g, ''), formatSummary(stats));
   });

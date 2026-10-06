@@ -10,6 +10,7 @@ import { languageBarRows, languageHeadline, OTHER as OTHER_LANGUAGE } from '../s
 import { daysUpTo, shownLongest, shownLongestBreak } from '../stats/daily.js';
 import { monthIndex, monthsFromDays } from '../stats/months.js';
 import { hasTeamCard, shareLabel, TOP_CONTRIBUTORS } from '../stats/contributors.js';
+import { shownCoAuthors } from '../stats/coauthors.js';
 import { scrubEmails } from '../privacy.js';
 import { personalityReason } from '../stats/personality.js';
 import { yearOverYear } from '../stats/yoy.js';
@@ -356,6 +357,9 @@ function intro(s, ctx) {
   };
 }
 
+/** The most list rows a card draws (see renderCard's `lines`). */
+const MAX_ROWS = 6;
+
 /** The smallest big number (px) the totals card of a multi-repo run shrinks to. */
 const TOTALS_BIG_MIN = 140;
 
@@ -396,7 +400,7 @@ function totals(s, { L, repos }) {
   // A multi-repo run adds commits per repo (the split chart stays first: when space is
   // short, charts are dropped from the end, so the size mix, last, goes before the repo bars).
   const charts = [split, ...(repos ? [repoCommitBars(repos, L)] : []), ...(sizes ? [sizes] : [])];
-  return {
+  const spec = {
     eyebrow: T.eyebrow,
     big: L.num(commits),
     title: commits === 1 ? L.units.commit[0] : L.units.commit[1],
@@ -407,6 +411,37 @@ function totals(s, { L, repos }) {
     chart: charts.length === 1 ? split : charts,
     ...(repos ? { bigMin: TOTALS_BIG_MIN } : {}),
   };
+  // Commits with a co-author (stats.coAuthors) as one more row, when the team card does not
+  // show them (see pairingOnTeam) and the row fits in spare room only.
+  const row = pairingOnTeam(s, L) ? null : pairedRow(s, L);
+  return row ? withSpareRow(spec, row, L) : spec;
+}
+
+/**
+ * The totals card's pairing row (stats.coAuthors, see shownCoAuthors): "Paired
+ * (top: Ada)" and the count; null when no commit was paired.
+ */
+function pairedRow(s, L) {
+  const co = shownCoAuthors(s.coAuthors);
+  if (!co) return null;
+  const top = co.top ? clip(text(plain(scrubEmails(co.top)))) : null;
+  return { label: L.pairing.row(top), value: L.num(co.paired) };
+}
+
+/**
+ * `spec` with `row` added after its rows when that changes nothing else: there is room
+ * for another row, the same charts are drawn and no other block (the big number, title,
+ * subtitle, charts) shrinks or grows; else `spec` unchanged.
+ */
+function withSpareRow(spec, row, L) {
+  const lines = Array.isArray(spec.lines) ? spec.lines : [];
+  if (lines.length >= MAX_ROWS) return spec;
+  const next = { ...spec, lines: [...lines, row] };
+  const heights = (l) => l.blocks.filter((b) => b.kind !== 'rows').map((b) => Math.round((b.bottom - b.top) * 10));
+  const before = layoutOf({ ...spec, lang: L.code });
+  const after = layoutOf({ ...next, lang: L.code });
+  const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+  return same(before.drawnCharts, after.drawnCharts) && same(heights(before), heights(after)) ? next : spec;
 }
 
 /**
@@ -992,9 +1027,16 @@ function contributorRow(p, you, L) {
 /**
  * The team card (only built when there are 2+ contributors, see cardIdsFor): the top
  * contributors by commits; with --author, where "you" rank among them. Shows git author
- * names (after .mailmap) only, never an email.
+ * names (after .mailmap) only, never an email. When commits were paired (stats.coAuthors)
+ * and there is room, a pairing panel follows the bars (see pairedCallout).
  */
 function contributors(s, { L }) {
+  const spec = teamCard(s, L);
+  return teamWithPairing(spec, s, L) ?? spec;
+}
+
+/** The team card without the pairing panel. */
+function teamCard(s, L) {
   const C = L.contributors;
   const c = s.contributors ?? {};
   const total = num(c.total);
@@ -1032,6 +1074,44 @@ function contributors(s, { L }) {
     subtitle,
     chart,
   };
+}
+
+/**
+ * The pairing panel (stats.coAuthors, see shownCoAuthors): "Pair programming", "12 commits
+ * paired" and, when known, "Top co-author: Ada" (a name only, never an email); null when no
+ * commit was paired. It is `optional`, so a card it does not fit is laid out exactly as
+ * without it.
+ */
+function pairedCallout(s, L) {
+  const co = shownCoAuthors(s.coAuthors);
+  if (!co) return null;
+  const P = L.pairing;
+  const top = co.top ? clip(text(plain(scrubEmails(co.top)))) : null;
+  return { kind: 'callout', optional: true, title: P.title, value: P.paired(co.paired), note: top ? P.top(top) : null };
+}
+
+/**
+ * The team card with the pairing panel (see pairedCallout) after its bars, or null when
+ * there is no panel or it does not fit (then `spec` is used as it is). Not with --author
+ * (contributors.authorFilter): the team card is everyone's, but stats.coAuthors counts
+ * only that author's commits, so the totals card (also theirs) shows it instead.
+ */
+function teamWithPairing(spec, s, L) {
+  if (s.contributors?.authorFilter === true) return null;
+  const paired = pairedCallout(s, L);
+  if (!paired) return null;
+  const list = Array.isArray(spec.chart) ? spec.chart : spec.chart ? [spec.chart] : [];
+  const withPanel = { ...spec, ...chartField([...list, paired]) };
+  return draws(withPanel, list.length, L) ? withPanel : null;
+}
+
+/**
+ * Whether the pairing panel goes on the team card: the card is built (see hasTeamCard),
+ * there is no --author filter and the panel fits on it. Otherwise the totals card gets a pairing row instead (when it
+ * fits there, see pairedRow).
+ */
+function pairingOnTeam(s, L) {
+  return hasTeamCard(s) && teamWithPairing(teamCard(s, L), s, L) !== null;
 }
 
 /** The four headline stats shared by the outro card and the share image. */

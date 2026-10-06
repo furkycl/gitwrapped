@@ -23,14 +23,14 @@ Ten 1080x1920 story cards, plus a monthly timeline when your commits span two or
 calendar months and a team card in a repo with more than one contributor (up to twelve):
 
 1. **Intro**: the repo name, the date range in plain English ("Oct 4 – Oct 5, 2026") and how many commits there are to unwrap, plus whose story it is when you pass `--author` (the part of the email before the `@` only: "Starring ada."), and where it all began: an "It all began with" panel with the first commit in the window, its quoted subject on one line ("“Initial commit”") and its day and short hash below ("Jan 3, 2025 · 1a2b3c4"; with several repos, its repo too). Merge commits are skipped. The subject is shortened to fit its line (first a smaller font, then cut with "…"), a long repo label is cut with "…" so the day and hash always show, and when the card has no room for the panel it is left out (it is still in the recap, `wrapped.md` and `stats.json`).
-2. **Totals**: commits, a lines added vs. removed bar, active days and files touched (and contributors, when there is more than one), plus your commit size mix: the share of tiny (under 10 lines), small (10–99), medium (100–500) and large (over 500 lines changed) commits as one stacked bar. The bar only uses spare room: when the card is short of space (with `--year`'s three extra rows, say) it is left out, and nothing else on the card shrinks for it (the mix is still in the recap and `stats.json`). Sizes count the same files as hot files (lockfiles, build output and the rest are left out, and so is anything you `--exclude`) and skip merge commits.
+2. **Totals**: commits, a lines added vs. removed bar, active days and files touched (and contributors, when there is more than one), plus your commit size mix: the share of tiny (under 10 lines), small (10–99), medium (100–500) and large (over 500 lines changed) commits as one stacked bar. The bar only uses spare room: when the card is short of space (with `--year`'s three extra rows, say) it is left out, and nothing else on the card shrinks for it (the mix is still in the recap and `stats.json`). Sizes count the same files as hot files (lockfiles, build output and the rest are left out, and so is anything you `--exclude`) and skip merge commits. When some of your commits were paired (a `Co-authored-by:` trailer, see the team card) and the team card is not there to show it (or has no room for it, or you passed `--author`), a "Paired (top: Ada)" row with their count is added, again only when it fits without anything else shrinking.
 3. **Power hour**: the hour of the day you commit the most, with a 24-hour bar chart and a Monday-to-Sunday weekday chart (hover a bar in `wrapped.html` for its count).
 4. **Streak**: your longest run of consecutive days with a commit, with a longest vs. current bar comparison and your longest break (the most days without a commit between two active days) when you took one.
 5. **Activity**: a GitHub-style calendar of commits per day (weeks as rows, Monday to Sunday, brighter the busier the day), with your number of active days and your busiest day. Hover a day in `wrapped.html` for its count. It covers up to the last 53 weeks of your history. For a repo that went quiet more than a month ago it says "12 months to Apr 2021" instead of "Your last 12 months".
 6. **Month by month** (only when your commits span two or more calendar months): commits per month as a bar chart, from your first active month to your last (months without commits show as empty bars), with the peak month among the months shown called out ("Mar 2026 was your peak month"; a tie goes to the earliest month, and when every active month has the same count it says so instead) and how many of those months had commits. It shows your most recent 24 months at most ("Your last 24 months", or "24 months to Apr 2019" for a repo that went quiet more than a month ago, like the activity card); `stats.json` keeps every month, and its `peak` is over all of them. Months are the author's own calendar months, like the activity calendar, and commits dated after tomorrow are left off. A history inside one calendar month skips this card, and the cards after it then move up a number.
 7. **Hot files**: the five files you edit most as a bar list. Lockfiles, build output (`dist/`, `build/`, ...), dependency folders, vendored code (a root `vendor/` or `third_party/`), minified files and test snapshots (`*.snap`, `__snapshots__/`) are ignored.
 8. **Languages**: your top programming language and its share of the lines you changed ("72% · Mostly TypeScript", or "Led by" under half, with ties named), with bars for your top five languages plus "Other". Data formats (JSON, YAML, ...) and prose (Markdown, ...) show in the bars, but they only lead the card when there's no code at all. Languages come from file extensions and well-known names like `Dockerfile` and `Makefile` (86 built in); lockfiles, build output, vendored code, test snapshots and binary files are left out, as for hot files.
-9. **The team** (only when the history has two or more contributors): how many people committed and the top five by commits as bars ("Ada Lovelace leads the pack with 54% of the commits"). With `--author` it ranks you against everyone in the same window: "#2 of 7 contributors", your share of the commits and lines, and a "you" marker on your bar (a sixth bar when you're outside the top five). Contributors are counted per email after `.mailmap`, and only their git author names are shown, never an email. A single-author repo skips this card, and so does an `--author` with no commits in the window (there's no "you" to rank); the cards after it then move up a number.
+9. **The team** (only when the history has two or more contributors): how many people committed and the top five by commits as bars ("Ada Lovelace leads the pack with 54% of the commits"). With `--author` it ranks you against everyone in the same window: "#2 of 7 contributors", your share of the commits and lines, and a "you" marker on your bar (a sixth bar when you're outside the top five). Contributors are counted per email after `.mailmap`, and only their git author names are shown, never an email. A single-author repo skips this card, and so does an `--author` with no commits in the window (there's no "you" to rank); the cards after it then move up a number. When commits carry `Co-authored-by:` trailers (pair programming, GitHub's co-authored commits, AI assistants), a "Pair programming" panel follows the bars: "12 commits paired" and the top co-author by name ("Top co-author: Grace Hopper"). A commit counts as paired when it lists at least one co-author other than its own author; merge commits are skipped. Co-authors go through `.mailmap` like authors and are shown by name only, never an email. The panel only uses spare room: when it doesn't fit, the card is exactly as without it and the totals card gets a row instead (when that fits); either way the pairing is in the recap, `wrapped.md` and `stats.json`. With `--author` the pairing counts only your commits (a commit where you are only a co-author does not count), so it goes on the totals card, not on the team card, which is everyone's.
 10. **Message hall of fame**: your favorite word, your longest and shortest messages, and how many "fix", "wip" and "oops" commits you made, plus your biggest commit: the one with the most lines changed, with its day, lines added / removed and subject. It counts the same files as hot files (lockfiles, build output and the rest are left out, and so is anything you `--exclude`) and skips merge commits; a tie goes to the earliest commit. When at least 20% of your commits follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat: ...`, `fix(api)!: ...`), the card also shows your commit type mix as a thin stacked bar: the top three types and any others folded into "the rest", each with its share of those commits, and the share of commits that follow the convention in its caption. When you only ever use one type, the bar sets it against the commits without a prefix ("no prefix"), as shares of all commits; with a single type on every commit there is nothing to compare and no bar. The bar only uses spare room; when there isn't enough, the fix / wip / oops counts are folded into one row ("“fix” / “wip” / “oops”: 5 / 0 / 2") to make room, and when it still doesn't fit, the card is left as it was (the mix is still in the recap, `wrapped.md` and `stats.json`).
 11. **Personality**: Night Owl, Early Bird, Friday Deployer, Fixaholic, Weekend Warrior or Steady Shipper, with a one-line roast and bars for your top habit scores.
 12. **Outro**: a summary card to post: commits, power hour, best streak and personality tiles, plus your hottest file.
@@ -56,6 +56,8 @@ You also get:
 - **Terminal recap**: commits, active days, lines, power hour, streak, longest break, hottest file,
   top language, first commit, team (in a repo with more than one contributor: the top contributor, or
   with `--author` your rank, e.g. `Team  7 contributors · you're #2 (31% of commits)`),
+  pairing (when commits have `Co-authored-by:` trailers, e.g.
+  `Paired  12 commits (31% of non-merge commits) · top co-author: Grace Hopper`),
   top word, biggest commit, commit size mix, commit type mix (when you use Conventional
   Commits, e.g. `Types  60% feat · 30% fix · 10% other (85% of commits conventional)`) and
   personality, printed right after the run.
@@ -289,7 +291,7 @@ but it does contain commit subjects and hashes and repo-relative file paths (see
 | `asOf`          | `YYYY-MM-DD` the current streak is counted up to: today, or the end of a past `--until` / `--year` window |
 | `filters`       | `{since, until, author, maxCommits, exclude}` as used (`--year` shows as since/until); dates and author are `null` when not set, `maxCommits` is the cap in effect, `exclude` the `--exclude` patterns in order (`[]` when none) |
 | `truncated`     | `true` when `--max-commits` cut the history short                             |
-| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `months`, `hotFiles`, `languages`, `contributors`, `messages`, `biggestCommit`, `commitSizes`, `commitTypes`, `firstCommit`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
+| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `months`, `hotFiles`, `languages`, `contributors`, `messages`, `biggestCommit`, `commitSizes`, `commitTypes`, `firstCommit`, `coAuthors`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
 
 ```json
 {
@@ -427,6 +429,22 @@ since then fit the cap, the ranking covers exactly those (and `you` has the comm
 `null`). Either way the recap says which in a note, whenever the team card is shown.
 Everything else in `stats` still covers only your commits.
 
+`stats.coAuthors` counts pairing from `Co-authored-by:` commit trailers (the key in any
+case, as git matches trailers): `{"paired", "commits", "share", "total", "top": [{"name",
+"commits"}]}`. `commits` is the number of non-merge commits (merges are skipped), `paired`
+how many of them list at least one co-author other than their own author, and `share`
+that as a percent of `commits` with one decimal. Co-authors go through `.mailmap` (and
+`mailmap.file`) like authors, each repo's own with several repos, and are counted per
+email, compared lowercased (by name when a trailer has no email); one listed twice on a
+commit counts once. `total` is the number of distinct co-authors and `top` lists the
+first five by paired commits, then name; each `name` is that co-author's most frequent
+name (a name that is itself an address is cut to the part before the `@`). Bots and AI
+assistants count like anyone else. Emails are never included. Only trailers in the
+message's last paragraph count, as git reads them. Like every stat but `contributors`,
+it covers the commits read with your filters: with `--author`, only your commits (a commit
+where you are only a co-author does not count). With no co-authors it is
+`{"paired": 0, "commits": N, "share": 0, "total": 0, "top": []}`.
+
 With several repos, `stats.repos` is the per-repo breakdown, most commits first:
 `[{"name": "api", "commits": 120, "linesAdded": 9100, "linesRemoved": 2300,
 "filesTouched": 64, "share": 61.2}, ...]` (counted like `totals`; `share` is the percent
@@ -454,7 +472,8 @@ README, a PR description or release notes:
 - a title with the repo name and the date window (or first – last active day), and with
   `--author` the name part of that address ("Starring ada.");
 - the headline numbers (commits, active days, lines added / removed, files touched; with
-  `--year` the change since the year before), the commit size mix and the first commit;
+  `--year` the change since the year before), the commit size mix, the first commit and,
+  when commits have `Co-authored-by:` trailers, how many were paired and the top co-author;
 - the power hour and busiest weekday, the longest streak, the current one (when a streak is
   running) and the longest break;
 - tables of the top five hot files and languages, and, in a repo with more than one
@@ -495,7 +514,9 @@ npx @furkycl/gitwrapped --year 2025 --md --no-png
   `filters.author`. In a repo with more than one contributor, the team card, the recap
   and `stats.json` also show the git author names (after `.mailmap`) of the top five
   contributors (and yours, with `--author`), never their emails (a name that is itself an address is cut to the part
-  before the `@`). The cards, share image and `wrapped.html` show only the part of the
+  before the `@`). The same goes for co-authors from `Co-authored-by:` trailers: the
+  cards, the recap, `wrapped.md` and `stats.json` show the top co-author's name (and
+  `stats.json` the top five), never an email. The cards, share image and `wrapped.html` show only the part of the
   `--author` email before the first `@` ("ada" for `ada@example.com`), never an address
   or domain: for `Name <email>` just the name, for a regex alternation (`a@x.io|b@y.io`)
   the first alternative's local part, and for `@example.com` no author at all.
@@ -505,9 +526,11 @@ npx @furkycl/gitwrapped --year 2025 --md --no-png
 ## How it works
 
 1. **Read.** One `git log --numstat` call (no shell, arguments passed directly) reads the
-   hash, author, email (after `.mailmap`), date, parents, subject and per-file line
-   counts of each commit. With `--until` / `--year` a cheap hashes-and-dates pass
-   picks the commits in the window first.
+   hash, author, email (after `.mailmap`), date, parents, `Co-authored-by:` trailers,
+   subject and per-file line counts of each commit. With `--until` / `--year` a cheap
+   hashes-and-dates pass picks the commits in the window first. When any commit has a
+   co-author, one `git check-mailmap --stdin` call per repo maps them through `.mailmap`
+   (not for the extra reads of `--author` and `--year`, whose co-authors are not used).
 2. **Stats.** Totals, time habits, streaks, commits per day, hot files, languages, contributors, message stats and a rule-based
    personality are computed in plain JavaScript. Hours, weekdays and days use each
    commit's **author-local time**, so a 23:00 commit counts as 23:00 for the person

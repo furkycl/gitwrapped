@@ -319,6 +319,13 @@ export default {
     title: 'katkıcı',
   },
 
+  pairing: {
+    title: 'Eşli programlama',
+    paired: (n) => `${plural(n, UNITS.commit)} birlikte yazıldı`,
+    top: (name) => `En sık ortak: ${name}`,
+    row: (name) => (name ? `Eşli (en sık: ${name})` : 'Birlikte yazılan'),
+  },
+
   outro: {
     eyebrow: 'Hepsi bu kadar',
     big: 'Teşekkürler!',
@@ -377,7 +384,7 @@ export default {
 
   // --- terminal recap ------------------------------------------------------------------
   recap: {
-    labelWidth: 15,
+    labelWidth: 17,
     noCommits: 'Hiç commit bulunamadı: kartlar oluşturuldu ama özetlenecek bir şey yok.',
     lines: 'satır',
     powerHour: 'Altın saat',
@@ -398,6 +405,9 @@ export default {
     ofCommits: (share) => `commit'lerin ${share} kadarı`,
     top: 'zirvede:',
     topWord: 'Favori kelime',
+    paired: 'Birlikte yazılan',
+    ofNonMerge: (share) => `merge dışı commit'lerin ${share} kadarı`,
+    topCoAuthor: 'en sık ortak:',
     firstCommit: 'İlk commit',
     biggest: 'En büyük',
     sizes: 'Boyutlar',
@@ -436,6 +446,8 @@ export default {
     share: 'Pay',
     repo: 'Repo',
     commitTypes: 'Commit türleri',
+    paired: 'Birlikte yazılan',
+    topCoAuthor: (name) => `en sık ortak: ${name}`,
     cards: 'Hikâye kartları',
     cardNames: {
       intro: 'Giriş',

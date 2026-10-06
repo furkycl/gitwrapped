@@ -8,7 +8,8 @@ import { buildLogArgs, parseLog, readCommits, readHistory, versionAtLeast, DEFAU
 
 const US = '\x1f';
 
-// One log record: hash, author, email, date, then the subject; parents (%P) are empty.
+// One log record: hash, author, email, date, then the subject; parents (%P) are empty
+// and there are no Co-authored-by values (nothing after the subject).
 function rec(hash, author, email, date, ...subject) {
   return [hash, author, email, date, '', ...subject].join(US) + '\0';
 }
@@ -19,7 +20,7 @@ describe('buildLogArgs', () => {
     assert.equal(args[0], 'log');
     assert.ok(args.includes('--no-color'));
     assert.ok(args.includes(`--format=${LOG_FORMAT}`));
-    assert.equal(LOG_FORMAT, '%H%x1f%aN%x1f%aE%x1f%aI%x1f%P%x1f%s');
+    assert.equal(LOG_FORMAT, '%H%x1f%aN%x1f%aE%x1f%aI%x1f%P%x1f%s%n%(trailers:key=Co-authored-by,valueonly,unfold,separator=%x0a)');
     assert.ok(args.includes('--use-mailmap'));
     assert.ok(args.includes('--ignore-submodules=all'));
     assert.ok(args.includes('-z'));
@@ -76,6 +77,7 @@ describe('parseLog', () => {
         email: 'ada@x.io',
         date: '2025-01-02T03:04:05+01:00',
         parents: [],
+        coAuthors: [],
         subject: 'init',
         files: [],
         filesChanged: 0,

@@ -355,6 +355,18 @@ export default {
     title: 'contributors',
   },
 
+  /**
+   * Commits with Co-authored-by trailers (stats.coAuthors): a panel on the team card (or,
+   * without one, the totals card): caption, "12 commits paired", "Top co-author: Ada".
+   */
+  pairing: {
+    title: 'Pair programming',
+    paired: (n) => `${plural(n, UNITS.commit)} paired`,
+    top: (name) => `Top co-author: ${name}`,
+    /** The totals card's row (without a team card): label, with the top co-author when known. */
+    row: (name) => (name ? `Paired (top: ${name})` : 'Paired commits'),
+  },
+
   outro: {
     eyebrow: "That's a wrap",
     big: 'Thanks!',
@@ -440,6 +452,10 @@ export default {
     ofCommits: (share) => `${share} of commits`,
     top: 'top:',
     topWord: 'Top word',
+    /** The pairing line: label, "12 commits", "(31% of non-merge commits)", then "· top co-author: Ada". */
+    paired: 'Paired',
+    ofNonMerge: (share) => `${share} of non-merge commits`,
+    topCoAuthor: 'top co-author:',
     /** The first-commit line: label, then the quoted subject and "(Mar 3, 2025 · 1a2b3c4)". */
     firstCommit: 'First commit',
     biggest: 'Biggest',
@@ -485,6 +501,9 @@ export default {
     repo: 'Repo',
     /** The conventional-commit mix section. */
     commitTypes: 'Commit types',
+    /** The pairing item (stats.coAuthors): "12 commits (31% of non-merge commits), top co-author: Ada". */
+    paired: 'Paired',
+    topCoAuthor: (name) => `top co-author: ${name}`,
     cards: 'Story cards',
     /** Alt text of each card image, by card id (src/cards CARD_IDS). */
     cardNames: {

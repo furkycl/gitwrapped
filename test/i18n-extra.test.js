@@ -272,7 +272,7 @@ describe('Turkish recap', () => {
     const out = formatSummary(s, { lang: 'tr', repoName: 'demo', today: TODAY, notes, author: 'a@x', paths: { html: 'o/wrapped.html', cardsDir: 'o/cards', cardCount: 11, statsJson: 'o/stats.json' } });
     assert.ok(out.includes(tr.notes.shallow), out);
     assert.ok(out.includes('istatistik JSON: o/stats.json') || out.includes('istatistik JSON:'), out);
-    // Every row label is followed by padding up to labelWidth (15).
+    // Every row label is followed by padding up to labelWidth (17).
     for (const label of ['Altın saat', 'Seri', 'Gözde dosya']) {
       const line = out.split('\n').find((l) => l.trimStart().startsWith(label));
       assert.ok(line, `no ${label} row in\n${out}`);

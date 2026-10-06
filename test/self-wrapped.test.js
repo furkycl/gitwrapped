@@ -32,6 +32,12 @@ test('self-wrapped cards/ holds exactly the current card set', () => {
   assert.deepEqual(svgs, CARDS.map((n) => `${n}.svg`));
 });
 
+test('self-wrapped README embeds exactly the current card set, in order', () => {
+  const md = readFileSync(new URL('README.md', dir), 'utf8');
+  const embedded = [...md.matchAll(/!\[[^\]]*\]\(cards\/([\w-]+)\.svg\)/g)].map((m) => m[1]);
+  assert.deepEqual(embedded, CARDS);
+});
+
 test('package.json has the self-wrapped script', () => {
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
   assert.equal(pkg.scripts['self-wrapped'], 'node bin/gitwrapped.js . --out docs/self-wrapped --no-color');

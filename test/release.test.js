@@ -113,6 +113,18 @@ test('CHANGELOG.md has a link footer for the package version', () => {
   assert.match(cl, new RegExp(`^\\[${escapeRe(pkg.version)}\\]: https://\\S+v${escapeRe(pkg.version)}\\s*$`, 'm'));
 });
 
+test('CHANGELOG.md compare links chain [Unreleased] and each release to the previous one', () => {
+  const cl = read('CHANGELOG.md');
+  const versions = [...cl.matchAll(/^## \[(\d+\.\d+\.\d+(?:-[\w.]+)?)\] - \d{4}-\d{2}-\d{2}\s*$/gm)].map((m) => m[1]);
+  assert.equal(versions[0], pkg.version);
+  const link = (label) => (cl.match(new RegExp(`^\\[${escapeRe(label)}\\]: (\\S+)\\s*$`, 'm')) || [])[1];
+  assert.match(link('Unreleased') || '', new RegExp(`/compare/v${escapeRe(pkg.version)}\\.\\.\\.HEAD$`));
+  for (let i = 0; i < versions.length - 1; i++) {
+    const [cur, prev] = [versions[i], versions[i + 1]];
+    assert.match(link(cur) || '', new RegExp(`/compare/v${escapeRe(prev)}\\.\\.\\.v${escapeRe(cur)}$`), `[${cur}] link`);
+  }
+});
+
 test('CHANGELOG.md is shipped in the package files', () => {
   assert.ok(pkg.files.includes('CHANGELOG.md'));
 });
@@ -227,6 +239,13 @@ test('README documents NPM_TOKEN and links CHANGELOG.md', () => {
   const readme = read('README.md');
   assert.match(readme, /NPM_TOKEN/);
   assert.match(readme, /\]\(\.?\/?CHANGELOG\.md\)/);
+});
+
+test('README stats.json example generator.version is the package version', () => {
+  const m = read('README.md').match(/"generator":\s*\{\s*"name":\s*"([^"]+)",\s*"version":\s*"(\d[^"]*)"/);
+  assert.ok(m, 'README has a stats.json example with a concrete generator.version');
+  assert.equal(m[1], pkg.name);
+  assert.equal(m[2], pkg.version);
 });
 
 // --- release safety ------------------------------------------------------------

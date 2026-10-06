@@ -249,7 +249,7 @@ but it does contain commit subjects and hashes and repo-relative file paths (see
 ```json
 {
   "schemaVersion": 1,
-  "generator": { "name": "@furkycl/gitwrapped", "version": "1.1.0" },
+  "generator": { "name": "@furkycl/gitwrapped", "version": "1.2.0" },
   "repo": "my-app",
   "asOf": "2025-12-31",
   "filters": { "since": "2025-01-01", "until": "2025-12-31", "author": null, "maxCommits": 50000 },

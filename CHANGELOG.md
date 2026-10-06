@@ -7,13 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-06
+
 ### Added
 
 - A team card (08, "The team") for repos with two or more contributors: the headcount
   and the top five contributors by commits (counted per email after `.mailmap`, shown by
   git author name only, never an email). With `--author` it ranks you against everyone
   in the same window ("#2 of 7 contributors", your share of commits and lines), reading
-  the history a second time without the author filter. Single-author repos, and an
+  the history a second time without the author filter. When `--max-commits` caps that
+  read, everyone is read again from the day of your oldest analyzed commit (same
+  filters, cap and repos), so you and the team are ranked over the same span; if that
+  is still capped, the ranking covers everyone's most recent N commits, you included,
+  and the recap says which of the two applies. Single-author repos, and an
   `--author` with no commits in the window, skip it, so a run has 10 or 11 cards, always
   numbered without gaps.
 - `stats.contributors` in `stats.json` (`total`, `top`, `you`, `authorFilter`,
@@ -25,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   its output is unchanged; an unknown code is an error (exit 2). `stats.json` is
   language-neutral and identical for every `--lang`. All strings live in one table per
   language under `src/i18n/`, and a test checks every key exists in every language.
+  Language names are kept as they are except "Text" ("Metin" in Turkish) on the
+  languages card and in the recap.
 - `--theme default|mono|neon` (also `--theme=mono`): color themes for the story cards,
   the PNGs, the share image and the `wrapped.html` viewer chrome. `mono` is grayscale,
   `neon` near-black with one vivid neon glow and accent bar per card; only colors
@@ -39,14 +47,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shared by two repos count once, and the same repository given twice (also as a
   worktree) is an error. The cards name the run "N repos", the intro names the repos,
   and the totals and hot-files cards add per-repo charts (commits and lines per repo,
-  files touched per repo; top three plus "+N more" beyond four; the totals card leaves
-  its chart out when space is short, e.g. with `--year`, the numbers staying in the
-  recap and `stats.json`). Contributors are
+  files touched per repo; top three plus "+N more" beyond four; the totals card compacts,
+  then leaves out, its chart when space is short, e.g. with `--year`, so the commit count stays at
+  140px or more; the numbers stay in the recap and `stats.json`). Contributors are
   counted across all the repos. Single-repo output is unchanged.
 - In `stats.json` of a multi-repo run: `repo` is `null`, a top-level `repos` lists the
   labels, and `stats.repos` holds the per-repo breakdown (`name`, `commits`,
   `linesAdded`, `linesRemoved`, `filesTouched`, `share`). The terminal recap gets a
-  "Repos" block with one line per repo.
+  "Repos" block with one line per repo, aligned by terminal columns (emoji and CJK
+  labels included).
 - Year over year: with `--year`, the year before is read too (same `--author`, repos,
   `.mailmap` and `--max-commits`) and compared on commits, lines changed and active
   days. The totals card adds three "vs <year>" rows with the signed change (`+42`,
@@ -58,24 +67,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   recap adds a note; when its read fails, a warning, and the run goes on without the
   comparison.
 - Card text keeps no-break spaces (U+00A0) together when wrapping, measured as a space.
-
-### Fixed
-
-- `--author` with `--max-commits`: the team card no longer ranks your commits from one
-  span against everyone else's from another. When the unfiltered team read hits the
-  cap, everyone is read again from the day of your oldest analyzed commit (same filters,
-  cap and repos): if that fits the cap, the ranking covers exactly everyone's commits
-  since then and "you" matches the totals; if not, it covers everyone's most recent N
-  commits, with you counted among them too. The recap note says which of the two
-  applies (with the date), appears whenever the cap applied to the team (also when your
-  own read was capped), and never when there is no team card.
-- The totals card of a multi-repo `--year` run keeps the commit count at 140px or more
-  (it could shrink to 72px, the title's size): the commits-per-repo chart is compacted,
-  then dropped, first (commits per repo stay in the recap and `stats.json`).
-- The recap's "Repos" block lines up repo labels with emoji or CJK characters (padded
-  by terminal columns, not code points).
-- `--lang tr` shows the "Text" language as "Metin" on the languages card and in the
-  recap; `stats.json` keeps the English name.
 
 ## [1.1.0] - 2026-10-06
 
@@ -223,6 +214,7 @@ First public release on npm as `@furkycl/gitwrapped`.
 - On macOS, color emoji are left out of PNG exports, because resvg drew Apple Color Emoji
   far from their text. SVG cards and `wrapped.html` keep them.
 
-[Unreleased]: https://github.com/furkycl/gitwrapped/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/furkycl/gitwrapped/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/furkycl/gitwrapped/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/furkycl/gitwrapped/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/furkycl/gitwrapped/releases/tag/v1.0.0

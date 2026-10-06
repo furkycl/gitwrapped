@@ -104,6 +104,14 @@ function stressStats() {
     archetype: { id: 'night-owl', name: `Night Owl ${INJECT} 🦉`, roast: `${'roast '.repeat(80)}${INJECT}`, reason: `${'reason '.repeat(80)}${INJECT}` },
     scores: [{ id: 'night-owl', name: `Night ${INJECT}`, score: 1 }, { id: 'x', name: 'Other', score: 0.333333 }],
   };
+  s.contributors = {
+    total: 5000,
+    top: [
+      { name: `${'Ada '.repeat(50)}${INJECT} 🚀`, rank: 1, commits: big, added: big, removed: big, share: 99.99 },
+      { name: INJECT, rank: 2, commits: 1, added: 0, removed: 0, share: 0.001 },
+    ],
+    you: { name: `${'you'.repeat(100)}`, rank: 4999, commits: 1, added: 1, removed: 0, share: 0.001 },
+  };
   return s;
 }
 
@@ -168,13 +176,16 @@ describe('formatNumber', () => {
 });
 
 describe('buildCards', () => {
-  test('returns 10 cards in CARD_IDS order with unique ids', () => {
-    assert.deepEqual(CARD_IDS, ['intro', 'totals', 'peak-hour', 'streak', 'activity', 'hot-files', 'languages', 'messages', 'personality', 'outro']);
+  test('returns 11 cards with a team, 10 without, in CARD_IDS order with unique ids', () => {
+    assert.deepEqual(CARD_IDS, ['intro', 'totals', 'peak-hour', 'streak', 'activity', 'hot-files', 'languages', 'contributors', 'messages', 'personality', 'outro']);
     assert.ok(Object.isFrozen(CARD_IDS));
     for (const [name, cards] of scenarios()) {
-      assert.equal(cards.length, 10, name);
-      assert.deepEqual(cards.map((c) => c.id), CARD_IDS, name);
-      assert.equal(new Set(cards.map((c) => c.id)).size, 10, name);
+      // The fixture (two authors) and the stress stats have a team; the rest do not.
+      const team = name.startsWith('fixture') || name === 'stress';
+      const expected = team ? [...CARD_IDS] : CARD_IDS.filter((id) => id !== 'contributors');
+      assert.equal(cards.length, team ? 11 : 10, name);
+      assert.deepEqual(cards.map((c) => c.id), expected, name);
+      assert.equal(new Set(cards.map((c) => c.id)).size, cards.length, name);
       for (const c of cards) {
         assert.equal(typeof c.svg, 'string');
         assert.ok(c.svg.startsWith('<svg'), `${name}/${c.id}`);
@@ -235,7 +246,7 @@ describe('buildCards', () => {
     assert.ok(all.includes('&lt;script&gt;'));
   });
 
-  test('every element id is unique across the 10 cards (safe to inline together)', () => {
+  test('every element id is unique across the cards (safe to inline together)', () => {
     for (const [name, cards] of scenarios()) {
       const ids = cards.flatMap((c) => [...c.svg.matchAll(/\sid="([^"]*)"/g)].map((m) => m[1]));
       assert.ok(ids.length >= 16, `${name}: ${ids.length} ids`);
@@ -415,16 +426,16 @@ describe('integration: fixture repo → cards', () => {
 });
 
 describe('scripts/preview-cards.js', () => {
-  test('writes 10 SVGs plus an empty/ set', async () => {
+  test('writes 11 SVGs (the fixture has two authors) plus a 10-card empty/ set', async () => {
     const out = mkdtempSync(join(tmpdir(), 'gitwrapped-preview-'));
     try {
       const { stdout } = await promisify(execFile)(process.execPath, [join(ROOT, 'scripts/preview-cards.js'), out], { cwd: ROOT });
       const svgs = readdirSync(out).filter((f) => f.endsWith('.svg')).sort();
-      assert.equal(svgs.length, 10);
+      assert.equal(svgs.length, 11);
       assert.deepEqual(svgs, CARD_IDS.map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}.svg`));
       const empty = readdirSync(join(out, 'empty')).filter((f) => f.endsWith('.svg'));
       assert.equal(empty.length, 10);
-      assert.equal(stdout.trim().split('\n').length, 20);
+      assert.equal(stdout.trim().split('\n').length, 21);
       for (const f of svgs) assert.equal(xmlError(readFileSync(join(out, f), 'utf8')), null, f);
     } finally {
       rmSync(out, { recursive: true, force: true, maxRetries: 5 });

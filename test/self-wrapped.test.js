@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { pngSize } from '../src/png.js';
-import { CARD_IDS } from '../src/cards/index.js';
+import { cardIdsFor } from '../src/cards/index.js';
 
 // docs/self-wrapped is gitwrapped run on its own repo (`npm run self-wrapped`).
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -22,8 +22,9 @@ const CARDS = [
   '10-outro',
 ];
 
-test('self-wrapped CARDS list matches CARD_IDS', () => {
-  assert.deepEqual(CARDS, CARD_IDS.map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}`));
+test('self-wrapped CARDS list matches the single-author card set (no contributors card)', () => {
+  // This repo is single-author (its .mailmap folds the GitHub noreply address into one identity).
+  assert.deepEqual(CARDS, cardIdsFor({ contributors: { total: 1 } }).map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}`));
 });
 
 test('self-wrapped cards/ holds exactly the current card set', () => {

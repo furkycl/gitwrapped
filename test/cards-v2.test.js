@@ -3,7 +3,7 @@
 // the card-number watermark.
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildCards, buildCardSpecs, footerText, formatDateRange, formatDay, renderCard, renderShareCard, layoutCard } from '../src/cards/index.js';
+import { buildCards, buildCardSpecs, cardIdsFor, footerText, formatDateRange, formatDay, renderCard, renderShareCard, layoutCard } from '../src/cards/index.js';
 import { compactNumber, CONTENT_BOTTOM, CONTENT_TOP, FOOTER_TOP, fitCount, measureText, truncateMiddle } from '../src/cards/svg.js';
 import { computeStats, percentShares } from '../src/stats/index.js';
 
@@ -71,6 +71,14 @@ function languageStats(rows, basis = 'lines') {
   return s;
 }
 
+/** normalStats() with a hand-made contributors stat (`you`: a row or null). */
+function teamStats(top, total, you = null) {
+  const s = normalStats();
+  s.contributors = { total, top: top.map(([name, commits, added = 0, removed = 0], i) => ({ name, rank: i + 1, commits, added, removed, share: Math.round((commits / total) * 1000) / 10 })), you };
+  return s;
+}
+const SIX_NAMES = ['Ada Lovelace', 'Grace Hopper', 'Linus T.', 'Margaret Hamilton', 'Dennis R.'];
+
 const MANY_LANGUAGES = ['TypeScript', 'JavaScript', 'Python', 'Go', 'Rust', 'Java', 'Kotlin', 'Swift', 'C++', 'Ruby', 'Other']
   .map((name, i) => [name, 9_007_199_254_740 - i * 1_000_000_000, 1e9 - i]);
 
@@ -88,6 +96,9 @@ const SCENARIOS = [
   ['no code languages', () => languageStats([['Other', 40, 3]]), { repoName: 'none' }],
   ['four-way tie + data', () => languageStats([['JSON', 900, 4], ['Go', 5, 1], ['Rust', 5, 1], ['Zig', 5, 1], ['C', 5, 1], ['YAML', 1, 1]]), { repoName: 'tie' }],
   ['languages by files', () => languageStats([['Markdown', 0, 3], ['Shell', 0, 1]], 'files'), { repoName: 'zero-lines' }],
+  ['team of two', () => teamStats([['Ada', 3, 10, 2], ['Bob', 1, 0, 0]], 2), { repoName: 'team' }],
+  ['team: you outside the top five', () => teamStats(SIX_NAMES.map((n, i) => [n, 100 - i]), 600, { name: 'Me', rank: 17, commits: 2, added: 1, removed: 1, share: 0.4 }), { repoName: 'team', author: 'me@x.io' }],
+  ['team: long names, huge counts', () => teamStats([[`${'W'.repeat(200)} ${INJECT}`, 9_007_199_254_740_991, 1e21, 1e21], ['🚀'.repeat(60), 9_007_199_254_740_000]], 9_007_199_254_740_991, { name: 'M'.repeat(300), rank: 2, commits: 9_007_199_254_740_000, added: 1, removed: 1, share: 50 }), { repoName: 'big' }],
 ];
 
 describe('footer keeps the date window whole', () => {
@@ -187,7 +198,8 @@ describe('layout', () => {
   for (const [name, make, opts] of SCENARIOS) {
     test(`${name}: blocks stay in the content area, never overlap, and draw inside their box`, () => {
       const cards = buildCards(make(), opts);
-      assert.equal(cards.length, 10);
+      assert.equal(cards.length, cardIdsFor(make()).length);
+      assert.ok(cards.length === 10 || cards.length === 11, `${name}: ${cards.length} cards`);
       for (const { id, svg } of cards) {
         assert.ok(!/NaN|undefined|Infinity/.test(svg), `${name}/${id}: bad number`);
       }

@@ -9,7 +9,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { loadResvg, pngSize, renderPng } from '../src/png.js';
-import { buildCards, buildCardSpecs, CARD_IDS, footerText, formatDateRange, formatDay, formatNumber, renderShareCard } from '../src/cards/index.js';
+import { buildCards, buildCardSpecs, CARD_IDS, cardIdsFor, footerText, formatDateRange, formatDay, formatNumber, renderShareCard } from '../src/cards/index.js';
 import { computeStats } from '../src/stats/index.js';
 import { hourLabel } from '../src/stats/time.js';
 import { buildViewerHtml, CSP } from '../src/viewer.js';
@@ -60,6 +60,13 @@ function stressStats() {
     archetype: { id: 'x', name: `Night Owl ${INJECT} 🦉 ${'w'.repeat(80)}`, roast: 'r '.repeat(200), reason: 'q '.repeat(200) },
     scores: [{ id: 'x', name: 'Night Owl', score: 1 }, { id: 'y', name: 'Early Bird', score: 0.5 }],
   };
+  // A huge team, long / hostile names, and "you" outside the top five (a sixth row).
+  const person = (name, rank) => ({ name, rank, commits: big, added: 1e21, removed: big, share: 100 / 6 });
+  s.contributors = {
+    total: big,
+    top: [person(`${'Ada '.repeat(60)}${INJECT} 🚀`, 1), person('W'.repeat(300), 2), person(INJECT, 3), person('Bob', 4), person('Cy', 5)],
+    you: { ...person(`You ${'y'.repeat(200)}`, big), share: 0.01 },
+  };
   return s;
 }
 const STRESS_OPTS = { repoName: `${'r'.repeat(150)}${INJECT}🚀${'R'.repeat(140)}`, since: `2020-01-01 ${INJECT}`, author: `Ada ${INJECT}` };
@@ -78,13 +85,14 @@ const titles = (svg) => [...svg.matchAll(/<title>([^<]*)<\/title>/g)].map((m) =>
 
 describe('PNG rendering of every v2 card', () => {
   for (const [name, make, opts] of SCENARIOS) {
-    test(`${name}: all 10 cards rasterize to 1080x1920, share to 1200x630`, async (t) => {
+    test(`${name}: all cards rasterize to 1080x1920, share to 1200x630`, async (t) => {
       if (!Resvg) {
         t.skip(`resvg unavailable: ${resvgError}`);
         return;
       }
       const cards = buildCards(make(), opts);
-      assert.deepEqual(cards.map((c) => c.id), CARD_IDS);
+      // The stress stats have a team (11 cards), normal and empty ones a single author (10).
+      assert.deepEqual(cards.map((c) => c.id), name === 'stress' ? [...CARD_IDS] : cardIdsFor({}));
       for (const { id, svg } of cards) {
         const png = await renderPng(svg, { width: 1080 });
         assert.deepEqual(pngSize(png), { width: 1080, height: 1920 }, `${name}/${id}`);
@@ -100,16 +108,16 @@ describe('PNG rendering of every v2 card', () => {
 
 const sha = (s) => `'sha256-${createHash('sha256').update(s, 'utf8').digest('base64')}'`;
 
-function checkViewer(html, where) {
+function checkViewer(html, where, cardIds = CARD_IDS) {
   const ids = [...html.matchAll(/\sid="([^"]*)"/g)].map((m) => m[1]);
   const dupes = ids.filter((id, i) => ids.indexOf(id) !== i);
   assert.deepEqual(dupes, [], `${where}: duplicate ids`);
   // Every in-page url(#x) / href="#x" reference resolves to an id that exists.
   const refs = [...html.matchAll(/url\(#([^)]+)\)/g)].map((m) => m[1]);
-  assert.ok(refs.length >= CARD_IDS.length * 3, `${where}: gradient refs`);
+  assert.ok(refs.length >= cardIds.length * 3, `${where}: gradient refs`);
   for (const r of refs) assert.ok(ids.includes(r), `${where}: url(#${r}) has no target`);
   // Card SVG ids are all per-card prefixed.
-  for (const id of CARD_IDS) {
+  for (const id of cardIds) {
     assert.ok(ids.includes(`gw-${id}-bg`), `${where}: gw-${id}-bg`);
     assert.ok(ids.includes(`gw-${id}-glow`), `${where}: gw-${id}-glow`);
   }
@@ -134,7 +142,7 @@ describe('viewer with v2 cards', () => {
     test(`${name}: unique ids, resolvable refs, valid CSP`, () => {
       const cards = buildCards(make(), opts);
       const html = buildViewerHtml(cards, { title: `gitwrapped · ${opts.repoName}` });
-      checkViewer(html, name);
+      checkViewer(html, name, cards.map((c) => c.id));
       for (const { svg } of cards) assert.ok(html.includes(svg.trim().slice(svg.indexOf('<defs>'), svg.indexOf('</defs>'))), `${name}: svg inlined`);
     });
   }

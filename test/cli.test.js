@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { parseCli, run, HELP_TEXT, readVersion } from '../src/cli.js';
-import { CARD_IDS } from '../src/cards/index.js';
+import { CARD_IDS, cardIdsFor } from '../src/cards/index.js';
 import { makeFixtureRepo } from '../scripts/make-fixture-repo.js';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -249,7 +249,8 @@ describe('run', () => {
     assert.equal(r.code, 0, r.stderr);
     assert.match(r.stdout, /^gitwrapped: 0 commits → /);
     assert.ok(existsSync(join(out, 'wrapped.html')));
-    assert.equal(readdirSync(join(out, 'cards')).length, CARD_IDS.length);
+    // An --author that matches nobody gets no contributors card.
+    assert.equal(readdirSync(join(out, 'cards')).length, cardIdsFor({}).length);
   });
 
   test('a path that is not a git repo exits 1 with a message on stderr', async (t) => {
@@ -291,7 +292,8 @@ describe('run', () => {
     assert.ok(r.stdout.startsWith(`gitwrapped: 0 commits → ${join(out, 'wrapped.html')}\n`), r.stdout);
     assert.match(r.stdout, /No commits found/);
     assert.doesNotMatch(r.stdout, /null|undefined|NaN/);
-    assert.equal(readdirSync(join(out, 'cards')).length, CARD_IDS.length);
+    // No contributors at all: no contributors card.
+    assert.equal(readdirSync(join(out, 'cards')).length, cardIdsFor({}).length);
   });
 
   test('--max-commits caps the history and prints a notice', async (t) => {

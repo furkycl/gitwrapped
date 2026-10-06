@@ -1,6 +1,6 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeDaily, computeHotFiles, computeLanguages, computeMessages, computePersonality, computeStats, computeStreaks, computeTimeHabits, computeTotals, hourLabel } from '../src/stats/index.js';
+import { computeContributors, computeDaily, computeHotFiles, computeLanguages, computeMessages, computePersonality, computeStats, computeStreaks, computeTimeHabits, computeTotals, hourLabel } from '../src/stats/index.js';
 import { readCommits } from '../src/git.js';
 import { makeFixtureRepo } from '../scripts/make-fixture-repo.js';
 
@@ -110,7 +110,7 @@ describe('computeTimeHabits', () => {
 });
 
 describe('computeStats', () => {
-  test('combines totals, habits, streaks, daily, hot files, languages, messages and personality', () => {
+  test('combines totals, habits, streaks, daily, hot files, languages, contributors, messages and personality', () => {
     const commits = [at('2024-06-15T09:00:00Z')];
     const today = '2024-06-16';
     const parts = {
@@ -120,6 +120,7 @@ describe('computeStats', () => {
       daily: computeDaily(commits),
       hotFiles: computeHotFiles(commits),
       languages: computeLanguages(commits),
+      contributors: computeContributors(commits),
       messages: computeMessages(commits),
     };
     assert.deepEqual(computeStats(commits, { today }), { ...parts, personality: computePersonality(parts) });

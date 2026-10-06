@@ -68,7 +68,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
   - [x] CHANGELOG 1.2.0 + version bump, regenerate docs/self-wrapped + hero GIF, README in sync
 
 ## M9 — 1.3 (proposed by loop turn 034 per the M8 owner note "do not finish the loop"; owner may prune)
-- [ ] `--exclude <glob>` (repeatable): drop matching paths from lines, files touched, hot files and languages (simple `*`/`**` matcher, no deps); stats.json `filters.exclude`; tests
+- [x] `--exclude <glob>` (repeatable): drop matching paths from lines, files touched, hot files and languages (simple `*`/`**` matcher, no deps); stats.json `filters.exclude`; tests
 - [ ] Monthly timeline card: commits per month across the window (bars, peak month called out), localized en/tr, all themes; stats.json `stats.months`; tests
 - [ ] Biggest commit: largest commit by lines changed (subject, date, +/−) on the messages card and in stats.json/recap, ignoring the same paths as hot files; tests
 - [ ] 1.3.0 release prep: cold audit of the 1.3 work + fixes, CHANGELOG 1.3.0, bump, regenerate docs/self-wrapped (run `git fetch --unshallow` first — loop clones are shallow) + hero GIF, README in sync

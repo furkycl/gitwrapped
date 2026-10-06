@@ -6,6 +6,8 @@ import { languageHeadline } from './stats/languages.js';
 import { hasTeamCard, shareLabel } from './stats/contributors.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from './i18n/index.js';
 import { yearOverYear } from './stats/yoy.js';
+import { epochDay } from './stats/time.js';
+import { shownBiggestLines } from './stats/biggest.js';
 
 const EN = getStrings(DEFAULT_LANG);
 
@@ -121,6 +123,26 @@ export function displayWidth(s) {
 }
 
 /**
+ * One line of free text (a commit subject) for the recap: control / bidi characters become
+ * spaces, whitespace runs collapse, then it is cut at whole grapheme clusters (never inside
+ * a ZWJ emoji, flag or combining sequence) to at most `maxWidth` terminal columns
+ * (displayWidth), the "…" included. '' when nothing is left.
+ */
+function shortText(s, maxWidth = 48) {
+  const t = String(s ?? '').replace(CONTROL, ' ').replace(/\s+/g, ' ').trim();
+  if (displayWidth(t) <= maxWidth) return t;
+  let out = '';
+  let w = 0;
+  for (const { segment: g } of SEGMENTER.segment(t)) {
+    const gw = displayWidth(g);
+    if (w + gw > maxWidth - 1) break;
+    out += g;
+    w += gw;
+  }
+  return `${out.trimEnd()}…`;
+}
+
+/**
  * Format the end-of-run recap. `stats` is computeStats() output; options:
  * - color: emit ANSI colors (default false; with false the result has no ESC chars)
  * - repoName: shown in the heading
@@ -138,6 +160,8 @@ export function displayWidth(s) {
  * per repo (commits and lines; the first five, then "…and N more").
  * A --year run with a comparison (stats.yearOverYear) gets a "vs <previous year>" line
  * with the change in commits, lines changed and active days.
+ * A "Biggest" line shows the biggest commit (stats.biggestCommit: subject, lines added /
+ * removed and its day) when there is one.
  * A "Team" line (top contributor, or the --author's rank) appears exactly when the
  * contributors card is built (see hasTeamCard in stats/contributors.js).
  * The first line is always `gitwrapped: N commits → <html>` (no color), so it is easy
@@ -236,6 +260,18 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     const fixes = m.counts?.fix ?? 0;
     if (fixes > 0) words.push(`${plural(fixes, 'fix', L)}`);
     if (words.length > 0) lines.push(`  ${label(R.topWord)}${words.join(' · ')}`);
+
+    // The biggest commit by lines changed (stats.biggestCommit), as on the messages card.
+    const big = stats?.biggestCommit;
+    const bigLines = shownBiggestLines(big);
+    if (bigLines) {
+      const short = typeof big.subject === 'string' ? shortText(big.subject, 48) : '';
+      const subject = short ? `"${short}"` : L.messages.noSubject;
+      // A valid 'YYYY-MM-DD' only (epochDay rejects other shapes and impossible dates).
+      const day = typeof big.date === 'string' && epochDay(big.date) !== null ? big.date.split('-').map(Number) : null;
+      const when = day ? ` · ${L.date(day[2], day[1], day[0])}` : '';
+      lines.push(`  ${label(R.biggest)}${c('cyan', subject)} ${c('dim', `(${signed(bigLines.added, '+', L)} / ${signed(bigLines.removed, '−', L)} ${R.lines}${when})`)}`);
+    }
 
     const a = stats?.personality?.archetype;
     if (a?.name) {

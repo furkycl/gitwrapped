@@ -285,6 +285,10 @@ export default {
     fixCommits: '“fix” commits',
     wipCommits: '“wip” commits',
     oopsCommits: '“oops” commits',
+    /** The biggest-commit panel: caption (with the day, when known), lines, a subject-less commit. */
+    biggestTitle: (date) => (date ? `Biggest commit · ${date}` : 'Biggest commit'),
+    biggestLines: (plus, minus) => `${plus} / ${minus} lines`,
+    noSubject: '(no subject)',
   },
 
   personality: {
@@ -410,6 +414,7 @@ export default {
     ofCommits: (share) => `${share} of commits`,
     top: 'top:',
     topWord: 'Top word',
+    biggest: 'Biggest',
     you: 'You are',
     cardsIn: (count, dir) => `${count} in ${dir}`,
     shareImage: 'share image:',

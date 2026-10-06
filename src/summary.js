@@ -9,6 +9,7 @@ import { yearOverYear } from './stats/yoy.js';
 import { epochDay } from './stats/time.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { shownCommitSizes } from './stats/sizes.js';
+import { sizeShareText } from './cards/index.js';
 
 const EN = getStrings(DEFAULT_LANG);
 
@@ -292,7 +293,7 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
 
     // The commit size mix (stats.commitSizes), as on the totals card; only when there is one.
     const mix = shownCommitSizes(stats?.commitSizes);
-    if (mix) lines.push(`  ${label(R.sizes)}${mix.map((b) => `${c('cyan', L.pct(b.share))} ${R.sizeNames[b.id]}`).join(c('dim', ' · '))}`);
+    if (mix) lines.push(`  ${label(R.sizes)}${mix.map((b) => `${c('cyan', sizeShareText(b, mix, L))} ${R.sizeNames[b.id]}`).join(c('dim', ' · '))}`);
 
     const a = stats?.personality?.archetype;
     if (a?.name) {

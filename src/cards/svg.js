@@ -701,8 +701,8 @@ function splitBlock(spec, compact = false, L = EN) {
   };
 }
 
-/** Fill opacities of a stacked bar's segments, first (solid) to last (faintest). */
-const STACK_OPACITY = [1, 0.7, 0.45, 0.25];
+/** Fill opacities of a stacked bar's segments, first (solid) to last (faintest); even the last stays well above the 0.15 empty track, so an all-large mix never looks empty. */
+const STACK_OPACITY = [1, 0.75, 0.55, 0.4];
 
 /**
  * One 100% bar split into up to 4 segments, left to right, each fainter than the last.
@@ -1066,9 +1066,11 @@ const CHARTS = { bars: barsBlock, hbars: hbarsBlock, split: splitBlock, stack: s
  */
 function chartBlocks(chart, compact = false, L = EN) {
   const list = Array.isArray(chart) ? chart : chart ? [chart] : [];
-  return list.map((c) => {
+  return list.map((c, index) => {
     const block = c && Object.hasOwn(CHARTS, c.kind) ? CHARTS[c.kind](c, compact, L) : null;
     if (block && c.optional === true) block.optional = true;
+    // Which chart spec it draws (see layoutCard's drawnCharts).
+    if (block) block.index = index;
     return block;
   }).filter(Boolean);
 }
@@ -1148,6 +1150,9 @@ function fitFooter(text) {
  * `{blocks: [{kind, group: 'head'|'body', top, bottom, svg}], eyebrow, watermark, footer}`
  * where eyebrow / watermark / footer are `{top, bottom, left, right}` boxes (or null).
  * Every block lies within [CONTENT_TOP, CONTENT_BOTTOM] and no two blocks overlap.
+ * `drawnCharts` lists the indices (into `chart`, a single spec being index 0) of the charts
+ * actually drawn, in order: charts left out for lack of room, and specs that draw nothing
+ * (an unknown kind, too few segments, ...), are not in it.
  */
 export function layoutCard({ eyebrow, title, big, subtitle, titleSize, bigMin, lines, chart, number, footer, lang } = {}) {
   const L = getStrings(lang);
@@ -1237,6 +1242,7 @@ export function layoutCard({ eyebrow, title, big, subtitle, titleSize, bigMin, l
       ? { text: num, top: WATERMARK.baseline - WATERMARK.size * 0.73, bottom: WATERMARK.baseline, left: PAD_X + CONTENT_WIDTH - markWidth, right: PAD_X + CONTENT_WIDTH }
       : null,
     footer: fitFooter(s1(footer)),
+    drawnCharts: body.filter((b) => b !== rows).map((b) => b.index),
   };
 }
 
@@ -1265,6 +1271,14 @@ export function layoutCard({ eyebrow, title, big, subtitle, titleSize, bigMin, l
  * All text is XML-escaped; output is deterministic.
  */
 export function renderCard(opts = {}) {
+  return renderCardWithLayout(opts).svg;
+}
+
+/**
+ * renderCard() plus which charts its layout drew: `{svg, drawnCharts}` (see layoutCard),
+ * so a card's description can match what is drawn without laying it out twice.
+ */
+export function renderCardWithLayout(opts = {}) {
   opts = opts ?? {};
   const name = Object.hasOwn(THEMES, opts.theme ?? '') ? opts.theme : DEFAULT_THEME;
   const palette = getColorTheme(opts.colorTheme);
@@ -1287,7 +1301,7 @@ export function renderCard(opts = {}) {
   if (footLine) body.push(textEl(PAD_X + CONTENT_WIDTH, FOOTER_BASELINE - 2, footLine, { size: footSize, weight: 600, opacity: 0.8, anchor: 'end' }));
 
   const label = escapeXml([eb ? getStrings(opts.lang).upper(s1(opts.eyebrow)) : '', s1(opts.big), s1(opts.title)].filter(Boolean).join(' — ') || 'gitwrapped card');
-  return [
+  const svg = [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${CARD_WIDTH}" height="${CARD_HEIGHT}" viewBox="0 0 ${CARD_WIDTH} ${CARD_HEIGHT}" role="img" aria-label="${label}">`,
     `<title>${label}</title>`,
     background(ids, grad, palette.glowOpacity?.card),
@@ -1297,4 +1311,5 @@ export function renderCard(opts = {}) {
     '</svg>',
     '',
   ].join('\n');
+  return { svg, drawnCharts: layout.drawnCharts };
 }

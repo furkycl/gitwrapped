@@ -129,7 +129,7 @@ describe('longest break in stats.json, card and recap', () => {
     assert.equal(en.chart[0].kind, 'hbars');
     assert.deepEqual(en.chart[1], { kind: 'callout', title: 'Longest break', value: '7 days off', note: 'Between Mar 2, 2025 and Mar 10, 2025' });
     const tr = streakSpec(stats, 'tr');
-    assert.deepEqual(tr.chart[1], { kind: 'callout', title: 'En uzun mola', value: '7 günlük mola', note: '2 Mar 2025 ile 10 Mar 2025 arası' });
+    assert.deepEqual(tr.chart[1], { kind: 'callout', title: 'En uzun mola', value: '7 gün', note: '2 Mar 2025 ile 10 Mar 2025 arası' });
   });
 
   test('without a break the streak card has a single chart, as before', () => {

@@ -354,6 +354,9 @@ over 500. Lines are counted over the same files as `biggestCommit` (and hot file
 lockfiles, build output and `--exclude`d files don't count. `shares` are whole percents of
 `total` (largest-remainder rounding, so they always add up to exactly 100; all `0` without
 commits). The totals card shows the mix only when there is at least one such commit.
+The card, the recap and `wrapped.md` show a size with under 1% of the commits as "<1%"
+(never "0%"), and cap a size at 99% while another has commits; `stats.json` keeps the raw
+shares.
 
 `stats.languages` lists every language found, most lines first, with `"Other"` (file
 types gitwrapped doesn't know) always last. `type` is `"programming"`, `"data"` (JSON,
@@ -421,7 +424,7 @@ README, a PR description or release notes:
 - a title with the repo name and the date window (or first – last active day), and with
   `--author` the name part of that address ("Starring ada.");
 - the headline numbers (commits, active days, lines added / removed, files touched; with
-  `--year` the change since the year before);
+  `--year` the change since the year before) and the commit size mix;
 - the power hour and busiest weekday, the longest streak, the current one (when a streak is
   running) and the longest break;
 - tables of the top five hot files and languages, and, in a repo with more than one
@@ -440,7 +443,8 @@ email address: contributors appear by name only, `--author` only by the part bef
 repo name is replaced with "…". File paths, names and commit subjects are escaped so they
 show as plain text: a `|` in a path can't break a table, URLs don't become links, and an
 invisible word joiner after every `@` and `#` keeps GitHub from turning `@someone` into a
-mention or `#12` into an issue link. Like `stats.json`, it is only
+mention or `#12` into an issue link; `$` is escaped too, so `$lib/$types.ts` never renders
+as math. Like `stats.json`, it is only
 written with `--md`, and one left over from an earlier `--md` run is left as it is.
 
 ```bash

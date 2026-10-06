@@ -156,6 +156,8 @@ describe('messages card', () => {
 
   test('without a biggest commit the card is exactly as before', () => {
     const stats = computeStats(HISTORY(), { today: TODAY });
+    // The conventional-commit mix adds a chart of its own (see commit-types.test.js).
+    delete stats.commitTypes;
     const without = { ...stats };
     delete without.biggestCommit;
     for (const lang of ['en', 'tr']) {

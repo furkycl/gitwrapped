@@ -12,6 +12,7 @@ import { computeStreaks, localToday } from './streaks.js';
 import { computeRepos } from './repos.js';
 import { COMMIT_SIZE_BUCKETS, COMMIT_SIZE_IDS, commitSizeOf, computeCommitSizes, shownCommitSizes, sizeShares } from './sizes.js';
 import { computeTotals } from './totals.js';
+import { COMMIT_TYPE_IDS, COMMIT_TYPES_MIN_SHARE, commitTypeOf, computeCommitTypes, foldCommitTypes, shownCommitTypes } from './types.js';
 import { computeYearOverYear, yearOverYear } from './yoy.js';
 
 export { computeTotals, computeTimeHabits, computeStreaks, computeDaily, daysUpTo, longestGap, longestRun, shownLongest, shownLongestBreak, computeHotFiles, isIgnoredPath, repoRelativePath, computeRepos, computeYearOverYear, yearOverYear };
@@ -20,6 +21,7 @@ export { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONT
 export { computeBiggestCommit, shownBiggestLines, computeMessages, computePersonality, isMergeCommit, ARCHETYPES, localToday };
 export { computeMonths, monthsFromDays };
 export { COMMIT_SIZE_BUCKETS, COMMIT_SIZE_IDS, commitSizeOf, computeCommitSizes, shownCommitSizes, sizeShares };
+export { COMMIT_TYPE_IDS, COMMIT_TYPES_MIN_SHARE, commitTypeOf, computeCommitTypes, foldCommitTypes, shownCommitTypes };
 export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAMES } from './time.js';
 
 /**
@@ -33,7 +35,9 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * non-merge commit with the most lines changed, ignored paths left out as for hot files
  * (see biggest.js), or null. `commitSizes` is how many non-merge commits are tiny (< 10
  * lines), small (10-99), medium (100-500) or large (> 500), counted like biggestCommit,
- * with whole-percent shares (see sizes.js).
+ * with whole-percent shares (see sizes.js). `commitTypes` is the conventional-commit mix
+ * (feat / fix / docs / refactor / test / chore / other) of non-merge commits with a
+ * subject, and whether it is shown (see types.js).
  * `months` is commits per author-local calendar month, zero-filled from the first to the
  * last active month, with the peak month (see months.js).
  * `contributors` ranks who made the commits (see contributors.js). It is computed from
@@ -62,6 +66,7 @@ export function computeStats(commits = [], { today, todayComplete, team, author,
     messages: computeMessages(commits),
     biggestCommit: computeBiggestCommit(commits),
     commitSizes: computeCommitSizes(commits),
+    commitTypes: computeCommitTypes(commits),
   };
   const nonMergeCommits = (commits ?? []).filter((c) => !isMergeCommit(c)).length;
   stats.personality = computePersonality(stats, { nonMergeCommits, today: today ?? localToday() });

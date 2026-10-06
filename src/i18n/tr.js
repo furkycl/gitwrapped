@@ -42,10 +42,10 @@ export default {
   pct: (r) => `%${r}`,
   // Turkish casing: i → İ, ı → I. The explicit i → İ first keeps it right even on a
   // Node build without full ICU (where the locale argument is ignored). The brands "git"
-  // and "gitwrapped" and the loanword "commit" (also suffixed: commit'lerin) keep the plain
-  // I: GITWRAPPED, COMMIT'LERİN.
+  // and "gitwrapped" and the loanwords "commit" (also suffixed: commit'lerin) and
+  // "conventional" (Conventional Commits) keep the plain I: GITWRAPPED, COMMIT'LERİN.
   upper: (s) => String(s)
-    .split(/(\bgit(?:wrapped)?\b|\bcommit(?=\b|'))/i)
+    .split(/(\bgit(?:wrapped)?\b|\bcommit(?=\b|')|\bconventional\b)/i)
     .map((part, i) => (i % 2 === 1 ? part.toUpperCase() : part.replace(/i/g, 'İ').toLocaleUpperCase('tr-TR')))
     .join(''),
   compact: { sep: '.', point: ',', suffixes: ['B', 'Mn', 'Mr', 'Tn'] },
@@ -272,6 +272,11 @@ export default {
     biggestTitle: (date) => (date ? `En büyük commit · ${date}` : 'En büyük commit'),
     biggestLines: (plus, minus) => `${plus} / ${minus} satır`,
     noSubject: '(konu yok)',
+    typesTitle: (pct) => `Commit türleri · ${pct} conventional`,
+    typeNames: { feat: 'feat', fix: 'fix', docs: 'docs', refactor: 'refactor', test: 'test', chore: 'chore', other: 'diğer', rest: 'diğerleri', none: 'öneksiz' },
+    typeTitle: (name, commits, pct) => `${name}: ${plural(commits, UNITS.commit)} (${pct})`,
+    counterCommits: '“fix” / “wip” / “oops”',
+    counterValues: (fix, wip, oops) => `${fix} / ${wip} / ${oops}`,
   },
 
   personality: {
@@ -395,6 +400,8 @@ export default {
     biggest: 'En büyük',
     sizes: 'Boyutlar',
     sizeNames: { tiny: 'minik', small: 'küçük', medium: 'orta', large: 'büyük' },
+    types: 'Türler',
+    conventional: (pct) => `commit'lerin ${pct} kadarı conventional`,
     you: 'Kişiliğin',
     cardsIn: (count, dir) => `${count}: ${dir}`,
     shareImage: 'paylaşım görseli:',
@@ -426,6 +433,7 @@ export default {
     contributor: 'Katkıcı',
     share: 'Pay',
     repo: 'Repo',
+    commitTypes: 'Commit türleri',
     cards: 'Hikâye kartları',
     cardNames: {
       intro: 'Giriş',

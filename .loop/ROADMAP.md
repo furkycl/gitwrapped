@@ -65,4 +65,10 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] Year-over-year: with `--year`, compare against the previous year on the totals and outro cards (+/- commits, lines, active days); tests
 - 1.2.0 release prep (split in turn 033):
   - [x] Cold audit of the 1.2 work (contributors, --lang, --theme, multi-repo, year-over-year; diff e33281b..main) + fix every real bug found, with tests
-  - [ ] CHANGELOG 1.2.0 + version bump, regenerate docs/self-wrapped + hero GIF, README in sync
+  - [x] CHANGELOG 1.2.0 + version bump, regenerate docs/self-wrapped + hero GIF, README in sync
+
+## M9 — 1.3 (proposed by loop turn 034 per the M8 owner note "do not finish the loop"; owner may prune)
+- [ ] `--exclude <glob>` (repeatable): drop matching paths from lines, files touched, hot files and languages (simple `*`/`**` matcher, no deps); stats.json `filters.exclude`; tests
+- [ ] Monthly timeline card: commits per month across the window (bars, peak month called out), localized en/tr, all themes; stats.json `stats.months`; tests
+- [ ] Biggest commit: largest commit by lines changed (subject, date, +/−) on the messages card and in stats.json/recap, ignoring the same paths as hot files; tests
+- [ ] 1.3.0 release prep: cold audit of the 1.3 work + fixes, CHANGELOG 1.3.0, bump, regenerate docs/self-wrapped (run `git fetch --unshallow` first — loop clones are shallow) + hero GIF, README in sync

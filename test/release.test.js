@@ -125,6 +125,16 @@ test('CHANGELOG.md compare links chain [Unreleased] and each release to the prev
   }
 });
 
+test('CHANGELOG.md keeps [Unreleased] on top and release dates newest-first', () => {
+  const cl = read('CHANGELOG.md');
+  const unreleased = cl.search(/^## \[Unreleased\]\s*$/m);
+  const releases = [...cl.matchAll(/^## \[[^\]]+\] - (\d{4}-\d{2}-\d{2})\s*$/gm)];
+  assert.ok(unreleased >= 0, 'has an ## [Unreleased] heading');
+  assert.ok(unreleased < releases[0].index, '[Unreleased] comes before the first release');
+  const dates = releases.map((m) => m[1]);
+  assert.deepEqual(dates, [...dates].sort().reverse(), 'release dates are in descending order');
+});
+
 test('CHANGELOG.md is shipped in the package files', () => {
   assert.ok(pkg.files.includes('CHANGELOG.md'));
 });

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-06
+
 ### Added
 
 - Biggest commit: the message hall of fame card now shows the commit with the most
@@ -15,24 +17,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   linesAdded, linesRemoved, lines, files}`, or `null`). Lines count over the same files
   as hot files (lockfiles, build output, vendored and minified files left out, and
   `--exclude`d files too); merge commits are skipped and a tie goes to the earliest
-  commit. Without such a commit the card is unchanged. In English and Turkish.
+  commit (on the same timestamp, the older one in git order). Without such a commit the
+  card is unchanged. In English and Turkish.
 - `--exclude <glob>` (repeatable) leaves matching files out of lines added / removed,
-  files touched, hot files and languages, and so out of the per-repo breakdown, the
-  team card's lines and the year-over-year lines changed. Gitignore-like matching with
-  no new dependencies: `*`, `?` and `**`; a pattern without a `/` matches a name at any
-  depth (`*.min.js`, `fixtures`), one with a `/` is anchored at the repo root
-  (`src/gen/*.js`), and a matching folder (`docs`, `docs/`, `docs/**`) drops everything
-  under it. With several repos a pattern matches the path inside its repo, and a path
-  pattern (with a `/`) also the shown `<repo>/<path>`. Commits are never dropped, so commit counts, active days, streaks
-  and habits do not change. `stats.json` gets `filters.exclude` (`[]` when none).
+  files touched, hot files, languages and the biggest commit, and so out of the per-repo
+  breakdown, the team card's lines and the year-over-year lines changed. Gitignore-like
+  matching with no new dependencies: `*`, `?` and `**` (`**` crosses folders only as a
+  whole path segment; inside a name, as in `src**.js`, it is a plain `*`); a pattern
+  without a `/` matches a name at any depth (`*.min.js`, `fixtures`), one with a `/` is
+  anchored at the repo root (`src/gen/*.js`), and a matching folder (`docs`, `docs/`,
+  `docs/**`) drops everything under it. With several repos a pattern matches the path
+  inside its repo, and a path pattern whose first segment has no wildcard (`api/src/`,
+  `/web`) also the shown `<repo>/<path>`; a name pattern or one starting with a wildcard
+  never matches a repo's label, so `*/generated/` drops the same files as with one repo.
+  Commits are never dropped, so commit counts, active days, streaks and habits do not
+  change. `stats.json` gets `filters.exclude` (`[]` when none).
 - Monthly timeline card ("Month by month"), right after the activity calendar: commits
   per calendar month as bars, with the peak month called out (a tie goes to the earliest
   month) and how many months had commits. It only appears when the commits span two or
-  more calendar months, so a history inside one month keeps the same cards as before; it
-  shows the most recent 24 months at most. Author-local months like the other day-based
-  stats; commits dated after tomorrow are left off the card. In English and Turkish, in
-  every theme. `stats.json` gets `stats.months`: every month from the first to the last
-  active one (`{month: "YYYY-MM", commits}`, zero-filled) and the `peak` month.
+  more calendar months, so a history inside one month keeps the same cards as before;
+  when it appears, the cards after it shift by one number (`06-months.svg`, hot files
+  becomes 07, and so on), so a run now has 10 to 12 cards. It shows the most recent 24
+  months at most ("24 months to Apr 2019" for a repo that went quiet more than a month
+  ago, like the activity card). Author-local months like the other day-based stats;
+  commits dated after tomorrow are left off the card. In English and Turkish, in every
+  theme. `stats.json` gets `stats.months`: every month from the first to the last active
+  one (`{month: "YYYY-MM", commits}`, zero-filled) and the `peak` month.
 
 ## [1.2.0] - 2026-10-06
 
@@ -241,7 +251,8 @@ First public release on npm as `@furkycl/gitwrapped`.
 - On macOS, color emoji are left out of PNG exports, because resvg drew Apple Color Emoji
   far from their text. SVG cards and `wrapped.html` keep them.
 
-[Unreleased]: https://github.com/furkycl/gitwrapped/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/furkycl/gitwrapped/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/furkycl/gitwrapped/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/furkycl/gitwrapped/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/furkycl/gitwrapped/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/furkycl/gitwrapped/releases/tag/v1.0.0

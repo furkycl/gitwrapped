@@ -804,6 +804,9 @@ function stackBlock(spec, compact = false, L = EN) {
 
 const PANEL_FILL = 'fill="#ffffff" fill-opacity="0.14"';
 
+/** A callout's note line: its font size and the widest text (measureText) drawn uncut. */
+export const CALLOUT_NOTE = Object.freeze({ size: 34, maxWidth: CONTENT_WIDTH / BIG_WEIGHT_FACTOR });
+
 /**
  * A translucent panel with a caption, one big fitted value and a note line.
  * Spec: `{kind: 'callout', title, value, note}`.
@@ -821,8 +824,8 @@ function calloutBlock(spec, compact = false, L = EN) {
   const fit = value ? fitOneLine(value, inner, 64, 40) : null;
   const valBase = h + (fit ? fit.size * 0.76 : 0);
   if (fit) h += fit.size * 0.76 + 26;
-  const noteBase = h + 34 * 0.76;
-  if (note) h += 34 * 0.76 + 14;
+  const noteBase = h + CALLOUT_NOTE.size * 0.76;
+  if (note) h += CALLOUT_NOTE.size * 0.76 + 14;
   h += PAD - 14;
   return {
     kind: 'callout',
@@ -831,7 +834,7 @@ function calloutBlock(spec, compact = false, L = EN) {
       const parts = [`<rect x="${PAD_X - 40}" y="${round(y)}" width="${CONTENT_WIDTH + 80}" height="${round(h)}" rx="44" ${PANEL_FILL}/>`];
       if (cap) parts.push(textEl(PAD_X, y + capBase, fitSpaced(cap, inner, CAPTION.size, CAPTION.spacing), { size: CAPTION.size, weight: 800, opacity: 0.75, spacing: CAPTION.spacing }));
       if (fit) parts.push(textEl(PAD_X, y + valBase, fit.line, { size: fit.size, weight: 900, spacing: -0.01 * fit.size }));
-      if (note) parts.push(textEl(PAD_X, y + noteBase, fitEnd(note, inner, 34), { size: 34, weight: 700, opacity: 0.85 }));
+      if (note) parts.push(textEl(PAD_X, y + noteBase, fitEnd(note, inner, CALLOUT_NOTE.size), { size: CALLOUT_NOTE.size, weight: 700, opacity: 0.85 }));
       return parts.join('');
     },
   };

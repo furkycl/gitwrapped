@@ -22,7 +22,7 @@ summary image it made for link previews.
 Ten 1080x1920 story cards, plus a monthly timeline when your commits span two or more
 calendar months and a team card in a repo with more than one contributor (up to twelve):
 
-1. **Intro**: the repo name, the date range in plain English ("Oct 4 – Oct 5, 2026") and how many commits there are to unwrap, plus whose story it is when you pass `--author` (the part of the email before the `@` only: "Starring ada.").
+1. **Intro**: the repo name, the date range in plain English ("Oct 4 – Oct 5, 2026") and how many commits there are to unwrap, plus whose story it is when you pass `--author` (the part of the email before the `@` only: "Starring ada."), and where it all began: an "It all began with" panel with the first commit in the window, its quoted subject on one line ("“Initial commit”") and its day and short hash below ("Jan 3, 2025 · 1a2b3c4"; with several repos, its repo too). Merge commits are skipped. The subject is shortened to fit its line (first a smaller font, then cut with "…"), a long repo label is cut with "…" so the day and hash always show, and when the card has no room for the panel it is left out (it is still in the recap, `wrapped.md` and `stats.json`).
 2. **Totals**: commits, a lines added vs. removed bar, active days and files touched (and contributors, when there is more than one), plus your commit size mix: the share of tiny (under 10 lines), small (10–99), medium (100–500) and large (over 500 lines changed) commits as one stacked bar. The bar only uses spare room: when the card is short of space (with `--year`'s three extra rows, say) it is left out, and nothing else on the card shrinks for it (the mix is still in the recap and `stats.json`). Sizes count the same files as hot files (lockfiles, build output and the rest are left out, and so is anything you `--exclude`) and skip merge commits.
 3. **Power hour**: the hour of the day you commit the most, with a 24-hour bar chart and a Monday-to-Sunday weekday chart (hover a bar in `wrapped.html` for its count).
 4. **Streak**: your longest run of consecutive days with a commit, with a longest vs. current bar comparison and your longest break (the most days without a commit between two active days) when you took one.
@@ -54,7 +54,7 @@ You also get:
 - **PNGs**: each card as a 1080x1920 PNG, plus a 1200x630 `share.png` summary for link
   previews and social posts.
 - **Terminal recap**: commits, active days, lines, power hour, streak, longest break, hottest file,
-  top language, team (in a repo with more than one contributor: the top contributor, or
+  top language, first commit, team (in a repo with more than one contributor: the top contributor, or
   with `--author` your rank, e.g. `Team  7 contributors · you're #2 (31% of commits)`),
   top word, biggest commit, commit size mix, commit type mix (when you use Conventional
   Commits, e.g. `Types  60% feat · 30% fix · 10% other (85% of commits conventional)`) and
@@ -289,7 +289,7 @@ but it does contain commit subjects and hashes and repo-relative file paths (see
 | `asOf`          | `YYYY-MM-DD` the current streak is counted up to: today, or the end of a past `--until` / `--year` window |
 | `filters`       | `{since, until, author, maxCommits, exclude}` as used (`--year` shows as since/until); dates and author are `null` when not set, `maxCommits` is the cap in effect, `exclude` the `--exclude` patterns in order (`[]` when none) |
 | `truncated`     | `true` when `--max-commits` cut the history short                             |
-| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `months`, `hotFiles`, `languages`, `contributors`, `messages`, `biggestCommit`, `commitSizes`, `commitTypes`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
+| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `months`, `hotFiles`, `languages`, `contributors`, `messages`, `biggestCommit`, `commitSizes`, `commitTypes`, `firstCommit`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
 
 ```json
 {
@@ -346,6 +346,16 @@ snapshots don't make a commit big, and `--exclude`d files are left out too; merg
 are skipped, and a tie goes to the earliest commit. History is read with `--no-renames`,
 so a commit that moves or renames large files counts their lines as removed and added
 again, and can be the biggest commit.
+
+`stats.firstCommit` is the first commit in the window, as
+`{"date": "YYYY-MM-DD", "subject", "hash"}` (plus `"repo"`, its repo's label, when you pass
+several repos), or `null` when there are no commits. It is the earliest commit by author
+date among the commits read (so `--since` / `--until` / `--year`, `--author` and the other
+filters apply; when the history is capped by `--max-commits`, or the clone is shallow, it
+is the earliest commit read, not the repo's very first), merge commits skipped as for the biggest commit; commits at the same
+instant go to the one git lists last. `date` is the author's local day, `hash` the first 7
+characters of the commit hash, and in `subject` anything shaped like an email address is
+replaced with "…". `date`, `subject` and `hash` can each be `null`.
 
 `stats.commitSizes` is the commit size mix:
 `{"total", "tiny", "small", "medium", "large", "shares": {"tiny", "small", "medium", "large"}}`.
@@ -444,7 +454,7 @@ README, a PR description or release notes:
 - a title with the repo name and the date window (or first – last active day), and with
   `--author` the name part of that address ("Starring ada.");
 - the headline numbers (commits, active days, lines added / removed, files touched; with
-  `--year` the change since the year before) and the commit size mix;
+  `--year` the change since the year before), the commit size mix and the first commit;
 - the power hour and busiest weekday, the longest streak, the current one (when a streak is
   running) and the longest break;
 - tables of the top five hot files and languages, and, in a repo with more than one
@@ -481,7 +491,7 @@ npx @furkycl/gitwrapped --year 2025 --md --no-png
   script), so the browser won't load anything from the network either.
 - **What the output contains.** Cards, `wrapped.html` and (with `--json`) `stats.json`
   show commit subjects and repo-relative file paths; `stats.json` also lists commit
-  hashes (the longest and shortest message, the biggest commit) and, when you pass `--author`, that email in
+  hashes (the longest and shortest message, the biggest commit; the first commit's short hash) and, when you pass `--author`, that email in
   `filters.author`. In a repo with more than one contributor, the team card, the recap
   and `stats.json` also show the git author names (after `.mailmap`) of the top five
   contributors (and yours, with `--author`), never their emails (a name that is itself an address is cut to the part

@@ -105,6 +105,8 @@ export default {
     noCommitsIn: (year) => `no commits in ${year}`,
     chapterOne: 'Chapter one',
     firstCommit: 'starts with your first commit',
+    /** The first commit in the window (stats.firstCommit): caption above its quoted subject. */
+    beganTitle: 'It all began with',
   },
 
   totals: {
@@ -438,6 +440,8 @@ export default {
     ofCommits: (share) => `${share} of commits`,
     top: 'top:',
     topWord: 'Top word',
+    /** The first-commit line: label, then the quoted subject and "(Mar 3, 2025 · 1a2b3c4)". */
+    firstCommit: 'First commit',
     biggest: 'Biggest',
     /** The commit size line: label, then "62% tiny · 25% small · 10% medium · 3% large". */
     sizes: 'Sizes',

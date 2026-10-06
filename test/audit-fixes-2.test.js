@@ -286,8 +286,10 @@ describe('11. future-dated commits do not stretch the date range or the Steady S
     assert.equal(stats.totals.commits, 4);
     const cards = specs(stats);
     for (const { id, spec } of cards) assert.equal(spec.footer, 'demo · Oct 3 – Oct 5, 2026', id);
-    assert.equal(cards[0].spec.chart.value, 'Oct 3 – Oct 5, 2026');
-    assert.match(cards[0].spec.chart.note, /^4 commits/);
+    // The range panel is the intro's last chart (an "It all began with" panel comes first).
+    const range = [cards[0].spec.chart].flat().at(-1);
+    assert.equal(range.value, 'Oct 3 – Oct 5, 2026');
+    assert.match(range.note, /^4 commits/);
     for (const { svg } of buildCards(stats, { repoName: 'demo', today: TODAY })) assert.doesNotMatch(svg, /2099/);
     assert.doesNotMatch(renderShareCard(stats, { repoName: 'demo', today: TODAY }), /2099/);
     assert.equal(footerText(stats, { repoName: 'demo', today: TODAY }), 'demo · Oct 3 – Oct 5, 2026');
@@ -300,7 +302,7 @@ describe('11. future-dated commits do not stretch the date range or the Steady S
 
   test('old (1970) commits are not clamped; only the future end is', () => {
     const stats = computeStats([commit('1970-01-02T10:00:00+00:00'), ...recent, future], { today: TODAY });
-    assert.equal(specs(stats)[0].spec.chart.value, 'Jan 2, 1970 – Oct 5, 2026');
+    assert.equal([specs(stats)[0].spec.chart].flat().at(-1).value, 'Jan 2, 1970 – Oct 5, 2026');
   });
 
   test('only future days: the range still shows them; without today nothing changes', () => {

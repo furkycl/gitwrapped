@@ -4,6 +4,7 @@
 import { shownLongest, shownLongestBreak } from './stats/daily.js';
 import { languageHeadline } from './stats/languages.js';
 import { hasTeamCard, shareLabel } from './stats/contributors.js';
+import { scrubEmails } from './privacy.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from './i18n/index.js';
 import { yearOverYear } from './stats/yoy.js';
 import { epochDay } from './stats/time.js';
@@ -166,6 +167,8 @@ function shortText(s, maxWidth = 48) {
  * with the change in commits, lines changed and active days.
  * A "Break" line shows the longest break between two active days (stats.streaks.longestBreak,
  * future-dated days left out with `today` as on the streak card) when there is one.
+ * A "First commit" line shows the first commit in the window (stats.firstCommit: subject,
+ * day, short hash and, with several repos, its repo) when there is one.
  * A "Biggest" line shows the biggest commit (stats.biggestCommit: subject, lines added /
  * removed and its day) when there is one.
  * A "Sizes" line shows the commit size mix (stats.commitSizes: the share of tiny / small /
@@ -282,6 +285,17 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     const fixes = m.counts?.fix ?? 0;
     if (fixes > 0) words.push(`${plural(fixes, 'fix', L)}`);
     if (words.length > 0) lines.push(`  ${label(R.topWord)}${words.join(' · ')}`);
+
+    // The first commit in the window (stats.firstCommit), as on the intro card.
+    const first = stats?.firstCommit;
+    if (first && typeof first === 'object') {
+      const short = typeof first.subject === 'string' ? shortText(scrubEmails(first.subject), 48) : '';
+      const subject = short ? `"${short}"` : L.messages.noSubject;
+      // A valid 'YYYY-MM-DD' only (epochDay rejects other shapes and impossible dates).
+      const day = typeof first.date === 'string' && epochDay(first.date) !== null ? first.date.split('-').map(Number) : null;
+      const detail = [day ? L.date(day[2], day[1], day[0]) : '', shortText(scrubEmails(first.hash ?? ''), 12), shortText(first.repo, 24)].filter(Boolean).join(' · ');
+      lines.push(`  ${label(R.firstCommit)}${c('cyan', subject)}${detail ? ` ${c('dim', `(${detail})`)}` : ''}`);
+    }
 
     // The biggest commit by lines changed (stats.biggestCommit), as on the messages card.
     const big = stats?.biggestCommit;

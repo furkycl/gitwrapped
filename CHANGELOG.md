@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- First commit: the intro card gets an "It all began with" panel with the first commit
+  in the window (its quoted subject, day and short hash; with several repos, its repo),
+  the recap a "First commit" line and `wrapped.md` a "First commit" item, and
+  `stats.json` gets `stats.firstCommit` (`{date, subject, hash}` plus `repo` with several
+  repos, or `null`). It is the earliest non-merge commit by author date that passes the
+  filters; email-shaped text in its subject is replaced with "…". A long subject is cut
+  with "…", and when the intro has no room the panel is left out and the card is exactly
+  as before. English and Turkish.
+
 - Commit type mix: when at least 20% of the commits follow Conventional Commits
   (`type(scope)!: description`, case-insensitive), the messages card shows the share of
   feat / fix / docs / refactor / test / chore / other commits as a thin stacked bar (the

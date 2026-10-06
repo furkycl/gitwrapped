@@ -262,6 +262,9 @@ export default {
     fixCommits: "“fix” commit'leri",
     wipCommits: "“wip” commit'leri",
     oopsCommits: "“oops” commit'leri",
+    biggestTitle: (date) => (date ? `En büyük commit · ${date}` : 'En büyük commit'),
+    biggestLines: (plus, minus) => `${plus} / ${minus} satır`,
+    noSubject: '(konu yok)',
   },
 
   personality: {
@@ -381,6 +384,7 @@ export default {
     ofCommits: (share) => `commit'lerin ${share} kadarı`,
     top: 'zirvede:',
     topWord: 'Favori kelime',
+    biggest: 'En büyük',
     you: 'Kişiliğin',
     cardsIn: (count, dir) => `${count}: ${dir}`,
     shareImage: 'paylaşım görseli:',

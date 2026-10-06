@@ -65,11 +65,12 @@ describe('formatSummary', () => {
     assert.match(out, /Streak {7}longest 3 days · current 3 days/);
     assert.match(out, /Hottest file src\/a\.js \(3 commits\)/);
     assert.match(out, /Top word {5}"parser" ×3 · 1 fix/);
+    assert.match(out, /Biggest {6}"initial commit" \(\+1,200 \/ 0 lines · Mar 9, 2024\)/);
     assert.match(out, /You are {6}\S/);
     assert.match(out, /8 cards in out\/cards\n/);
     assert.match(out, /8 PNGs in out\/png\n/);
     assert.match(out, /share image: out\/share\.png\n$/);
-    assert.ok(lines.length >= 8 && lines.length <= 14, `compact: ${lines.length} lines`);
+    assert.ok(lines.length >= 8 && lines.length <= 15, `compact: ${lines.length} lines`);
   });
 
   test('color: true adds ANSI escapes but keeps the first line plain', () => {

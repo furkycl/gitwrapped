@@ -31,7 +31,7 @@ calendar months and a team card in a repo with more than one contributor (up to 
 7. **Hot files**: the five files you edit most as a bar list. Lockfiles, build output (`dist/`, `build/`, ...), dependency folders, vendored code (a root `vendor/` or `third_party/`), minified files and test snapshots (`*.snap`, `__snapshots__/`) are ignored.
 8. **Languages**: your top programming language and its share of the lines you changed ("72% · Mostly TypeScript", or "Led by" under half, with ties named), with bars for your top five languages plus "Other". Data formats (JSON, YAML, ...) and prose (Markdown, ...) show in the bars, but they only lead the card when there's no code at all. Languages come from file extensions and well-known names like `Dockerfile` and `Makefile` (86 built in); lockfiles, build output, vendored code, test snapshots and binary files are left out, as for hot files.
 9. **The team** (only when the history has two or more contributors): how many people committed and the top five by commits as bars ("Ada Lovelace leads the pack with 54% of the commits"). With `--author` it ranks you against everyone in the same window: "#2 of 7 contributors", your share of the commits and lines, and a "you" marker on your bar (a sixth bar when you're outside the top five). Contributors are counted per email after `.mailmap`, and only their git author names are shown, never an email. A single-author repo skips this card, and so does an `--author` with no commits in the window (there's no "you" to rank); the cards after it then move up a number.
-10. **Message hall of fame**: your favorite word, your longest and shortest messages, and how many "fix", "wip" and "oops" commits you made.
+10. **Message hall of fame**: your favorite word, your longest and shortest messages, and how many "fix", "wip" and "oops" commits you made, plus your biggest commit: the one with the most lines changed, with its day, lines added / removed and subject. It counts the same files as hot files (lockfiles, build output and the rest are left out, and so is anything you `--exclude`) and skips merge commits; a tie goes to the earliest commit.
 11. **Personality**: Night Owl, Early Bird, Friday Deployer, Fixaholic, Weekend Warrior or Steady Shipper, with a one-line roast and bars for your top habit scores.
 12. **Outro**: a summary card to post: commits, power hour, best streak and personality tiles, plus your hottest file.
 
@@ -56,7 +56,7 @@ You also get:
 - **Terminal recap**: commits, active days, lines, power hour, streak, hottest file,
   top language, team (in a repo with more than one contributor: the top contributor, or
   with `--author` your rank, e.g. `Team  7 contributors · you're #2 (31% of commits)`),
-  top word and personality, printed right after the run.
+  top word, biggest commit and personality, printed right after the run.
 - **JSON** (optional, `--json`): every computed stat in `stats.json`, for your own
   dashboards and scripts.
 
@@ -102,7 +102,7 @@ gitwrapped [path...] [options]
 | `--until YYYY-MM-DD`  | Only include commits made on or before this day, inclusive (the author's local calendar day) |
 | `--year YYYY`         | One calendar year, the classic Wrapped: same as `--since YYYY-01-01 --until YYYY-12-31` (can't be combined with them), plus a comparison with the year before (see [Year over year](#year-over-year)) |
 | `--author <email>`    | Only include commits by this author email (exact, case-insensitive match against the email after `.mailmap` is applied) |
-| `--exclude <glob>`    | Leave matching files out of lines added/removed, files touched, hot files and languages (and the per-repo, per-contributor and year-over-year lines). Repeatable. Commits still count: a commit that only touched excluded files still counts toward commits, active days, streaks and habits (see [Excluding files](#excluding-files)) |
+| `--exclude <glob>`    | Leave matching files out of lines added/removed, files touched, hot files, languages and the biggest commit (and the per-repo, per-contributor and year-over-year lines). Repeatable. Commits still count: a commit that only touched excluded files still counts toward commits, active days, streaks and habits (see [Excluding files](#excluding-files)) |
 | `--out <dir>`         | Output directory (default: `gitwrapped-out`, created if needed)                        |
 | `--lang <code>`       | Language of the cards, share image, viewer and terminal recap: `en` (English, default) or `tr` (Türkçe). Also `--lang=tr`; an unknown code is an error. `stats.json` and file names stay the same in every language |
 | `--theme <name>`      | Color theme of the cards, share image, PNGs and viewer: `default` (the colorful gradients), `mono` (grayscale) or `neon` (near-black with neon glows). Also `--theme=mono`; an unknown name is an error. Only colors change: the layout, `stats.json` and file names are the same in every theme |
@@ -164,8 +164,8 @@ NO_COLOR=1 npx @furkycl/gitwrapped --no-png | head -1
 ## Excluding files
 
 `--exclude <glob>` (repeatable) drops matching files before any stat is computed: lines
-added / removed, files touched, hot files, languages, the per-repo breakdown, the team
-card's lines and the year-over-year lines changed all leave them out. Commits are never
+added / removed, files touched, hot files, languages, the biggest commit, the per-repo
+breakdown, the team card's lines and the year-over-year lines changed all leave them out. Commits are never
 dropped: a commit that only touched excluded files still counts toward commits, active
 days, streaks, time habits and the team card's commit counts. Matching is
 gitignore-like and case-sensitive:
@@ -279,7 +279,7 @@ but it does contain commit subjects and hashes and repo-relative file paths (see
 | `asOf`          | `YYYY-MM-DD` the current streak is counted up to: today, or the end of a past `--until` / `--year` window |
 | `filters`       | `{since, until, author, maxCommits, exclude}` as used (`--year` shows as since/until); dates and author are `null` when not set, `maxCommits` is the cap in effect, `exclude` the `--exclude` patterns in order (`[]` when none) |
 | `truncated`     | `true` when `--max-commits` cut the history short                             |
-| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `months`, `hotFiles`, `languages`, `contributors`, `messages`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
+| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `months`, `hotFiles`, `languages`, `contributors`, `messages`, `biggestCommit`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
 
 ```json
 {
@@ -314,6 +314,17 @@ month with commits (months without commits are listed with `0`; `[]` when there 
 commits), and `peak` is the month with the most commits as `{month, commits}` (a tie goes
 to the earliest month; `null` without commits). It counts every commit, including ones
 dated in the future, and covers every month, not just the 24 the card shows.
+
+`stats.biggestCommit` is the commit with the most lines changed, as
+`{"hash", "subject", "date": "YYYY-MM-DD", "linesAdded", "linesRemoved", "lines", "files"}`
+(`date` is the author's local day, `lines` is added + removed and `files` the files it
+counted), or `null` when no commit changed a line. `hash`, `subject` and `date` can each
+be `null` (no hash, an empty subject, an unparseable date). Lines are counted over the
+same files as hot files, so lockfiles, build output, vendored code, minified files and
+snapshots don't make a commit big, and `--exclude`d files are left out too; merge commits
+are skipped, and a tie goes to the earliest commit. History is read with `--no-renames`,
+so a commit that moves or renames large files counts their lines as removed and added
+again, and can be the biggest commit.
 
 `stats.languages` lists every language found, most lines first, with `"Other"` (file
 types gitwrapped doesn't know) always last. `type` is `"programming"`, `"data"` (JSON,
@@ -382,7 +393,7 @@ is left as it is.
   script), so the browser won't load anything from the network either.
 - **What the output contains.** Cards, `wrapped.html` and (with `--json`) `stats.json`
   show commit subjects and repo-relative file paths; `stats.json` also lists commit
-  hashes (the longest and shortest message) and, when you pass `--author`, that email in
+  hashes (the longest and shortest message, the biggest commit) and, when you pass `--author`, that email in
   `filters.author`. In a repo with more than one contributor, the team card, the recap
   and `stats.json` also show the git author names (after `.mailmap`) of the top five
   contributors (and yours, with `--author`), never their emails (a name that is itself an address is cut to the part

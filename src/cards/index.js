@@ -12,6 +12,7 @@ import { monthIndex, monthsFromDays } from '../stats/months.js';
 import { hasTeamCard, shareLabel, TOP_CONTRIBUTORS } from '../stats/contributors.js';
 import { personalityReason } from '../stats/personality.js';
 import { yearOverYear } from '../stats/yoy.js';
+import { shownBiggestLines } from '../stats/biggest.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from '../i18n/index.js';
 import { DEFAULT_COLOR_THEME, isColorTheme } from './themes.js';
 
@@ -680,13 +681,34 @@ function languages(s, { L }) {
   };
 }
 
+/**
+ * The messages card's biggest-commit panel (stats.biggestCommit, see stats/biggest.js):
+ * caption with the day, "+N / −M lines", and the subject; null without one (then the card
+ * is exactly as before).
+ */
+function biggestCallout(s, L) {
+  const M = L.messages;
+  const b = s.biggestCommit;
+  const shown = shownBiggestLines(b);
+  if (!shown) return null;
+  // Control / bidi characters dropped first, so a subject made only of them reads as none.
+  const subject = clip(text(typeof b.subject === 'string' ? plain(b.subject) : null));
+  return {
+    kind: 'callout',
+    title: M.biggestTitle(formatDay(b.date, L.code)),
+    value: M.biggestLines(signedLines(shown.added, '+', L), signedLines(shown.removed, '−', L)),
+    note: subject ? quote(subject) : M.noSubject,
+  };
+}
+
 function messages(s, { L }) {
   const M = L.messages;
   const m = s.messages ?? {};
   const longest = clip(text(m.longest?.subject));
   const shortest = clip(text(m.shortest?.subject));
+  const biggest = biggestCallout(s, L);
   if (!longest || !shortest) {
-    return { eyebrow: M.eyebrow, big: '…', title: M.noneTitle, subtitle: L.empty };
+    return { eyebrow: M.eyebrow, big: '…', title: M.noneTitle, subtitle: L.empty, ...(biggest ? { chart: biggest } : {}) };
   }
   // A "favorite" word needs to show up at least twice; otherwise use the average-length copy.
   const word = num(m.topWord?.count) >= 2 ? clip(text(m.topWord?.word)) : null;
@@ -708,6 +730,7 @@ function messages(s, { L }) {
       { label: M.wipCommits, value: L.num(counts.wip) },
       { label: M.oopsCommits, value: L.num(oops) },
     ],
+    ...(biggest ? { chart: biggest } : {}),
   };
 }
 

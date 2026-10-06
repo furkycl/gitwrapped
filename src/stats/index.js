@@ -1,4 +1,5 @@
 // Stats engine: pure functions over readCommits() output. No git calls, no I/O.
+import { computeBiggestCommit, shownBiggestLines } from './biggest.js';
 import { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONTRIBUTORS } from './contributors.js';
 import { computeDaily, daysUpTo, longestRun, shownLongest } from './daily.js';
 import { computeHotFiles, isIgnoredPath, repoRelativePath } from './files.js';
@@ -15,7 +16,7 @@ import { computeYearOverYear, yearOverYear } from './yoy.js';
 export { computeTotals, computeTimeHabits, computeStreaks, computeDaily, daysUpTo, longestRun, shownLongest, computeHotFiles, isIgnoredPath, repoRelativePath, computeRepos, computeYearOverYear, yearOverYear };
 export { computeLanguages, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER_LANGUAGE, percentShares };
 export { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONTRIBUTORS };
-export { computeMessages, computePersonality, isMergeCommit, ARCHETYPES, localToday };
+export { computeBiggestCommit, shownBiggestLines, computeMessages, computePersonality, isMergeCommit, ARCHETYPES, localToday };
 export { computeMonths, monthsFromDays };
 export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAMES } from './time.js';
 
@@ -26,7 +27,9 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * `personality` is derived from the other parts (see personality.js); its fix share is
  * of non-merge commits, and its Steady Shipper span ignores future-dated days (after
  * `today` + 1, see daily.js daysUpTo). `daily` is commits per author-local day (see daily.js);
- * `languages` is lines / files per language (see languages.js).
+ * `languages` is lines / files per language (see languages.js). `biggestCommit` is the
+ * non-merge commit with the most lines changed, ignored paths left out as for hot files
+ * (see biggest.js), or null.
  * `months` is commits per author-local calendar month, zero-filled from the first to the
  * last active month, with the peak month (see months.js).
  * `contributors` ranks who made the commits (see contributors.js). It is computed from
@@ -53,6 +56,7 @@ export function computeStats(commits = [], { today, todayComplete, team, author,
     languages: computeLanguages(commits),
     contributors: computeContributors(team ?? commits, { author, truncated: teamTruncated }),
     messages: computeMessages(commits),
+    biggestCommit: computeBiggestCommit(commits),
   };
   const nonMergeCommits = (commits ?? []).filter((c) => !isMergeCommit(c)).length;
   stats.personality = computePersonality(stats, { nonMergeCommits, today: today ?? localToday() });

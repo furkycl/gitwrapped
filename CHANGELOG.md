@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Biggest commit: the message hall of fame card now shows the commit with the most
+  lines changed (its day, lines added / removed and subject), the recap gets a
+  "Biggest" line, and `stats.json` gets `stats.biggestCommit` (`{hash, subject, date,
+  linesAdded, linesRemoved, lines, files}`, or `null`). Lines count over the same files
+  as hot files (lockfiles, build output, vendored and minified files left out, and
+  `--exclude`d files too); merge commits are skipped and a tie goes to the earliest
+  commit. Without such a commit the card is unchanged. In English and Turkish.
 - `--exclude <glob>` (repeatable) leaves matching files out of lines added / removed,
   files touched, hot files and languages, and so out of the per-repo breakdown, the
   team card's lines and the year-over-year lines changed. Gitignore-like matching with

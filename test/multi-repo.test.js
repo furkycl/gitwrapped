@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { buildCardSpecs, displayRepoName, layoutCard, renderShareCard, repoRows } from '../src/cards/index.js';
 import { CONTENT_BOTTOM, CONTENT_TOP } from '../src/cards/svg.js';
-import { generate, HELP_TEXT, parseCli, run } from '../src/cli.js';
+import { generate, HELP_TEXT, parseCli, realKey, run } from '../src/cli.js';
 import { mergeHistories, repoLabels } from '../src/git.js';
 import { buildStatsJson } from '../src/json.js';
 import { computeHotFiles, computeLanguages, computeRepos, computeStats, repoRelativePath } from '../src/stats/index.js';
@@ -336,6 +336,15 @@ describe('CLI', () => {
     assert.ok(dashed);
     assert.match(stdout.text, /★ 2 repos Wrapped/);
     assert.match(stdout.text, / {4}-dash +1 commit/);
+  });
+
+  test('realKey: one key per folder, however it is spelled (relative, "/" vs "\\", case and 8.3 names on Windows)', () => {
+    const rel = join(tmp, 'api', 'src', '..');
+    assert.equal(realKey(rel), realKey(api));
+    if (process.platform === 'win32') {
+      assert.equal(realKey(api.replace(/\\/g, '/')), realKey(api));
+      assert.equal(realKey(api.toUpperCase()), realKey(api));
+    }
   });
 
   test('a git worktree of a repo already given is a duplicate; checked before any read', async () => {

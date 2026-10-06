@@ -253,13 +253,23 @@ export async function repoName(repoPath) {
   }
 }
 
-/** `p` with symlinks resolved (lower-cased on Windows), or `p` resolved if that fails. */
-function realKey(p) {
+/**
+ * `p` as one canonical string, so two spellings of the same folder compare equal:
+ * symlinks resolved with the OS's own realpath (realpathSync.native: on Windows it also
+ * expands 8.3 short names such as RUNNER~1, which git never prints but os.tmpdir() may
+ * contain, and normalizes "D:/a" to "D:\\a"), lower-cased on Windows; falls back to the
+ * JS realpath, then to the resolved path.
+ */
+export function realKey(p) {
   let real;
   try {
-    real = realpathSync(p);
+    real = realpathSync.native(p);
   } catch {
-    real = resolve(p);
+    try {
+      real = realpathSync(p);
+    } catch {
+      real = resolve(p);
+    }
   }
   return process.platform === 'win32' ? real.toLowerCase() : real;
 }

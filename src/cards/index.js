@@ -6,7 +6,7 @@ import { calendarWindow, formatNumber, renderCard } from './svg.js';
 export { formatNumber };
 import { renderShareSvg } from './share.js';
 import { dayKeyFromEpoch as dayKeyOf, epochDay, mondayOf, WEEKDAY_NAMES } from '../stats/time.js';
-import { languageHeadline, OTHER as OTHER_LANGUAGE } from '../stats/languages.js';
+import { languageBarRows, languageHeadline, OTHER as OTHER_LANGUAGE } from '../stats/languages.js';
 import { daysUpTo, shownLongest, shownLongestBreak } from '../stats/daily.js';
 import { monthIndex, monthsFromDays } from '../stats/months.js';
 import { hasTeamCard, shareLabel, TOP_CONTRIBUTORS } from '../stats/contributors.js';
@@ -650,30 +650,21 @@ function hotFileCharts(files, repos, L) {
 }
 
 /** A whole-number share as text; a non-zero amount that rounds to 0% reads "<1%". */
-const pctText = (share, amount, L = EN) => (num(share) === 0 && num(amount) > 0 ? `<${L.pct(1)}` : L.pct(Math.round(num(share))));
+export const pctText = (share, amount, L = EN) => (num(share) === 0 && num(amount) > 0 ? `<${L.pct(1)}` : L.pct(Math.round(num(share))));
 
 /**
  * Up to five languages as bars (the headline language always among them), the rest and
  * unknown file types folded into one "Other" bar. No bar reads 100% while others exist.
+ * The rows come from languageBarRows (stats/languages.js), shared with wrapped.md.
  */
 function languageBars(h, L) {
   const G = L.languages;
-  const { rows, basis } = h;
-  const known = rows.filter((l) => l.name !== 'Other');
-  let top = known.slice(0, 5);
-  if (!top.some((l) => l.name === h.name)) top = [...top.slice(0, 4), known.find((l) => l.name === h.name)];
-  const rest = rows.filter((l) => !top.includes(l));
-  const cap = (share) => (rows.length > 1 ? Math.min(99, share) : share);
-  const row = (label, amount, files, lines, share) => {
-    const pct = pctText(cap(share), amount, L);
-    return { label, sub: plural(files, 'file', L), value: pct, amount, title: G.barTitle(label, lines, files, pct) };
-  };
-  const items = top.map((l) => row(languageLabel(l.name, L), l[basis], l.files, l.lines, l.share));
-  if (rest.length > 0) {
-    const sum = (k) => rest.reduce((n, l) => n + l[k], 0);
-    items.push(row(G.other, sum(basis), sum('files'), sum('lines'), sum('share')));
-  }
-  return { kind: 'hbars', title: basis === 'files' ? G.shareOfFiles : G.shareOfLines, items };
+  const items = languageBarRows(h).map((r) => {
+    const label = r.other ? G.other : languageLabel(r.name, L);
+    const pct = pctText(r.share, r.amount, L);
+    return { label, sub: plural(r.files, 'file', L), value: pct, amount: r.amount, title: G.barTitle(label, r.lines, r.files, pct) };
+  });
+  return { kind: 'hbars', title: h.basis === 'files' ? G.shareOfFiles : G.shareOfLines, items };
 }
 
 function languages(s, { L }) {

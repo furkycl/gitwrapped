@@ -59,6 +59,8 @@ You also get:
   top word, biggest commit and personality, printed right after the run.
 - **JSON** (optional, `--json`): every computed stat in `stats.json`, for your own
   dashboards and scripts.
+- **Markdown** (optional, `--md`): a `wrapped.md` summary to paste into a README or a PR
+  description (see [Markdown summary](#markdown-summary)).
 
 ```
 gitwrapped-out/
@@ -68,6 +70,7 @@ gitwrapped-out/
   share.png             # 1200x630 summary image
   share.svg             # the same summary as SVG
   stats.json            # only with --json: every stat as JSON
+  wrapped.md            # only with --md: a Markdown summary linking the card SVGs
 ```
 
 ## Install
@@ -109,6 +112,7 @@ gitwrapped [path...] [options]
 | `--max-commits <n>`   | Analyze at most the n most recent commits that match the other filters (default: 50000; with several repos, in total) |
 | `--no-png`            | Skip PNG rendering (faster; SVG + HTML only)                                           |
 | `--json`              | Also write every computed stat to `<out>/stats.json` (see [JSON output](#json-output)) |
+| `--md`                | Also write a Markdown summary to `<out>/wrapped.md`, in the `--lang` language (see [Markdown summary](#markdown-summary)) |
 | `--open`              | Open `<out>/wrapped.html` in your default browser when done, printing `Opening <path>…` first (`open` on macOS, `xdg-open` on Linux, `rundll32 url.dll,FileProtocolHandler <file:// URL>` on Windows). It waits at most 1.5 seconds for that command (never for the browser): if it can't be started or exits with an error in that time, gitwrapped prints a one-line warning with the path and still exits 0 |
 | `--no-color`          | Plain console output (also: `NO_COLOR=1`; `FORCE_COLOR=1` forces color)               |
 | `-h`, `--help`        | Show help and exit                                                                     |
@@ -398,6 +402,40 @@ compare, and the output is the same as for `--since YYYY-01-01 --until YYYY-12-3
 Without `--json` no stats.json is written, and one left over from an earlier `--json` run
 is left as it is.
 
+## Markdown summary
+
+With `--md`, gitwrapped also writes `<out>/wrapped.md`, a short Markdown summary for a
+README, a PR description or release notes:
+
+- a title with the repo name and the date window (or first – last active day), and with
+  `--author` the name part of that address ("Starring ada.");
+- the headline numbers (commits, active days, lines added / removed, files touched; with
+  `--year` the change since the year before);
+- the power hour and busiest weekday, the longest streak, the current one (when a streak is
+  running) and the longest break;
+- tables of the top five hot files and languages, and, in a repo with more than one
+  contributor, the top five contributors by name (with `--author`, you marked as "(you)");
+- with several repos, a per-repo table; the biggest commit; your commit personality;
+- every story card as an image, linked by its relative path (`cards/01-intro.svg`, ...).
+  Those images only show where the `cards/` folder sits next to `wrapped.md` (the output
+  folder itself, or a README / docs page you commit together with `cards/`). Pasted into
+  a PR description or an issue, the text works but the card images won't load; upload
+  the PNGs there instead.
+
+It is written in the `--lang` language, with the same numbers as the cards and the recap
+(the languages table has the same rows as the languages card). It never contains an
+email address: contributors appear by name only, `--author` only by the part before the
+`@`, and anything shaped like an address (`name@host`) in a commit subject, file path or
+repo name is replaced with "…". File paths, names and commit subjects are escaped so they
+show as plain text: a `|` in a path can't break a table, URLs don't become links, and an
+invisible word joiner after every `@` and `#` keeps GitHub from turning `@someone` into a
+mention or `#12` into an issue link. Like `stats.json`, it is only
+written with `--md`, and one left over from an earlier `--md` run is left as it is.
+
+```bash
+npx @furkycl/gitwrapped --year 2025 --md --no-png
+```
+
 ## Privacy
 
 - **100% local.** gitwrapped reads `git log` and writes files. It makes no network
@@ -484,7 +522,7 @@ is left as it is.
   from an earlier run, and only regular files with its own names. It won't write or
   delete through a symlink: if an output this run writes (`wrapped.html`, `share.svg`, a
   card SVG or the `cards/` folder; `share.png`, PNG cards and `png/` only when making PNGs;
-  `stats.json` only with `--json`) is a symlink, the run stops with
+  `stats.json` only with `--json`, `wrapped.md` only with `--md`) is a symlink, the run stops with
   `refusing to write through a symlink: <path>` before writing anything. This check is
   best effort (made once, before writing). `--out` itself may be a symlink.
 - **Authors** are counted by their `.mailmap` identity, so one person with two emails

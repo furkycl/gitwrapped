@@ -6,6 +6,7 @@ import { buildCards, CARD_IDS, displayRepoName, renderShareCard, windowLabel } f
 import { DEFAULT_LIMIT, mergeHistories, readHistory, repoLabels } from './git.js';
 import { compileExcludes } from './glob.js';
 import { buildStatsJson } from './json.js';
+import { buildMarkdown } from './markdown.js';
 import { renderPng } from './png.js';
 import { computeStats, localParts, localToday } from './stats/index.js';
 import { excludeFiles } from './stats/files.js';
@@ -50,6 +51,8 @@ Options:
                        (default: 50000; with several repos, in total)
   --no-png             Skip PNG rendering (faster; SVG + HTML only)
   --json               Also write every stat to <out>/stats.json
+  --md                 Also write a Markdown summary to <out>/wrapped.md
+                       (for READMEs and PR descriptions; links the card SVGs)
   --open               Open <out>/wrapped.html in your default browser
                        when done
   --no-color           Plain console output (also: NO_COLOR=1;
@@ -70,6 +73,7 @@ const OPTIONS = {
   'max-commits': { type: 'string' },
   'no-png': { type: 'boolean' },
   json: { type: 'boolean' },
+  md: { type: 'boolean' },
   open: { type: 'boolean' },
   'no-color': { type: 'boolean' },
   help: { type: 'boolean', short: 'h' },
@@ -161,7 +165,7 @@ function normalizeArgv(argv) {
  * Returns {help:true}, {version:true}, or {path, since, author, out, png, maxCommits}
  * plus, only when given: paths (every path, when more than one was given; `path` is then
  * the first), color (false for --no-color; absent = auto), until, year
- * (--year YYYY also sets since/until to Jan 1 / Dec 31 of that year), json (true),
+ * (--year YYYY also sets since/until to Jan 1 / Dec 31 of that year), json (true), md (true),
  * open (true), lang (a code from src/i18n LANGS, e.g. 'tr'; absent = English) and
  * theme (a non-default color theme from cards/themes.js, e.g. 'mono'; absent = default)
  * and exclude (the --exclude globs in order, trimmed; see compileGlob in src/glob.js).
@@ -223,6 +227,7 @@ export function parseCli(argv) {
     ...(until ? { until } : {}),
     ...(year ? { year } : {}),
     ...(values.json ? { json: true } : {}),
+    ...(values.md ? { md: true } : {}),
     ...(values.open ? { open: true } : {}),
     ...(lang ? { lang } : {}),
     ...(theme && theme !== DEFAULT_COLOR_THEME ? { theme } : {}),
@@ -567,7 +572,8 @@ async function teamSpan(team, mine, { read, until, limit, labels }) {
  * `until` (YYYY-MM-DD, inclusive) ends the window; when it is before `today` (default: the
  * machine's local date) the current streak is computed relative to `until` instead.
  * With `json`, <out>/stats.json (see json.js) is written too (language-neutral: `lang`
- * does not change it).
+ * does not change it). With `md`, <out>/wrapped.md (see markdown.js), a Markdown summary
+ * in `lang` that links the card SVGs (cards/NN-<id>.svg) and never shows an email.
  * `lang` (a src/i18n code, default 'en') is the language of the cards, the share image
  * and the viewer. `theme` (a cards/themes.js color theme, default 'default') is their
  * colors (stats.json does not change with it either).
@@ -578,9 +584,10 @@ async function teamSpan(team, mine, { read, until, limit, labels }) {
  * oldest commit in this run (see teamSpan), so both sides of the ranking cover the same
  * span; `teamSpan` is then `{from, capped}` (else null).
  * Returns {commits, stats, repoName, truncated, teamTruncated, teamSpan, previousYearTruncated, previousYearError, limit, shallow, unbornWithRefs, html, cardsDir, cardFiles,
- * shareSvg, pngDir, pngFiles, sharePng, pngSkipped, statsJson, asOf, pastWindow} with the
- * written paths
- * (joined onto `out`; PNG paths null/[] when skipped, statsJson null without `json`);
+ * shareSvg, pngDir, pngFiles, sharePng, pngSkipped, statsJson, markdown, asOf, pastWindow}
+ * with the written paths
+ * (joined onto `out`; PNG paths null/[] when skipped, statsJson null without `json`,
+ * markdown null without `md`);
  * `truncated` is true when the cap cut the history short (`teamTruncated`: the unfiltered
  * read of an --author run), `shallow` when the repo is a
  * shallow clone, `unbornWithRefs` when HEAD has no commits but other branches / tags
@@ -611,7 +618,7 @@ async function teamSpan(team, mine, { read, until, limit, labels }) {
  * `renderPng` (svg, {width}) → Promise<Buffer> replaces the PNG renderer (for tests), and
  * `readHistory` (same contract as git.js readHistory) the history reader.
  */
-export async function generate({ path, paths, since, until, year, author, exclude = [], out, png = true, maxCommits = DEFAULT_LIMIT, json = false, lang = DEFAULT_LANG, theme = DEFAULT_COLOR_THEME }, { today, renderPng: rasterize = renderPng, readHistory: readFn = readHistory } = {}) {
+export async function generate({ path, paths, since, until, year, author, exclude = [], out, png = true, maxCommits = DEFAULT_LIMIT, json = false, md = false, lang = DEFAULT_LANG, theme = DEFAULT_COLOR_THEME }, { today, renderPng: rasterize = renderPng, readHistory: readFn = readHistory } = {}) {
   const multi = Array.isArray(paths) && paths.length > 1;
   const isExcluded = compileExcludes(exclude);
   const readRaw = (opts) => (multi ? readRepos(paths, opts, readFn) : readFn(path, opts));
@@ -684,15 +691,27 @@ export async function generate({ path, paths, since, until, year, author, exclud
     })
     : null;
   const label = windowLabel({ since, until, lang });
-  const page = buildViewerHtml(cards, { title: `gitwrapped · ${name}${label ? ` · ${label}` : ''}`, lang, colorTheme: theme });
   const stem = (id, i) => `${String(i + 1).padStart(2, '0')}-${id}`;
+  const markdownPath = md ? join(out, 'wrapped.md') : null;
+  const markdown = md
+    ? buildMarkdown(stats, {
+      repoName: name,
+      window: label,
+      author,
+      today: ref,
+      streakAtWindowEnd: pastWindow,
+      lang,
+      cards: cards.map(({ id }, i) => ({ id, file: `cards/${stem(id, i)}.svg` })),
+    })
+    : null;
+  const page = buildViewerHtml(cards, { title: `gitwrapped · ${name}${label ? ` · ${label}` : ''}`, lang, colorTheme: theme });
   const files = cards.map(({ id, svg }, i) => ({ file: join(cardsDir, `${stem(id, i)}.svg`), svg }));
   const pngTargets = png ? cards.map(({ id, svg }, i) => ({ file: join(pngDir, `${stem(id, i)}.png`), svg, width: 1080 })) : [];
   if (png) pngTargets.push({ file: sharePngPath, svg: shareSvg, width: 1200 });
 
   const dirs = [{ dir: cardsDir, what: 'cards' }];
   if (png) dirs.push({ dir: pngDir, what: 'PNGs' });
-  checkOutputPaths(out, dirs, [html, shareSvgPath, ...(statsJsonPath ? [statsJsonPath] : []), ...files.map((f) => f.file), ...pngTargets.map((t) => t.file)]);
+  checkOutputPaths(out, dirs, [html, shareSvgPath, ...(statsJsonPath ? [statsJsonPath] : []), ...(markdownPath ? [markdownPath] : []), ...files.map((f) => f.file), ...pngTargets.map((t) => t.file)]);
 
   // Rasterize before writing anything, so a renderer failure never leaves half a PNG set.
   let pngs = [];
@@ -718,6 +737,8 @@ export async function generate({ path, paths, since, until, year, author, exclud
   writeOutput(html, page);
   // Without --json an existing stats.json is left alone (like any file that is not a card).
   if (statsJsonPath) writeOutput(statsJsonPath, statsJson);
+  // Likewise without --md an existing wrapped.md is left alone.
+  if (markdownPath) writeOutput(markdownPath, markdown);
   if (pngs.length > 0) {
     ensureDir(pngDir);
     for (const { file, data } of pngs) writeOutput(file, data);
@@ -754,6 +775,7 @@ export async function generate({ path, paths, since, until, year, author, exclud
     sharePng: pngs.length > 0 ? sharePngPath : null,
     pngSkipped,
     statsJson: statsJsonPath,
+    markdown: markdownPath,
     asOf,
     pastWindow,
   };
@@ -923,6 +945,7 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
         sharePng: result.sharePng,
         shareSvg: result.shareSvg,
         statsJson: result.statsJson,
+        markdown: result.markdown,
       },
     }),
   );

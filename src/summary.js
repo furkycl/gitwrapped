@@ -149,8 +149,9 @@ function shortText(s, maxWidth = 48) {
  * - window: the requested date window ("2025", "since Jan 3, 2025"), shown in the heading
  * - streakAtWindowEnd: the current streak is relative to a past window's end, so it is
  *   labeled "at window end" instead of "current"
- * - paths: {html, cardsDir, cardCount, pngDir, pngCount, sharePng, shareSvg, statsJson}
- *   (pngDir / sharePng null when PNGs were not written; statsJson only with --json)
+ * - paths: {html, cardsDir, cardCount, pngDir, pngCount, sharePng, shareSvg, statsJson,
+ *   markdown} (pngDir / sharePng null when PNGs were not written; statsJson only with
+ *   --json, markdown only with --md)
  * - notes: extra notice lines (e.g. the commit cap), shown in yellow
  * - today: 'YYYY-MM-DD'; when given, the longest streak leaves out future-dated days
  *   (after today + 1), as on the cards (see stats/daily.js shownLongest)
@@ -302,6 +303,7 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
   const share = paths.sharePng ?? paths.shareSvg;
   if (share) out.push(`  ${R.shareImage} ${sc(share)}`);
   if (paths.statsJson) out.push(`  ${R.statsJson} ${sc(paths.statsJson)}`);
+  if (paths.markdown) out.push(`  ${R.markdown} ${sc(paths.markdown)}`);
   if (out.length > 0) lines.push(c('dim', '  ─'.padEnd(20, '─')), ...out);
 
   return `${lines.join('\n')}\n`;

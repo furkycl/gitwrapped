@@ -150,7 +150,7 @@ describe('bin --json', () => {
     assert.match(r.stdout, /^gitwrapped: 2 commits → /);
     assert.ok(r.stdout.includes(join(o, 'stats.json')), 'recap points at stats.json');
     const j = readJson(o);
-    assert.deepEqual(j.filters, { since: '2025-01-01', until: '2025-12-31', author: 'bob@example.com', maxCommits: 50000 });
+    assert.deepEqual(j.filters, { since: '2025-01-01', until: '2025-12-31', author: 'bob@example.com', maxCommits: 50000, exclude: [] });
     assert.equal(j.truncated, false);
     assert.equal(j.repo, basename(repo));
     const expected = HISTORY.filter(([who, d]) => who === BOB && d.startsWith('2025-')).length;
@@ -177,7 +177,7 @@ describe('bin --json', () => {
     assert.match(r.stdout, /^gitwrapped: 3 commits → /);
     assert.ok(r.stdout.includes('Wrapped · until Mar 5, 2025'), r.stdout);
     const j = readJson(o);
-    assert.deepEqual(j.filters, { since: null, until: '2025-03-05', author: null, maxCommits: 50000 });
+    assert.deepEqual(j.filters, { since: null, until: '2025-03-05', author: null, maxCommits: 50000, exclude: [] });
     assert.equal(j.stats.totals.commits, 3);
     assert.equal(j.stats.totals.firstDay, '2024-12-15');
     assert.equal(j.stats.totals.lastDay, '2025-03-05');
@@ -213,7 +213,7 @@ describe('bin --json', () => {
     assert.ok(r.stdout.includes('Note: no commits match --year 2030.'), r.stdout);
     const j = readJson(o);
     assert.equal(j.schemaVersion, 1);
-    assert.deepEqual(j.filters, { since: '2030-01-01', until: '2030-12-31', author: null, maxCommits: 50000 });
+    assert.deepEqual(j.filters, { since: '2030-01-01', until: '2030-12-31', author: null, maxCommits: 50000, exclude: [] });
     assert.equal(j.stats.totals.commits, 0);
     assert.equal(j.truncated, false);
     assert.equal(readdirSync(join(o, 'cards')).length, SOLO_FILES.length);

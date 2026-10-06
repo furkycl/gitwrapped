@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `--exclude <glob>` (repeatable) leaves matching files out of lines added / removed,
+  files touched, hot files and languages, and so out of the per-repo breakdown, the
+  team card's lines and the year-over-year lines changed. Gitignore-like matching with
+  no new dependencies: `*`, `?` and `**`; a pattern without a `/` matches a name at any
+  depth (`*.min.js`, `fixtures`), one with a `/` is anchored at the repo root
+  (`src/gen/*.js`), and a matching folder (`docs`, `docs/`, `docs/**`) drops everything
+  under it. With several repos a pattern matches the path inside its repo, and a path
+  pattern (with a `/`) also the shown `<repo>/<path>`. Commits are never dropped, so commit counts, active days, streaks
+  and habits do not change. `stats.json` gets `filters.exclude` (`[]` when none).
+
 ## [1.2.0] - 2026-10-06
 
 ### Added

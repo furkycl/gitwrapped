@@ -74,8 +74,11 @@ function hasBash() {
 
 // --- version ---------------------------------------------------------------
 
-test('package.json version is 1.0.0', () => {
-  assert.equal(pkg.version, '1.0.0');
+test('package.json version is the latest CHANGELOG release', () => {
+  const m = read('CHANGELOG.md').match(/^## \[(\d+\.\d+\.\d+(?:-[\w.]+)?)\] - \d{4}-\d{2}-\d{2}\s*$/m);
+  assert.ok(m, 'CHANGELOG.md has a dated release heading');
+  assert.equal(pkg.version, m[1]);
+  assert.match(pkg.version, /^\d+\.\d+\.\d+(?:-[\w.]+)?$/);
 });
 
 test('package-lock.json version matches package.json', () => {
@@ -90,7 +93,7 @@ test('gitwrapped --version prints the package version', () => {
     encoding: 'utf8',
   });
   assert.equal(r.status, 0, r.stderr);
-  assert.equal(r.stdout.trim(), '1.0.0');
+  assert.equal(r.stdout.trim(), pkg.version);
 });
 
 // --- changelog -------------------------------------------------------------

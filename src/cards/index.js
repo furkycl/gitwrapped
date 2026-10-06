@@ -6,7 +6,7 @@ import { calendarWindow, formatNumber, renderCard } from './svg.js';
 export { formatNumber };
 import { renderShareSvg } from './share.js';
 import { dayKeyFromEpoch as dayKeyOf, epochDay, hourLabel, mondayOf, WEEKDAY_NAMES } from '../stats/time.js';
-import { languageHeadline } from '../stats/languages.js';
+import { languageHeadline, OTHER as OTHER_LANGUAGE } from '../stats/languages.js';
 import { daysUpTo, shownLongest } from '../stats/daily.js';
 
 export { renderCard, layoutCard, wrapText, escapeXml, measureText, truncateStart, THEMES, CARD_WIDTH, CARD_HEIGHT } from './svg.js';
@@ -499,12 +499,16 @@ function languages(s) {
   else title = h.rawShare >= 50 ? `Mostly ${h.name}` : `Led by ${h.name}`;
   const code = h.rows.some((x) => x.type === 'programming');
   const quip = LANGUAGE_QUIPS[h.name] ?? (!code ? 'No code this time, just words and data.' : h.count === 1 ? 'One language, total commitment.' : 'Polyglot energy.');
-  const files = num(l.totalFiles) || h.rows.reduce((n, x) => n + x.files, 0);
+  // Count files in the same pool as the language count (programming languages when there
+  // is code, else the known data / prose ones), so "N languages across M files" agree.
+  const pool = h.rows.filter((x) => x.name !== OTHER_LANGUAGE && (!code || x.type === 'programming'));
+  const files = pool.reduce((n, x) => n + x.files, 0);
+  const counted = h.count === 1 ? 'You stuck to 1 language' : `You wrote${code ? ' code' : ''} in ${plural(h.count, 'language')}`;
   return {
     eyebrow,
     big: pctText(h.share, h.amount),
     title,
-    subtitle: `${quip} ${h.count === 1 ? 'You stuck to 1 language' : `You wrote in ${plural(h.count, 'language')}`} across ${plural(files, 'file')}.`,
+    subtitle: `${quip} ${counted} across ${plural(files, 'file')}.`,
     chart: languageBars(h),
   };
 }

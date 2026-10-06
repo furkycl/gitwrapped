@@ -331,7 +331,7 @@ describe('bin: languages edge repos', () => {
     assert.equal(shown.reduce((a, b) => a + b, 0), total);
     // The count is programming languages only: md is prose; json, yml, toml, xml, proto are data.
     assert.equal(l.languages.filter((x) => x.type === 'programming').length, exts.length - 6);
-    assert.ok(svgTexts(svg).join(' ').includes(`You wrote in ${exts.length - 6} languages`));
+    assert.ok(svgTexts(svg).join(' ').includes(`You wrote code in ${exts.length - 6} languages`));
   });
 
   test('repo names with & < > are escaped in card text and the page', () => {

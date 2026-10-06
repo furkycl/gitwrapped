@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { pngSize } from '../src/png.js';
+import { CARD_IDS } from '../src/cards/index.js';
 
 // docs/self-wrapped is gitwrapped run on its own repo (`npm run self-wrapped`).
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -15,19 +16,29 @@ const CARDS = [
   '04-streak',
   '05-activity',
   '06-hot-files',
-  '07-messages',
-  '08-personality',
-  '09-outro',
+  '07-languages',
+  '08-messages',
+  '09-personality',
+  '10-outro',
 ];
+
+test('self-wrapped CARDS list matches CARD_IDS', () => {
+  assert.deepEqual(CARDS, CARD_IDS.map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}`));
+});
+
+test('self-wrapped cards/ holds exactly the current card set', () => {
+  const svgs = readdirSync(new URL('cards/', dir)).filter((f) => f.endsWith('.svg')).sort();
+  assert.deepEqual(svgs, CARDS.map((n) => `${n}.svg`));
+});
 
 test('package.json has the self-wrapped script', () => {
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
   assert.equal(pkg.scripts['self-wrapped'], 'node bin/gitwrapped.js . --out docs/self-wrapped --no-color');
 });
 
-test('self-wrapped wrapped.html inlines all 9 cards behind a CSP', () => {
+test(`self-wrapped wrapped.html inlines all ${CARDS.length} cards behind a CSP`, () => {
   const html = readFileSync(new URL('wrapped.html', dir), 'utf8');
-  assert.equal(html.match(/<svg[\s>]/g)?.length, 9);
+  assert.equal(html.match(/<svg[\s>]/g)?.length, CARDS.length);
   assert.match(html, /<meta http-equiv="Content-Security-Policy" content="default-src 'none'/);
 });
 

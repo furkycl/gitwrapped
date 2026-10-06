@@ -7,13 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-06
+
 ### Added
 
-- CI: a `pack-smoke` job on Linux, macOS and Windows (`npm run pack-smoke`,
-  `scripts/pack-smoke.js`) packs the tarball, installs it into a fresh temp project and
-  runs the installed `gitwrapped` on the fixture repo, checking the tarball contents, the
-  bin link, `--version`, the HTML, SVG cards, PNGs (so the native renderer resolves from
-  the install) and `stats.json`.
 - `--until YYYY-MM-DD`: only include commits authored on or before that day
   (inclusive). Combines with `--since`; `--since` after `--until` is an error. git's
   committer-date `--until` is not used: a cheap first `git log` pass of hashes and author
@@ -32,48 +29,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--json`: also write `<out>/stats.json` with every computed stat, in a stable,
   documented shape (`schemaVersion`, `generator`, `repo`, `asOf`, `filters`,
   `truncated`, `stats`), with no generation timestamp and no machine paths.
-
 - A **Languages** card (card 7 of 10, after hot files): your top programming language's
   share of the lines you changed ("72% · Mostly TypeScript", "Led by" under 50%, ties named
   as "Tied at the top: Go, JavaScript and Python" or "4-way tie at the top"), bars for
   the top five languages plus "Other", and a one-liner. Data formats and prose (JSON,
   YAML, Markdown, ...) appear in the bars but only lead when there's no code. No share
-  reads 100% while other languages exist. Languages come from a built-in table of about
-  85 languages by file extension and well-known file names (`Dockerfile`, `Makefile`,
-  `Gemfile`, `CMakeLists.txt`, ...). The messages, personality and outro cards move to
-  08-10; re-running into an earlier output folder removes the old-numbered files.
+  reads 100% while other languages exist. Languages come from a built-in table of 86
+  languages by file extension and well-known file names (`Dockerfile`, `Makefile`,
+  `Gemfile`, `CMakeLists.txt`, ...), skipping the same paths as hot files plus binary
+  files. The messages, personality and outro cards move to 08-10; re-running into an
+  earlier output folder removes the old-numbered files.
 - `stats.languages` in `stats.json` (`totalLines`, `totalFiles`, `basis`, and per
   language `name`, `type`, `lines`, `files`, `share`; equal amounts get equal shares), and
   a "Top language" line in the terminal recap.
-- `--open`: open `<out>/wrapped.html` in the default browser when the run is done and
-  print `Opening <path>` (`open` on macOS, `xdg-open` on Linux and others, `rundll32
+- `--open`: open `<out>/wrapped.html` in the default browser when the run is done
+  (`open` on macOS, `xdg-open` on Linux and others, `rundll32
   url.dll,FileProtocolHandler <file:// URL>` on Windows, which involves no `cmd.exe`
-  quoting). The opener is started detached and never blocks the run; if it can't start,
-  gitwrapped prints a one-line warning with the path and still exits 0.
+  quoting). It prints `Opening <path>…` first, starts the opener detached and waits at
+  most 1.5 seconds for it, never for the browser. If the opener can't start or exits
+  with an error in that time, gitwrapped prints a one-line warning with the path and
+  still exits 0.
+- CI: a `pack-smoke` job on Linux, macOS and Windows (`npm run pack-smoke`,
+  `scripts/pack-smoke.js`) packs the tarball, installs it into a fresh temp project and
+  runs the installed `gitwrapped` on the fixture repo, checking the tarball contents, the
+  bin link, `--version`, the HTML, SVG cards, PNGs (so the native renderer resolves from
+  the install) and `stats.json`.
 
 ### Changed
 
-- Hot files (and languages) also ignore vendored code in a repo-root `vendor/` or
-  `third_party/` folder and test snapshots (`*.snap`, anything under `__snapshots__/`).
-
-- `--since` now compares each commit's author-local calendar day (the day the stats use)
-  instead of the machine's local midnight, so a date window gives the same commits in
-  every time zone.
-- `--since` (and `--until`) dates before 1970 are rejected with a clear message.
 - Privacy: with `--author`, the intro card, share image and `wrapped.html` show only the
   part of the email before the first `@` ("Starring ada."), never an address or domain.
   For `Name <email>` only the name is shown, for a regex alternation (`a@x.io|b@y.io`)
   the first alternative's local part, and nothing at all for `@domain`. `stats.json`
   still records the full value in `filters.author`.
-- `--open` prints `Opening <path>…` first, then waits up to 1.5 seconds for the opener
-  command (`xdg-open`, `open`, `rundll32`) and warns when it exits with an error in
-  that time, not only when it cannot be started. It never waits for the browser.
+- `--since` now compares each commit's author-local calendar day (the day the stats use)
+  instead of the machine's local midnight, so a date window gives the same commits in
+  every time zone. `--since` and `--until` ignore surrounding whitespace, like `--year`,
+  and dates before 1970 are rejected with a clear message.
+- Hot files (and languages) also ignore vendored code in a repo-root `vendor/` or
+  `third_party/` folder and test snapshots (`*.snap`, anything under `__snapshots__/`).
 - `totals.firstDay` / `totals.lastDay` are now the earliest / latest author-local days,
   so `firstDay <= lastDay` always holds with mixed time-zone offsets (before, they were
   the days of the earliest / latest instants).
 - The activity card of a repo that went quiet more than 30 days ago reads "12 months to
   <Mon YYYY>" instead of "Your last 12 months".
-- `--since` / `--until` ignore surrounding whitespace, like `--year`.
 - Viewer accessibility: the story is a `region` with the "carousel" role description,
   the pause button uses only `aria-label` (no `aria-pressed` alongside it), single-key
   shortcuts are ignored while typing in a text field, and every card has a
@@ -83,12 +82,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A future-dated commit (clock skew, e.g. 2099) no longer resets the current streak or
+  stretches the activity calendar past tomorrow, the date range on the cards (intro,
+  footers, share image), the longest streak shown on the cards and in the recap, or the
+  Steady Shipper span and streak: days after tomorrow are left out. `stats.json` and the
+  totals still count them.
 - The Steady Shipper span no longer drops to 0 days when offsets put the earliest
   commit's day after the latest one's.
-- A future-dated commit (clock skew, e.g. 2099) no longer stretches the date range on the
-  cards (intro, footers, share image), the longest streak shown on the cards and in the
-  recap, or the Steady Shipper span and streak: days after tomorrow are left out, as on
-  the activity calendar. `stats.json` and the totals still count them.
 - The recap prints `0` instead of `−0` / `+0` for zero (or rounded-to-zero, or invalid
   negative) line counts, like the cards.
 - Bidi embedding / override / isolate controls (U+202A–202E, U+2066–2069) and the
@@ -96,15 +96,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `wrapped.html` title / heading, so a commit message or repo name cannot visually
   reorder text. Card text measures them as zero width, so truncation matches what is
   drawn.
-- README: the built-in language count is exact (86).
 - `--since` in the first week of 1970 no longer sends git a pre-1970 bound it cannot parse.
 - `--no-png` no longer deletes `share.png` / `png/NN-<card>.png` in an `--out` folder that
   gitwrapped did not create (one without a `wrapped.html` from an earlier run).
 - Output is never written or deleted through a symlink inside `--out`: a symlinked output
   file or `cards/` / `png/` folder stops the run with a clear error before anything is
   written, and cleanup only removes regular files.
-- A future-dated commit (clock skew) no longer resets the current streak or stretches the
-  activity calendar past tomorrow.
 - In `wrapped.html`, hovering a calendar day or chart bar with a mouse shows its tooltip
   again (the tap zones no longer sit on top of the card for hover-capable pointers).
 
@@ -156,5 +153,6 @@ First public release on npm as `@furkycl/gitwrapped`.
 - On macOS, color emoji are left out of PNG exports, because resvg drew Apple Color Emoji
   far from their text. SVG cards and `wrapped.html` keep them.
 
-[Unreleased]: https://github.com/furkycl/gitwrapped/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/furkycl/gitwrapped/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/furkycl/gitwrapped/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/furkycl/gitwrapped/releases/tag/v1.0.0

@@ -85,8 +85,8 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 
 ## M11 — 1.5 (proposed by loop turn 044 per the M8 owner note "do not finish the loop"; owner may prune)
 - [x] Conventional-commit mix: share of feat/fix/docs/refactor/test/chore/other subjects (`type(scope)!:` prefix, case-insensitive) on the messages card when ≥20% of commits use the convention, stats.json `stats.commitTypes`, recap and wrapped.md; en/tr; tests
-- [ ] First commit: the first commit in the window (day, subject, short hash) on the intro card ("It all began with …") and in stats.json `stats.firstCommit`, recap and wrapped.md; emails never shown; en/tr; tests
+- [x] First commit: the first commit in the window (day, subject, short hash) on the intro card ("It all began with …") and in stats.json `stats.firstCommit`, recap and wrapped.md; emails never shown; en/tr; tests
 - [ ] Co-authors: count `Co-authored-by:` trailers per commit (after .mailmap, names only) — "N commits paired" on the totals or team card, top co-author, stats.json `stats.coAuthors`; en/tr; tests
 - 1.5.0 release prep (split as before):
-  - [ ] Cold audit of the 1.5 work (diff 1.4.0 release commit..main) + fix every real bug found, with tests
+  - [ ] Cold audit of the 1.5 work (diff 1.4.0 release commit..main) + fix every real bug found, with tests — known lead from turn 046: `stats.messages` longest/shortest subjects (stats.json) and the viewer's screen-reader text (wrapped.html) still carry raw emails, and the biggest-commit card/recap subject is not scrubbed; route them through src/privacy.js scrubEmails
   - [ ] CHANGELOG 1.5.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync

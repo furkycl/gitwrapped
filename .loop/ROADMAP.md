@@ -58,7 +58,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
   - [x] CHANGELOG 1.1.0 + version bump, regenerate docs/self-wrapped + hero GIF (10 cards), README in sync
 
 ## M8 — 1.2: more Wrapped (owner request, 2026-10-06: keep developing, do not finish the loop)
-- [ ] Contributors card for team repos: top contributors by commits/lines (after .mailmap), "you vs the team" when `--author` is set; skipped for single-author repos; stats.json + recap; tests
+- [x] Contributors card for team repos: top contributors by commits/lines (after .mailmap), "you vs the team" when `--author` is set; skipped for single-author repos; stats.json + recap; tests
 - [ ] `--lang tr|en`: localized card, share image, viewer and recap text (English default, Turkish first translation, string table in src/i18n/); tests that every key exists in every language
 - [ ] `--theme`: alternative color themes for the cards (default gradient set + at least "mono" and "neon"), applied to SVG/PNG/share/viewer; layout and contrast tests
 - [ ] Multi-repo Wrapped: `gitwrapped repoA repoB ...` merges histories (per-repo breakdown on the totals/hot-files cards, repo-prefixed paths); tests

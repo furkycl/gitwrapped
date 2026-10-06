@@ -101,6 +101,7 @@ gitwrapped [path] [options]
 | `--year YYYY`         | One calendar year, the classic Wrapped: same as `--since YYYY-01-01 --until YYYY-12-31` (can't be combined with them) |
 | `--author <email>`    | Only include commits by this author email (exact, case-insensitive match against the email after `.mailmap` is applied) |
 | `--out <dir>`         | Output directory (default: `gitwrapped-out`, created if needed)                        |
+| `--lang <code>`       | Language of the cards, share image, viewer and terminal recap: `en` (English, default) or `tr` (Türkçe). Also `--lang=tr`; an unknown code is an error. `stats.json` and file names stay the same in every language |
 | `--max-commits <n>`   | Analyze at most the n most recent commits that match the other filters (default: 50000) |
 | `--no-png`            | Skip PNG rendering (faster; SVG + HTML only)                                           |
 | `--json`              | Also write every computed stat to `<out>/stats.json` (see [JSON output](#json-output)) |
@@ -133,6 +134,9 @@ npx @furkycl/gitwrapped --json
 # Just you, in a shared repo
 npx @furkycl/gitwrapped --author you@example.com
 
+# Kartlar Türkçe: cards, viewer and recap in Turkish
+npx @furkycl/gitwrapped --lang tr
+
 # Another repo, into a folder of your choice
 npx @furkycl/gitwrapped ~/code/my-app --out ~/Desktop/my-app-wrapped
 
@@ -142,6 +146,17 @@ npx @furkycl/gitwrapped --no-png
 # CI or logs: no color, first line is machine-friendly
 NO_COLOR=1 npx @furkycl/gitwrapped --no-png | head -1
 ```
+
+## Card language (`--lang`)
+
+`--lang tr` writes every card, the share image, the `wrapped.html` viewer (its buttons,
+labels, screen-reader text and `<html lang="tr">`) and the terminal recap in Turkish:
+Turkish month and weekday names ("4 Eki 2026", "Çarşamba"), 24-hour times ("23:00"),
+`12.345` for thousands, `10,5` for decimals and `%74` for percents, and Turkish
+upper-casing (i → İ) on the eyebrows and labels. English is the default. Error messages
+stay in English, and so does `stats.json`: its keys and values (archetype names, hour
+labels) are the same whatever `--lang` says. The strings live in `src/i18n/` (one table
+per language, same keys); adding a language means adding a table there and registering it in `src/i18n/index.js`.
 
 ## JSON output
 

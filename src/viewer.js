@@ -1,6 +1,7 @@
 // Self-contained HTML story viewer: one file, inline CSS + JS + SVG, no external requests.
 
 import { createHash } from 'node:crypto';
+import { DEFAULT_LANG, getStrings } from './i18n/index.js';
 
 export const AUTO_ADVANCE_MS = 6000;
 
@@ -107,8 +108,30 @@ kbd{display:inline-block;min-width:1.8em;padding:2px 6px;border:1px solid rgba(2
 @media (prefers-reduced-motion:reduce){.slide{transition:none}.auto .bar.current i{animation:none;width:100%}}
 `;
 
+/** `s` as a single-quoted JavaScript string literal. */
+const jsString = (s) => `'${String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/[\u2028\u2029]/g, (c) => `\\u${c.charCodeAt(0).toString(16)}`).replace(/<\//g, '<\\/')}'`;
+
+/**
+ * A JavaScript expression that builds `template(...)` in the browser: `template` is a
+ * string-table function and `args` the JavaScript expressions for its arguments. The
+ * text around each argument becomes a string literal, e.g. (i) => `Card ${i}` with
+ * ['(i + 1)'] → `'Card ' + (i + 1)`.
+ */
+function jsTemplate(template, args) {
+  const marks = args.map((_, i) => `\u0000${i}\u0000`);
+  const parts = String(template(...marks)).split(/\u0000(\d+)\u0000/);
+  const out = [];
+  parts.forEach((part, i) => {
+    if (i % 2 === 1) out.push(args[Number(part)]);
+    else if (part) out.push(jsString(part));
+  });
+  return out.length > 0 ? out.join(' + ') : "''";
+}
+
 // Runs in the browser. Uses only textContent/classList/attributes; never innerHTML.
-const SCRIPT = `
+// `V` is the viewer part of a string table (src/i18n): the live-region messages and
+// button labels the script sets are built from it.
+const scriptFor = (V) => `
 (function () {
   'use strict';
   var story = document.getElementById('story');
@@ -159,7 +182,7 @@ const SCRIPT = `
   function setPaused(p) {
     paused = p;
     story.classList.toggle('paused', p);
-    pauseBtn.setAttribute('aria-label', p ? 'Play' : 'Pause');
+    pauseBtn.setAttribute('aria-label', p ? ${jsString(V.play)} : ${jsString(V.pause)});
     pauseBtn.textContent = p ? '\\u25B6' : '\\u275A\\u275A';
   }
 
@@ -186,7 +209,7 @@ const SCRIPT = `
     bars[i].classList.add('current');
     countEl.textContent = (i + 1) + ' / ' + n;
     schedulePrerender();
-    if (announce) status.textContent = 'Card ' + (i + 1) + ' of ' + n + ': ' + (slides[i].getAttribute('data-title') || '');
+    if (announce) status.textContent = ${jsTemplate(V.status, ['(i + 1)', 'n', "(slides[i].getAttribute('data-title') || '')"])};
     var hash = '#' + (i + 1);
     if (location.hash !== hash) {
       try { history.replaceState(null, '', hash); } catch (e) { /* file:// in some browsers */ }
@@ -276,7 +299,7 @@ const SCRIPT = `
     if (busy || helpOpen) return;
     var name = cardName(current) + '.svg';
     saveBlob(svgBlob(cardSvg(current)), name);
-    say('Saved ' + name);
+    say(${jsTemplate(V.saved, ['name'])});
   }
 
   function downloadPng() {
@@ -288,10 +311,10 @@ const SCRIPT = `
       setBusy(false);
       if (blob) {
         saveBlob(blob, cardName(i) + '.png');
-        say('Saved ' + cardName(i) + '.png');
+        say(${jsTemplate(V.saved, ["cardName(i) + '.png'"])});
       } else {
         saveBlob(svgBlob(card), cardName(i) + '.svg');
-        say('PNG not available in this browser; saved ' + cardName(i) + '.svg instead');
+        say(${jsTemplate(V.pngFallback, ['cardName(i)'])});
       }
     });
   }
@@ -327,7 +350,7 @@ const SCRIPT = `
     if (busy || helpOpen || !nav.share) return;
     var i = current;
     var title = document.title;
-    var text = title + ' \u2014 ' + (slides[i].getAttribute('data-title') || 'Card ' + (i + 1));
+    var text = title + ' \u2014 ' + (slides[i].getAttribute('data-title') || ${jsTemplate(V.card, ['(i + 1)'])});
     function shareData(blob) {
       if (blob && typeof File === 'function' && nav.canShare) {
         var file = new File([blob], cardName(i) + '.png', { type: 'image/png' });
@@ -341,8 +364,8 @@ const SCRIPT = `
         setBusy(false);
         if (err && err.name === 'AbortError') return;
         // The PNG is cached now, so the next tap shares synchronously.
-        if (late && err && err.name === 'NotAllowedError') say('Tap Share again to share the card');
-        else say('Sharing failed');
+        if (late && err && err.name === 'NotAllowedError') say(${jsString(V.shareAgain)});
+        else say(${jsString(V.shareFailed)});
       }
       var p;
       try { p = nav.share(shareData(blob)); } catch (err) { failed(err); return; }
@@ -556,14 +579,34 @@ export function cspHash(text) {
   return `'sha256-${createHash('sha256').update(text, 'utf8').digest('base64')}'`;
 }
 
-export const CSP = [
-  "default-src 'none'",
-  `style-src ${cspHash(CSS)}`,
-  `script-src ${cspHash(SCRIPT)}`,
-  'img-src data:',
-  "base-uri 'none'",
-  "form-action 'none'",
-].join('; ');
+/** The page's inline script and its Content-Security-Policy, per language (cached). */
+const PAGES = new Map();
+function pageParts(lang) {
+  const L = getStrings(lang);
+  let parts = PAGES.get(L.code);
+  if (!parts) {
+    const script = scriptFor(L.viewer);
+    const csp = [
+      "default-src 'none'",
+      `style-src ${cspHash(CSS)}`,
+      `script-src ${cspHash(script)}`,
+      'img-src data:',
+      "base-uri 'none'",
+      "form-action 'none'",
+    ].join('; ');
+    parts = { script, csp };
+    PAGES.set(L.code, parts);
+  }
+  return parts;
+}
+
+/** The English page's Content-Security-Policy (other languages hash their own script). */
+export const CSP = pageParts(DEFAULT_LANG).csp;
+
+/** The Content-Security-Policy of the page built for `lang` (see buildViewerHtml). */
+export function cspFor(lang) {
+  return pageParts(lang).csp;
+}
 
 /**
  * Build a complete, self-contained HTML5 story viewer for `cards` ([{id, svg}] from
@@ -571,19 +614,25 @@ export const CSP = [
  * A card's optional `description` (plain text, see cardDescription) becomes a visually
  * hidden paragraph the SVG points to with aria-describedby.
  * No external requests: no fonts, scripts, stylesheets or images by URL.
+ * `lang` (an src/i18n code, default 'en') sets <html lang> and every label, button and
+ * message of the page.
  */
-export function buildViewerHtml(cards = [], { title } = {}) {
+export function buildViewerHtml(cards = [], { title, lang } = {}) {
+  const L = getStrings(lang);
+  const V = L.viewer;
+  const h = escapeHtml;
+  const { script, csp } = pageParts(L.code);
   const list = Array.isArray(cards) ? cards : [];
   const n = list.length;
   const docTitle = escapeHtml(String(title ?? '').trim() || 'gitwrapped');
   const slides = list
     .map(({ id, svg, description }, i) => {
-      const label = svgTitle(svg) ?? `Card ${i + 1}`;
+      const label = svgTitle(svg) ?? V.card(i + 1);
       const desc = typeof description === 'string' ? description.trim() : '';
       const descId = desc ? `card-${i + 1}-desc` : null;
       return [
         `<section class="slide${i === 0 ? ' active' : ''}" id="card-${i + 1}" data-card="${escapeHtml(id ?? '')}"`,
-        ` data-title="${escapeHtml(label)}" aria-roledescription="slide" aria-label="${escapeHtml(`${i + 1} of ${n}`)}"`,
+        ` data-title="${escapeHtml(label)}" aria-roledescription="${h(V.slide)}" aria-label="${escapeHtml(V.slideLabel(i + 1, n))}"`,
         ` aria-hidden="${i === 0 ? 'false' : 'true'}">\n`,
         accessibleSvg(svg, label, descId),
         // aria-hidden: read once, as the SVG's description, not again as page text.
@@ -595,12 +644,12 @@ export function buildViewerHtml(cards = [], { title } = {}) {
   const bars = list.map((_, i) => `<span class="bar${i === 0 ? ' current' : ''}"><i></i></span>`).join('');
 
   return `<!doctype html>
-<html lang="en">
+<html lang="${h(L.code)}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="${CSP}">
+<meta http-equiv="Content-Security-Policy" content="${csp}">
 <meta name="color-scheme" content="dark">
 <title>${docTitle}</title>
 <style>${CSS}</style>
@@ -610,39 +659,39 @@ export function buildViewerHtml(cards = [], { title } = {}) {
 <h1 class="title">${docTitle}</h1>
 </header>
 <main class="stage" id="page-main">
-<div class="story" id="story" role="region" aria-roledescription="carousel" aria-label="${docTitle}">
+<div class="story" id="story" role="region" aria-roledescription="${h(V.carousel)}" aria-label="${docTitle}">
 <div class="bars" aria-hidden="true">${bars}</div>
 ${slides}
-<button type="button" class="nav prev" id="prev" aria-label="Previous card"></button>
-<button type="button" class="nav next" id="next" aria-label="Next card"></button>
-<button type="button" class="pause" id="pause" aria-label="Pause">&#10074;&#10074;</button>
+<button type="button" class="nav prev" id="prev" aria-label="${h(V.previous)}"></button>
+<button type="button" class="nav next" id="next" aria-label="${h(V.next)}"></button>
+<button type="button" class="pause" id="pause" aria-label="${h(V.pause)}">&#10074;&#10074;</button>
 <p class="sr" id="status" aria-live="polite"></p>
 </div>
 </main>
 <footer class="foot" id="page-foot">
 <p class="count" id="count" aria-hidden="true">${n ? `1 / ${n}` : '0 / 0'}</p>
-<div class="actions" role="group" aria-label="Card actions">
-<button type="button" class="btn" id="dl-png" aria-keyshortcuts="D"><span aria-hidden="true">&#8595;</span><span class="sr">Download </span>PNG</button>
-<button type="button" class="btn" id="dl-svg"><span aria-hidden="true">&#8595;</span><span class="sr">Download </span>SVG</button>
-<button type="button" class="btn" id="share" hidden>Share</button>
-<button type="button" class="btn icon" id="help-open" aria-label="Keyboard shortcuts" aria-haspopup="dialog" aria-keyshortcuts="Shift+?">?</button>
+<div class="actions" role="group" aria-label="${h(V.actions)}">
+<button type="button" class="btn" id="dl-png" aria-keyshortcuts="D"><span aria-hidden="true">&#8595;</span><span class="sr">${h(V.download)}</span>PNG</button>
+<button type="button" class="btn" id="dl-svg"><span aria-hidden="true">&#8595;</span><span class="sr">${h(V.download)}</span>SVG</button>
+<button type="button" class="btn" id="share" hidden>${h(V.share)}</button>
+<button type="button" class="btn icon" id="help-open" aria-label="${h(V.shortcuts)}" aria-haspopup="dialog" aria-keyshortcuts="Shift+?">?</button>
 </div>
 </footer>
 <dialog class="help" id="help" aria-labelledby="help-title">
-<h2 id="help-title">Keyboard shortcuts</h2>
+<h2 id="help-title">${h(V.shortcuts)}</h2>
 <dl class="keys">
-<div><dt><kbd>&#8594;</kbd> <kbd>Space</kbd></dt><dd>Next card</dd></div>
-<div><dt><kbd>&#8592;</kbd> <kbd>Shift</kbd>+<kbd>Space</kbd></dt><dd>Previous card</dd></div>
-<div><dt><kbd>Home</kbd> <kbd>End</kbd></dt><dd>First / last card</dd></div>
-<div id="help-pause-row"><dt><kbd>P</kbd> <kbd>K</kbd></dt><dd>Pause / play auto-advance</dd></div>
-<div><dt><kbd>D</kbd></dt><dd>Download this card as PNG</dd></div>
-<div><dt><kbd>?</kbd></dt><dd>Show this help</dd></div>
-<div><dt><kbd>Esc</kbd></dt><dd>Close this help</dd></div>
+<div><dt><kbd>&#8594;</kbd> <kbd>Space</kbd></dt><dd>${h(V.keyNext)}</dd></div>
+<div><dt><kbd>&#8592;</kbd> <kbd>Shift</kbd>+<kbd>Space</kbd></dt><dd>${h(V.keyPrevious)}</dd></div>
+<div><dt><kbd>Home</kbd> <kbd>End</kbd></dt><dd>${h(V.keyFirstLast)}</dd></div>
+<div id="help-pause-row"><dt><kbd>P</kbd> <kbd>K</kbd></dt><dd>${h(V.keyPause)}</dd></div>
+<div><dt><kbd>D</kbd></dt><dd>${h(V.keyDownload)}</dd></div>
+<div><dt><kbd>?</kbd></dt><dd>${h(V.keyHelp)}</dd></div>
+<div><dt><kbd>Esc</kbd></dt><dd>${h(V.keyClose)}</dd></div>
 </dl>
-<p>On touch screens, tap the right side to go forward and the left side to go back, swipe to move, and press and hold to pause.</p>
-<button type="button" class="btn" id="help-close">Close</button>
+<p>${h(V.touch)}</p>
+<button type="button" class="btn" id="help-close">${h(V.close)}</button>
 </dialog>
-<script>${SCRIPT}</script>
+<script>${script}</script>
 </body>
 </html>
 `;

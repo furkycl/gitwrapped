@@ -14,12 +14,14 @@ const percent = (part, whole) => (whole > 0 ? Math.round((part / whole) * 1000) 
  * A contributor's `share` (a percent, maybe with a decimal) as a whole percent for
  * display: "<1%" for a contributor with commits whose share rounds to 0, and never "100%"
  * short of everything (99.6 → "99%"). Used by the card and the terminal recap.
+ * `pct` writes a whole percent (default "74%"; Turkish passes "%74"), "<1%" being
+ * `<${pct(1)}`.
  */
-export function shareLabel(share, commits) {
+export function shareLabel(share, commits, pct = (r) => `${r}%`) {
   const v = typeof share === 'number' && Number.isFinite(share) && share > 0 ? share : 0;
   const r = Math.round(v);
-  if (r === 0 && (v > 0 || (typeof commits === 'number' && commits > 0))) return '<1%';
-  return `${r === 100 && v < 100 ? 99 : r}%`;
+  if (r === 0 && (v > 0 || (typeof commits === 'number' && commits > 0))) return `<${pct(1)}`;
+  return pct(r === 100 && v < 100 ? 99 : r);
 }
 
 /**

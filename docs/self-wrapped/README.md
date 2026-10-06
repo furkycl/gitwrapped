@@ -4,8 +4,8 @@ This folder is what you get when you run gitwrapped on its own repo. Every commi
 was made by the autonomous agent loop that builds gitwrapped (see `.loop/`), so these
 cards tell the story of the loop itself.
 
-- **Generated:** 2026-10-05
-- **Commits analyzed:** 40 (the full history at the time of the run)
+- **Generated:** 2026-10-06
+- **Commits analyzed:** 59 (the full history at the time of the run)
 - **Regenerate:** `npm run self-wrapped` (runs `gitwrapped . --out docs/self-wrapped`),
   then `npm run hero-gif` to rebuild the README's [`docs/hero.gif`](../hero.gif) from
   these cards
@@ -16,7 +16,7 @@ cards tell the story of the loop itself.
 source, so download it and open it in a browser, or paste its raw URL into an HTML
 preview service.
 
-The nine cards, as SVG:
+The ten cards, as SVG:
 
 ![Intro](cards/01-intro.svg)
 ![Totals](cards/02-totals.svg)
@@ -24,9 +24,10 @@ The nine cards, as SVG:
 ![Streak](cards/04-streak.svg)
 ![Activity](cards/05-activity.svg)
 ![Hot files](cards/06-hot-files.svg)
-![Message hall of fame](cards/07-messages.svg)
-![Personality](cards/08-personality.svg)
-![Outro](cards/09-outro.svg)
+![Languages](cards/07-languages.svg)
+![Message hall of fame](cards/08-messages.svg)
+![Personality](cards/09-personality.svg)
+![Outro](cards/10-outro.svg)
 
 ## Share image
 

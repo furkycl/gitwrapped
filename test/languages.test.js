@@ -244,7 +244,7 @@ describe('languages card', () => {
     assert.equal(spec.eyebrow, 'Your languages');
     assert.equal(spec.big, `${stats.languages.languages[0].share}%`);
     assert.equal(spec.title, 'Led by Python'); // 70 of 285 lines
-    assert.match(spec.subtitle, /You wrote in 7 languages across 8 files\.$/);
+    assert.match(spec.subtitle, /You wrote code in 7 languages across 7 files\.$/); // LICENSE (Other) not counted
     const items = spec.chart.items;
     assert.equal(spec.chart.kind, 'hbars');
     assert.deepEqual(items.map((i) => i.label), ['Python', 'Go', 'Rust', 'Java', 'C', 'Other']);
@@ -269,7 +269,7 @@ describe('languages card', () => {
     const spec = langSpec(stats);
     assert.equal(spec.big, '10%');
     assert.equal(spec.title, 'Led by Python');
-    assert.match(spec.subtitle, /You wrote in 2 languages across 4 files\.$/);
+    assert.match(spec.subtitle, /You wrote code in 2 languages across 2 files\.$/);
     assert.deepEqual(spec.chart.items.map((i) => i.label), ['Markdown', 'JSON', 'Python', 'Go']); // all kept in the bars
     assert.ok(formatSummary(stats, {}).includes('Top language Python (10% of lines)'));
 
@@ -281,7 +281,24 @@ describe('languages card', () => {
     const docs = langSpec(computeStats([c(f('README.md', 60, 0), f('a.yml', 40, 0))], { today: TODAY }));
     assert.equal(docs.title, 'Mostly Markdown');
     assert.equal(docs.big, '60%');
-    assert.match(docs.subtitle, /You wrote in 2 languages/);
+    assert.match(docs.subtitle, /You wrote in 2 languages across 2 files\.$/);
+  });
+
+  test('subtitle counts files in the same pool as languages (code vs data / prose / Other)', () => {
+    // 2 programming languages in 3 files, plus 3 Markdown, 2 JSON and 2 unknown files.
+    const mixed = langSpec(computeStats([c(
+      f('a.py', 50, 0), f('b.py', 10, 0), f('a.go', 30, 0),
+      f('README.md', 40, 0), f('docs/a.md', 5, 0), f('docs/b.md', 5, 0),
+      f('a.json', 20, 0), f('b.json', 2, 0),
+      f('LICENSE', 9, 0), f('notes.zzz', 1, 0),
+    )], { today: TODAY }));
+    assert.match(mixed.subtitle, /You wrote code in 2 languages across 3 files\.$/);
+    // One programming language among data / prose: only its files count.
+    const oneCode = langSpec(computeStats([c(f('a.rs', 5, 0), f('b.rs', 5, 0), f('README.md', 50, 0), f('a.yml', 9, 0))], { today: TODAY }));
+    assert.match(oneCode.subtitle, /You stuck to 1 language across 2 files\.$/);
+    // No code: data / prose languages are the pool; Other files stay out.
+    const noCode = langSpec(computeStats([c(f('README.md', 60, 0), f('b.md', 1, 0), f('a.yml', 40, 0), f('LICENSE', 3, 0))], { today: TODAY }));
+    assert.match(noCode.subtitle, /You wrote in 2 languages across 3 files\.$/);
   });
 
   test('single language, ties, tiny shares', () => {

@@ -1,15 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" role="img" aria-label="YOUR LONGEST STREAK — 2 — days in a row">
-<title>YOUR LONGEST STREAK — 2 — days in a row</title>
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" role="img" aria-label="YOUR LONGEST STREAK — 3 — days in a row">
+<title>YOUR LONGEST STREAK — 3 — days in a row</title>
 <defs><linearGradient id="gw-streak-bg" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0.00" stop-color="#ff6a2f"/><stop offset="0.50" stop-color="#e0245e"/><stop offset="1.00" stop-color="#4a0d2e"/></linearGradient><radialGradient id="gw-streak-glow"><stop offset="0" stop-color="#ffd166" stop-opacity="0.55"/><stop offset="1" stop-color="#ffd166" stop-opacity="0"/></radialGradient></defs><rect width="1080" height="1920" fill="url(#gw-streak-bg)"/><circle cx="930" cy="250" r="460" fill="url(#gw-streak-glow)"/><circle cx="110" cy="1650" r="560" fill="url(#gw-streak-glow)"/>
 <g fill="#ffffff" font-family="system-ui, -apple-system, &apos;Segoe UI&apos;, Roboto, Helvetica, Arial, sans-serif">
 <text x="984" y="186" font-size="160" font-weight="900" fill-opacity="0.12" text-anchor="end" letter-spacing="-4">04</text>
 <rect x="96" y="150" width="72" height="10" rx="5" fill="#ffffff"/>
 <text x="96" y="222" font-size="36" font-weight="800" fill-opacity="0.9" letter-spacing="5">YOUR LONGEST STREAK</text>
-<text x="96" y="656.4" font-size="280" font-weight="900" letter-spacing="-5.6">2</text>
+<text x="96" y="656.4" font-size="280" font-weight="900" letter-spacing="-5.6">3</text>
 <text x="96" y="821.6" font-size="72" font-weight="800">days in a row</text>
-<text x="96" y="926.5" font-size="44" font-weight="600" fill-opacity="0.9">From Oct 4 – Oct 5, 2026. You&apos;re</text><text x="96" y="983.7" font-size="44" font-weight="600" fill-opacity="0.9">on a 2-day streak right now.</text><text x="96" y="1040.9" font-size="44" font-weight="600" fill-opacity="0.9">Keep it alive!</text>
-<text x="96" y="1425.3" font-size="28" font-weight="800" fill-opacity="0.75" letter-spacing="3">LONGEST VS. CURRENT</text><g><title>Longest: 2 days, Oct 4 – Oct 5, 2026</title><text x="96" y="1489.2" font-size="44" font-weight="800">Longest</text><text x="984" y="1489.2" font-size="44" font-weight="800" fill-opacity="0.85" text-anchor="end">2 days</text><rect x="96" y="1505" width="888" height="40" rx="12" fill-opacity="0.15"/><rect x="96" y="1505" width="888" height="40" rx="12"/></g><g><text x="96" y="1636.2" font-size="44" font-weight="800">Current</text><text x="984" y="1636.2" font-size="44" font-weight="800" fill-opacity="0.85" text-anchor="end">2 days</text><rect x="96" y="1652" width="888" height="40" rx="12" fill-opacity="0.15"/><rect x="96" y="1652" width="888" height="40" rx="12"/></g>
+<text x="96" y="926.5" font-size="44" font-weight="600" fill-opacity="0.9">From Oct 4 – Oct 6, 2026. You&apos;re</text><text x="96" y="983.7" font-size="44" font-weight="600" fill-opacity="0.9">on a 3-day streak right now.</text><text x="96" y="1040.9" font-size="44" font-weight="600" fill-opacity="0.9">Keep it alive!</text>
+<text x="96" y="1425.3" font-size="28" font-weight="800" fill-opacity="0.75" letter-spacing="3">LONGEST VS. CURRENT</text><g><title>Longest: 3 days, Oct 4 – Oct 6, 2026</title><text x="96" y="1489.2" font-size="44" font-weight="800">Longest</text><text x="984" y="1489.2" font-size="44" font-weight="800" fill-opacity="0.85" text-anchor="end">3 days</text><rect x="96" y="1505" width="888" height="40" rx="12" fill-opacity="0.15"/><rect x="96" y="1505" width="888" height="40" rx="12"/></g><g><text x="96" y="1636.2" font-size="44" font-weight="800">Current</text><text x="984" y="1636.2" font-size="44" font-weight="800" fill-opacity="0.85" text-anchor="end">3 days</text><rect x="96" y="1652" width="888" height="40" rx="12" fill-opacity="0.15"/><rect x="96" y="1652" width="888" height="40" rx="12"/></g>
 <text x="96" y="1820" font-size="44" font-weight="900" letter-spacing="-1">gitwrapped</text>
-<text x="984" y="1818" font-size="32" font-weight="600" fill-opacity="0.8" text-anchor="end">Oct 4 – Oct 5, 2026</text>
+<text x="984" y="1818" font-size="32" font-weight="600" fill-opacity="0.8" text-anchor="end">Oct 4 – Oct 6, 2026</text>
 </g>
 </svg>

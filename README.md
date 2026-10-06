@@ -10,7 +10,7 @@ npx @furkycl/gitwrapped
 ```
 
 <p align="center">
-  <img src="docs/hero.gif" width="360" alt="gitwrapped's nine story cards playing one after another, like a story reel">
+  <img src="docs/hero.gif" width="360" alt="gitwrapped's ten story cards playing one after another, like a story reel">
 </p>
 
 See gitwrapped's own Wrapped: [docs/self-wrapped/](docs/self-wrapped/) has the cards from
@@ -161,7 +161,7 @@ but it does contain commit subjects and hashes and repo-relative file paths (see
 ```json
 {
   "schemaVersion": 1,
-  "generator": { "name": "@furkycl/gitwrapped", "version": "1.0.0" },
+  "generator": { "name": "@furkycl/gitwrapped", "version": "1.1.0" },
   "repo": "my-app",
   "asOf": "2025-12-31",
   "filters": { "since": "2025-01-01", "until": "2025-12-31", "author": null, "maxCommits": 50000 },

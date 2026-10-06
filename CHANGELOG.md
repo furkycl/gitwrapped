@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-06
+
 ### Added
 
 - Commit size mix: the totals card now shows the share of tiny (under 10 lines), small
@@ -24,19 +26,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   before (nothing else shrinks for it). English and Turkish.
   A card's screen-reader description now covers only the charts actually drawn, so a
   chart left out for lack of room (this bar, or a per-repo chart) is left out of it too.
-
-- `--md`: also writes `<out>/wrapped.md`, a Markdown summary for READMEs and PR
-  descriptions: headline numbers (and the year-over-year change with `--year`) with the
-  commit size mix, power hour and busiest weekday, streaks and the longest break, the top
-  five hot files and languages, the team by name (in a repo with several contributors),
-  per-repo numbers, the biggest commit and the commit personality, then every card SVG as
-  a relative image link. Localized with `--lang` (English and Turkish), the same numbers as the cards and
-  the recap (the languages table has the languages card's rows), and never an email
-  address (names only; `--author` by its local part; anything shaped like an address in
-  subjects, paths or repo names is cut). Paths, names and subjects are escaped so they
-  render as plain text, without links, @mentions, #references or math (`$`). The recap prints its path. Without `--md` an existing `wrapped.md` is left
-  alone, and like `stats.json` it is never written through a symlink.
-
 - Longest break: the streak card now shows the longest gap between two consecutive
   active days (idle days, and the active days before and after it) in a panel under
   the bars, the recap gets a "Break" line, and `stats.json` gets
@@ -44,6 +33,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   between, ties go to the earliest gap, `{days: 0, from: null, to: null}` without one).
   Like the longest streak, the card and recap leave out future-dated days. Without a
   break the card is unchanged. English and Turkish.
+- `--md`: also writes `<out>/wrapped.md`, a Markdown summary for READMEs and PR
+  descriptions: headline numbers (and the year-over-year change with `--year`) with the
+  commit size mix, power hour and busiest weekday, streaks and the longest break, the top
+  five hot files and languages, the team by name (in a repo with several contributors),
+  per-repo numbers, the biggest commit and the commit personality, then every card SVG as
+  a relative image link. Localized with `--lang` (English and Turkish), the same numbers
+  as the cards and the recap (the languages table has the languages card's rows), and
+  never an email address (names only; `--author` by its local part; anything shaped like
+  an address in subjects, paths or repo names is cut). Paths, names and subjects are
+  escaped so they render as plain text, without links, @mentions, #references or math
+  (`$`). The recap prints its path. Without `--md` an existing `wrapped.md` is left alone,
+  and like `stats.json` it is never written through a symlink.
 
 ## [1.3.0] - 2026-10-06
 
@@ -289,7 +290,8 @@ First public release on npm as `@furkycl/gitwrapped`.
 - On macOS, color emoji are left out of PNG exports, because resvg drew Apple Color Emoji
   far from their text. SVG cards and `wrapped.html` keep them.
 
-[Unreleased]: https://github.com/furkycl/gitwrapped/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/furkycl/gitwrapped/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/furkycl/gitwrapped/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/furkycl/gitwrapped/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/furkycl/gitwrapped/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/furkycl/gitwrapped/compare/v1.0.0...v1.1.0

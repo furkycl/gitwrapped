@@ -63,6 +63,7 @@ describe('formatSummary', () => {
     assert.match(out, /4 commits · 4 active days · \+1,209 \/ −3 lines/);
     assert.match(out, /Power hour {3}11 PM \(2 commits\)/);
     assert.match(out, /Streak {7}longest 3 days · current 3 days/);
+    assert.match(out, /Break {8}longest 1 day \(Mar 9, 2024 – Mar 11, 2024\)\n/);
     assert.match(out, /Hottest file src\/a\.js \(3 commits\)/);
     assert.match(out, /Top word {5}"parser" ×3 · 1 fix/);
     assert.match(out, /Biggest {6}"initial commit" \(\+1,200 \/ 0 lines · Mar 9, 2024\)/);
@@ -70,7 +71,7 @@ describe('formatSummary', () => {
     assert.match(out, /8 cards in out\/cards\n/);
     assert.match(out, /8 PNGs in out\/png\n/);
     assert.match(out, /share image: out\/share\.png\n$/);
-    assert.ok(lines.length >= 8 && lines.length <= 15, `compact: ${lines.length} lines`);
+    assert.ok(lines.length >= 8 && lines.length <= 16, `compact: ${lines.length} lines`);
   });
 
   test('color: true adds ANSI escapes but keeps the first line plain', () => {

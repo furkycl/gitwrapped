@@ -7,7 +7,7 @@ export { formatNumber };
 import { renderShareSvg } from './share.js';
 import { dayKeyFromEpoch as dayKeyOf, epochDay, mondayOf, WEEKDAY_NAMES } from '../stats/time.js';
 import { languageHeadline, OTHER as OTHER_LANGUAGE } from '../stats/languages.js';
-import { daysUpTo, shownLongest } from '../stats/daily.js';
+import { daysUpTo, shownLongest, shownLongestBreak } from '../stats/daily.js';
 import { monthIndex, monthsFromDays } from '../stats/months.js';
 import { hasTeamCard, shareLabel, TOP_CONTRIBUTORS } from '../stats/contributors.js';
 import { personalityReason } from '../stats/personality.js';
@@ -487,6 +487,7 @@ function streak(s, ctx) {
     ? formatDateRange(longest.start, longest.end, L.code)
     : (formatDay(longest.start, L.code) ?? text(longest.start));
   chart.items[0].title = range ? S.longestTitle(len, range) : '';
+  const pause = breakCallout(s, ctx);
   return {
     eyebrow: S.eyebrow,
     big: L.num(len),
@@ -495,7 +496,28 @@ function streak(s, ctx) {
       range ? (len === 1 ? S.onRange(range) : S.fromRange(range)) : '',
       streakNow(cur, end, L),
     ].filter(Boolean).join(' '),
-    chart,
+    chart: pause ? [chart, pause] : chart,
+  };
+}
+
+/**
+ * The streak card's longest-break panel (stats.streaks.longestBreak, future-dated days
+ * left out as for the longest streak, see stats/daily.js shownLongestBreak): caption,
+ * "N days off" and the two active days around the gap; null without a break (then the
+ * card is exactly as before).
+ */
+function breakCallout(s, { L, today }) {
+  const S = L.streak;
+  const b = shownLongestBreak(s, today);
+  const days = Number.isInteger(b?.days) ? b.days : 0;
+  if (days <= 0) return null;
+  const from = formatDay(b.from, L.code);
+  const to = formatDay(b.to, L.code);
+  return {
+    kind: 'callout',
+    title: S.breakTitle,
+    value: S.breakValue(days),
+    note: from && to ? S.breakNote(from, to) : '',
   };
 }
 

@@ -161,6 +161,9 @@ export default {
     wasNone: (end) => `${end} devam eden bir serin yoktu.`,
     isOn: (days) => `Şu an ${num(days)} günlük bir serin var. Sakın bozma!`,
     isNone: 'Şu an devam eden bir serin yok — başlamak için bugün harika bir gün.',
+    breakTitle: 'En uzun mola',
+    breakValue: (days) => `${num(days)} günlük mola`,
+    breakNote: (from, to) => `${from} ile ${to} arası`,
   },
 
   activity: {
@@ -373,6 +376,7 @@ export default {
     longest: 'en uzun',
     current: 'şu an',
     atWindowEnd: 'dönem sonunda',
+    breakLabel: 'Mola',
     hottestFile: 'Gözde dosya',
     topLanguage: 'Favori dil',
     languageDetail: (share, basis, tiedMore) => `${basis === 'files' ? 'dosyaların' : 'satırların'} ${share} kadarı${tiedMore > 0 ? `, ${num(tiedMore)} dil ile berabere` : ''}`,

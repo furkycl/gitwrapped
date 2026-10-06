@@ -1,3 +1,4 @@
+import { longestBreakOf } from './streaks.js';
 import { epochDay, localParts, mondayOf } from './time.js';
 
 /**
@@ -57,6 +58,31 @@ export function shownLongest(stats, today) {
   const kept = daysUpTo(all, today);
   if (kept.length === 0 || kept.length === all.length) return raw;
   return longestRun(kept);
+}
+
+/**
+ * The longest break in `days` ([{day}], any order; invalid days are skipped) as `{days,
+ * from, to}` (idle days between two consecutive active days; ties → the earliest gap), or
+ * `{days: 0, from: null, to: null}`. Same rule as streaks.js's longestBreak.
+ */
+export function longestGap(days) {
+  const list = Array.isArray(days) ? days : [];
+  const sorted = [...new Set(list.map((x) => epochDay(x?.day)).filter((e) => e !== null))].sort((a, b) => a - b);
+  return longestBreakOf(sorted, (e) => list.find((x) => epochDay(x?.day) === e).day);
+}
+
+/**
+ * The longest break to show on the streak card and in the recap: stats.streaks.longestBreak,
+ * except that when `today` is given and stats.daily.days has future-dated days (see
+ * daysUpTo), it is recomputed over the kept days only, as shownLongest does, so a commit
+ * dated 2099 never makes a decades-long "break". stats.json keeps the raw value.
+ */
+export function shownLongestBreak(stats, today) {
+  const raw = stats?.streaks?.longestBreak ?? { days: 0, from: null, to: null };
+  const all = daysUpTo(stats?.daily?.days, null);
+  const kept = daysUpTo(all, today);
+  if (kept.length === 0 || kept.length === all.length) return raw;
+  return longestGap(kept);
 }
 
 export function computeDaily(commits) {

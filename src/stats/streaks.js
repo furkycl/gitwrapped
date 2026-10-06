@@ -1,6 +1,23 @@
 import { epochDay, localParts } from './time.js';
 
 const EMPTY = Object.freeze({ length: 0, start: null, end: null });
+const NO_BREAK = Object.freeze({ days: 0, from: null, to: null });
+
+/**
+ * The longest break in `sorted` (ascending, distinct epoch days): `{days, from, to}` where
+ * `from` is the last active day before the gap, `to` the next active day after it (dayKeys
+ * via `keyOf`), and `days` the number of idle days strictly between them (to − from − 1).
+ * Ties → the earliest gap. Fewer than two days, or only consecutive days → `{days: 0,
+ * from: null, to: null}`.
+ */
+export function longestBreakOf(sorted, keyOf) {
+  let best = null;
+  for (let i = 1; i < sorted.length; i++) {
+    const idle = sorted[i] - sorted[i - 1] - 1;
+    if (idle > 0 && (!best || idle > best.days)) best = { days: idle, from: sorted[i - 1], to: sorted[i] };
+  }
+  return best ? { days: best.days, from: keyOf(best.from), to: keyOf(best.to) } : { ...NO_BREAK };
+}
 
 /** The machine's local calendar date as 'YYYY-MM-DD'. */
 export function localToday() {
@@ -11,7 +28,8 @@ export function localToday() {
 
 /**
  * Daily commit streaks over author-local calendar days (see time.js).
- * Returns `{longest: {length, start, end}, current: {length, start, end}}` where start /
+ * Returns `{longest: {length, start, end}, current: {length, start, end}, longestBreak:
+ * {days, from, to}}` where start /
  * end are dayKeys ('YYYY-MM-DD') and a run is a sequence of consecutive active days
  * (days with at least one commit).
  * - longest: the longest run; ties go to the earliest run.
@@ -25,7 +43,13 @@ export function localToday() {
  *   `todayComplete: true`: that day is over, so there is no grace day and the run is
  *   current only when it reaches the window end (current = the streak running when the
  *   window closed).
- * - No active days → both `{length: 0, start: null, end: null}`.
+ * - longestBreak: the longest gap between two consecutive active days, as `{days, from,
+ *   to}`: `from` is the last active day before the gap, `to` the next active day after
+ *   it, and `days` the idle days in between (to − from − 1, so Mar 3 → Mar 6 is 2 days).
+ *   Ties go to the earliest gap. Fewer than two active days, or no gap at all →
+ *   `{days: 0, from: null, to: null}`. Like longest it covers every active day, future-dated
+ *   ones included (the cards and recap leave those out, see daily.js shownLongestBreak).
+ * - No active days → longest / current `{length: 0, start: null, end: null}`.
  *
  * `today` ('YYYY-MM-DD') defaults to the machine's local calendar date. That default is
  * the only non-deterministic input to the stats engine, so tests should always pass it.
@@ -46,7 +70,7 @@ export function computeStreaks(commits, { today, todayComplete = false } = {}) {
     if (!t) continue;
     days.set(epochDay(t.dayKey), t.dayKey);
   }
-  if (days.size === 0) return { longest: { ...EMPTY }, current: { ...EMPTY } };
+  if (days.size === 0) return { longest: { ...EMPTY }, current: { ...EMPTY }, longestBreak: { ...NO_BREAK } };
 
   // Split the sorted epoch days into runs of consecutive days.
   const sorted = [...days.keys()].sort((a, b) => a - b);
@@ -77,5 +101,6 @@ export function computeStreaks(commits, { today, todayComplete = false } = {}) {
     while (j > 0 && sorted[j] - sorted[j - 1] === 1) j--;
     current = { length: sorted[i] - sorted[j] + 1, start: days.get(sorted[j]), end: days.get(sorted[i]) };
   }
-  return { longest: { ...longest }, current: { ...current } };
+  const longestBreak = longestBreakOf(sorted, (e) => days.get(e));
+  return { longest: { ...longest }, current: { ...current }, longestBreak };
 }

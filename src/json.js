@@ -49,9 +49,10 @@ export function toJsonSafe(value) {
 /**
  * The stats.json document, as a newline-terminated, 2-space-indented JSON string:
  * `{schemaVersion, generator: {name, version}, repo, asOf, filters: {since, until,
- * author, maxCommits}, truncated, stats}`. `asOf` ('YYYY-MM-DD') is the day the current
+ * author, maxCommits, exclude}, truncated, stats}`. `asOf` ('YYYY-MM-DD') is the day the current
  * streak is relative to (today, or a past window's end). Unset date / author filters are
- * null; maxCommits is the cap in effect. `repo` is a display name (the folder's
+ * null; maxCommits is the cap in effect; exclude is the --exclude patterns as given ([]
+ * when none). `repo` is a display name (the folder's
  * basename), never a full path.
  * A multi-repo run passes `repos` (two or more labels, see repoLabels in src/git.js): then
  * `repo` is null and a `repos` array of the labels follows it (stats.repos holds the
@@ -71,6 +72,7 @@ export function buildStatsJson({ stats, repoName, repos, version, asOf, filters 
       until: or(filters.until),
       author: or(filters.author),
       maxCommits: or(filters.maxCommits),
+      exclude: Array.isArray(filters.exclude) ? filters.exclude.map(String) : [],
     },
     truncated: Boolean(truncated),
     stats: toJsonSafe(stats ?? {}),

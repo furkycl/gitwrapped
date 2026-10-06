@@ -4,9 +4,11 @@ import { accessSync, constants as fsConstants, lstatSync, mkdirSync, readdirSync
 import { basename, dirname, join, resolve } from 'node:path';
 import { buildCards, CARD_IDS, displayRepoName, renderShareCard, windowLabel } from './cards/index.js';
 import { DEFAULT_LIMIT, mergeHistories, readHistory, repoLabels } from './git.js';
+import { compileExcludes } from './glob.js';
 import { buildStatsJson } from './json.js';
 import { renderPng } from './png.js';
 import { computeStats, localParts, localToday } from './stats/index.js';
+import { excludeFiles } from './stats/files.js';
 import { hasTeamCard } from './stats/contributors.js';
 import { formatSummary, shouldUseColor, stripControl } from './summary.js';
 import { buildViewerHtml } from './viewer.js';
@@ -33,6 +35,10 @@ Options:
                        compared with the year before (commits, lines, active days)
   --author <email>     Only include commits by this author email
                        (exact email match, case-insensitive, after .mailmap)
+  --exclude <glob>     Leave matching files out of lines, files touched, hot
+                       files and languages (repeatable; commits still count).
+                       *.min.js and docs match at any depth, docs/ or docs/**
+                       a whole folder, src/gen/*.js from the repo root
   --out <dir>          Output directory (default: "gitwrapped-out")
   --lang <code>        Language of the cards, viewer and recap:
                        en (English, default) or tr (Türkçe)
@@ -56,6 +62,7 @@ const OPTIONS = {
   until: { type: 'string' },
   year: { type: 'string' },
   author: { type: 'string' },
+  exclude: { type: 'string', multiple: true },
   out: { type: 'string' },
   lang: { type: 'string' },
   theme: { type: 'string' },
@@ -155,7 +162,8 @@ function normalizeArgv(argv) {
  * the first), color (false for --no-color; absent = auto), until, year
  * (--year YYYY also sets since/until to Jan 1 / Dec 31 of that year), json (true),
  * open (true), lang (a code from src/i18n LANGS, e.g. 'tr'; absent = English) and
- * theme (a non-default color theme from cards/themes.js, e.g. 'mono'; absent = default).
+ * theme (a non-default color theme from cards/themes.js, e.g. 'mono'; absent = default)
+ * and exclude (the --exclude globs in order, trimmed; see compileGlob in src/glob.js).
  * Throws an Error with a user-facing message on invalid input.
  */
 export function parseCli(argv) {
@@ -177,6 +185,10 @@ export function parseCli(argv) {
       throw new Error(`--${name} requires a non-empty value`);
     }
   }
+
+  const exclude = (values.exclude ?? []).map((p) => p.trim());
+  if (exclude.some((p) => p === '')) throw new Error('--exclude requires a non-empty value');
+  compileExcludes(exclude); // throws a user-facing error for a pattern that matches nothing
 
   // Surrounding whitespace is ignored, as for --year (e.g. a quoted " 2025-01-01").
   let since = values.since === undefined ? undefined : validateDate('since', values.since.trim());
@@ -213,6 +225,7 @@ export function parseCli(argv) {
     ...(values.open ? { open: true } : {}),
     ...(lang ? { lang } : {}),
     ...(theme && theme !== DEFAULT_COLOR_THEME ? { theme } : {}),
+    ...(exclude.length > 0 ? { exclude } : {}),
   };
 }
 
@@ -588,12 +601,26 @@ async function teamSpan(team, mine, { read, until, limit, labels }) {
  * `previousYearError` holds the reason (else null); `previousYearTruncated` is true when
  * --max-commits cut the previous year short (its numbers then cover only its most recent
  * commits).
+ * With `exclude` (glob patterns, see compileGlob in src/glob.js) the matching files are
+ * removed from every commit right after each read (this run's, the team read and the
+ * previous year's; see excludeFiles in stats/files.js), so lines, files touched, hot
+ * files, languages, per-repo and per-contributor lines and the year-over-year lines all
+ * leave them out; commits themselves (counts, days, streaks, habits) are unchanged.
+ * stats.json echoes the patterns as `filters.exclude`.
  * `renderPng` (svg, {width}) → Promise<Buffer> replaces the PNG renderer (for tests), and
  * `readHistory` (same contract as git.js readHistory) the history reader.
  */
-export async function generate({ path, paths, since, until, year, author, out, png = true, maxCommits = DEFAULT_LIMIT, json = false, lang = DEFAULT_LANG, theme = DEFAULT_COLOR_THEME }, { today, renderPng: rasterize = renderPng, readHistory: readFn = readHistory } = {}) {
+export async function generate({ path, paths, since, until, year, author, exclude = [], out, png = true, maxCommits = DEFAULT_LIMIT, json = false, lang = DEFAULT_LANG, theme = DEFAULT_COLOR_THEME }, { today, renderPng: rasterize = renderPng, readHistory: readFn = readHistory } = {}) {
   const multi = Array.isArray(paths) && paths.length > 1;
-  const read = (opts) => (multi ? readRepos(paths, opts, readFn) : readFn(path, opts));
+  const isExcluded = compileExcludes(exclude);
+  const readRaw = (opts) => (multi ? readRepos(paths, opts, readFn) : readFn(path, opts));
+  // --exclude: drop matching files from every read, so all stats see the same files.
+  const read = isExcluded
+    ? async (opts) => {
+      const r = await readRaw(opts);
+      return { ...r, commits: excludeFiles(r.commits, isExcluded) };
+    }
+    : readRaw;
   const { commits, truncated, limit, shallow, unborn = false, otherRefs = false, labels, unbornRepos } = await read({ since, until, author, limit: maxCommits });
   // A past window's "current" streak is the one running when the window closed; its end
   // day is over, so there is no "today isn't over yet" grace day (todayComplete).
@@ -651,7 +678,7 @@ export async function generate({ path, paths, since, until, year, author, out, p
       ...(multi ? { repos: labels } : {}),
       version: readVersion(),
       asOf,
-      filters: { since, until, author, maxCommits: limit },
+      filters: { since, until, author, maxCommits: limit, exclude },
       truncated,
     })
     : null;

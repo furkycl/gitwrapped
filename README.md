@@ -100,6 +100,7 @@ gitwrapped [path...] [options]
 | `--until YYYY-MM-DD`  | Only include commits made on or before this day, inclusive (the author's local calendar day) |
 | `--year YYYY`         | One calendar year, the classic Wrapped: same as `--since YYYY-01-01 --until YYYY-12-31` (can't be combined with them), plus a comparison with the year before (see [Year over year](#year-over-year)) |
 | `--author <email>`    | Only include commits by this author email (exact, case-insensitive match against the email after `.mailmap` is applied) |
+| `--exclude <glob>`    | Leave matching files out of lines added/removed, files touched, hot files and languages (and the per-repo, per-contributor and year-over-year lines). Repeatable. Commits still count: a commit that only touched excluded files still counts toward commits, active days, streaks and habits (see [Excluding files](#excluding-files)) |
 | `--out <dir>`         | Output directory (default: `gitwrapped-out`, created if needed)                        |
 | `--lang <code>`       | Language of the cards, share image, viewer and terminal recap: `en` (English, default) or `tr` (Türkçe). Also `--lang=tr`; an unknown code is an error. `stats.json` and file names stay the same in every language |
 | `--theme <name>`      | Color theme of the cards, share image, PNGs and viewer: `default` (the colorful gradients), `mono` (grayscale) or `neon` (near-black with neon glows). Also `--theme=mono`; an unknown name is an error. Only colors change: the layout, `stats.json` and file names are the same in every theme |
@@ -145,6 +146,9 @@ npx @furkycl/gitwrapped --theme neon
 # Another repo, into a folder of your choice
 npx @furkycl/gitwrapped ~/code/my-app --out ~/Desktop/my-app-wrapped
 
+# Leave generated code and docs out of the line counts
+npx @furkycl/gitwrapped --exclude 'src/generated/**' --exclude docs/ --exclude '*.min.js'
+
 # Several repos in one Wrapped
 npx @furkycl/gitwrapped ~/code/api ~/code/web ~/code/docs --year 2025
 
@@ -155,10 +159,39 @@ npx @furkycl/gitwrapped --no-png
 NO_COLOR=1 npx @furkycl/gitwrapped --no-png | head -1
 ```
 
+## Excluding files
+
+`--exclude <glob>` (repeatable) drops matching files before any stat is computed: lines
+added / removed, files touched, hot files, languages, the per-repo breakdown, the team
+card's lines and the year-over-year lines changed all leave them out. Commits are never
+dropped: a commit that only touched excluded files still counts toward commits, active
+days, streaks, time habits and the team card's commit counts. Matching is
+gitignore-like and case-sensitive:
+
+- `*` matches anything except `/`, `?` one character except `/`, `**` anything
+  including `/` (`**/x` also matches `x` at the root). Everything else is literal (no
+  `[abc]`, `{a,b}` or `!` negation).
+- A pattern without a `/` matches a file or folder name at any depth: `*.min.js`,
+  `fixtures`, `CHANGELOG.md`.
+- A pattern with a `/` inside, or starting with `/` or `./`, is anchored at the repo
+  root: `src/generated/*.js`, `/README.md`.
+- A pattern that matches a folder drops everything inside it: `docs`, `docs/` and
+  `docs/**` all exclude `docs/guide/intro.md`. A trailing `/` only matches folders.
+- Backslashes count as `/` (Windows), surrounding spaces are ignored, and an empty
+  pattern is an error. Quote patterns with `*` so your shell does not expand them.
+- With several repos, a pattern is tried against the path inside its repo
+  (`src/x.js`, so `src/` excludes every repo's `src/`). A pattern with a `/` inside or a
+  leading `/` is also tried against the shown path with the repo's label
+  (`api/src/x.js`, so `api/src/` excludes only that repo's, and `/web` a whole repo's
+  files). A name pattern never matches a label: `docs` drops `docs/` folders in every
+  repo, not a repo called `docs`.
+
+`stats.json` echoes the patterns as `filters.exclude`.
+
 ## Year over year
 
 With `--year`, gitwrapped also reads the year before with the same filters (`--author`,
-every repo given, `.mailmap`, `--max-commits`) and compares the two:
+`--exclude`, every repo given, `.mailmap`, `--max-commits`) and compares the two:
 
 - the totals card adds three rows: commits, lines changed (added + removed) and active
   days vs the previous year, as signed changes (`+42`, `−1,203`, `±0`);
@@ -179,8 +212,8 @@ Pass more than one path to merge their histories into a single Wrapped:
 npx @furkycl/gitwrapped ~/code/api ~/code/web ~/code/docs
 ```
 
-- Every repo is read with the same `--since` / `--until` / `--year` / `--author`
-  filters, then the commits are merged, newest first (by author date).
+- Every repo is read with the same `--since` / `--until` / `--year` / `--author` /
+  `--exclude` filters, then the commits are merged, newest first (by author date).
 - `--max-commits n` caps the merged history at n commits in total: each repo is read
   with the same cap (cut in git's log order), then the commits are merged and cut again
   to the n most recent by author date.
@@ -242,7 +275,7 @@ but it does contain commit subjects and hashes and repo-relative file paths (see
 | `repo`          | The repository's folder name (`null` when several repos were given)           |
 | `repos`         | Only with several repos: their labels, in the order given (e.g. `["api", "web", "api-2"]`) |
 | `asOf`          | `YYYY-MM-DD` the current streak is counted up to: today, or the end of a past `--until` / `--year` window |
-| `filters`       | `{since, until, author, maxCommits}` as used (`--year` shows as since/until); dates and author are `null` when not set, `maxCommits` is the cap in effect |
+| `filters`       | `{since, until, author, maxCommits, exclude}` as used (`--year` shows as since/until); dates and author are `null` when not set, `maxCommits` is the cap in effect, `exclude` the `--exclude` patterns in order (`[]` when none) |
 | `truncated`     | `true` when `--max-commits` cut the history short                             |
 | `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `hotFiles`, `languages`, `contributors`, `messages`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
 
@@ -252,7 +285,7 @@ but it does contain commit subjects and hashes and repo-relative file paths (see
   "generator": { "name": "@furkycl/gitwrapped", "version": "1.2.0" },
   "repo": "my-app",
   "asOf": "2025-12-31",
-  "filters": { "since": "2025-01-01", "until": "2025-12-31", "author": null, "maxCommits": 50000 },
+  "filters": { "since": "2025-01-01", "until": "2025-12-31", "author": null, "maxCommits": 50000, "exclude": [] },
   "truncated": false,
   "stats": {
     "totals": { "commits": 412, "activeDays": 131, "linesAdded": 30211, "...": "..." },

@@ -87,7 +87,7 @@ describe('toJsonSafe', () => {
       generator: { name: '@furkycl/gitwrapped', version: '9.9.9' },
       repo: 'demo',
       asOf: null,
-      filters: { since: null, until: null, author: null, maxCommits: null },
+      filters: { since: null, until: null, author: null, maxCommits: null, exclude: [] },
       truncated: false,
       stats: { totals: { commits: 0 } },
     });
@@ -107,7 +107,7 @@ describe('generate / run with --json', () => {
     assert.deepEqual(doc.generator, { name: PKG.name, version: PKG.version });
     assert.equal(doc.repo, basename(fx.dir));
     // maxCommits is the cap in effect (the default here).
-    assert.deepEqual(doc.filters, { since: null, until: null, author: null, maxCommits: 50000 });
+    assert.deepEqual(doc.filters, { since: null, until: null, author: null, maxCommits: 50000, exclude: [] });
     assert.equal(doc.truncated, false);
     assert.deepEqual(Object.keys(doc.stats), ['totals', 'habits', 'streaks', 'daily', 'hotFiles', 'languages', 'contributors', 'messages', 'personality']);
     // Contributors by name only: no author email anywhere in the file (no --author given).
@@ -143,7 +143,7 @@ describe('generate / run with --json', () => {
     const code = await run([fx.dir, '--year', '2024', '--author', 'ada@example.com', '--max-commits', '2', '--json', '--no-png', '--out', out], { stdout, stderr: sink(), env: {}, today: TODAY });
     assert.equal(code, 0);
     const doc = JSON.parse(readFileSync(join(out, 'stats.json'), 'utf8'));
-    assert.deepEqual(doc.filters, { since: '2024-01-01', until: '2024-12-31', author: 'ada@example.com', maxCommits: 2 });
+    assert.deepEqual(doc.filters, { since: '2024-01-01', until: '2024-12-31', author: 'ada@example.com', maxCommits: 2, exclude: [] });
     // The window ends after "today", so today stays the streak reference day.
     assert.equal(doc.asOf, TODAY);
     const past = tmpOut();

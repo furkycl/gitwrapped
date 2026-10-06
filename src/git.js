@@ -464,6 +464,67 @@ async function gitLog(repoPath, args, { maxBuffer, maxCount, windowed, input }) 
 }
 
 /**
+ * Control, format (bidi embeddings / overrides / isolates, zero-width characters, BOM),
+ * line / paragraph separator and lone surrogate characters: never part of a repo label
+ * (the cards and the recap strip them on display, which could make two labels look alike).
+ */
+const INVISIBLE = /[\p{Cc}\p{Cf}\u2028\u2029\p{Cs}]/gu;
+
+/**
+ * Unique labels for several repos of a multi-repo run, in the given order: each name
+ * without invisible characters (see INVISIBLE) and surrounding whitespace (nothing left →
+ * "repo"), and a name already used gets the first free "-2", "-3",
+ * ... suffix: ['app', 'app', 'web'] → ['app', 'app-2', 'web']. Labels are compared
+ * case-insensitively, so 'App' and 'app' never become the same path prefix on a
+ * case-insensitive file system.
+ */
+export function repoLabels(names) {
+  const used = new Set();
+  return (names ?? []).map((n) => {
+    const clean = typeof n === 'string' ? n.replace(INVISIBLE, '').trim() : '';
+    const base = clean || 'repo';
+    let label = base;
+    for (let i = 2; used.has(label.toLowerCase()); i++) label = `${base}-${i}`;
+    used.add(label.toLowerCase());
+    return label;
+  });
+}
+
+/**
+ * Merge the histories of several repos (`histories`: `[{label, commits, truncated}]`, each
+ * `commits` as readHistory gives them) into one, newest first, capped at `limit` commits.
+ * Every commit is copied with `repo: <label>` and its file paths prefixed with
+ * `<label>/` ("src/x.js" in repo "api" → "api/src/x.js"); the inputs are not changed.
+ * Order: by author-date instant, newest first; equal instants (and unparseable dates,
+ * which sort last) keep their input order: repo by repo, each in git's order.
+ * A commit whose hash was already seen in an earlier repo (a fork or a second clone that
+ * shares history) is counted once, under the first repo. `truncated` is true when any
+ * input was truncated or the merged history has more than `limit` commits; with each
+ * repo read with the same `limit`, the result is the `limit` most recent commits of all
+ * repos together. Returns `{commits, truncated}`.
+ */
+export function mergeHistories(histories, { limit = DEFAULT_LIMIT } = {}) {
+  const seen = new Set();
+  const merged = [];
+  for (const { label, commits } of histories ?? []) {
+    for (const c of commits ?? []) {
+      if (c.hash && seen.has(c.hash)) continue;
+      if (c.hash) seen.add(c.hash);
+      merged.push({ ...c, repo: label, files: (c.files ?? []).map((f) => ({ ...f, path: `${label}/${f.path}` })) });
+    }
+  }
+  const time = (c) => {
+    const t = Date.parse(c.date);
+    return Number.isNaN(t) ? -Infinity : t;
+  };
+  const keyed = merged.map((c, i) => ({ c, i, t: time(c) }));
+  keyed.sort((a, b) => (b.t === a.t ? a.i - b.i : b.t > a.t ? 1 : -1));
+  const sorted = keyed.map((x) => x.c);
+  const truncated = (histories ?? []).some((h) => h.truncated) || sorted.length > limit;
+  return { commits: sorted.length > limit ? sorted.slice(0, limit) : sorted, truncated };
+}
+
+/**
  * Read commits from the repo at `repoPath`, newest first: `readHistory(...).commits`
  * (same options and errors). Like readHistory, it is capped by default at the most recent
  * DEFAULT_LIMIT (50,000) commits, silently; pass `limit: Infinity` to read everything, or

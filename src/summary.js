@@ -81,6 +81,9 @@ function plural(n, unit, L = EN) {
   return `${num(n, L)} ${n === 1 ? one : many}`;
 }
 
+/** How many repos the recap lists one per line before "…and N more". */
+const RECAP_REPOS = 5;
+
 /** Keep the end of a long path: "…/deep/dir/file.js". */
 function shortPath(p, max = 48) {
   const s = stripControl(p);
@@ -109,6 +112,8 @@ function shortWord(w, max = 32) {
  *   (after today + 1), as on the cards (see stats/daily.js shownLongest)
  * - lang: an src/i18n code (default 'en'); labels, units, numbers, the power hour and the
  *   personality are written in that language (notes are passed in already translated)
+ * A multi-repo run (stats.repos with two or more rows) gets a "Repos" line and one line
+ * per repo (commits and lines; the first five, then "…and N more").
  * A "Team" line (top contributor, or the --author's rank) appears exactly when the
  * contributors card is built (see hasTeamCard in stats/contributors.js).
  * The first line is always `gitwrapped: N commits → <html>` (no color), so it is easy
@@ -136,6 +141,20 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     lines.push(`  ${c('bold', c('magenta', `★ ${name}Wrapped`))}${win}`);
     const lineStats = `${c('green', signed(t.linesAdded, '+', L))} / ${c('red', signed(t.linesRemoved, '−', L))} ${R.lines}`;
     lines.push(`  ${c('bold', plural(commits, 'commit', L))} · ${plural(t.activeDays ?? 0, 'activeDay', L)} · ${lineStats}`);
+
+    // A multi-repo run: commits and lines per repo, most commits first (stats.repos).
+    const repos = (Array.isArray(stats?.repos) ? stats.repos : []).filter((r) => r?.name);
+    if (repos.length > 1) {
+      lines.push(`  ${label(R.repos)}${plural(repos.length, 'repo', L)}`);
+      const shown = repos.length <= RECAP_REPOS + 1 ? repos : repos.slice(0, RECAP_REPOS);
+      const width = Math.min(24, Math.max(...shown.map((r) => [...shortWord(r.name, 24)].length)));
+      for (const r of shown) {
+        const name = shortWord(r.name, 24);
+        const pad = ' '.repeat(Math.max(0, width - [...name].length));
+        lines.push(`    ${c('cyan', name)}${pad}  ${plural(r.commits ?? 0, 'commit', L)} ${c('dim', `· ${signed(r.linesAdded, '+', L)} / ${signed(r.linesRemoved, '−', L)} ${R.lines}`)}`);
+      }
+      if (shown.length < repos.length) lines.push(`    ${c('dim', R.moreRepos(repos.length - shown.length))}`);
+    }
 
     const h = stats?.habits ?? {};
     if (h.peakHourLabel) {

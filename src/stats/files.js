@@ -78,13 +78,25 @@ export function isIgnoredPath(path) {
 }
 
 /**
+ * A file path of commit `c` as it is inside its own repo: in a multi-repo run (see
+ * mergeHistories in src/git.js) paths carry a "<repo>/" prefix, which is cut off here so
+ * the root-level rules of isIgnoredPath (dist/, vendor/, packages/x/build/) still apply
+ * at each repo's root. Without `c.repo` the path is returned as it is.
+ */
+export function repoRelativePath(c, path) {
+  const repo = typeof c?.repo === 'string' && c.repo ? `${c.repo}/` : '';
+  return repo && typeof path === 'string' && path.startsWith(repo) ? path.slice(repo.length) : path;
+}
+
+/**
  * The most-edited files (shape from src/git.js readCommits).
  * Returns up to `limit` (default 5) entries `{path, commits, linesAdded, linesRemoved}`:
  * - commits: number of commits touching the path (a path listed twice in one commit
  *   counts once for that commit; its line counts are still summed).
  * - Sorted by commits desc, then linesAdded + linesRemoved desc, then path asc
  *   (plain code-unit comparison, so output is deterministic).
- * - Ignored paths (see isIgnoredPath) are skipped. Binary files still count: they are
+ * - Ignored paths (see isIgnoredPath; in a multi-repo run checked relative to each
+ *   repo's root, see repoRelativePath) are skipped. Binary files still count: they are
  *   edited files, they just contribute 0 lines.
  * - Paths are as git reports them with --no-renames: a rename counts as a delete of
  *   the old path plus an add of the new one.
@@ -103,7 +115,7 @@ export function computeHotFiles(commits, { limit = 5 } = {}) {
   for (const c of commits) {
     const seen = new Set();
     for (const f of c.files ?? []) {
-      if (!f || typeof f.path !== 'string' || isIgnoredPath(f.path)) continue;
+      if (!f || typeof f.path !== 'string' || isIgnoredPath(repoRelativePath(c, f.path))) continue;
       let entry = byPath.get(f.path);
       if (!entry) {
         entry = { path: f.path, commits: 0, linesAdded: 0, linesRemoved: 0 };

@@ -583,14 +583,15 @@ function barsBlock(spec, compact = false, L = EN) {
 
 /**
  * Horizontal bar list. Spec: `{kind: 'hbars', title, items: [{label, sub, value, amount,
- * title, truncate}]}`: label (bold) with an optional dimmer `sub` after it, `value` right
+ * title, truncate, subWhole}]}`: label (bold) with an optional dimmer `sub` after it (with
+ * `subWhole: true` it is left out rather than shortened when it does not fit), `value` right
  * aligned, and a bar proportional to `amount` / the largest amount. At most 6 items.
  */
 function hbarsBlock(spec, compact = false, L = EN) {
   const items = (Array.isArray(spec.items) ? spec.items : [])
     .filter((it) => it && (s1(it.label) || s1(it.value)))
     .slice(0, MAX_CHART_ITEMS)
-    .map((it) => ({ label: s1(it.label), sub: s1(it.sub), value: s1(it.value), amount: clampNum(it.amount), title: s1(it.title), truncate: TRUNCATE_MODES.has(it.truncate) ? it.truncate : 'end' }));
+    .map((it) => ({ label: s1(it.label), sub: s1(it.sub), subWhole: it.subWhole === true, value: s1(it.value), amount: clampNum(it.amount), title: s1(it.title), truncate: TRUNCATE_MODES.has(it.truncate) ? it.truncate : 'end' }));
   if (items.length === 0) return null;
   const cap = s1(spec.title);
   const capH = cap ? CAPTION.height : 0;
@@ -625,7 +626,7 @@ function hbarsBlock(spec, compact = false, L = EN) {
         const subRoom = PAD_X + room - subX;
         if (it.sub && subRoom >= 80) {
           const sub = truncateStart(it.sub, { maxWidth: subRoom / BIG_WEIGHT_FACTOR, fontSize: SUB });
-          if (sub && sub !== ELLIPSIS) g.push(textEl(subX, baseline, sub, { size: SUB, weight: 600, opacity: 0.6 }));
+          if (sub && sub !== ELLIPSIS && (!it.subWhole || sub === it.sub)) g.push(textEl(subX, baseline, sub, { size: SUB, weight: 600, opacity: 0.6 }));
         }
         if (value) g.push(textEl(PAD_X + CONTENT_WIDTH, baseline, value, { size: LABEL, weight: 800, opacity: 0.85, anchor: 'end' }));
         const barY = top + ITEM - BAR;

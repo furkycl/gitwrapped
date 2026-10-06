@@ -72,7 +72,10 @@ describe('formatSummary', () => {
     assert.match(out, /8 PNGs in out\/png\n/);
     assert.match(out, /share image: out\/share\.png\n$/);
     assert.match(out, /Sizes {8}\S/);
-    assert.ok(lines.length >= 8 && lines.length <= 17, `compact: ${lines.length} lines`);
+    // The fixture hashes are dates (not letters / digits), so no short hash is shown.
+    assert.match(out, /First commit "initial commit" \(Mar 9, 2024\)\n/);
+    // 18 with the First commit line.
+    assert.ok(lines.length >= 8 && lines.length <= 18, `compact: ${lines.length} lines`);
   });
 
   test('color: true adds ANSI escapes but keeps the first line plain', () => {

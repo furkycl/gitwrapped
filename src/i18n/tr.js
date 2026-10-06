@@ -91,6 +91,7 @@ export default {
     noCommitsIn: (year) => `${year} yılında hiç commit yok`,
     chapterOne: 'Birinci bölüm',
     firstCommit: "ilk commit'inle başlıyor",
+    beganTitle: 'Her şey bununla başladı',
   },
 
   totals: {
@@ -397,6 +398,7 @@ export default {
     ofCommits: (share) => `commit'lerin ${share} kadarı`,
     top: 'zirvede:',
     topWord: 'Favori kelime',
+    firstCommit: 'İlk commit',
     biggest: 'En büyük',
     sizes: 'Boyutlar',
     sizeNames: { tiny: 'minik', small: 'küçük', medium: 'orta', large: 'büyük' },

@@ -1,7 +1,7 @@
 // The story-card set: turns computeStats() output into Wrapped-style SVG cards.
 // Pure and deterministic. Every card copes with empty stats (0 commits, null peaks,
 // no hot files, null messages) and never prints "null", "undefined" or "NaN".
-import { calendarWindow, formatNumber, layoutCard as layoutOf, renderCardWithLayout } from './svg.js';
+import { CALLOUT_NOTE, calendarWindow, formatNumber, graphemes, layoutCard as layoutOf, measureText, renderCardWithLayout } from './svg.js';
 
 export { formatNumber };
 import { renderShareSvg } from './share.js';
@@ -10,6 +10,7 @@ import { languageBarRows, languageHeadline, OTHER as OTHER_LANGUAGE } from '../s
 import { daysUpTo, shownLongest, shownLongestBreak } from '../stats/daily.js';
 import { monthIndex, monthsFromDays } from '../stats/months.js';
 import { hasTeamCard, shareLabel, TOP_CONTRIBUTORS } from '../stats/contributors.js';
+import { scrubEmails } from '../privacy.js';
 import { personalityReason } from '../stats/personality.js';
 import { yearOverYear } from '../stats/yoy.js';
 import { shownBiggestLines } from '../stats/biggest.js';
@@ -289,6 +290,42 @@ function featuring(rows, L) {
   return L.repos.featuring(L.andList(list));
 }
 
+/**
+ * The intro's optional "It all began with" panel (stats.firstCommit, see stats/first.js):
+ * the quoted subject (shrunk, then cut with "…" to fit one line), with its day, short hash
+ * and, in a multi-repo run, its repo below; null without one. It is `optional`, so when
+ * it does not fit the card is laid out exactly as without it.
+ */
+/**
+ * The began panel's note: `head` ("day · hash") and then " · repo" when it fits on the note
+ * line; a long repo label is cut with "…" instead (keeping at least one character), and
+ * left out when even that does not fit, so the day and hash always show whole.
+ */
+function withRepo(head, repo) {
+  if (!repo) return head;
+  const join = (r) => (head ? `${head} · ${r}` : r);
+  const fits = (t) => measureText(t, CALLOUT_NOTE.size) <= CALLOUT_NOTE.maxWidth;
+  if (fits(join(repo))) return join(repo);
+  const gs = graphemes(repo);
+  while (gs.length > 1) {
+    gs.pop();
+    const stub = gs.join('').trimEnd();
+    if (stub && fits(join(`${stub}…`))) return join(`${stub}…`);
+  }
+  return head;
+}
+
+function beganCallout(s, L) {
+  const f = s.firstCommit;
+  if (!f || typeof f !== 'object') return null;
+  // Control / bidi characters dropped first, so a subject made only of them reads as none.
+  // Email-shaped text is cut again here (stats already does), so no input can show one.
+  const subject = clip(text(typeof f.subject === 'string' ? plain(scrubEmails(f.subject)) : null));
+  const head = [formatDay(f.date, L.code), text(typeof f.hash === 'string' ? scrubEmails(f.hash) : null)].filter(Boolean).join(' · ');
+  const note = withRepo(head, clip(text(typeof f.repo === 'string' ? plain(f.repo) : null)));
+  return { kind: 'callout', optional: true, title: L.intro.beganTitle, value: subject ? quote(subject) : L.messages.noSubject, note };
+}
+
 function intro(s, ctx) {
   const { L } = ctx;
   const I = L.intro;
@@ -303,6 +340,8 @@ function intro(s, ctx) {
   const range = formatDateRange(shown.firstDay, shown.lastDay, L.code);
   const year = windowYear(ctx.since, ctx.until);
   const title = year ? I.yearTitle(year) : I.soFar;
+  const began = commits > 0 ? beganCallout(s, L) : null;
+  const main = { kind: 'callout', title, value: range || plural(commits, 'commit', L), note: I.toUnwrap(commits) };
   return {
     eyebrow: I.eyebrow,
     big: ctx.repoName,
@@ -310,7 +349,7 @@ function intro(s, ctx) {
     titleSize: 136,
     subtitle: parts.join(' '),
     chart: commits > 0
-      ? { kind: 'callout', title, value: range || plural(commits, 'commit', L), note: I.toUnwrap(commits) }
+      ? (began ? [began, main] : main)
       : year
         ? { kind: 'callout', title, value: I.quietYear, note: I.noCommitsIn(year) }
         : { kind: 'callout', title, value: I.chapterOne, note: I.firstCommit },

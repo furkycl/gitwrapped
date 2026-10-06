@@ -11,6 +11,7 @@ import { shownCommitTypes } from './stats/types.js';
 import { shownLongest, shownLongestBreak } from './stats/daily.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { contributorName, hasTeamCard, shareLabel } from './stats/contributors.js';
+import { scrubEmails } from './privacy.js';
 import { languageBarRows, languageHeadline } from './stats/languages.js';
 import { yearOverYear } from './stats/yoy.js';
 import { getStrings, languageLabel } from './i18n/index.js';
@@ -31,13 +32,6 @@ const CONTROL = /[\x00-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069\u2028\u2029]/g;
  */
 const SPECIAL = /[\\`*_{}[\]()#!|<>~&@$]/g;
 
-/**
- * An email-like token: local@domain, the domain with or without a dot ("ada@localhost",
- * "root@buildbox" too). Neither side spans "/" or "\\", so in a path only the file name
- * part is cut ("keys/ada@example.com.pub" → "keys/…").
- */
-const EMAIL = /[^\s<>()[\]"'`,;:|/\\@]+@[^\s<>()[\]"'`,;:|/\\@]+/g;
-
 /** U+2060 WORD JOINER: invisible, but keeps GitHub from reading "@user" / "#12" as a mention / reference. */
 const WJ = '\u2060';
 
@@ -56,7 +50,7 @@ function clip(s, max) {
  * reference), and "://" / "www." are broken up so no URL becomes a link.
  */
 export function escapeMarkdown(s, max = 200) {
-  const flat = String(s ?? '').replace(CONTROL, ' ').replace(/\s+/g, ' ').trim().replace(EMAIL, '…');
+  const flat = scrubEmails(String(s ?? '').replace(CONTROL, ' ').replace(/\s+/g, ' ').trim());
   return clip(flat, max)
     .replace(SPECIAL, (c) => (c === '@' || c === '#' ? `\\${c}${WJ}` : `\\${c}`))
     // No autolinks either: "https://x.y" and "www.x.y" stay plain text.
@@ -137,6 +131,16 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
     // The commit size mix, as on the totals card and the recap; only when there is one.
     const mix = shownCommitSizes(stats?.commitSizes);
     if (mix) numbers.push(item(escapeMarkdown(L.totals.commitSizes), escapeMarkdown(mix.map((b) => `${sizeShareText(b, mix, L)} ${L.recap.sizeNames[b.id]}`).join(' · '))));
+    // The first commit in the window (stats.firstCommit), as on the intro card and the recap.
+    const first = stats?.firstCommit;
+    if (first && typeof first === 'object') {
+      const subject = typeof first.subject === 'string' ? escapeMarkdown(first.subject, 120) : '';
+      // A hex hash goes in a code span (GitHub does not link it there); anything else is escaped.
+      const hash = typeof first.hash === 'string' && /^[0-9a-f]{1,40}$/i.test(first.hash) ? `\`${first.hash}\`` : escapeMarkdown(first.hash ?? '', 40);
+      const day = formatDay(first.date, lang);
+      const detail = [day && escapeMarkdown(day), hash, typeof first.repo === 'string' && escapeMarkdown(first.repo, 80)].filter(Boolean).join(' · ');
+      numbers.push(item(escapeMarkdown(L.recap.firstCommit), `${subject ? `“${subject}”` : escapeMarkdown(L.messages.noSubject)}${detail ? ` (${detail})` : ''}`));
+    }
     section(M.numbers, numbers);
 
     // --- habits -----------------------------------------------------------------------

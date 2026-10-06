@@ -393,11 +393,15 @@ function removeOldCardFiles(dir, ext, keep) {
  * `until` (YYYY-MM-DD, inclusive) ends the window; when it is before `today` (default: the
  * machine's local date) the current streak is computed relative to `until` instead.
  * With `json`, <out>/stats.json (see json.js) is written too.
- * Returns {commits, stats, repoName, truncated, limit, shallow, unbornWithRefs, html, cardsDir, cardFiles,
+ * With `author`, the history is read a second time without it (same window and cap) for
+ * stats.contributors, which then ranks that author against everyone ("you vs the team");
+ * that second read is skipped when the author has no commits in the window.
+ * Returns {commits, stats, repoName, truncated, teamTruncated, limit, shallow, unbornWithRefs, html, cardsDir, cardFiles,
  * shareSvg, pngDir, pngFiles, sharePng, pngSkipped, statsJson, asOf, pastWindow} with the
  * written paths
  * (joined onto `out`; PNG paths null/[] when skipped, statsJson null without `json`);
- * `truncated` is true when the cap cut the history short, `shallow` when the repo is a
+ * `truncated` is true when the cap cut the history short (`teamTruncated`: the unfiltered
+ * read of an --author run), `shallow` when the repo is a
  * shallow clone, `unbornWithRefs` when HEAD has no commits but other branches / tags
  * exist; `asOf` is the day the current streak is relative to and `pastWindow`
  * whether that is a past `until`.
@@ -410,7 +414,18 @@ export async function generate({ path, since, until, author, out, png = true, ma
   const ref = today ?? localToday();
   const pastWindow = Boolean(until && /^\d{4}-\d{2}-\d{2}$/.test(until) && until < ref);
   const asOf = pastWindow ? until : ref;
-  const stats = computeStats(commits, { today: asOf, todayComplete: pastWindow });
+  // --author filters in git, so the team behind the contributors card ("you vs the
+  // team") needs a second read of the same window and cap without the author filter.
+  // Not when the author has no commits here: there is no "you" to rank, so no card.
+  const team = author && commits.length > 0 ? await readHistory(path, { since, until, limit: maxCommits }) : null;
+  const stats = computeStats(commits, {
+    today: asOf,
+    todayComplete: pastWindow,
+    team: team?.commits,
+    author,
+    // Whether the history the contributors were counted in was capped.
+    teamTruncated: team ? Boolean(team.truncated) : Boolean(truncated),
+  });
   const name = await repoName(path);
   const cards = buildCards(stats, { repoName: name, since, until, author, today: ref });
   const shareSvg = renderShareCard(stats, { repoName: name, since, until, author, today: ref });
@@ -484,6 +499,7 @@ export async function generate({ path, since, until, author, out, png = true, ma
     stats,
     repoName: name,
     truncated,
+    teamTruncated: Boolean(team?.truncated),
     limit,
     shallow: Boolean(shallow),
     unbornWithRefs: Boolean(unborn && otherRefs),
@@ -627,6 +643,10 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
         ? `Note: more than ${n} matching commits; only the most recent ${n} were analyzed.`
         : `Note: this repo has more than ${n} commits; only the most recent ${n} were analyzed.`,
     );
+  }
+  if (result.teamTruncated && !result.truncated) {
+    const n = result.limit.toLocaleString('en-US');
+    notes.push(`Note: the contributors card ranks you within the most recent ${n} commits by everyone.`);
   }
   if (result.shallow) {
     notes.push('Note: shallow clone: line counts for the oldest (boundary) commit are skipped, and older history is missing.');

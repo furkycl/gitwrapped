@@ -381,7 +381,7 @@ describe('12. tester additions: images, PNG input, recap and terminal hygiene', 
     const rec = recorder();
     const r = await generate({ path: dir, out: tmp('gw-a2t-png-'), png: true, author: 'ada@example.com' }, { today: TODAY, renderPng: rec.renderPng });
     assert.equal(r.commits, 2);
-    assert.equal(rec.seen.length, 11, '10 cards + share');
+    assert.equal(rec.seen.length, 12, '11 cards (two authors: the contributors card too) + share');
     assert.ok(r.sharePng);
     for (const svg of rec.seen) {
       assert.doesNotMatch(svg, /@example|example\.com/i);

@@ -1,11 +1,13 @@
 import { test, describe } from 'node:test';
 import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
-import { buildCards, CARD_IDS } from '../src/cards/index.js';
+import { buildCards, cardIdsFor } from '../src/cards/index.js';
 import { computeStats } from '../src/stats/index.js';
 import { AUTO_ADVANCE_MS, CSP, buildViewerHtml, cspHash, escapeHtml, svgTitle } from '../src/viewer.js';
 
 const cards = buildCards(computeStats([], { today: '2024-03-14' }), { repoName: 'demo' });
+// No commits, so no contributors card: the 10 always-present cards.
+const IDS = cardIdsFor({});
 
 describe('buildViewerHtml', () => {
   const html = buildViewerHtml(cards, { title: 'gitwrapped · demo' });
@@ -35,13 +37,13 @@ describe('buildViewerHtml', () => {
       pos = at;
     }
     const slides = [...html.matchAll(/<section class="slide( active)?" id="card-(\d+)" data-card="([^"]+)"/g)];
-    assert.deepEqual(slides.map((m) => m[3]), CARD_IDS);
-    assert.deepEqual(slides.map((m) => Boolean(m[1])), CARD_IDS.map((_, i) => i === 0));
-    assert.equal((html.match(/class="bar[ "]/g) ?? []).length, CARD_IDS.length);
+    assert.deepEqual(slides.map((m) => m[3]), IDS);
+    assert.deepEqual(slides.map((m) => Boolean(m[1])), IDS.map((_, i) => i === 0));
+    assert.equal((html.match(/class="bar[ "]/g) ?? []).length, IDS.length);
   });
 
   test('accessible: labelled SVGs, nav buttons, live status', () => {
-    assert.equal((html.match(/<svg\b[^>]*role="img"[^>]*aria-label="[^"]+"/g) ?? []).length, CARD_IDS.length);
+    assert.equal((html.match(/<svg\b[^>]*role="img"[^>]*aria-label="[^"]+"/g) ?? []).length, IDS.length);
     assert.match(html, /<button type="button" class="nav prev" id="prev" aria-label="Previous card">/);
     assert.match(html, /<button type="button" class="nav next" id="next" aria-label="Next card">/);
     assert.match(html, /aria-live="polite"/);
@@ -111,7 +113,7 @@ describe('buildViewerHtml', () => {
     assert.match(html, /<header class="top" id="page-top">\n<h1 class="title">gitwrapped · demo<\/h1>\n<\/header>/);
     assert.match(html, /<main class="stage" id="page-main">/);
     assert.match(html, /<footer class="foot" id="page-foot">/);
-    assert.match(html, new RegExp(`<p class="count" id="count" aria-hidden="true">1 / ${CARD_IDS.length}</p>`));
+    assert.match(html, new RegExp(`<p class="count" id="count" aria-hidden="true">1 / ${IDS.length}</p>`));
     assert.equal((html.match(/aria-live=/g) ?? []).length, 1, 'only the status region is live');
   });
 

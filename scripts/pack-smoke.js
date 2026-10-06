@@ -7,7 +7,7 @@
 // 2. Install the tarball into a fresh temp project (`npm install <tgz>`). This step needs
 //    registry access for @resvg/resvg-js; it is a dev/CI script, not part of the runtime.
 // 3. Build the fixture repo (scripts/make-fixture-repo.js) and run the *installed* package
-//    on it with `--json --out <tmp>/out`, then check wrapped.html, 10 SVG cards, 10 PNGs +
+//    on it with `--json --out <tmp>/out`, then check wrapped.html, 11 SVG cards, 11 PNGs +
 //    share.png (so resvg's native binary resolved from the install), stats.json and
 //    `--version` (also via `npx --no-install gitwrapped`, to prove the bin link works).
 // Work dir: a fresh os.tmpdir() dir, or $PACK_SMOKE_DIR if set (created; must be empty).
@@ -22,7 +22,8 @@ import { fileURLToPath } from 'node:url';
 import { makeFixtureRepo } from './make-fixture-repo.js';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-export const CARD_COUNT = 10;
+// Every card, the contributors card included: the fixture repo has two authors.
+export const CARD_COUNT = 11;
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 /** Top-level files allowed in the tarball besides bin/ and src/. */

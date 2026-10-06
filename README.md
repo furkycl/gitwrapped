@@ -19,7 +19,7 @@ summary image it made for link previews.
 
 ## What you get
 
-Ten 1080x1920 story cards:
+Ten 1080x1920 story cards, or eleven in a repo with more than one contributor:
 
 1. **Intro**: the repo name, the date range in plain English ("Oct 4 – Oct 5, 2026") and how many commits there are to unwrap, plus whose story it is when you pass `--author` (the part of the email before the `@` only: "Starring ada.").
 2. **Totals**: commits, a lines added vs. removed bar, active days and files touched (and contributors, when there is more than one).
@@ -28,9 +28,10 @@ Ten 1080x1920 story cards:
 5. **Activity**: a GitHub-style calendar of commits per day (weeks as rows, Monday to Sunday, brighter the busier the day), with your number of active days and your busiest day. Hover a day in `wrapped.html` for its count. It covers up to the last 53 weeks of your history. For a repo that went quiet more than a month ago it says "12 months to Apr 2021" instead of "Your last 12 months".
 6. **Hot files**: the five files you edit most as a bar list. Lockfiles, build output (`dist/`, `build/`, ...), dependency folders, vendored code (a root `vendor/` or `third_party/`), minified files and test snapshots (`*.snap`, `__snapshots__/`) are ignored.
 7. **Languages**: your top programming language and its share of the lines you changed ("72% · Mostly TypeScript", or "Led by" under half, with ties named), with bars for your top five languages plus "Other". Data formats (JSON, YAML, ...) and prose (Markdown, ...) show in the bars, but they only lead the card when there's no code at all. Languages come from file extensions and well-known names like `Dockerfile` and `Makefile` (86 built in); lockfiles, build output, vendored code, test snapshots and binary files are left out, as for hot files.
-8. **Message hall of fame**: your favorite word, your longest and shortest messages, and how many "fix", "wip" and "oops" commits you made.
-9. **Personality**: Night Owl, Early Bird, Friday Deployer, Fixaholic, Weekend Warrior or Steady Shipper, with a one-line roast and bars for your top habit scores.
-10. **Outro**: a summary card to post: commits, power hour, best streak and personality tiles, plus your hottest file.
+8. **The team** (only when the history has two or more contributors): how many people committed and the top five by commits as bars ("Ada Lovelace leads the pack with 54% of the commits"). With `--author` it ranks you against everyone in the same window: "#2 of 7 contributors", your share of the commits and lines, and a "you" marker on your bar (a sixth bar when you're outside the top five). Contributors are counted per email after `.mailmap`, and only their git author names are shown, never an email. A single-author repo skips this card, and so does an `--author` with no commits in the window (there's no "you" to rank); the cards after it then move up a number.
+9. **Message hall of fame**: your favorite word, your longest and shortest messages, and how many "fix", "wip" and "oops" commits you made.
+10. **Personality**: Night Owl, Early Bird, Friday Deployer, Fixaholic, Weekend Warrior or Steady Shipper, with a one-line roast and bars for your top habit scores.
+11. **Outro**: a summary card to post: commits, power hour, best streak and personality tiles, plus your hottest file.
 
 You also get:
 
@@ -40,7 +41,7 @@ You also get:
   last card, and you can swipe on touch screens. To pause auto-advance, press and hold
   the card, use the pause button, or press P or K. You can link to a card with
   `wrapped.html#3`. Auto-advance is off when your system prefers reduced motion.
-  A toolbar under the story shows which card you're on (for example `3 / 10`) and saves the
+  A toolbar under the story shows which card you're on (for example `3 / 11`) and saves the
   current card. **PNG** (or press D) downloads it as a 1080x1920 `NN-<card>.png`, drawn
   in your browser. If the browser can't draw it, you get the SVG instead. **SVG**
   downloads `NN-<card>.svg`. **Share** appears only where the browser supports the
@@ -51,14 +52,16 @@ You also get:
 - **PNGs**: each card as a 1080x1920 PNG, plus a 1200x630 `share.png` summary for link
   previews and social posts.
 - **Terminal recap**: commits, active days, lines, power hour, streak, hottest file,
-  top language, top word and personality, printed right after the run.
+  top language, team (in a repo with more than one contributor: the top contributor, or
+  with `--author` your rank, e.g. `Team  7 contributors · you're #2 (31% of commits)`),
+  top word and personality, printed right after the run.
 - **JSON** (optional, `--json`): every computed stat in `stats.json`, for your own
   dashboards and scripts.
 
 ```
 gitwrapped-out/
   wrapped.html          # the story: open it in any browser
-  cards/01-intro.svg    # 01-intro … 10-outro, 1080x1920 SVG
+  cards/01-intro.svg    # 01-intro … 11-outro (10-outro without the team card), 1080x1920 SVG
   png/01-intro.png      # the same cards as PNG, ready to post
   share.png             # 1200x630 summary image
   share.svg             # the same summary as SVG
@@ -156,7 +159,7 @@ but it does contain commit subjects and hashes and repo-relative file paths (see
 | `asOf`          | `YYYY-MM-DD` the current streak is counted up to: today, or the end of a past `--until` / `--year` window |
 | `filters`       | `{since, until, author, maxCommits}` as used (`--year` shows as since/until); dates and author are `null` when not set, `maxCommits` is the cap in effect |
 | `truncated`     | `true` when `--max-commits` cut the history short                             |
-| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `hotFiles`, `languages`, `messages`, `personality` |
+| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `hotFiles`, `languages`, `contributors`, `messages`, `personality` |
 
 ```json
 {
@@ -172,6 +175,13 @@ but it does contain commit subjects and hashes and repo-relative file paths (see
     "languages": {
       "totalLines": 41020, "totalFiles": 212, "basis": "lines",
       "languages": [{ "name": "TypeScript", "type": "programming", "lines": 29534, "files": 140, "share": 72 }, "..."]
+    },
+    "contributors": {
+      "total": 7,
+      "top": [{ "name": "Ada Lovelace", "rank": 1, "commits": 221, "added": 18022, "removed": 4410, "share": 53.6 }, "..."],
+      "you": null,
+      "authorFilter": false,
+      "truncated": false
     },
     "...": "..."
   }
@@ -190,6 +200,25 @@ equal shares allow (three languages tied at 1 line each: 33 + 33 + 33). `.h` hea
 count as C++ when the history has C++ sources and no `.c` files, else as C. Jupyter
 notebooks (`.ipynb`) are JSON with outputs inside, so their line counts run high.
 
+`stats.contributors` ranks who made the commits: `total` is the number of distinct
+contributors (one per email, compared lowercased, after `.mailmap`; a commit with no
+email counts under its author name), and `top` lists the first five, sorted by commits,
+then lines changed (`added` + `removed`), then name. `rank` is the position in that
+order and `share` the percent of all commits with one decimal. Commits and lines are
+counted the same way as in `totals` (merges count as commits, every file's lines count,
+lockfiles included), so they add up to the totals. Each contributor's `name` is their most
+frequent git author name (after `.mailmap`); emails are never included. `you` is `null`
+unless you pass `--author`: then the history is read a second time without the author
+filter (same window and `--max-commits`), `contributors` describes that whole team, and
+`you` is your entry (`{name, rank, commits, added, removed, share}`, matched by exact
+email like the filter). When `--author` matches no commits, the second read is skipped:
+`contributors` is then `{"total": 0, "top": [], "you": null, ...}` and there's no team
+card. `authorFilter` is `true` when `--author` was given. `truncated` is `true` when the
+history the contributors were counted in hit `--max-commits` (the second, unfiltered
+read with `--author`; otherwise the same read as the top-level `truncated`), so the
+ranking covers only the most recent commits. Everything else in `stats` still covers
+only your commits.
+
 Without `--json` no stats.json is written, and one left over from an earlier `--json` run
 is left as it is.
 
@@ -203,7 +232,10 @@ is left as it is.
 - **What the output contains.** Cards, `wrapped.html` and (with `--json`) `stats.json`
   show commit subjects and repo-relative file paths; `stats.json` also lists commit
   hashes (the longest and shortest message) and, when you pass `--author`, that email in
-  `filters.author`. The cards, share image and `wrapped.html` show only the part of the
+  `filters.author`. In a repo with more than one contributor, the team card, the recap
+  and `stats.json` also show the git author names (after `.mailmap`) of the top five
+  contributors (and yours, with `--author`), never their emails (a name that is itself an address is cut to the part
+  before the `@`). The cards, share image and `wrapped.html` show only the part of the
   `--author` email before the first `@` ("ada" for `ada@example.com`), never an address
   or domain: for `Name <email>` just the name, for a regex alternation (`a@x.io|b@y.io`)
   the first alternative's local part, and for `@example.com` no author at all.
@@ -216,7 +248,7 @@ is left as it is.
    hash, author, email (after `.mailmap`), date, parents, subject and per-file line
    counts of each commit. With `--until` / `--year` a cheap hashes-and-dates pass
    picks the commits in the window first.
-2. **Stats.** Totals, time habits, streaks, commits per day, hot files, languages, message stats and a rule-based
+2. **Stats.** Totals, time habits, streaks, commits per day, hot files, languages, contributors, message stats and a rule-based
    personality are computed in plain JavaScript. Hours, weekdays and days use each
    commit's **author-local time**, so a 23:00 commit counts as 23:00 for the person
    who made it, whatever time zone you run gitwrapped in.
@@ -229,6 +261,14 @@ is left as it is.
   recap says so. You can change this with `--max-commits n`; with a date window or
   `--author` it counts only matching commits. If `git log` output is still too large,
   gitwrapped asks you to narrow it with `--since` / `--until` / `--year` or `--author`.
+- **`--author` reads the history twice:** once for your commits and once for everyone's
+  (same window and `--max-commits`), so the team card can rank you. If the cap cuts the
+  second read short, you're ranked within the most recent commits by everyone, and the
+  recap says so. When the author has no commits in the window, the second read is
+  skipped.
+- **Two contributor counts:** the totals card's "Contributors" counts distinct emails
+  only, while the team card also counts commits with no email (one contributor per
+  author name), so the two numbers can differ in a history with email-less commits.
 - **Dates are the author's.** `--since`, `--until` and `--year` compare each commit's
   *author* date, on the author's own calendar day (the day every card uses). A commit
   made at 00:30 on Jan 1 in Tokyo belongs to the new year, whatever time zone you run

@@ -12,7 +12,7 @@ import { readHistory, quoteForShell, DEFAULT_LIMIT } from '../src/git.js';
 import { bareRepoName, parseCli, run } from '../src/cli.js';
 import { formatSummary, shouldUseColor } from '../src/summary.js';
 import { computeStats } from '../src/stats/index.js';
-import { CARD_IDS } from '../src/cards/index.js';
+import { CARD_IDS, cardIdsFor } from '../src/cards/index.js';
 import { makeFixtureRepo } from '../scripts/make-fixture-repo.js';
 
 const BIN = fileURLToPath(new URL('../bin/gitwrapped.js', import.meta.url));
@@ -517,11 +517,16 @@ describe('run: color through the CLI', () => {
 });
 
 // ---------------------------------------------------------------------------------------
-function assertFullOutput(out) {
-  assert.equal(readdirSync(join(out, 'cards')).length, CARD_IDS.length);
+/**
+ * The full card set in `out`: by default for a repo with at most one author (every card
+ * but the contributors card); pass `team` for the two-author fixture (every card).
+ */
+function assertFullOutput(out, { team = false } = {}) {
+  const count = team ? CARD_IDS.length : cardIdsFor({}).length;
+  assert.equal(readdirSync(join(out, 'cards')).length, count);
   const page = readFileSync(join(out, 'wrapped.html'), 'utf8');
   assert.match(page, /^<!doctype html>/);
-  assert.equal((page.match(/<svg\b/g) ?? []).length, CARD_IDS.length);
+  assert.equal((page.match(/<svg\b/g) ?? []).length, count);
   for (const f of readdirSync(join(out, 'cards'))) {
     assert.doesNotMatch(readFileSync(join(out, 'cards', f), 'utf8').replace(/<[^>]*>/g, ' '), BAD_WORDS, f);
   }
@@ -599,7 +604,7 @@ describe('bin: odd repo shapes', () => {
     assert.equal(r.status, 0, r.stderr);
     assert.ok(r.stdout.startsWith(`gitwrapped: ${fx.commits.length} commits → ${join(out, 'wrapped.html')}\n`), r.stdout);
     assert.match(r.stdout, /★ my repo ✨ 日本 \(copy\) Wrapped/);
-    assertFullOutput(out);
+    assertFullOutput(out, { team: true });
     assert.ok(readFileSync(join(out, 'cards', '01-intro.svg'), 'utf8').includes('日本'), 'repo name reaches the intro card');
   });
 
@@ -640,7 +645,7 @@ describe('bin: odd repo shapes', () => {
     // `rev-parse --show-toplevel` fails in a bare repo, so the heading falls back to the
     // folder name with its ".git" suffix stripped.
     assert.match(r.stdout, /★ bare ✨ Wrapped/);
-    assertFullOutput(out);
+    assertFullOutput(out, { team: true });
   });
 
   test('inside a .git directory → reported as not a repo or analyzed, never a crash', () => {

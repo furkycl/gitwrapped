@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A team card (08, "The team") for repos with two or more contributors: the headcount
+  and the top five contributors by commits (counted per email after `.mailmap`, shown by
+  git author name only, never an email). With `--author` it ranks you against everyone
+  in the same window ("#2 of 7 contributors", your share of commits and lines), reading
+  the history a second time without the author filter. Single-author repos, and an
+  `--author` with no commits in the window, skip it, so a run has 10 or 11 cards, always
+  numbered without gaps.
+- `stats.contributors` in `stats.json` (`total`, `top`, `you`, `authorFilter`,
+  `truncated`) and a "Team" line in the terminal recap.
+
 ## [1.1.0] - 2026-10-06
 
 ### Added

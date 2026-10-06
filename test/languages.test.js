@@ -229,8 +229,8 @@ describe('computeLanguages', () => {
 // --- card --------------------------------------------------------------------------------
 
 describe('languages card', () => {
-  test('sits right after hot files as card 07 of 10', () => {
-    assert.equal(CARD_IDS.length, 10);
+  test('sits right after hot files as card 07 (of 10, or 11 with the contributors card)', () => {
+    assert.equal(CARD_IDS.length, 11);
     assert.equal(CARD_IDS.indexOf('languages'), CARD_IDS.indexOf('hot-files') + 1);
     assert.equal(STEMS[6], '07-languages');
     assert.equal(langSpec({}).number, '07');
@@ -504,12 +504,12 @@ describe('bin: languages card end to end', () => {
     if (tmp) rmSync(tmp, { recursive: true, force: true, maxRetries: 5 });
   });
 
-  test('10 cards written, wrapped.html includes the languages card, recap and JSON have it', () => {
+  test('11 cards written (two authors), wrapped.html includes the languages card, recap and JSON have it', () => {
     const out = join(tmp, 'fresh');
     const r = bin([fixture.dir, '--out', out, '--no-png', '--json']);
     assert.equal(r.status, 0, r.stderr);
     assert.deepEqual(readdirSync(join(out, 'cards')).sort(), STEMS.map((s) => `${s}.svg`));
-    assert.ok(r.stdout.includes(`10 cards in ${join(out, 'cards')}\n`), r.stdout);
+    assert.ok(r.stdout.includes(`11 cards in ${join(out, 'cards')}\n`), r.stdout);
     // Fixture: src/app.js + src/main.js 23 lines, README.md 6, "notes/my notes.txt" 2;
     // package-lock.json and the binary logo.png are skipped.
     assert.ok(r.stdout.includes('Top language JavaScript (74% of lines)'), r.stdout);
@@ -517,7 +517,7 @@ describe('bin: languages card end to end', () => {
     assert.ok(svg.includes('>74%<'));
     assert.ok(svg.includes('>Mostly JavaScript<'));
     const page = readFileSync(join(out, 'wrapped.html'), 'utf8');
-    assert.equal((page.match(/<section class="slide/g) ?? []).length, 10);
+    assert.equal((page.match(/<section class="slide/g) ?? []).length, 11);
     const slide7 = page.split('<section').find((s) => s.includes('id="card-7"'));
     assert.ok(slide7.includes('data-card="languages"'));
     assert.ok(slide7.includes('Mostly JavaScript'));

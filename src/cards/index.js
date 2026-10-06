@@ -8,12 +8,34 @@ import { renderShareSvg } from './share.js';
 import { dayKeyFromEpoch as dayKeyOf, epochDay, hourLabel, mondayOf, WEEKDAY_NAMES } from '../stats/time.js';
 import { languageHeadline, OTHER as OTHER_LANGUAGE } from '../stats/languages.js';
 import { daysUpTo, shownLongest } from '../stats/daily.js';
+import { hasTeamCard, shareLabel, TOP_CONTRIBUTORS } from '../stats/contributors.js';
 
 export { renderCard, layoutCard, wrapText, escapeXml, measureText, truncateStart, THEMES, CARD_WIDTH, CARD_HEIGHT } from './svg.js';
 export { renderShareSvg, SHARE_WIDTH, SHARE_HEIGHT } from './share.js';
 
-/** Card ids in display order. */
-export const CARD_IDS = Object.freeze(['intro', 'totals', 'peak-hour', 'streak', 'activity', 'hot-files', 'languages', 'messages', 'personality', 'outro']);
+/**
+ * Every card id, in display order. Optional cards (OPTIONAL_CARD_IDS) are left out of a
+ * run when they do not apply, so a card set is CARD_IDS or a subsequence of it: see
+ * cardIdsFor(). Cards are numbered by their position in the actual set (01, 02, ...).
+ */
+export const CARD_IDS = Object.freeze(['intro', 'totals', 'peak-hour', 'streak', 'activity', 'hot-files', 'languages', 'contributors', 'messages', 'personality', 'outro']);
+
+/** When each optional card applies (see hasTeamCard in stats/contributors.js). */
+const APPLIES = {
+  contributors: hasTeamCard,
+};
+
+/** Cards shown only when they apply (see cardIdsFor). */
+export const OPTIONAL_CARD_IDS = Object.freeze(Object.keys(APPLIES));
+
+/**
+ * The ids of the cards built for `stats`, in display order: CARD_IDS without the
+ * optional cards that do not apply (the contributors card for a single-author history,
+ * or for an --author with no commits; see hasTeamCard).
+ */
+export function cardIdsFor(stats) {
+  return CARD_IDS.filter((id) => !APPLIES[id] || APPLIES[id](stats));
+}
 
 const EMPTY_LINE = 'No commits yet — go ship something!';
 
@@ -576,6 +598,66 @@ function personality(s) {
   };
 }
 
+/** A contributor's display name (clipped like other free text), "Unknown" when missing. */
+const personName = (p) => clip(text(p?.name)) ?? 'Unknown';
+
+/** One contributor as a bar row; `you` marks the --author's row. */
+function contributorRow(p, you) {
+  const name = personName(p);
+  const share = shareLabel(p?.share, p?.commits);
+  return {
+    label: name,
+    sub: you ? (num(p.rank) > TOP_CONTRIBUTORS ? `you · #${formatNumber(p.rank)}` : 'you') : '',
+    value: plural(p?.commits, 'commit'),
+    amount: num(p?.commits),
+    title: `${you ? `${name} (you)` : name}: #${formatNumber(p?.rank)}, ${plural(p?.commits, 'commit')} (${share}), ${signedLines(p?.added, '+')} / ${signedLines(p?.removed, '−')} lines`,
+  };
+}
+
+/**
+ * The team card (only built when there are 2+ contributors, see cardIdsFor): the top
+ * contributors by commits; with --author, where "you" rank among them. Shows git author
+ * names (after .mailmap) only, never an email.
+ */
+function contributors(s) {
+  const c = s.contributors ?? {};
+  const total = num(c.total);
+  const top = (Array.isArray(c.top) ? c.top : []).filter((p) => p && num(p.commits) > 0).slice(0, TOP_CONTRIBUTORS);
+  const you = c.you && num(c.you.commits) > 0 && num(c.you.rank) > 0 ? c.you : null;
+  const isYou = (p) => you !== null && num(p.rank) === num(you.rank);
+  const items = top.map((p) => contributorRow(p, isYou(p)));
+  // "You" outside the top five get a sixth row of their own.
+  if (you && !top.some(isYou)) items.push(contributorRow(you, true));
+  const chart = items.length > 0 ? { kind: 'hbars', title: 'Top contributors by commits', items } : null;
+  const eyebrow = 'The team';
+  if (you) {
+    const share = shareLabel(you.share, you.commits);
+    return {
+      eyebrow,
+      big: `#${formatNumber(you.rank)}`,
+      title: `of ${plural(total, 'contributor')}`,
+      subtitle: `You made ${share} of the commits: ${plural(you.commits, 'commit')}, ${signedLines(you.added, '+')} / ${signedLines(you.removed, '−')} lines.`,
+      chart,
+    };
+  }
+  const lead = top[0];
+  const tied = top.filter((p) => num(p.commits) === num(lead?.commits));
+  let subtitle = 'Teamwork makes the commits work.';
+  if (lead && tied.length > 1) {
+    const who = tied.length > 3 ? 'Several people' : andList(tied.map(personName));
+    subtitle = `${who} share the lead with ${plural(lead.commits, 'commit')} each.`;
+  } else if (lead) {
+    subtitle = `${personName(lead)} leads the pack with ${shareLabel(lead.share, lead.commits)} of the commits.`;
+  }
+  return {
+    eyebrow,
+    big: formatNumber(total),
+    title: 'contributors',
+    subtitle,
+    chart,
+  };
+}
+
 /** The four headline stats shared by the outro card and the share image. */
 function summaryTiles(s, ctx = {}) {
   const commits = num(s.totals?.commits);
@@ -603,8 +685,8 @@ function outro(s, ctx) {
   };
 }
 
-const BUILDERS = { intro, totals, 'peak-hour': peakHour, streak, activity, 'hot-files': hotFiles, languages, messages, personality, outro };
-const CARD_THEMES = { intro: 'pulse', totals: 'ocean', 'peak-hour': 'cosmic', streak: 'ember', activity: 'cosmic', 'hot-files': 'mint', languages: 'ocean', messages: 'neon', personality: 'sunset', outro: 'gold' };
+const BUILDERS = { intro, totals, 'peak-hour': peakHour, streak, activity, 'hot-files': hotFiles, languages, contributors, messages, personality, outro };
+const CARD_THEMES = { intro: 'pulse', totals: 'ocean', 'peak-hour': 'cosmic', streak: 'ember', activity: 'cosmic', 'hot-files': 'mint', languages: 'ocean', contributors: 'ember', messages: 'neon', personality: 'sunset', outro: 'gold' };
 
 /**
  * Footer text: "<repo> · <date range>", or the requested window when --since / --until
@@ -625,8 +707,8 @@ export function footerText(stats, { repoName, since, until, today }) {
  * to the CLI; shown in the copy when given), and `today` ('YYYY-MM-DD', the date the
  * stats' current streak is relative to): when `until` is before `today`, the streak card
  * talks about the streak at the end of the window instead of "right now". Returns
- * `[{id, svg, description}]` in CARD_IDS order; `description` is the card's content as
- * plain text (see cardDescription).
+ * `[{id, svg, description}]` for cardIdsFor(stats), in CARD_IDS order; `description` is
+ * the card's content as plain text (see cardDescription).
  */
 export function buildCards(stats, opts = {}) {
   return buildCardSpecs(stats, opts).map(({ id, spec }) => ({ id, svg: renderCard(spec), description: cardDescription(spec) }));
@@ -677,8 +759,9 @@ export function cardDescription(spec = {}) {
 }
 
 /**
- * The renderCard() input for every card (same arguments as buildCards), as
- * `[{id, spec}]`; buildCards() renders exactly these. Useful for layout checks.
+ * The renderCard() input for every card of the set (same arguments as buildCards), as
+ * `[{id, spec}]` for cardIdsFor(stats), numbered 01, 02, ... in that order;
+ * buildCards() renders exactly these. Useful for layout checks.
  */
 export function buildCardSpecs(stats, { repoName, since, until, author, today } = {}) {
   stats = stats ?? {};
@@ -688,7 +771,7 @@ export function buildCardSpecs(stats, { repoName, since, until, author, today } 
   const u = parseDay(ctx.until);
   ctx.asOf = t && u && u.key < t.key ? u.key : (t?.key ?? null);
   const footer = footerText(stats, ctx);
-  return CARD_IDS.map((id, i) => ({
+  return cardIdsFor(stats).map((id, i) => ({
     id,
     spec: { theme: CARD_THEMES[id], footer, number: String(i + 1).padStart(2, '0'), idPrefix: `gw-${id}`, ...BUILDERS[id](stats, ctx) },
   }));

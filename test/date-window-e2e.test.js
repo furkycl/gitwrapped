@@ -8,12 +8,14 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync }
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CARD_IDS } from '../src/cards/index.js';
+import { CARD_IDS, cardIdsFor } from '../src/cards/index.js';
 import { parseCli } from '../src/cli.js';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const BIN = fileURLToPath(new URL('../bin/gitwrapped.js', import.meta.url));
 const CARD_FILES = CARD_IDS.map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}.svg`);
+// A window or repo with fewer than two authors has no contributors card.
+const SOLO_FILES = cardIdsFor({}).map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}.svg`);
 const WIN = process.platform === 'win32';
 
 const ADA = { name: 'Ada', email: 'ada@example.com' };
@@ -214,7 +216,7 @@ describe('bin --json', () => {
     assert.deepEqual(j.filters, { since: '2030-01-01', until: '2030-12-31', author: null, maxCommits: 50000 });
     assert.equal(j.stats.totals.commits, 0);
     assert.equal(j.truncated, false);
-    assert.equal(readdirSync(join(o, 'cards')).length, CARD_FILES.length);
+    assert.equal(readdirSync(join(o, 'cards')).length, SOLO_FILES.length);
   });
 
   test('--json on an empty repo writes valid stats.json', () => {
@@ -236,7 +238,8 @@ test('a long repo name does not ellipsize the window out of the footer', () => {
     const o = out('long-name');
     const r = bin([long, '--until', '2025-03-05', '--out', o]);
     assert.equal(r.status, 0, r.stderr);
-    for (const f of CARD_FILES) {
+    assert.deepEqual(readdirSync(join(o, 'cards')).sort(), SOLO_FILES);
+    for (const f of SOLO_FILES) {
       assert.ok(readFileSync(join(o, 'cards', f), 'utf8').includes('until Mar 5, 2025'), `${f} footer keeps the full window`);
     }
   } finally {

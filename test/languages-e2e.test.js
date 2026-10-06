@@ -10,7 +10,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, wr
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CARD_IDS } from '../src/cards/index.js';
+import { CARD_IDS, cardIdsFor } from '../src/cards/index.js';
 import { HELP_TEXT, run } from '../src/cli.js';
 import { pngSize } from '../src/png.js';
 
@@ -18,7 +18,9 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const BIN = fileURLToPath(new URL('../bin/gitwrapped.js', import.meta.url));
 const WIN = process.platform === 'win32';
 const TODAY = '2026-10-05';
+// The main repo has two authors (all 11 cards); single-author repos skip the contributors card.
 const STEMS = CARD_IDS.map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}`);
+const SOLO_STEMS = cardIdsFor({}).map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}`);
 
 const ADA = { name: 'Ada', email: 'ada@example.com' };
 const BOB = { name: 'Bob', email: 'bob@example.com' };
@@ -159,14 +161,14 @@ describe('bin: languages from a mixed repo', () => {
     assert.ok(r.stdout.includes('Top language TypeScript (31% of lines)'), r.stdout);
   });
 
-  test('wrapped.html embeds the 10 cards in order; 07-languages shows the top language and percent', () => {
+  test('wrapped.html embeds the 11 cards in order; 07-languages shows the top language and percent', () => {
     const o = out('all');
     const page = readFileSync(join(o, 'wrapped.html'), 'utf8');
     const ids = [...page.matchAll(/<section class="slide[^"]*" id="card-(\d+)" data-card="([^"]*)"/g)].map((m) => [Number(m[1]), m[2]]);
     assert.deepEqual(ids, CARD_IDS.map((id, i) => [i + 1, id]));
-    assert.equal(CARD_IDS.length, 10);
+    assert.equal(CARD_IDS.length, 11);
     assert.equal(CARD_IDS[6], 'languages');
-    assert.equal((page.match(/<svg\b/g) ?? []).length >= 10, true);
+    assert.equal((page.match(/<svg\b/g) ?? []).length >= 11, true);
     for (const stem of STEMS) assert.ok(existsSync(join(o, 'cards', `${stem}.svg`)), stem);
 
     const svg = card7(o);
@@ -345,7 +347,7 @@ describe('bin: languages edge repos', () => {
     const r = bin([r0, '--out', o, '--json']);
     assert.equal(r.status, 0, r.stderr);
     const escaped = name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    for (const stem of STEMS) {
+    for (const stem of SOLO_STEMS) {
       const svg = readFileSync(join(o, 'cards', `${stem}.svg`), 'utf8');
       assert.ok(!BARE_AMP.test(svg), `${stem}: bare &`);
       // Every < opens a tag (no raw "<a>" or "<b>" leaked into text).

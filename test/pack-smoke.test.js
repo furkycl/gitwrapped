@@ -108,7 +108,7 @@ test('checkOutputDir passes a complete output and reports each missing piece', (
   assert.deepEqual(checkOutputDir(out, 9), ['stats.json totals.commits is 8, expected 9']);
   writeFileSync(join(out, 'png', '1.png'), png(10, 10));
   rmSync(join(out, 'cards', '1.svg'));
-  assert.deepEqual(checkOutputDir(out, 8), ['expected 10 SVG cards, got 9', 'png/1.png is not a 1080x1920 PNG']);
+  assert.deepEqual(checkOutputDir(out, 8), ['expected 11 SVG cards, got 10', 'png/1.png is not a 1080x1920 PNG']);
 });
 
 test('package.json wires the pack-smoke script and CI runs it on every OS', () => {

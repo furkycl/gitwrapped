@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CARD_IDS } from '../src/cards/index.js';
+import { cardIdsFor } from '../src/cards/index.js';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const script = join(root, 'scripts', 'make-hero-gif.js');
@@ -263,7 +263,8 @@ test('docs/hero.gif is a looping 360x640 GIF89a under 3 MB with one hold frame p
   assert.equal(gif.loop, 0);
   assert.equal(gif.trailer, true);
   const cards = readdirSync(join(root, 'docs', 'self-wrapped', 'cards')).filter((f) => f.endsWith('.svg'));
-  assert.equal(cards.length, CARD_IDS.length);
+  // docs/self-wrapped comes from this single-author repo (via .mailmap): no contributors card.
+  assert.equal(cards.length, cardIdsFor({ contributors: { total: 1 } }).length);
   assert.equal(gif.frames.length, cards.length * 4);
   assert.equal(gif.frames.filter((f) => f.delay === 1600).length, cards.length);
 });

@@ -10,7 +10,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildCards, buildCardSpecs, CARD_IDS, layoutCard } from '../src/cards/index.js';
+import { buildCards, buildCardSpecs, CARD_IDS, cardIdsFor, layoutCard } from '../src/cards/index.js';
 import { calendarLevels, calendarWindow } from '../src/cards/svg.js';
 import { computeDaily, computeStats, computeStreaks, computeTotals, dayKeyFromEpoch, epochDay, localParts } from '../src/stats/index.js';
 import { buildViewerHtml, CSP } from '../src/viewer.js';
@@ -21,6 +21,7 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const BIN = fileURLToPath(new URL('../bin/gitwrapped.js', import.meta.url));
 const TODAY = '2026-10-05';
 const pad = (n) => String(n).padStart(2, '0');
+// The fixture has two authors, so its card set is every card (contributors included).
 const STEMS = CARD_IDS.map((id, i) => `${pad(i + 1)}-${id}`);
 const at = (date) => ({ hash: date, author: 'A', email: 'a@x', date, subject: 'feat: x', files: [], filesChanged: 0, linesAdded: 0, linesRemoved: 0 });
 
@@ -46,8 +47,8 @@ after(() => {
   if (tmp) rmSync(tmp, { recursive: true, force: true, maxRetries: 5 });
 });
 
-describe('bin: 10 cards end to end', () => {
-  test('fresh run writes 10 SVGs and 10 real 1080x1920 PNGs with the current names', () => {
+describe('bin: 11 cards end to end', () => {
+  test('fresh run writes 11 SVGs and 11 real 1080x1920 PNGs with the current names', () => {
     const out = join(tmp, 'fresh');
     const r = bin([fixture.dir, '--out', out]);
     assert.equal(r.status, 0, r.stderr);
@@ -57,14 +58,14 @@ describe('bin: 10 cards end to end', () => {
     assert.equal(STEMS[4], '05-activity');
     for (const s of STEMS) assert.deepEqual(pngSize(readFileSync(join(out, 'png', `${s}.png`))), { width: 1080, height: 1920 }, s);
     // Terminal summary: counts match, existing stat lines unchanged.
-    assert.ok(r.stdout.includes(`10 cards in ${join(out, 'cards')}\n`), r.stdout);
-    assert.ok(r.stdout.includes(`10 PNGs in ${join(out, 'png')}\n`), r.stdout);
+    assert.ok(r.stdout.includes(`11 cards in ${join(out, 'cards')}\n`), r.stdout);
+    assert.ok(r.stdout.includes(`11 PNGs in ${join(out, 'png')}\n`), r.stdout);
     assert.ok(r.stdout.includes('8 commits · 8 active days'), r.stdout);
     assert.ok(r.stdout.includes('Streak       longest 5 days'), r.stdout);
     assert.ok(!/NaN|undefined|null/.test(r.stdout));
   });
 
-  test('re-run into an older output folder: exactly the current 10 + unrelated user files remain', () => {
+  test('re-run into an older output folder: exactly the current 11 + unrelated user files remain', () => {
     const out = join(tmp, 'rerun');
     const cards = join(out, 'cards');
     const pngs = join(out, 'png');
@@ -101,7 +102,7 @@ describe('bin: 10 cards end to end', () => {
     assert.equal(readFileSync(join(out, 'notes.txt'), 'utf8'), 'mine');
     // The new files are real output, not the old stubs.
     assert.match(readFileSync(join(cards, '06-hot-files.svg'), 'utf8'), /^<svg\b/);
-    assert.deepEqual(pngSize(readFileSync(join(pngs, '10-outro.png'))), { width: 1080, height: 1920 });
+    assert.deepEqual(pngSize(readFileSync(join(pngs, '11-outro.png'))), { width: 1080, height: 1920 });
 
     // A second identical run is stable.
     const again = bin([fixture.dir, '--out', out]);
@@ -290,7 +291,7 @@ describe('titles: singular / plural', () => {
 });
 
 describe('viewer page', () => {
-  test('wrapped.html from a run has 10 cards with unique ids and an intact CSP', () => {
+  test('wrapped.html from a run has 11 cards with unique ids and an intact CSP', () => {
     const out = join(tmp, 'viewer');
     const r = bin([fixture.dir, '--out', out, '--no-png']);
     assert.equal(r.status, 0, r.stderr);
@@ -309,6 +310,6 @@ describe('viewer page', () => {
     assert.ok(slide5.includes('data-card="activity"'));
     assert.ok(slide5.includes('<title>Mar 10, 2024: 1 commit</title>'));
     // Same as building it in-process.
-    assert.equal(buildViewerHtml(buildCards(computeStats([], { today: TODAY }))).match(/<section /g).length, CARD_IDS.length);
+    assert.equal(buildViewerHtml(buildCards(computeStats([], { today: TODAY }))).match(/<section /g).length, cardIdsFor({}).length);
   });
 });

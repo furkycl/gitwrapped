@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
-import { CARD_IDS } from '../src/cards/index.js';
+import { CARD_IDS, cardIdsFor } from '../src/cards/index.js';
 import { buildCards } from '../src/cards/index.js';
 import { computeStats } from '../src/stats/index.js';
 import { buildViewerHtml } from '../src/viewer.js';
@@ -17,7 +17,10 @@ import { makeFixtureRepo } from '../scripts/make-fixture-repo.js';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const BIN = fileURLToPath(new URL('../bin/gitwrapped.js', import.meta.url));
+// The fixture has two authors: every card, contributors included (11).
 const CARD_FILES = CARD_IDS.map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}.svg`);
+// Fewer than two contributors (e.g. an empty window): no contributors card (10).
+const SOLO_FILES = cardIdsFor({}).map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}.svg`);
 
 function withoutColorEnv(env) {
   const copy = { ...env };
@@ -68,35 +71,36 @@ describe('bin: full run on the fixture repo', () => {
     assert.equal(r.stderr, '');
     assert.match(r.stdout, /^gitwrapped: 8 commits → /);
     assert.ok(r.stdout.includes(join(out, 'wrapped.html')), r.stdout);
-    assert.ok(r.stdout.includes(`10 cards in ${join(out, 'cards')}\n`), r.stdout);
+    assert.ok(r.stdout.includes(`11 cards in ${join(out, 'cards')}\n`), r.stdout);
     assert.ok(!r.stdout.includes('\x1b'), 'no ANSI escapes when piped');
   });
 
-  test('writes cards/01-intro.svg .. 10-outro.svg', () => {
+  test('writes cards/01-intro.svg .. 11-outro.svg', () => {
     assert.deepEqual(readdirSync(join(out, 'cards')).sort(), CARD_FILES);
     assert.equal(CARD_FILES[0], '01-intro.svg');
     assert.equal(CARD_FILES[4], '05-activity.svg');
     assert.equal(CARD_FILES[6], '07-languages.svg');
-    assert.equal(CARD_FILES[9], '10-outro.svg');
+    assert.equal(CARD_FILES[7], '08-contributors.svg');
+    assert.equal(CARD_FILES[10], '11-outro.svg');
     for (const f of CARD_FILES) {
       assert.ok(statSync(join(out, 'cards', f)).size > 0, `${f} is non-empty`);
     }
   });
 
-  test('writes png/01-intro.png .. 10-outro.png at 1080x1920 and share.png at 1200x630', () => {
+  test('writes png/01-intro.png .. 11-outro.png at 1080x1920 and share.png at 1200x630', () => {
     const pngs = CARD_FILES.map((f) => f.replace(/\.svg$/, '.png'));
     assert.deepEqual(readdirSync(join(out, 'png')).sort(), pngs);
     for (const f of pngs) assert.deepEqual(pngSize(readFileSync(join(out, 'png', f))), { width: 1080, height: 1920 }, f);
     assert.deepEqual(pngSize(readFileSync(join(out, 'share.png'))), { width: 1200, height: 630 });
     assert.match(readFileSync(join(out, 'share.svg'), 'utf8'), /^<svg [^>]*width="1200" height="630"/);
     assert.ok(r.stdout.includes(`share image: ${join(out, 'share.png')}`), r.stdout);
-    assert.ok(r.stdout.includes(`10 PNGs in ${join(out, 'png')}`), r.stdout);
+    assert.ok(r.stdout.includes(`11 PNGs in ${join(out, 'png')}`), r.stdout);
   });
 
-  test('wrapped.html inlines all 10 SVGs', () => {
+  test('wrapped.html inlines all 11 SVGs', () => {
     assert.match(page, /^<!doctype html>/);
-    assert.equal((page.match(/<svg\b/g) ?? []).length, 10);
-    assert.equal(embeddedSvgs(page).length, 10);
+    assert.equal((page.match(/<svg\b/g) ?? []).length, 11);
+    assert.equal(embeddedSvgs(page).length, 11);
   });
 
   test('wrapped.html makes no external requests and has a CSP', () => {
@@ -158,7 +162,7 @@ describe('bin: filtering', () => {
       const r = bin([fixture.dir, ...args, '--out', out]);
       assert.equal(r.status, 0, r.stderr);
       assert.match(r.stdout, new RegExp(`^gitwrapped: ${n} commits? → `));
-      assert.deepEqual(readdirSync(join(out, 'cards')).sort(), CARD_FILES);
+      assert.deepEqual(readdirSync(join(out, 'cards')).sort(), n === 0 ? SOLO_FILES : CARD_FILES);
       assert.ok(existsSync(join(out, 'wrapped.html')));
     });
   }

@@ -375,7 +375,8 @@ describe('run with a window', () => {
     assert.equal(code, 0);
     assert.match(stdout.data, /Note: no commits match --year 2023\./);
     assert.match(stdout.data, /No commits found/);
-    assert.equal(readdirSync(join(out, 'cards')).length, CARD_IDS.length);
+    // No contributors in an empty window: no contributors card.
+    assert.equal(readdirSync(join(out, 'cards')).length, CARD_IDS.length - 1);
     assert.ok(existsSync(join(out, 'wrapped.html')));
 
     const stdout2 = sink();

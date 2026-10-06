@@ -3,6 +3,7 @@
 
 import { shownLongest } from './stats/daily.js';
 import { languageHeadline } from './stats/languages.js';
+import { hasTeamCard, shareLabel } from './stats/contributors.js';
 
 const ESC = '\x1b[';
 const STYLES = {
@@ -98,6 +99,8 @@ function shortWord(w, max = 32) {
  * - notes: extra notice lines (e.g. the commit cap), shown in yellow
  * - today: 'YYYY-MM-DD'; when given, the longest streak leaves out future-dated days
  *   (after today + 1), as on the cards (see stats/daily.js shownLongest)
+ * A "Team" line (top contributor, or the --author's rank) appears exactly when the
+ * contributors card is built (see hasTeamCard in stats/contributors.js).
  * The first line is always `gitwrapped: N commits → <html>` (no color), so it is easy
  * to grep. Every text value is stripped of control characters (stripControl), so repo
  * data cannot inject terminal escapes. Returns the whole recap, newline-terminated.
@@ -148,6 +151,20 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
       const of = lang.basis === 'files' ? 'of files' : 'of lines';
       const tie = lang.tied.length > 1 ? `, tied with ${lang.tied.length - 1} more` : '';
       lines.push(`  ${label('Top language')}${c('cyan', shortWord(lang.name))} ${c('dim', `(${share} ${of}${tie})`)}`);
+    }
+
+    // Exactly when the contributors card is built (see hasTeamCard).
+    const team = stats?.contributors ?? {};
+    if (hasTeamCard(stats)) {
+      const you = team.you;
+      const lead = team.top?.[0];
+      let detail = '';
+      if (you?.rank > 0) detail = ` · you're ${c('cyan', `#${num(you.rank)}`)} ${c('dim', `(${shareLabel(you.share, you.commits)} of commits)`)}`;
+      else if (lead?.name) {
+        const tied = team.top[1]?.commits === lead.commits ? ', tied' : '';
+        detail = ` · top: ${c('cyan', shortWord(lead.name))} ${c('dim', `(${shareLabel(lead.share, lead.commits)}${tied})`)}`;
+      }
+      lines.push(`  ${label('Team')}${plural(team.total, 'contributor')}${detail}`);
     }
 
     const m = stats?.messages ?? {};

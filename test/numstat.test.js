@@ -81,7 +81,9 @@ describe('readCommits file stats on the fixture repo', () => {
     assert.equal(commits.length, 8);
     // The fixture description has no parent hashes: check those separately.
     for (const c of commits) assert.ok(Array.isArray(c.parents) && c.parents.length <= 1);
-    const noParents = ({ parents, ...c }) => c;
+    // Nor co-authors: the fixture commits have no Co-authored-by trailers.
+    for (const c of commits) assert.deepEqual(c.coAuthors, []);
+    const noParents = ({ parents, coAuthors, ...c }) => c;
     assert.deepEqual(commits.map(noParents).map(instant), fx.commits.map(instant));
   });
 

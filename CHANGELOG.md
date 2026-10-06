@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Co-authors: commits with `Co-authored-by:` trailers count as paired. The team card
+  gets a "Pair programming" panel ("12 commits paired", "Top co-author: Grace Hopper").
+  Without a team card, when the panel doesn't fit there, or with `--author` (where the
+  pairing counts only your commits), the totals card gets a "Paired (top: …)" row with
+  the count instead. Both only use spare room, so a card without them is exactly as
+  before. The recap gets a "Paired" line (with the share of non-merge commits),
+  `wrapped.md` a "Paired" item, and `stats.json` gets `stats.coAuthors` (`{paired,
+  commits, share, total, top}`, the top five co-authors as `{name, commits}`).
+  Co-authors go through `.mailmap` (one `git check-mailmap` call per repo, for the main
+  history read only) and are shown by name only, never an email; a co-author who is the
+  commit's own author, and merge commits, don't count. English and Turkish.
+
 - First commit: the intro card gets an "It all began with" panel with the first commit
   in the window (its quoted subject, day and short hash; with several repos, its repo),
   the recap a "First commit" line and `wrapped.md` a "First commit" item, and

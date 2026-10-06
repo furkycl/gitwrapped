@@ -4,6 +4,7 @@
 import { shownLongest, shownLongestBreak } from './stats/daily.js';
 import { languageHeadline } from './stats/languages.js';
 import { hasTeamCard, shareLabel } from './stats/contributors.js';
+import { shownCoAuthors } from './stats/coauthors.js';
 import { scrubEmails } from './privacy.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from './i18n/index.js';
 import { yearOverYear } from './stats/yoy.js';
@@ -178,6 +179,9 @@ function shortText(s, maxWidth = 48) {
  * shownCommitTypes) when it is shown: at least 20% of the commits use the convention.
  * A "Team" line (top contributor, or the --author's rank) appears exactly when the
  * contributors card is built (see hasTeamCard in stats/contributors.js).
+ * A "Paired" line shows how many commits had a Co-authored-by co-author, their share of
+ * the non-merge commits and the top co-author's name (stats.coAuthors, see
+ * stats/coauthors.js shownCoAuthors) when at least one commit was paired.
  * The first line is always `gitwrapped: N commits → <html>` (no color), so it is easy
  * to grep. Every text value is stripped of control characters (stripControl), so repo
  * data cannot inject terminal escapes. Returns the whole recap, newline-terminated.
@@ -274,6 +278,14 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
         detail = ` · ${R.top} ${c('cyan', shortWord(lead.name))} ${c('dim', `(${shareLabel(lead.share, lead.commits, L.pct)}${tied})`)}`;
       }
       lines.push(`  ${label(R.team)}${plural(team.total, 'contributor', L)}${detail}`);
+    }
+
+    // Commits with a Co-authored-by co-author (stats.coAuthors), as on the team / totals card.
+    const paired = shownCoAuthors(stats?.coAuthors);
+    if (paired) {
+      const top = paired.top ? shortWord(scrubEmails(paired.top)) : '';
+      const who = top ? ` · ${R.topCoAuthor} ${c('cyan', top)}` : '';
+      lines.push(`  ${label(R.paired)}${plural(paired.paired, 'commit', L)} ${c('dim', `(${R.ofNonMerge(shareLabel(paired.share, paired.paired, L.pct))})`)}${who}`);
     }
 
     const m = stats?.messages ?? {};

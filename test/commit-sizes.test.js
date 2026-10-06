@@ -311,7 +311,7 @@ describe('recap', () => {
     const en = formatSummary(stats, { paths: { html: 'x.html' }, today: TODAY });
     assert.match(en, /\n {2}Sizes {8}50% tiny · 17% small · 17% medium · 16% large\n/);
     const tr = formatSummary(stats, { paths: { html: 'x.html' }, today: TODAY, lang: 'tr' });
-    assert.match(tr, /\n {2}Boyutlar {7}%50 minik · %17 küçük · %17 orta · %16 büyük\n/);
+    assert.match(tr, /\n {2}Boyutlar {9}%50 minik · %17 küçük · %17 orta · %16 büyük\n/);
     // Same order as the other lines: after "Biggest".
     assert.ok(en.indexOf('Sizes') > en.indexOf('Biggest'));
     for (const junk of [ZERO, null, undefined, {}]) {

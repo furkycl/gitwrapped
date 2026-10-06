@@ -11,6 +11,7 @@ import { shownCommitTypes } from './stats/types.js';
 import { shownLongest, shownLongestBreak } from './stats/daily.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { contributorName, hasTeamCard, shareLabel } from './stats/contributors.js';
+import { shownCoAuthors } from './stats/coauthors.js';
 import { scrubEmails } from './privacy.js';
 import { languageBarRows, languageHeadline } from './stats/languages.js';
 import { yearOverYear } from './stats/yoy.js';
@@ -140,6 +141,13 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
       const day = formatDay(first.date, lang);
       const detail = [day && escapeMarkdown(day), hash, typeof first.repo === 'string' && escapeMarkdown(first.repo, 80)].filter(Boolean).join(' · ');
       numbers.push(item(escapeMarkdown(L.recap.firstCommit), `${subject ? `“${subject}”` : escapeMarkdown(L.messages.noSubject)}${detail ? ` (${detail})` : ''}`));
+    }
+    // Commits with a Co-authored-by co-author (stats.coAuthors), as on the cards and the recap.
+    const paired = shownCoAuthors(stats?.coAuthors);
+    if (paired) {
+      const share = `${plural(paired.paired, 'commit', L)} (${L.recap.ofNonMerge(shareLabel(paired.share, paired.paired, L.pct))})`;
+      const top = paired.top ? escapeMarkdown(M.topCoAuthor(paired.top), 120) : '';
+      numbers.push(item(escapeMarkdown(M.paired), `${escapeMarkdown(share)}${top ? `, ${top}` : ''}`));
     }
     section(M.numbers, numbers);
 

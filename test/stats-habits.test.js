@@ -1,6 +1,6 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeBiggestCommit, computeCommitSizes, computeFirstCommit, computeCommitTypes, computeContributors, computeDaily, computeHotFiles, computeLanguages, computeMessages, computeMonths, computePersonality, computeStats, computeStreaks, computeTimeHabits, computeTotals, hourLabel } from '../src/stats/index.js';
+import { computeBiggestCommit, computeCoAuthors, computeCommitSizes, computeFirstCommit, computeCommitTypes, computeContributors, computeDaily, computeHotFiles, computeLanguages, computeMessages, computeMonths, computePersonality, computeStats, computeStreaks, computeTimeHabits, computeTotals, hourLabel } from '../src/stats/index.js';
 import { readCommits } from '../src/git.js';
 import { makeFixtureRepo } from '../scripts/make-fixture-repo.js';
 
@@ -110,7 +110,7 @@ describe('computeTimeHabits', () => {
 });
 
 describe('computeStats', () => {
-  test('combines totals, habits, streaks, daily, months, hot files, languages, contributors, messages, biggest commit, commit sizes, commit types, first commit and personality', () => {
+  test('combines totals, habits, streaks, daily, months, hot files, languages, contributors, messages, biggest commit, commit sizes, commit types, first commit, co-authors and personality', () => {
     const commits = [at('2024-06-15T09:00:00Z')];
     const today = '2024-06-16';
     const parts = {
@@ -127,6 +127,7 @@ describe('computeStats', () => {
       commitSizes: computeCommitSizes(commits),
       commitTypes: computeCommitTypes(commits),
       firstCommit: computeFirstCommit(commits),
+      coAuthors: computeCoAuthors(commits),
     };
     assert.deepEqual(computeStats(commits, { today }), { ...parts, personality: computePersonality(parts) });
     assert.equal(computeStats([]).totals.commits, 0);

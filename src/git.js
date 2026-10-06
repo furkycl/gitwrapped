@@ -24,10 +24,14 @@ const execFileAsync = promisify(execFile);
 //
 // Fields: hash, author name and email (mailmapped: %aN/%aE, matching how --author is
 // matched with --use-mailmap), author date, parent hashes (space-separated; >1 = merge),
-// subject.
+// subject; then, after a newline, the values of the message's `Co-authored-by:` trailers,
+// one per line (key matched case-insensitively, folded lines unfolded; nothing when there
+// are none; raw, not mailmapped: see mailmapCoAuthors). A subject (%s) never contains a
+// newline and a trailer value is one line, so the first "\n" of the last field ends the
+// subject, and whatever a trailer value contains (\x1f too) stays in the trailer part.
 const US = '\x1f';
 const NUMSTAT = /^[\r\n]*(\d+|-)\t(\d+|-)\t([\s\S]*)$/;
-export const LOG_FORMAT = '%H%x1f%aN%x1f%aE%x1f%aI%x1f%P%x1f%s';
+export const LOG_FORMAT = '%H%x1f%aN%x1f%aE%x1f%aI%x1f%P%x1f%s%n%(trailers:key=Co-authored-by,valueonly,unfold,separator=%x0a)';
 
 const MAX_BUFFER = 256 * 1024 * 1024;
 
@@ -156,10 +160,33 @@ export function buildLogArgs({ since, author, maxCount, sinceAsFilter = true, in
 }
 
 /**
+ * One `Co-authored-by:` trailer value as `{name, email}` (whitespace runs collapsed, both
+ * trimmed): the email is the last "<...>" holding an "@" (else the last "<...>"), the
+ * name the text before it without angle brackets, and text after it is dropped
+ * ("Ada <ada@x.io> (she/her)" → Ada, ada@x.io). Without a "<...>" the whole value is the
+ * name and the email is empty. Null when both come out empty.
+ */
+export function parseCoAuthor(value) {
+  const v = String(value ?? '').replace(/\s+/g, ' ').trim();
+  const all = [...v.matchAll(/<([^<>]*)>/g)];
+  const m = all.findLast((x) => x[1].includes('@')) ?? all.at(-1);
+  const name = (m ? v.slice(0, m.index) : v).replace(/[<>]/g, ' ').replace(/\s+/g, ' ').trim();
+  const email = m ? m[1].trim() : '';
+  return name || email ? { name, email } : null;
+}
+
+/**
+ * The co-authors of the trailer part (one value per line, see LOG_FORMAT). git older
+ * than 2.22 does not know the trailer options and prints the placeholder as is: no co-authors.
+ */
+const coAuthorsOf = (part) => (part.startsWith('%(trailers') ? [] : part.split('\n').map(parseCoAuthor).filter(Boolean));
+
+/**
  * Parse `git log -z --numstat --format=LOG_FORMAT` output into commit objects:
- * `{hash, author, email, date, parents, subject, files: [{path, added, removed, binary}],
- * filesChanged, linesAdded, linesRemoved}` (parents: array of hashes; a merge has more
- * than one). Binary files count as 0 lines.
+ * `{hash, author, email, date, parents, coAuthors: [{name, email}], subject,
+ * files: [{path, added, removed, binary}], filesChanged, linesAdded, linesRemoved}`
+ * (parents: array of hashes; a merge has more than one; coAuthors: the Co-authored-by
+ * trailers in message order, as written, see parseCoAuthor). Binary files count as 0 lines.
  * Output without numstat entries also parses (files: []). Pure function: returns [] for empty output.
  */
 export function parseLog(stdout) {
@@ -193,6 +220,9 @@ export function parseLog(stdout) {
     const fields = trimmed.split(US);
     if (fields.length < 6) continue;
     const [hash, author, email, date, parents, ...rest] = fields;
+    // The subject ends at the first newline; the Co-authored-by values follow it.
+    const last = rest.join(US);
+    const nl = last.indexOf('\n');
     current = {
       hash,
       author,
@@ -200,7 +230,8 @@ export function parseLog(stdout) {
       // git >= 2.5x prints UTC as "Z", older git as "+00:00": normalize so output is stable.
       date: date.replace(/Z$/i, '+00:00'),
       parents: parents.split(' ').filter(Boolean),
-      subject: rest.join(US),
+      coAuthors: nl < 0 ? [] : coAuthorsOf(last.slice(nl + 1)),
+      subject: nl < 0 ? last : last.slice(0, nl),
       files: [],
       filesChanged: 0,
       linesAdded: 0,
@@ -327,14 +358,17 @@ async function shallowBoundary(repoPath) {
  * any amount later than the author date (rebase, cherry-pick, squash merge). Instead a
  * cheap first pass lists hashes and author dates only, the window and cap are applied to
  * that list, and only the selected commits are read in full (see readWindow).
- * `commits` is [] for a repo without commits. When HEAD has no commits (a new repo, or an
+ * Each commit's `coAuthors` (its Co-authored-by trailers) go through the repo's .mailmap
+ * like its author does (see mailmapCoAuthors); `coAuthors: false` skips that git call for
+ * a read whose co-authors are not used (they are then left as written).
+ * `commits` is []for a repo without commits. When HEAD has no commits (a new repo, or an
  * orphan branch) the result also has `unborn: true` and `otherRefs` (see hasOtherRefs):
  * only HEAD's history is read, so other branches' commits are not seen. Throws a TypeError for an invalid
  * `limit`, and a user-facing Error for: a missing path ("path does not exist: <path>"),
  * a file ("not a directory: <path>"), a folder that is not a repo ("not a git repository:
  * <path>"), git's safe.directory ownership check, a missing git, or oversized output.
  */
-export async function readHistory(repoPath, { since, until, author, limit = DEFAULT_LIMIT, maxBuffer = MAX_BUFFER } = {}) {
+export async function readHistory(repoPath, { since, until, author, limit = DEFAULT_LIMIT, maxBuffer = MAX_BUFFER, coAuthors = true } = {}) {
   if (limit !== Infinity && (!Number.isSafeInteger(limit) || limit < 1)) {
     throw new TypeError(`limit must be a positive integer or Infinity, got ${limit}`);
   }
@@ -372,6 +406,7 @@ export async function readHistory(repoPath, { since, until, author, limit = DEFA
   }
   const truncated = commits.length > limit;
   if (truncated) commits = commits.slice(0, limit);
+  if (coAuthors) await mailmapCoAuthors(repoPath, commits);
   const boundary = await shallowBoundary(repoPath);
   if (boundary) {
     for (const c of commits) {
@@ -380,6 +415,40 @@ export async function readHistory(repoPath, { since, until, author, limit = DEFA
     }
   }
   return { commits, truncated, limit, shallow: Boolean(boundary) };
+}
+
+/** A co-author as a `git check-mailmap` contact line: "Name <email>", nothing that would break it. */
+const contactLine = ({ name, email }) => `${String(name ?? '').replace(/[<>\r\n]/g, '')} <${String(email ?? '').replace(/[<>\r\n]/g, '')}>`;
+
+/**
+ * Map every commit's `coAuthors` through the repo's .mailmap (and mailmap.file /
+ * mailmap.blob), in place, the way %aN / %aE map authors: one `git check-mailmap --stdin`
+ * call with each distinct "Name <email>" contact on its own line (stdin: no command-line
+ * length limit), and only when some commit has a co-author. Best effort: when git fails
+ * (or answers with fewer lines than asked), the co-authors stay as written. Returns
+ * `commits`.
+ */
+export async function mailmapCoAuthors(repoPath, commits) {
+  const mapped = new Map();
+  for (const c of commits ?? []) for (const p of c?.coAuthors ?? []) mapped.set(contactLine(p), null);
+  if (mapped.size === 0) return commits;
+  const contacts = [...mapped.keys()];
+  let lines;
+  try {
+    const run = execFileAsync('git', ['-C', repoPath, 'check-mailmap', '--stdin'], { encoding: 'utf8', env: gitEnv(), maxBuffer: MAX_BUFFER });
+    run.child.stdin.on('error', () => {}); // git exiting early (EPIPE) surfaces below
+    run.child.stdin.end(`${contacts.join('\n')}\n`);
+    lines = (await run).stdout.split('\n');
+  } catch {
+    return commits;
+  }
+  if (lines.length < contacts.length) return commits;
+  contacts.forEach((k, i) => mapped.set(k, parseCoAuthor(lines[i].replace(/\r$/, ''))));
+  for (const c of commits) {
+    if (!Array.isArray(c?.coAuthors) || c.coAuthors.length === 0) continue;
+    c.coAuthors = c.coAuthors.map((p) => mapped.get(contactLine(p)) ?? p);
+  }
+  return commits;
 }
 
 /**

@@ -31,7 +31,7 @@ calendar months and a team card in a repo with more than one contributor (up to 
 7. **Hot files**: the five files you edit most as a bar list. Lockfiles, build output (`dist/`, `build/`, ...), dependency folders, vendored code (a root `vendor/` or `third_party/`), minified files and test snapshots (`*.snap`, `__snapshots__/`) are ignored.
 8. **Languages**: your top programming language and its share of the lines you changed ("72% · Mostly TypeScript", or "Led by" under half, with ties named), with bars for your top five languages plus "Other". Data formats (JSON, YAML, ...) and prose (Markdown, ...) show in the bars, but they only lead the card when there's no code at all. Languages come from file extensions and well-known names like `Dockerfile` and `Makefile` (86 built in); lockfiles, build output, vendored code, test snapshots and binary files are left out, as for hot files.
 9. **The team** (only when the history has two or more contributors): how many people committed and the top five by commits as bars ("Ada Lovelace leads the pack with 54% of the commits"). With `--author` it ranks you against everyone in the same window: "#2 of 7 contributors", your share of the commits and lines, and a "you" marker on your bar (a sixth bar when you're outside the top five). Contributors are counted per email after `.mailmap`, and only their git author names are shown, never an email. A single-author repo skips this card, and so does an `--author` with no commits in the window (there's no "you" to rank); the cards after it then move up a number.
-10. **Message hall of fame**: your favorite word, your longest and shortest messages, and how many "fix", "wip" and "oops" commits you made, plus your biggest commit: the one with the most lines changed, with its day, lines added / removed and subject. It counts the same files as hot files (lockfiles, build output and the rest are left out, and so is anything you `--exclude`) and skips merge commits; a tie goes to the earliest commit.
+10. **Message hall of fame**: your favorite word, your longest and shortest messages, and how many "fix", "wip" and "oops" commits you made, plus your biggest commit: the one with the most lines changed, with its day, lines added / removed and subject. It counts the same files as hot files (lockfiles, build output and the rest are left out, and so is anything you `--exclude`) and skips merge commits; a tie goes to the earliest commit. When at least 20% of your commits follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat: ...`, `fix(api)!: ...`), the card also shows your commit type mix as a thin stacked bar: the top three types and any others folded into "the rest", each with its share of those commits, and the share of commits that follow the convention in its caption. When you only ever use one type, the bar sets it against the commits without a prefix ("no prefix"), as shares of all commits; with a single type on every commit there is nothing to compare and no bar. The bar only uses spare room; when there isn't enough, the fix / wip / oops counts are folded into one row ("“fix” / “wip” / “oops”: 5 / 0 / 2") to make room, and when it still doesn't fit, the card is left as it was (the mix is still in the recap, `wrapped.md` and `stats.json`).
 11. **Personality**: Night Owl, Early Bird, Friday Deployer, Fixaholic, Weekend Warrior or Steady Shipper, with a one-line roast and bars for your top habit scores.
 12. **Outro**: a summary card to post: commits, power hour, best streak and personality tiles, plus your hottest file.
 
@@ -56,7 +56,9 @@ You also get:
 - **Terminal recap**: commits, active days, lines, power hour, streak, longest break, hottest file,
   top language, team (in a repo with more than one contributor: the top contributor, or
   with `--author` your rank, e.g. `Team  7 contributors · you're #2 (31% of commits)`),
-  top word, biggest commit, commit size mix and personality, printed right after the run.
+  top word, biggest commit, commit size mix, commit type mix (when you use Conventional
+  Commits, e.g. `Types  60% feat · 30% fix · 10% other (85% of commits conventional)`) and
+  personality, printed right after the run.
 - **JSON** (optional, `--json`): every computed stat in `stats.json`, for your own
   dashboards and scripts.
 - **Markdown** (optional, `--md`): a `wrapped.md` summary to paste into a README or a PR
@@ -287,7 +289,7 @@ but it does contain commit subjects and hashes and repo-relative file paths (see
 | `asOf`          | `YYYY-MM-DD` the current streak is counted up to: today, or the end of a past `--until` / `--year` window |
 | `filters`       | `{since, until, author, maxCommits, exclude}` as used (`--year` shows as since/until); dates and author are `null` when not set, `maxCommits` is the cap in effect, `exclude` the `--exclude` patterns in order (`[]` when none) |
 | `truncated`     | `true` when `--max-commits` cut the history short                             |
-| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `months`, `hotFiles`, `languages`, `contributors`, `messages`, `biggestCommit`, `commitSizes`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
+| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `months`, `hotFiles`, `languages`, `contributors`, `messages`, `biggestCommit`, `commitSizes`, `commitTypes`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
 
 ```json
 {
@@ -357,6 +359,24 @@ commits). The totals card shows the mix only when there is at least one such com
 The card, the recap and `wrapped.md` show a size with under 1% of the commits as "<1%"
 (never "0%"), and cap a size at 99% while another has commits; `stats.json` keeps the raw
 shares.
+
+`stats.commitTypes` is the Conventional Commits mix:
+`{"total", "conventional", "share", "counts": {"feat", "fix", "docs", "refactor", "test", "chore", "other"}, "shares": {...same keys}, "top", "shown"}`.
+`total` is the number of non-merge commits with a subject (the commits the messages card
+counts), and `conventional` how many of them follow the convention: the subject starts
+with a type, an optional `(scope)`, an optional `!` and then `: ` and a description
+(`feat: dark mode`, `fix(api)!: drop v1`; case doesn't matter). Recognized types are
+`feat`, `fix`, `docs`, `refactor`, `test` and `chore`, the aliases `feature` / `features`
+(feat), `bugfix` / `hotfix` (fix), `doc` (docs) and `tests` (test), and `perf`, `ci`,
+`build`, `style`, `revert`, `release` and `deps`, which count as `other`. Any other word
+before the colon (`Update: readme`, `WIP: ...`) is not conventional and is in no bucket,
+so `counts` add up to `conventional`. `share` is `conventional / total` (3 decimals),
+`shares` are whole percents of `conventional` (largest remainder, adding up to exactly
+100; all `0` without conventional commits), `top` is the type with the most commits (ties
+in the order above; `null` without any), and `shown` is `true` when at least 20% of the
+commits are conventional: only then do the messages card, the recap and `wrapped.md`
+show the mix. Like the size mix, they show a type under 1% as "<1%" and cap one at 99%
+while another has commits.
 
 `stats.languages` lists every language found, most lines first, with `"Other"` (file
 types gitwrapped doesn't know) always last. `type` is `"programming"`, `"data"` (JSON,
@@ -429,7 +449,8 @@ README, a PR description or release notes:
   running) and the longest break;
 - tables of the top five hot files and languages, and, in a repo with more than one
   contributor, the top five contributors by name (with `--author`, you marked as "(you)");
-- with several repos, a per-repo table; the biggest commit; your commit personality;
+- with several repos, a per-repo table; the biggest commit; the commit type mix (when at
+  least 20% of the commits follow Conventional Commits); your commit personality;
 - every story card as an image, linked by its relative path (`cards/01-intro.svg`, ...).
   Those images only show where the `cards/` folder sits next to `wrapped.md` (the output
   folder itself, or a README / docs page you commit together with `cards/`). Pasted into

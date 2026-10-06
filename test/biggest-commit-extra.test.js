@@ -302,6 +302,8 @@ describe('recap (extra)', () => {
   // {0.4, 0} → panel "0 / 0 lines" but no recap line.
   test('BUG: card panel and recap line agree on junk biggestCommit values', () => {
     const stats = computeStats(history('x', 100, 5), { today: TODAY });
+    // The conventional-commit mix adds a chart of its own (see commit-types.test.js).
+    delete stats.commitTypes;
     for (const junk of [{ linesAdded: -50, linesRemoved: 10 }, { linesAdded: 0.4, linesRemoved: 0 }, { linesAdded: 0.2, linesRemoved: 0.2 }]) {
       const big = { ...junk, subject: 'junk', date: '2026-03-04' };
       const card = Object.hasOwn(messagesSpec({ ...stats, biggestCommit: big }), 'chart');

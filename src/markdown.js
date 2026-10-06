@@ -5,8 +5,9 @@
 // part only (authorName), and email-shaped text in any repo-derived text (subjects,
 // paths, repo and contributor names) is cut out by escapeMarkdown.
 
-import { authorName, displayRepoName, formatDateRange, formatDay, pctText, repoRows, shownDayRange, sizeShareText } from './cards/index.js';
+import { authorName, displayRepoName, formatDateRange, formatDay, conventionalText, pctText, repoRows, shownDayRange, sizeShareText } from './cards/index.js';
 import { shownCommitSizes } from './stats/sizes.js';
+import { shownCommitTypes } from './stats/types.js';
 import { shownLongest, shownLongestBreak } from './stats/daily.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { contributorName, hasTeamCard, shareLabel } from './stats/contributors.js';
@@ -229,6 +230,15 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
       const day = formatDay(big.date, lang);
       section(escapeMarkdown(L.messages.biggestTitle(day)), [
         `${subject ? `“${subject}”` : escapeMarkdown(L.messages.noSubject)} · ${signed(bigLines.added, '+', L)} / ${signed(bigLines.removed, '−', L)} ${M.linesWord}`,
+      ]);
+    }
+
+    // --- commit types (as on the messages card and the recap; only when shown) ----------
+    const types = shownCommitTypes(stats?.commitTypes);
+    if (types) {
+      const names = L.messages.typeNames;
+      section(M.commitTypes, [
+        escapeMarkdown(`${types.rows.map((r) => `${sizeShareText(r, types.rows, L)} ${names[r.id]}`).join(' · ')} (${L.recap.conventional(conventionalText(types, L))})`),
       ]);
     }
 

@@ -710,6 +710,9 @@ const STACK_OPACITY = [1, 0.75, 0.55, 0.4];
  * zero-amount segments take no bar space (non-zero ones are at least 12px wide); under the
  * bar every segment gets an equal column with a swatch and its label, and its value
  * (e.g. "62%") above. `title` is the hover text of the segment and its column.
+ * `inline: true` is a shorter variant: a thinner bar, and each segment's value and label
+ * on one smaller line ("62% feat") after its swatch, side by side at their natural widths
+ * at the largest size (30 → 24px) where they all fit, else in equal columns (cut to fit).
  */
 function stackBlock(spec, compact = false, L = EN) {
   const segs = (Array.isArray(spec.segments) ? spec.segments : []).slice(0, STACK_OPACITY.length)
@@ -717,13 +720,15 @@ function stackBlock(spec, compact = false, L = EN) {
   if (segs.length < 2) return null;
   const cap = s1(spec.title);
   const capH = cap ? CAPTION.height : 0;
-  const BAR = 32;
+  const inline = spec.inline === true;
+  const BAR = inline ? 28 : 32;
   const VALUE = 44;
   const LABEL = 28;
+  const INLINE = 30;
   const SWATCH = 20;
   const MIN_W = 12;
   const GAP_X = 6;
-  const height = capH + BAR + 20 + VALUE * 0.76 + 14 + LABEL * 0.76 + 8;
+  const height = inline ? capH + BAR + 18 + INLINE * 0.76 + 8 : capH + BAR + 20 + VALUE * 0.76 + 14 + LABEL * 0.76 + 8;
   return {
     kind: 'stack',
     height,
@@ -748,10 +753,39 @@ function stackBlock(spec, compact = false, L = EN) {
           x += w + GAP_X;
         });
       }
-      const vBase = barY + BAR + 20 + VALUE * 0.76;
-      const lBase = vBase + 14 + LABEL * 0.76;
       const colW = CONTENT_WIDTH / segs.length;
       const room = colW - 16;
+      if (inline) {
+        const base = barY + BAR + 18 + INLINE * 0.76;
+        // Each item at its natural width, left to right, at the largest size (30 → 24px)
+        // where they all fit on the line; else equal columns at 24px, each item cut to fit.
+        const GAP_ITEM = 28;
+        const vw = (v, size) => (v ? measureText(v, size) * BIG_WEIGHT_FACTOR + 10 : 0);
+        const naturalAt = (size) => segs.map((sg) => SWATCH + 10 + vw(sg.value, size) + measureText(sg.label, size) * BIG_WEIGHT_FACTOR);
+        const fits = (size) => naturalAt(size).reduce((a, w) => a + w, 0) + GAP_ITEM * (segs.length - 1) <= CONTENT_WIDTH;
+        const flowSize = [INLINE, 28, 26, 24].find(fits);
+        const flow = flowSize !== undefined;
+        const size = flow ? flowSize : 24;
+        const natural = naturalAt(size);
+        let fx = PAD_X;
+        segs.forEach((sg, i) => {
+          const x = flow ? fx : PAD_X + i * colW;
+          fx += natural[i] + GAP_ITEM;
+          const g = [titleEl(sg.title)];
+          const op = STACK_OPACITY[i] === 1 ? '' : ` fill-opacity="${STACK_OPACITY[i]}"`;
+          g.push(`<rect x="${round(x)}" y="${round(base - size * 0.76 + (size * 0.76 - SWATCH) / 2)}" width="${SWATCH}" height="${SWATCH}" rx="${SWATCH / 4}"${op}/>`);
+          const tx = x + SWATCH + 10;
+          const value = flow ? sg.value : fitEnd(sg.value, room - SWATCH - 10, size);
+          if (value) g.push(textEl(tx, base, value, { size, weight: 900 }));
+          const w = vw(value, size);
+          const label = flow ? sg.label : fitEnd(sg.label, room - SWATCH - 10 - w, size);
+          if (label) g.push(textEl(tx + w, base, label, { size, weight: 700, opacity: 0.75 }));
+          parts.push(`<g>${g.join('')}</g>`);
+        });
+        return parts.join('');
+      }
+      const vBase = barY + BAR + 20 + VALUE * 0.76;
+      const lBase = vBase + 14 + LABEL * 0.76;
       segs.forEach((sg, i) => {
         const x = PAD_X + i * colW;
         const g = [titleEl(sg.title)];

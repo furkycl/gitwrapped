@@ -297,6 +297,20 @@ export default {
     biggestTitle: (date) => (date ? `Biggest commit · ${date}` : 'Biggest commit'),
     biggestLines: (plus, minus) => `${plus} / ${minus} lines`,
     noSubject: '(no subject)',
+    /**
+     * The conventional-commit mix (stats.commitTypes): caption with the share of commits
+     * that follow the convention, type names (the prefixes themselves), hover text per type.
+     */
+    typesTitle: (pct) => `Commit types · ${pct} conventional`,
+    /** `rest`: the card's folded remainder (types beyond the top three); `none`: commits without a type prefix. */
+    typeNames: { feat: 'feat', fix: 'fix', docs: 'docs', refactor: 'refactor', test: 'test', chore: 'chore', other: 'other', rest: 'the rest', none: 'no prefix' },
+    typeTitle: (name, commits, pct) => `${name}: ${plural(commits, UNITS.commit)} (${pct})`,
+    /**
+     * The fix / wip / oops rows folded into one, to make room for the type mix (quoted:
+     * they count words, not commit types; "commits" does not fit next to the counts at 40px).
+     */
+    counterCommits: '“fix” / “wip” / “oops”',
+    counterValues: (fix, wip, oops) => `${fix} / ${wip} / ${oops}`,
   },
 
   personality: {
@@ -428,6 +442,9 @@ export default {
     /** The commit size line: label, then "62% tiny · 25% small · 10% medium · 3% large". */
     sizes: 'Sizes',
     sizeNames: { tiny: 'tiny', small: 'small', medium: 'medium', large: 'large' },
+    /** The commit type line: label, "45% feat · 30% fix · 25% other", then "(62% of commits conventional)". */
+    types: 'Types',
+    conventional: (pct) => `${pct} of commits conventional`,
     you: 'You are',
     cardsIn: (count, dir) => `${count} in ${dir}`,
     shareImage: 'share image:',
@@ -462,6 +479,8 @@ export default {
     contributor: 'Contributor',
     share: 'Share',
     repo: 'Repo',
+    /** The conventional-commit mix section. */
+    commitTypes: 'Commit types',
     cards: 'Story cards',
     /** Alt text of each card image, by card id (src/cards CARD_IDS). */
     cardNames: {

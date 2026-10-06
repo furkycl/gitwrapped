@@ -9,7 +9,8 @@ import { yearOverYear } from './stats/yoy.js';
 import { epochDay } from './stats/time.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { shownCommitSizes } from './stats/sizes.js';
-import { sizeShareText } from './cards/index.js';
+import { shownCommitTypes } from './stats/types.js';
+import { conventionalText, sizeShareText } from './cards/index.js';
 
 const EN = getStrings(DEFAULT_LANG);
 
@@ -169,6 +170,9 @@ function shortText(s, maxWidth = 48) {
  * removed and its day) when there is one.
  * A "Sizes" line shows the commit size mix (stats.commitSizes: the share of tiny / small /
  * medium / large commits, see stats/sizes.js shownCommitSizes) when there is one.
+ * A "Types" line shows the conventional-commit mix (stats.commitTypes: every type with
+ * commits and the share of commits that follow the convention, see stats/types.js
+ * shownCommitTypes) when it is shown: at least 20% of the commits use the convention.
  * A "Team" line (top contributor, or the --author's rank) appears exactly when the
  * contributors card is built (see hasTeamCard in stats/contributors.js).
  * The first line is always `gitwrapped: N commits → <html>` (no color), so it is easy
@@ -294,6 +298,14 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     // The commit size mix (stats.commitSizes), as on the totals card; only when there is one.
     const mix = shownCommitSizes(stats?.commitSizes);
     if (mix) lines.push(`  ${label(R.sizes)}${mix.map((b) => `${c('cyan', sizeShareText(b, mix, L))} ${R.sizeNames[b.id]}`).join(c('dim', ' · '))}`);
+
+    // The conventional-commit mix (stats.commitTypes), as on the messages card; only when shown.
+    const types = shownCommitTypes(stats?.commitTypes);
+    if (types) {
+      const names = L.messages.typeNames;
+      const list = types.rows.map((r) => `${c('cyan', sizeShareText(r, types.rows, L))} ${names[r.id]}`).join(c('dim', ' · '));
+      lines.push(`  ${label(R.types)}${list} ${c('dim', `(${R.conventional(conventionalText(types, L))})`)}`);
+    }
 
     const a = stats?.personality?.archetype;
     if (a?.name) {

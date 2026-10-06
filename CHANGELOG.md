@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Commit type mix: when at least 20% of the commits follow Conventional Commits
+  (`type(scope)!: description`, case-insensitive), the messages card shows the share of
+  feat / fix / docs / refactor / test / chore / other commits as a thin stacked bar (the
+  top three types, any others folded into "the rest", with the share of conventional
+  commits in its caption; a lone type is set against the commits without a prefix, and
+  a single type on every commit draws no bar), the recap gets a "Types" line and `wrapped.md` a "Commit types"
+  section, and `stats.json` gets `stats.commitTypes` (`{total, conventional, share,
+  counts, shares, top, shown}`; shares are whole percents of the conventional commits
+  that add up to 100). Only known types count (`perf`, `ci`, `build`, `style`, `revert`,
+  `release` and `deps` go to "other"; `feature`, `bugfix` / `hotfix`, `doc` and `tests`
+  are aliases), so a subject like "Update: readme" is not conventional. Merge commits
+  are skipped. The bar only uses spare room: if it doesn't fit, the fix / wip / oops rows
+  are folded into one row to make room, and if it still doesn't fit (or the mix isn't
+  shown) the card is exactly as before. English and Turkish.
+
 ## [1.4.0] - 2026-10-06
 
 ### Added

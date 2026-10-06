@@ -1,7 +1,7 @@
 // The story-card set: turns computeStats() output into Wrapped-style SVG cards.
 // Pure and deterministic. Every card copes with empty stats (0 commits, null peaks,
 // no hot files, null messages) and never prints "null", "undefined" or "NaN".
-import { calendarWindow, formatNumber, renderCardWithLayout } from './svg.js';
+import { calendarWindow, formatNumber, layoutCard as layoutOf, renderCardWithLayout } from './svg.js';
 
 export { formatNumber };
 import { renderShareSvg } from './share.js';
@@ -14,6 +14,8 @@ import { personalityReason } from '../stats/personality.js';
 import { yearOverYear } from '../stats/yoy.js';
 import { shownBiggestLines } from '../stats/biggest.js';
 import { shownCommitSizes } from '../stats/sizes.js';
+import { foldCommitTypes, shownCommitTypes } from '../stats/types.js';
+import { sizeShares } from '../stats/sizes.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from '../i18n/index.js';
 import { DEFAULT_COLOR_THEME, isColorTheme } from './themes.js';
 
@@ -764,14 +766,97 @@ function biggestCallout(s, L) {
   };
 }
 
+/**
+ * The share of commits that follow the convention in a shownCommitTypes() mix, as text:
+ * a whole percent, capped at 99% while some commit does not follow it (the mix is only
+ * shown from 20%, so it never reads "<1%"). Card, recap and wrapped.md all use this.
+ */
+export const conventionalText = (mix, L = EN) => {
+  const conventional = num(mix?.conventional);
+  const total = Math.max(conventional, num(mix?.total));
+  if (total <= 0) return L.pct(0);
+  const pct = Math.round((conventional / total) * 100);
+  return L.pct(conventional < total ? Math.min(99, pct) : pct);
+};
+
+/**
+ * The conventional-commit mix (see shownCommitTypes) as a stacked bar for the messages
+ * card: the top three types and the rest folded into "the rest" (foldCommitTypes), each
+ * with its share of the conventional commits; a lone type is paired with the commits
+ * without a prefix ("no prefix"), both as shares of all commits. Null when the mix is not
+ * shown, or when every commit has the same type (nothing to compare). Never a 0% segment.
+ */
+function typeStack(s, L) {
+  const mix = shownCommitTypes(s.commitTypes);
+  if (!mix) return null;
+  const M = L.messages;
+  let rows = foldCommitTypes(mix.rows, 4);
+  if (rows.length === 1) {
+    // A lone type is set against the commits without a prefix, both as shares of all
+    // commits (so they agree with the caption); with none, a one-segment bar would say
+    // nothing the caption doesn't, so there is no bar.
+    const none = mix.total - mix.conventional;
+    if (none <= 0) return null;
+    const shares = sizeShares([rows[0].count, none]);
+    rows = [{ ...rows[0], share: shares[0] }, { id: 'none', count: none, share: shares[1] }];
+  }
+  return {
+    kind: 'stack',
+    // The short variant (one line of "62% feat" under a thin bar), so it fits more often.
+    inline: true,
+    // Purely additive: left out when the card is short of space, before anything shrinks.
+    optional: true,
+    title: M.typesTitle(conventionalText(mix, L)),
+    segments: rows.map((r) => {
+      const pct = sizeShareText(r, rows, L);
+      return { label: M.typeNames[r.id], value: pct, amount: r.count, title: M.typeTitle(M.typeNames[r.id], r.count, pct) };
+    }),
+  };
+}
+
+/** `{chart}` for a list of chart specs (null entries left out): one spec alone, else the list; {} for none. */
+const chartField = (list) => {
+  const charts = list.filter(Boolean);
+  return charts.length === 0 ? {} : { chart: charts.length === 1 ? charts[0] : charts };
+};
+
+/** Whether the layout of `spec` draws its chart at `index` (see layoutCard's drawnCharts). */
+const draws = (spec, index, L) => layoutOf({ ...spec, lang: L.code }).drawnCharts.includes(index);
+
+/**
+ * The messages card with the conventional-commit mix (see typeStack) added when it fits:
+ * as it is, else with the "fix" / "wip" / "oops" rows folded into one ("“fix” / “wip” /
+ * “oops”: 5 / 0 / 2") to make room; when it fits neither way, `spec` unchanged.
+ * So a card without the mix is exactly what it was before the mix existed.
+ */
+function withTypeMix(spec, types, folded, L) {
+  const list = Array.isArray(spec.chart) ? spec.chart : spec.chart ? [spec.chart] : [];
+  const charts = chartField([...list, types]);
+  const index = list.length;
+  const plain = { ...spec, ...charts };
+  if (draws(plain, index, L)) return plain;
+  if (folded) {
+    const compact = { ...spec, lines: folded, ...charts };
+    if (draws(compact, index, L)) return compact;
+  }
+  return spec;
+}
+
 function messages(s, { L }) {
+  const spec = messagesCard(s, L);
+  const types = typeStack(s, L);
+  return types ? withTypeMix(spec.card, types, spec.folded, L) : spec.card;
+}
+
+/** The messages card without the type mix (`card`), and its rows with the three counters folded into one (`folded`, null without rows). */
+function messagesCard(s, L) {
   const M = L.messages;
   const m = s.messages ?? {};
   const longest = clip(text(m.longest?.subject));
   const shortest = clip(text(m.shortest?.subject));
   const biggest = biggestCallout(s, L);
   if (!longest || !shortest) {
-    return { eyebrow: M.eyebrow, big: '…', title: M.noneTitle, subtitle: L.empty, ...(biggest ? { chart: biggest } : {}) };
+    return { card: { eyebrow: M.eyebrow, big: '…', title: M.noneTitle, subtitle: L.empty, ...(biggest ? { chart: biggest } : {}) }, folded: null };
   }
   // A "favorite" word needs to show up at least twice; otherwise use the average-length copy.
   const word = num(m.topWord?.count) >= 2 ? clip(text(m.topWord?.word)) : null;
@@ -781,7 +866,8 @@ function messages(s, { L }) {
   // With a single commit, longest and shortest are the same message: show it once.
   const rows = [{ label: M.longest(quote(longest)) }];
   if (shortest !== longest) rows.push({ label: M.shortest(quote(shortest)) });
-  return {
+  const folded = [...rows, { label: M.counterCommits, value: M.counterValues(L.num(counts.fix), L.num(counts.wip), L.num(oops)) }];
+  const card = {
     eyebrow: M.eyebrow,
     // Same rounding as the subtitle, so the two numbers always agree.
     big: word ? quote(word) : formatAverage(m.averageLength, L),
@@ -795,6 +881,7 @@ function messages(s, { L }) {
     ],
     ...(biggest ? { chart: biggest } : {}),
   };
+  return { card, folded };
 }
 
 /**

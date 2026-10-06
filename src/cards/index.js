@@ -11,7 +11,7 @@ import { daysUpTo, shownLongest } from '../stats/daily.js';
 import { hasTeamCard, shareLabel, TOP_CONTRIBUTORS } from '../stats/contributors.js';
 import { personalityReason } from '../stats/personality.js';
 import { yearOverYear } from '../stats/yoy.js';
-import { DEFAULT_LANG, getStrings } from '../i18n/index.js';
+import { DEFAULT_LANG, getStrings, languageLabel } from '../i18n/index.js';
 import { DEFAULT_COLOR_THEME, isColorTheme } from './themes.js';
 
 export { renderCard, layoutCard, wrapText, escapeXml, measureText, truncateStart, THEMES, CARD_WIDTH, CARD_HEIGHT } from './svg.js';
@@ -264,6 +264,9 @@ function intro(s, ctx) {
   };
 }
 
+/** The smallest big number (px) the totals card of a multi-repo run shrinks to. */
+const TOTALS_BIG_MIN = 140;
+
 function totals(s, { L, repos }) {
   const T = L.totals;
   const t = s.totals ?? {};
@@ -302,8 +305,10 @@ function totals(s, { L, repos }) {
     subtitle: perDay > 0 ? T.perDay(perDay) : T.everyOne,
     lines: rows,
     // A multi-repo run adds commits per repo (the split chart stays first: when space is
-    // short, charts are dropped from the end).
+    // short, charts are dropped from the end). The commit count stays the hero: it keeps
+    // at least 140px while that chart is compacted or dropped (--year adds three rows).
     chart: repos ? [split, repoCommitBars(repos, L)] : split,
+    ...(repos ? { bigMin: TOTALS_BIG_MIN } : {}),
   };
 }
 
@@ -582,7 +587,7 @@ function languageBars(h, L) {
     const pct = pctText(cap(share), amount, L);
     return { label, sub: plural(files, 'file', L), value: pct, amount, title: G.barTitle(label, lines, files, pct) };
   };
-  const items = top.map((l) => row(l.name, l[basis], l.files, l.lines, l.share));
+  const items = top.map((l) => row(languageLabel(l.name, L), l[basis], l.files, l.lines, l.share));
   if (rest.length > 0) {
     const sum = (k) => rest.reduce((n, l) => n + l[k], 0);
     items.push(row(G.other, sum(basis), sum('files'), sum('lines'), sum('share')));
@@ -608,9 +613,9 @@ function languages(s, { L }) {
   // glyph like "J" whose hook reaches past the left padding at that size).
   let title;
   if (h.tied.length > 3) title = G.tieMany(h.tied.length);
-  else if (h.tied.length > 1) title = G.tied(L.andList(h.tied));
-  else if (h.only) title = G.only(h.name);
-  else title = h.rawShare >= 50 ? G.mostly(h.name) : G.ledBy(h.name);
+  else if (h.tied.length > 1) title = G.tied(L.andList(h.tied.map((n) => languageLabel(n, L))));
+  else if (h.only) title = G.only(languageLabel(h.name, L));
+  else title = h.rawShare >= 50 ? G.mostly(languageLabel(h.name, L)) : G.ledBy(languageLabel(h.name, L));
   const code = h.rows.some((x) => x.type === 'programming');
   const quip = (Object.hasOwn(G.quips, h.name) ? G.quips[h.name] : null) ?? (!code ? G.noCode : h.count === 1 ? G.oneLanguage : G.polyglot);
   // Count files in the same pool as the language count (programming languages when there

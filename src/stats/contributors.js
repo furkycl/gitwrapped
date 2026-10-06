@@ -75,7 +75,8 @@ export function contributorName(name) {
  *   `{name, rank, commits, added, removed, share}`; null without `author` or when nobody
  *   matches.
  * - `authorFilter`: true when an --author was given (non-empty). Then a null `you` means
- *   that email has no commits here, and the contributors card is skipped.
+ *   that email has no commits in `commits` (none in the window, or none among a capped
+ *   team read's commits), and the contributors card is skipped.
  * - `truncated`: the given `truncated` flag (the read behind `commits` hit the
  *   --max-commits cap), as a boolean.
  * No email is ever returned. Empty input → `{total: 0, top: [], you: null,

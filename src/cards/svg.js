@@ -1078,8 +1078,11 @@ function fitFooter(text) {
  * where eyebrow / watermark / footer are `{top, bottom, left, right}` boxes (or null).
  * Every block lies within [CONTENT_TOP, CONTENT_BOTTOM] and no two blocks overlap.
  */
-export function layoutCard({ eyebrow, title, big, subtitle, titleSize, lines, chart, number, footer, lang } = {}) {
+export function layoutCard({ eyebrow, title, big, subtitle, titleSize, bigMin, lines, chart, number, footer, lang } = {}) {
   const L = getStrings(lang);
+  // `bigMin`: a floor the big word keeps while charts are compacted or dropped (default
+  // BIG_MIN: no floor); it shrinks further only when even the text-only layout is too tall.
+  const bigFloor = Number.isFinite(bigMin) ? Math.min(BIG_MAX, Math.max(BIG_MIN, Math.round(bigMin))) : BIG_MIN;
   // A display-size title (e.g. the intro's "Wrapped"): 73..160px; anything else → 72px.
   const tSize = Number.isFinite(titleSize) ? Math.min(160, Math.max(TITLE.size, Math.round(titleSize))) : TITLE.size;
   const content = { big: s1(big), title: s1(title), subtitle: s1(subtitle), titleSize: tSize };
@@ -1095,16 +1098,21 @@ export function layoutCard({ eyebrow, title, big, subtitle, titleSize, lines, ch
   };
   // Shrink until everything fits: the big word first, then compact charts (smaller
   // minimum heights), then fewer subtitle / title lines, then drop charts from the end
-  // (the text-only layout always fits).
+  // (the text-only layout always fits). A `bigMin` floor holds the big word until the
+  // charts are gone.
   let l = build();
   while (l.total > available) {
-    if (opts.bigMax > BIG_MIN) opts.bigMax = Math.max(BIG_MIN, Math.floor(opts.bigMax * 0.85));
+    if (opts.bigMax > bigFloor) opts.bigMax = Math.max(bigFloor, Math.floor(opts.bigMax * 0.85));
     else if (!compact && charts.length > 0) {
       compact = true;
       charts = chartBlocks(chart, true, L);
     } else if (opts.subtitleLines > 2) opts.subtitleLines -= 1;
     else if (opts.titleLines > 2) opts.titleLines -= 1;
-    else if (charts.length > 0) charts = charts.slice(0, -1);
+    else if (charts.length > 0) {
+      charts = charts.slice(0, -1);
+      // With a floor, the room a dropped chart frees goes back to the big word first.
+      if (bigFloor > BIG_MIN) opts.bigMax = BIG_MAX;
+    } else if (opts.bigMax > BIG_MIN) opts.bigMax = Math.max(BIG_MIN, Math.floor(opts.bigMax * 0.85));
     else break;
     l = build();
   }
@@ -1164,6 +1172,8 @@ export function layoutCard({ eyebrow, title, big, subtitle, titleSize, lines, ch
  *   (a commits-per-day heatmap). See
  *   the *Block functions above for each spec. Charts that do not fit are dropped, last first.
  * `number` is a short card number ("03") drawn as a faint watermark top-right.
+ * `bigMin` (px) is a floor the big word keeps while charts are compacted and dropped
+ * (default: none, it may shrink to 72px first).
  * `lang` (an src/i18n code, default 'en') sets the upper-casing rules, the number format
  * of compacted counts and the calendar's month / weekday / legend labels.
  * `theme` is a gradient name, a THEMES key (unknown → 'pulse'). `colorTheme` is a color

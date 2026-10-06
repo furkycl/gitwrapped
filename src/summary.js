@@ -4,7 +4,7 @@
 import { shownLongest } from './stats/daily.js';
 import { languageHeadline } from './stats/languages.js';
 import { hasTeamCard, shareLabel } from './stats/contributors.js';
-import { DEFAULT_LANG, getStrings } from './i18n/index.js';
+import { DEFAULT_LANG, getStrings, languageLabel } from './i18n/index.js';
 import { yearOverYear } from './stats/yoy.js';
 
 const EN = getStrings(DEFAULT_LANG);
@@ -99,6 +99,27 @@ function shortWord(w, max = 32) {
   return chars.length <= max ? s : `${chars.slice(0, max - 1).join('')}…`;
 }
 
+const SEGMENTER = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+/** East Asian Wide / Fullwidth blocks (CJK, Hangul, kana, fullwidth forms), by code point. */
+const WIDE = [[0x1100, 0x115f], [0x2e80, 0x303e], [0x3041, 0x33ff], [0x3400, 0x4dbf], [0x4e00, 0x9fff], [0xa000, 0xa4cf], [0xa960, 0xa97f], [0xac00, 0xd7a3], [0xf900, 0xfaff], [0xfe30, 0xfe4f], [0xff00, 0xff60], [0xffe0, 0xffe6], [0x20000, 0x3fffd]];
+
+/**
+ * How many terminal columns `s` takes: per grapheme, 2 for an emoji (emoji presentation,
+ * a VS16 / ZWJ sequence, or a keycap) or an East Asian wide character, 0 for one made only of
+ * combining marks / format characters, else 1. An approximation of wcwidth, enough to
+ * line up recap columns.
+ */
+export function displayWidth(s) {
+  let w = 0;
+  for (const { segment: g } of SEGMENTER.segment(String(s ?? ''))) {
+    const cp = g.codePointAt(0);
+    if (/^[\p{Mn}\p{Me}\p{Cf}\p{Cc}]+$/u.test(g)) continue;
+    if (/\p{Emoji_Presentation}/u.test(g) || (/\p{Extended_Pictographic}/u.test(g) && /[\uFE0F\u200D]/u.test(g)) || /\u20E3/u.test(g) || WIDE.some(([a, b]) => cp >= a && cp <= b)) w += 2;
+    else w += 1;
+  }
+  return w;
+}
+
 /**
  * Format the end-of-run recap. `stats` is computeStats() output; options:
  * - color: emit ANSI colors (default false; with false the result has no ESC chars)
@@ -150,10 +171,11 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     if (repos.length > 1) {
       lines.push(`  ${label(R.repos)}${plural(repos.length, 'repo', L)}`);
       const shown = repos.length <= RECAP_REPOS + 1 ? repos : repos.slice(0, RECAP_REPOS);
-      const width = Math.min(24, Math.max(...shown.map((r) => [...shortWord(r.name, 24)].length)));
+      // Padded by terminal columns, so emoji / CJK labels line up too.
+      const width = Math.max(...shown.map((r) => displayWidth(shortWord(r.name, 24))));
       for (const r of shown) {
         const name = shortWord(r.name, 24);
-        const pad = ' '.repeat(Math.max(0, width - [...name].length));
+        const pad = ' '.repeat(Math.max(0, width - displayWidth(name)));
         lines.push(`    ${c('cyan', name)}${pad}  ${plural(r.commits ?? 0, 'commit', L)} ${c('dim', `· ${signed(r.linesAdded, '+', L)} / ${signed(r.linesRemoved, '−', L)} ${R.lines}`)}`);
       }
       if (shown.length < repos.length) lines.push(`    ${c('dim', R.moreRepos(repos.length - shown.length))}`);
@@ -188,7 +210,7 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     const topLang = languageHeadline(stats?.languages);
     if (topLang) {
       const share = topLang.share > 0 ? L.pct(topLang.share) : `<${L.pct(1)}`;
-      lines.push(`  ${label(R.topLanguage)}${c('cyan', shortWord(topLang.name))} ${c('dim', `(${R.languageDetail(share, topLang.basis, topLang.tied.length - 1)})`)}`);
+      lines.push(`  ${label(R.topLanguage)}${c('cyan', shortWord(languageLabel(topLang.name, L)))} ${c('dim', `(${R.languageDetail(share, topLang.basis, topLang.tied.length - 1)})`)}`);
     }
 
     // Exactly when the contributors card is built (see hasTeamCard).

@@ -6,7 +6,8 @@ import { buildCards, CARD_IDS, displayRepoName, renderShareCard, windowLabel } f
 import { DEFAULT_LIMIT, mergeHistories, readHistory, repoLabels } from './git.js';
 import { buildStatsJson } from './json.js';
 import { renderPng } from './png.js';
-import { computeStats, localToday } from './stats/index.js';
+import { computeStats, localParts, localToday } from './stats/index.js';
+import { hasTeamCard } from './stats/contributors.js';
 import { formatSummary, shouldUseColor, stripControl } from './summary.js';
 import { buildViewerHtml } from './viewer.js';
 import { DEFAULT_LANG, getStrings, isLang, LANGS } from './i18n/index.js';
@@ -503,6 +504,45 @@ function removeOldCardFiles(dir, ext, keep) {
   }
 }
 
+/** A commit's author-date instant (ms), or null when unparseable. */
+function instant(c) {
+  const t = Date.parse(c?.date);
+  return Number.isNaN(t) ? null : t;
+}
+
+/** The oldest of `commits` by author-date instant (null when none parses). */
+function oldestCommit(commits) {
+  let best = null;
+  for (const c of commits) {
+    const t = instant(c);
+    if (t !== null && (best === null || t < best.t)) best = { c, t };
+  }
+  return best;
+}
+
+/**
+ * The commits the contributors card ranks in an --author run whose unfiltered team read
+ * (`team`) hit the cap, so both "you" and everyone else cover the same span: everyone's
+ * commits are read again (same filters, cap and repos) from the author-local day of the
+ * oldest of `mine` (the author's commits in this run). If that read fits the cap, the
+ * ranking covers exactly everyone's commits since that oldest commit (so "you" has the
+ * commits the totals count); if not, it covers that read, i.e. the most recent commits by
+ * everyone, "you" counted within it too. Returns {commits, from ('YYYY-MM-DD', the first
+ * day covered), capped} (or the team read itself, `from` null, when no date parses).
+ */
+async function teamSpan(team, mine, { read, until, limit, labels }) {
+  const oldest = oldestCommit(mine);
+  const from = oldest ? localParts(oldest.c.date)?.dayKey : null;
+  if (!from) return { commits: team.commits, from: null, capped: true };
+  const span = await read({ since: from, until, limit, labels });
+  if (!span.truncated) {
+    const commits = span.commits.filter((c) => !(instant(c) !== null && instant(c) < oldest.t));
+    return { commits, from, capped: false };
+  }
+  const first = oldestCommit(span.commits);
+  return { commits: span.commits, from: (first && localParts(first.c.date)?.dayKey) ?? from, capped: true };
+}
+
 /**
  * Generate the story into `out`: wrapped.html, cards/NN-<id>.svg, share.svg and (unless
  * `png` is false) png/NN-<id>.png (1080x1920) plus share.png (1200x630).
@@ -519,8 +559,11 @@ function removeOldCardFiles(dir, ext, keep) {
  * colors (stats.json does not change with it either).
  * With `author`, the history is read a second time without it (same window and cap) for
  * stats.contributors, which then ranks that author against everyone ("you vs the team");
- * that second read is skipped when the author has no commits in the window.
- * Returns {commits, stats, repoName, truncated, teamTruncated, previousYearTruncated, previousYearError, limit, shallow, unbornWithRefs, html, cardsDir, cardFiles,
+ * that second read is skipped when the author has no commits in the window. When it hits
+ * the cap (`teamTruncated`), everyone is read once more from the day of the author's
+ * oldest commit in this run (see teamSpan), so both sides of the ranking cover the same
+ * span; `teamSpan` is then `{from, capped}` (else null).
+ * Returns {commits, stats, repoName, truncated, teamTruncated, teamSpan, previousYearTruncated, previousYearError, limit, shallow, unbornWithRefs, html, cardsDir, cardFiles,
  * shareSvg, pngDir, pngFiles, sharePng, pngSkipped, statsJson, asOf, pastWindow} with the
  * written paths
  * (joined onto `out`; PNG paths null/[] when skipped, statsJson null without `json`);
@@ -576,10 +619,14 @@ export async function generate({ path, paths, since, until, year, author, out, p
       previousYearError = String(err?.message ?? err).split('\n')[0] || 'unknown error';
     }
   }
+  // A capped team read holds only everyone's most recent commits, which can leave out some
+  // (or all) of yours: rank everyone over the span your commits cover instead.
+  const span = team?.truncated ? await teamSpan(team, commits, { read, until, limit: maxCommits, labels }) : null;
+  const teamCommits = span ? span.commits : team?.commits;
   const stats = computeStats(commits, {
     today: asOf,
     todayComplete: pastWindow,
-    team: team?.commits,
+    team: teamCommits,
     author,
     // Whether the history the contributors were counted in was capped.
     teamTruncated: team ? Boolean(team.truncated) : Boolean(truncated),
@@ -663,6 +710,7 @@ export async function generate({ path, paths, since, until, year, author, out, p
     ...(multi ? { repos: labels } : {}),
     truncated,
     teamTruncated: Boolean(team?.truncated),
+    teamSpan: span ? { from: span.from, capped: span.capped } : null,
     previousYearTruncated: Boolean(stats.yearOverYear?.previousTruncated),
     previousYearError,
     limit,
@@ -810,8 +858,11 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
     const n = limitText();
     notes.push(opts.since || opts.until || opts.author ? N.truncatedFiltered(n) : opts.paths ? N.truncatedRepos(n) : N.truncated(n));
   }
-  if (result.teamTruncated && !result.truncated) {
-    notes.push(N.teamTruncated(limitText()));
+  // Only when the team card is built: there is no ranking to qualify otherwise.
+  if (result.teamTruncated && hasTeamCard(result.stats)) {
+    const day = /^(\d{4})-(\d{2})-(\d{2})$/.exec(result.teamSpan?.from ?? '');
+    const from = day ? L.date(+day[3], +day[2], day[1]) : null;
+    notes.push(result.teamSpan && !result.teamSpan.capped && from ? N.teamSince(limitText(), from) : N.teamTruncated(limitText(), from));
   }
   if (result.previousYearTruncated) {
     notes.push(N.previousYearTruncated(limitText(), result.stats.yearOverYear.previousYear));

@@ -39,7 +39,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shared by two repos count once, and the same repository given twice (also as a
   worktree) is an error. The cards name the run "N repos", the intro names the repos,
   and the totals and hot-files cards add per-repo charts (commits and lines per repo,
-  files touched per repo; top three plus "+N more" beyond four). Contributors are
+  files touched per repo; top three plus "+N more" beyond four; the totals card leaves
+  its chart out when space is short, e.g. with `--year`, the numbers staying in the
+  recap and `stats.json`). Contributors are
   counted across all the repos. Single-repo output is unchanged.
 - In `stats.json` of a multi-repo run: `repo` is `null`, a top-level `repos` lists the
   labels, and `stats.repos` holds the per-repo breakdown (`name`, `commits`,
@@ -56,6 +58,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   recap adds a note; when its read fails, a warning, and the run goes on without the
   comparison.
 - Card text keeps no-break spaces (U+00A0) together when wrapping, measured as a space.
+
+### Fixed
+
+- `--author` with `--max-commits`: the team card no longer ranks your commits from one
+  span against everyone else's from another. When the unfiltered team read hits the
+  cap, everyone is read again from the day of your oldest analyzed commit (same filters,
+  cap and repos): if that fits the cap, the ranking covers exactly everyone's commits
+  since then and "you" matches the totals; if not, it covers everyone's most recent N
+  commits, with you counted among them too. The recap note says which of the two
+  applies (with the date), appears whenever the cap applied to the team (also when your
+  own read was capped), and never when there is no team card.
+- The totals card of a multi-repo `--year` run keeps the commit count at 140px or more
+  (it could shrink to 72px, the title's size): the commits-per-repo chart is compacted,
+  then dropped, first (commits per repo stay in the recap and `stats.json`).
+- The recap's "Repos" block lines up repo labels with emoji or CJK characters (padded
+  by terminal columns, not code points).
+- `--lang tr` shows the "Text" language as "Metin" on the languages card and in the
+  recap; `stats.json` keeps the English name.
 
 ## [1.1.0] - 2026-10-06
 

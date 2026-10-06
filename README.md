@@ -191,7 +191,10 @@ npx @furkycl/gitwrapped ~/code/api ~/code/web ~/code/docs
 - The cards call the run "3 repos" (intro, footer, outro, share image), the intro names
   the repos, and the totals and hot-files cards add a per-repo breakdown (commits and
   lines per repo; files touched per repo): up to four repos, or the top three plus
-  "+N more". The terminal recap lists each repo's commits and lines.
+  "+N more". When the totals card is short of space (with `--year`'s three extra rows,
+  say) its per-repo chart is left out so the commit count stays big; the per-repo
+  numbers are still in the recap and `stats.json`. The terminal recap lists each repo's
+  commits and lines.
 - Contributors (and `--author`'s "you vs the team") are counted across all the repos.
 - Every path must be a git repository (the error names the one that isn't), and two
   paths of the same repository (`. ./src`, or a `git worktree` of a repo already given)
@@ -204,9 +207,10 @@ npx @furkycl/gitwrapped ~/code/api ~/code/web ~/code/docs
 labels, screen-reader text and `<html lang="tr">`) and the terminal recap in Turkish:
 Turkish month and weekday names ("4 Eki 2026", "Çarşamba"), 24-hour times ("23:00"),
 `12.345` for thousands, `10,5` for decimals and `%74` for percents, and Turkish
-upper-casing (i → İ) on the eyebrows and labels. English is the default. Error messages
+upper-casing (i → İ) on the eyebrows and labels. Language names stay as they are,
+except generic ones like "Text" ("Metin"). English is the default. Error messages
 stay in English, and so does `stats.json`: its keys and values (archetype names, hour
-labels) are the same whatever `--lang` says. The strings live in `src/i18n/` (one table
+labels, language names) are the same whatever `--lang` says. The strings live in `src/i18n/` (one table
 per language, same keys); adding a language means adding a table there and registering it in `src/i18n/index.js`.
 
 ## Color themes (`--theme`)
@@ -294,11 +298,19 @@ filter (same window and `--max-commits`), `contributors` describes that whole te
 `you` is your entry (`{name, rank, commits, added, removed, share}`, matched by exact
 email like the filter). When `--author` matches no commits, the second read is skipped:
 `contributors` is then `{"total": 0, "top": [], "you": null, ...}` and there's no team
-card. `authorFilter` is `true` when `--author` was given. `truncated` is `true` when the
+card. `you` can also be `null` (and the team card left out) when that second read hits
+`--max-commits` and none of your commits are among everyone's most recent ones (see
+below). `authorFilter` is `true` when `--author` was given. `truncated` is `true` when the
 history the contributors were counted in hit `--max-commits` (the second, unfiltered
 read with `--author`; otherwise the same read as the top-level `truncated`), so the
-ranking covers only the most recent commits. Everything else in `stats` still covers
-only your commits.
+ranking covers only the most recent commits. With `--author`, a capped team read is
+read once more from the day of your oldest commit in the run (same filters, cap and
+repos), so you and everyone else are counted over the same span: if everyone's commits
+since then fit the cap, the ranking covers exactly those (and `you` has the commits
+`totals` counts); if not, it covers everyone's most recent `--max-commits` commits, and
+`you` counts only your commits among them (it can then be less than `totals`, or
+`null`). Either way the recap says which in a note, whenever the team card is shown.
+Everything else in `stats` still covers only your commits.
 
 With several repos, `stats.repos` is the per-repo breakdown, most commits first:
 `[{"name": "api", "commits": 120, "linesAdded": 9100, "linesRemoved": 2300,
@@ -366,9 +378,11 @@ is left as it is.
   still writes everything else.
 - **`--author` reads the history twice:** once for your commits and once for everyone's
   (same window and `--max-commits`), so the team card can rank you. If the cap cuts the
-  second read short, you're ranked within the most recent commits by everyone, and the
-  recap says so. When the author has no commits in the window, the second read is
-  skipped.
+  second read short, everyone is read a third time from the day of your oldest analyzed
+  commit: you're ranked against everyone's commits since then when they fit the cap, or
+  else within the most recent commits by everyone (your own counted there too, so the
+  card can show fewer of yours than the totals, or be left out). The recap says which.
+  When the author has no commits in the window, the second read is skipped.
 - **Two contributor counts:** the totals card's "Contributors" counts distinct emails
   only, while the team card also counts commits with no email (one contributor per
   author name), so the two numbers can differ in a history with email-less commits.

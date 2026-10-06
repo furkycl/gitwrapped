@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   under it. With several repos a pattern matches the path inside its repo, and a path
   pattern (with a `/`) also the shown `<repo>/<path>`. Commits are never dropped, so commit counts, active days, streaks
   and habits do not change. `stats.json` gets `filters.exclude` (`[]` when none).
+- Monthly timeline card ("Month by month"), right after the activity calendar: commits
+  per calendar month as bars, with the peak month called out (a tie goes to the earliest
+  month) and how many months had commits. It only appears when the commits span two or
+  more calendar months, so a history inside one month keeps the same cards as before; it
+  shows the most recent 24 months at most. Author-local months like the other day-based
+  stats; commits dated after tomorrow are left off the card. In English and Turkish, in
+  every theme. `stats.json` gets `stats.months`: every month from the first to the last
+  active one (`{month: "YYYY-MM", commits}`, zero-filled) and the `peak` month.
 
 ## [1.2.0] - 2026-10-06
 

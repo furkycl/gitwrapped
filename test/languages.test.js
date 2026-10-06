@@ -7,18 +7,22 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildCards, buildCardSpecs, CARD_IDS } from '../src/cards/index.js';
+import { buildCards, buildCardSpecs, CARD_IDS, cardIdsFor } from '../src/cards/index.js';
 import { HELP_TEXT, openCommand, openInBrowser, parseCli, run, windowsFileUrl } from '../src/cli.js';
 import { buildStatsJson } from '../src/json.js';
 import { computeLanguages, computeStats, languageOf, languageType, LANGUAGE_NAMES, OTHER_LANGUAGE, percentShares } from '../src/stats/index.js';
 import { formatSummary } from '../src/summary.js';
 import { makeFixtureRepo } from '../scripts/make-fixture-repo.js';
 
+// The full card set of a team whose commits fall in one calendar month (the fixtures):
+// every card but the monthly timeline (see cardIdsFor).
+const TEAM_IDS = cardIdsFor({ contributors: { total: 2 } });
+
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const BIN = fileURLToPath(new URL('../bin/gitwrapped.js', import.meta.url));
 const TODAY = '2026-10-05';
 const pad = (n) => String(n).padStart(2, '0');
-const STEMS = CARD_IDS.map((id, i) => `${pad(i + 1)}-${id}`);
+const STEMS = TEAM_IDS.map((id, i) => `${pad(i + 1)}-${id}`);
 
 const f = (path, added, removed, binary = false) => ({ path, added, removed, binary });
 const c = (...files) => ({ hash: 'h', author: 'A', email: 'a@x', date: '2026-10-04T10:00:00Z', subject: 'feat: x', files });
@@ -229,8 +233,8 @@ describe('computeLanguages', () => {
 // --- card --------------------------------------------------------------------------------
 
 describe('languages card', () => {
-  test('sits right after hot files as card 07 (of 10, or 11 with the contributors card)', () => {
-    assert.equal(CARD_IDS.length, 11);
+  test('sits right after hot files as card 07 (or 08 after the optional monthly timeline)', () => {
+    assert.equal(CARD_IDS.length, 12);
     assert.equal(CARD_IDS.indexOf('languages'), CARD_IDS.indexOf('hot-files') + 1);
     assert.equal(STEMS[6], '07-languages');
     assert.equal(langSpec({}).number, '07');
@@ -343,14 +347,14 @@ describe('languages card', () => {
     assert.equal(other.title, 'No code languages detected');
     assert.match(other.subtitle, /^2 files changed, none in a language we recognize/);
     for (const s of [{}, { languages: null }, { languages: { languages: 'x' } }, { languages: { languages: [null, { name: '' }, { name: 'Go', lines: NaN, files: -1 }] } }]) {
-      const svg = buildCards(s)[CARD_IDS.indexOf('languages')].svg;
+      const svg = buildCards(s)[TEAM_IDS.indexOf('languages')].svg;
       assert.ok(!/NaN|undefined|null|\[object/.test(svg.replace(/<[^>]*>/g, ' ')));
       assert.ok(svg.includes('No code languages detected'));
     }
   });
 
   test('language names are XML-escaped', () => {
-    const svg = buildCards({ languages: { basis: 'lines', totalLines: 1, totalFiles: 1, languages: [{ name: '<x>&"', lines: 1, files: 1, share: 100 }] } })[CARD_IDS.indexOf('languages')].svg;
+    const svg = buildCards({ languages: { basis: 'lines', totalLines: 1, totalFiles: 1, languages: [{ name: '<x>&"', lines: 1, files: 1, share: 100 }] } })[TEAM_IDS.indexOf('languages')].svg;
     assert.ok(!svg.includes('<x>'));
     assert.ok(svg.includes('&lt;x&gt;&amp;'));
   });

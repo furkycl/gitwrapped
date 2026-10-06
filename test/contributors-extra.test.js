@@ -138,7 +138,7 @@ describe('contributors card: rows, numbering and layout', () => {
     const stats = statsOf([c('Ada', 'ada@x.io'), c('ADA', 'ADA@X.IO'), c('Ada L', 'Ada@x.io')]);
     assert.equal(stats.contributors.total, 1);
     const specs = buildCardSpecs(stats, { today: TODAY });
-    assert.deepEqual(specs.map((s) => s.id), CARD_IDS.filter((id) => id !== 'contributors'));
+    assert.deepEqual(specs.map((s) => s.id), CARD_IDS.filter((id) => id !== 'contributors' && id !== 'months'));
     assert.deepEqual(specs.map((s) => s.spec.number), times(10, (i) => pad(i + 1)));
     assert.equal(cardOf(stats), undefined);
   });

@@ -6,12 +6,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { inflateSync } from 'node:zlib';
 import { loadResvg, needsEmojiStrip, pngSize, renderPng, SANS_FAMILY, stripEmojiFromText } from '../src/png.js';
-import { buildCards, CARD_IDS, measureText, renderCard, renderShareCard, renderShareSvg } from '../src/cards/index.js';
+import { buildCards, CARD_IDS, cardIdsFor, measureText, renderCard, renderShareCard, renderShareSvg } from '../src/cards/index.js';
 import { escapeXml, FONT_FAMILY } from '../src/cards/svg.js';
 import { computeStats } from '../src/stats/index.js';
 import { readCommits } from '../src/git.js';
 import { run } from '../src/cli.js';
 import { makeFixtureRepo } from '../scripts/make-fixture-repo.js';
+
+// The full card set of a team whose commits fall in one calendar month (the fixtures):
+// every card but the monthly timeline (see cardIdsFor).
+const TEAM_IDS = cardIdsFor({ contributors: { total: 2 } });
 
 const TODAY = '2024-03-14';
 const INJECT = `<script>&"'`;
@@ -383,7 +387,7 @@ describe('rendered PNGs keep text inside the padding', () => {
       // Language names starting with "J" (its hook reaches left of the glyph origin).
       ['languages J', buildCards({ languages: { totalLines: 60, totalFiles: 4, basis: 'lines', languages: [
         { name: 'Java', lines: 30, files: 1, share: 50 }, { name: 'JSON', lines: 15, files: 1, share: 25 },
-        { name: 'Julia', lines: 10, files: 1, share: 17 }, { name: 'JavaScript', lines: 5, files: 1, share: 8 }] } })[CARD_IDS.indexOf('languages')].svg],
+        { name: 'Julia', lines: 10, files: 1, share: 17 }, { name: 'JavaScript', lines: 5, files: 1, share: 8 }] } })[TEAM_IDS.indexOf('languages')].svg],
     ];
     for (const [label, svg] of cards) await check(svg, 96, label);
   });
@@ -482,7 +486,7 @@ describe('CLI PNG export', () => {
     out = mkdtempSync(join(tmpdir(), 'gw-png-'));
   });
   after(() => rmSync(out, { recursive: true, force: true, maxRetries: 5 }));
-  const svgFiles = CARD_IDS.map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}.svg`);
+  const svgFiles = TEAM_IDS.map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}.svg`);
 
   test('renderer unavailable → SVG + HTML still written, exit 0, "PNG export skipped" on stderr', async () => {
     const dest = join(out, 'missing');
@@ -542,9 +546,9 @@ describe('CLI PNG export', () => {
     };
     const r = await runCaptured([fixture.dir, '--out', dest], { today: TODAY, renderPng: spy });
     assert.equal(r.code, 0, r.stderr);
-    assert.deepEqual(seen, [...CARD_IDS.map(() => [1080, '1080x1920']), [1200, '1200x630']]);
+    assert.deepEqual(seen, [...TEAM_IDS.map(() => [1080, '1080x1920']), [1200, '1200x630']]);
     assert.deepEqual(readdirSync(join(dest, 'png')).sort(), svgFiles.map((f) => f.replace(/\.svg$/, '.png')));
     assert.ok(existsSync(join(dest, 'share.png')));
-    assert.ok(r.stdout.includes(`${CARD_IDS.length} PNGs in ${join(dest, 'png')}`), r.stdout);
+    assert.ok(r.stdout.includes(`${TEAM_IDS.length} PNGs in ${join(dest, 'png')}`), r.stdout);
   });
 });

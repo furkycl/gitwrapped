@@ -15,6 +15,10 @@ import { computeStats } from '../src/stats/index.js';
 import { CARD_IDS, cardIdsFor } from '../src/cards/index.js';
 import { makeFixtureRepo } from '../scripts/make-fixture-repo.js';
 
+// The full card set of a team whose commits fall in one calendar month (the fixtures):
+// every card but the monthly timeline (see cardIdsFor).
+const TEAM_IDS = cardIdsFor({ contributors: { total: 2 } });
+
 const BIN = fileURLToPath(new URL('../bin/gitwrapped.js', import.meta.url));
 const TODAY = '2024-03-14';
 const BAD_WORDS = /\b(null|undefined|NaN)\b/;
@@ -522,7 +526,7 @@ describe('run: color through the CLI', () => {
  * but the contributors card); pass `team` for the two-author fixture (every card).
  */
 function assertFullOutput(out, { team = false } = {}) {
-  const count = team ? CARD_IDS.length : cardIdsFor({}).length;
+  const count = team ? TEAM_IDS.length : cardIdsFor({}).length;
   assert.equal(readdirSync(join(out, 'cards')).length, count);
   const page = readFileSync(join(out, 'wrapped.html'), 'utf8');
   assert.match(page, /^<!doctype html>/);

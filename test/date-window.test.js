@@ -8,11 +8,15 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { generate, HELP_TEXT, parseCli, run } from '../src/cli.js';
-import { buildCardSpecs, CARD_IDS, footerText, renderShareCard, windowLabel, windowYear } from '../src/cards/index.js';
+import { buildCardSpecs, CARD_IDS, cardIdsFor, footerText, renderShareCard, windowLabel, windowYear } from '../src/cards/index.js';
 import { buildLogArgs, readHistory } from '../src/git.js';
 import { computeStats } from '../src/stats/index.js';
 import { formatSummary } from '../src/summary.js';
 import { makeFixtureRepo } from '../scripts/make-fixture-repo.js';
+
+// The full card set of a team whose commits fall in one calendar month (the fixtures):
+// every card but the monthly timeline (see cardIdsFor).
+const TEAM_IDS = cardIdsFor({ contributors: { total: 2 } });
 
 const TODAY = '2026-10-05';
 
@@ -376,7 +380,7 @@ describe('run with a window', () => {
     assert.match(stdout.data, /Note: no commits match --year 2023\./);
     assert.match(stdout.data, /No commits found/);
     // No contributors in an empty window: no contributors card.
-    assert.equal(readdirSync(join(out, 'cards')).length, CARD_IDS.length - 1);
+    assert.equal(readdirSync(join(out, 'cards')).length, TEAM_IDS.length - 1);
     assert.ok(existsSync(join(out, 'wrapped.html')));
 
     const stdout2 = sink();

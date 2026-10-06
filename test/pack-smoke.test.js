@@ -125,8 +125,9 @@ test('package.json wires the pack-smoke script and CI runs it on every OS', () =
 });
 
 test('CARD_COUNT matches the CLI card list (the smoke check must follow added/removed cards)', async () => {
-  const { CARD_IDS } = await import('../src/cards/index.js');
-  assert.equal(CARD_COUNT, CARD_IDS.length);
+  // The fixture repo has two authors and all its commits in one month (no monthly timeline).
+  const { cardIdsFor } = await import('../src/cards/index.js');
+  assert.equal(CARD_COUNT, cardIdsFor({ contributors: { total: 2 } }).length);
 });
 
 test('the real `npm pack` file list passes checkTarballFiles (offline dry run)', () => {

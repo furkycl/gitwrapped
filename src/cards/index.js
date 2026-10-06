@@ -8,6 +8,7 @@ import { renderShareSvg } from './share.js';
 import { dayKeyFromEpoch as dayKeyOf, epochDay, mondayOf, WEEKDAY_NAMES } from '../stats/time.js';
 import { languageHeadline, OTHER as OTHER_LANGUAGE } from '../stats/languages.js';
 import { daysUpTo, shownLongest } from '../stats/daily.js';
+import { monthIndex, monthsFromDays } from '../stats/months.js';
 import { hasTeamCard, shareLabel, TOP_CONTRIBUTORS } from '../stats/contributors.js';
 import { personalityReason } from '../stats/personality.js';
 import { yearOverYear } from '../stats/yoy.js';
@@ -23,10 +24,14 @@ export { COLOR_THEMES, COLOR_THEME_NAMES, DEFAULT_COLOR_THEME, GRADIENT_NAMES, i
  * run when they do not apply, so a card set is CARD_IDS or a subsequence of it: see
  * cardIdsFor(). Cards are numbered by their position in the actual set (01, 02, ...).
  */
-export const CARD_IDS = Object.freeze(['intro', 'totals', 'peak-hour', 'streak', 'activity', 'hot-files', 'languages', 'contributors', 'messages', 'personality', 'outro']);
+export const CARD_IDS = Object.freeze(['intro', 'totals', 'peak-hour', 'streak', 'activity', 'months', 'hot-files', 'languages', 'contributors', 'messages', 'personality', 'outro']);
 
-/** When each optional card applies (see hasTeamCard in stats/contributors.js). */
+/**
+ * When each optional card applies: `(stats, {today}) => boolean` (see hasTeamCard in
+ * stats/contributors.js and hasMonthsCard below).
+ */
 const APPLIES = {
+  months: (stats, opts) => hasMonthsCard(stats, opts),
   contributors: hasTeamCard,
 };
 
@@ -35,11 +40,55 @@ export const OPTIONAL_CARD_IDS = Object.freeze(Object.keys(APPLIES));
 
 /**
  * The ids of the cards built for `stats`, in display order: CARD_IDS without the
- * optional cards that do not apply (the contributors card for a single-author history,
- * or for an --author with no commits; see hasTeamCard).
+ * optional cards that do not apply (the monthly timeline when the commits fall in a single
+ * calendar month, see hasMonthsCard; the contributors card for a single-author history,
+ * or for an --author with no commits, see hasTeamCard). `today` ('YYYY-MM-DD', as for
+ * buildCards) leaves future-dated days out of the month count.
  */
-export function cardIdsFor(stats) {
-  return CARD_IDS.filter((id) => !APPLIES[id] || APPLIES[id](stats));
+export function cardIdsFor(stats, { today } = {}) {
+  return CARD_IDS.filter((id) => !APPLIES[id] || APPLIES[id](stats, { today: text(today) }));
+}
+
+/** The most months the monthly timeline card shows (the most recent ones; stats.json keeps all). */
+export const MAX_SHOWN_MONTHS = 24;
+
+/**
+ * The months the monthly timeline card is drawn from, as `{months, peak}` (see
+ * stats/months.js), built from stats.daily: with a valid `today`, days after today + 1
+ * (future-dated commits) are left out, like on the activity calendar, so a commit dated
+ * 2099 does not stretch the timeline; when every day is in the future nothing is left
+ * (and the card is not built). Only without stats.daily is stats.months used as it is
+ * (invalid entries dropped).
+ */
+export function shownMonths(stats, today) {
+  const all = daysUpTo(stats?.daily?.days, null);
+  if (all.length > 0) {
+    const t = epochDay(text(today) ?? '');
+    return monthsFromDays(t === null ? all : all.filter((x) => epochDay(x.day) <= t + 1));
+  }
+  const raw = Array.isArray(stats?.months?.months) ? stats.months.months : null;
+  if (!raw) return monthsFromDays(all);
+  const months = raw
+    .filter((m) => monthIndex(m?.month) !== null)
+    .map((m) => ({ month: m.month, commits: Math.max(0, num(m.commits)) }))
+    .sort((a, b) => monthIndex(a.month) - monthIndex(b.month));
+  return { months, peak: peakMonth(months) };
+}
+
+/** The month with the most commits (ties → the earliest), or null when none has any. */
+function peakMonth(months) {
+  let peak = null;
+  for (const m of months) if (m.commits > 0 && (!peak || m.commits > peak.commits)) peak = m;
+  return peak ? { ...peak } : null;
+}
+
+/**
+ * Whether the monthly timeline card applies: the commits (future-dated days left out
+ * with `today`, see shownMonths) span at least two calendar months.
+ */
+export function hasMonthsCard(stats, { today } = {}) {
+  const { months } = shownMonths(stats, today);
+  return months.length >= 2 && months.some((m) => m.commits > 0);
 }
 
 /** The default string table (see src/i18n). */
@@ -807,9 +856,82 @@ function outro(s, ctx) {
   };
 }
 
-const BUILDERS = { intro, totals, 'peak-hour': peakHour, streak, activity, 'hot-files': hotFiles, languages, contributors, messages, personality, outro };
+/** 'YYYY-MM' → {year, month (1-12)}. */
+const monthParts = (key) => {
+  const i = monthIndex(key);
+  return { year: Math.floor(i / 12), month: (i % 12) + 1 };
+};
+
+/**
+ * The monthly timeline card (only built when the commits span 2+ calendar months, see
+ * cardIdsFor): commits per month as bars, the most recent MAX_SHOWN_MONTHS at most, with
+ * the peak month (ties → the earliest) called out.
+ */
+function months(s, ctx) {
+  const { L } = ctx;
+  const M = L.monthly;
+  const all = shownMonths(s, ctx.today).months;
+  const list = all.slice(-MAX_SHOWN_MONTHS);
+  const clipped = list.length < all.length;
+  const peak = peakMonth(list);
+  const longName = (key) => {
+    const p = monthParts(key);
+    return `${L.monthNames[p.month - 1]} ${p.year}`;
+  };
+  const values = list.map((m) => m.commits);
+  // Tick labels: every `step`-th month of the year (step divides 12, so January is always
+  // labelled), January as its year, the others by their short name. A label needs about
+  // 80px; the chart is 888px (the content width) wide.
+  const need = 80 / (888 / Math.max(1, list.length));
+  const step = [1, 2, 3, 4, 6, 12].find((k) => k >= need) ?? 12;
+  const labels = list.map((m) => {
+    const p = monthParts(m.month);
+    if ((p.month - 1) % step !== 0) return '';
+    return p.month === 1 ? String(p.year) : L.months[p.month - 1];
+  });
+  const active = list.filter((m) => m.commits > 0).length;
+  const tiedCount = peak ? list.filter((m) => m.commits === peak.commits).length : 0;
+  // Every active month the same: no peak to call out ("3 commits in every active month").
+  const steady = tiedCount > 1 && tiedCount === active;
+  // Every month tied for the peak is highlighted; the count goes above the earliest.
+  const highlight = peak && !steady ? list.flatMap((m, i) => (m.commits === peak.commits ? [i] : [])) : [];
+  const chart = {
+    kind: 'bars',
+    title: M.chartTitle,
+    maxBarHeight: 560,
+    values,
+    labels,
+    titles: list.map((m) => M.barTitle(longName(m.month), m.commits)),
+    highlight,
+    peakLabel: peak && !steady ? L.num(peak.commits) : '',
+  };
+  // A clipped timeline that ends before the month the cards are "as of" (a repo that went
+  // quiet) names its last month instead of saying "your last 24 months".
+  let eyebrow = M.eyebrow;
+  if (clipped) {
+    const last = monthIndex(list[list.length - 1].month);
+    const asOf = parseDay(ctx.asOf);
+    const end = monthParts(list[list.length - 1].month);
+    eyebrow = asOf && last < asOf.year * 12 + asOf.month - 1 ? M.monthsTo(list.length, end.month, end.year) : M.lastMonths(list.length);
+  }
+  if (!peak) return { eyebrow, big: '0', title: L.units.commit[1], subtitle: L.empty, chart };
+  const activeText = active === list.length ? M.everyMonth(list.length) : M.active(active, list.length);
+  if (steady) {
+    return { eyebrow, big: L.num(peak.commits), title: M.steadyTitle(peak.commits), subtitle: activeText, chart };
+  }
+  const p = monthParts(peak.month);
+  return {
+    eyebrow,
+    big: M.big(p.month, p.year),
+    title: tiedCount > 1 ? M.titleTied : M.title,
+    subtitle: `${M.peak(peak.commits)} ${activeText}`,
+    chart,
+  };
+}
+
+const BUILDERS = { intro, totals, 'peak-hour': peakHour, streak, activity, months, 'hot-files': hotFiles, languages, contributors, messages, personality, outro };
 /** Each card's gradient name (resolved in the run's color theme, see themes.js). */
-const CARD_THEMES = { intro: 'pulse', totals: 'ocean', 'peak-hour': 'cosmic', streak: 'ember', activity: 'cosmic', 'hot-files': 'mint', languages: 'ocean', contributors: 'ember', messages: 'neon', personality: 'sunset', outro: 'gold' };
+const CARD_THEMES = { intro: 'pulse', totals: 'ocean', 'peak-hour': 'cosmic', streak: 'ember', activity: 'cosmic', months: 'neon', 'hot-files': 'mint', languages: 'ocean', contributors: 'ember', messages: 'neon', personality: 'sunset', outro: 'gold' };
 
 /**
  * Footer text: "<repo> · <date range>", or the requested window when --since / --until
@@ -908,7 +1030,7 @@ export function buildCardSpecs(stats, { repoName, since, until, author, today, l
   const u = parseDay(ctx.until);
   ctx.asOf = t && u && u.key < t.key ? u.key : (t?.key ?? null);
   const footer = footerText(stats, ctx);
-  return cardIdsFor(stats).map((id, i) => ({
+  return cardIdsFor(stats, { today: ctx.today }).map((id, i) => ({
     id,
     spec: { theme: CARD_THEMES[id], footer, number: String(i + 1).padStart(2, '0'), idPrefix: `gw-${id}`, ...(L === EN ? {} : { lang: L.code }), ...colorThemeField(colorTheme), ...BUILDERS[id](stats, ctx) },
   }));

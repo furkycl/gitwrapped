@@ -17,12 +17,16 @@ import { buildViewerHtml, CSP } from '../src/viewer.js';
 import { pngSize } from '../src/png.js';
 import { makeFixtureRepo } from '../scripts/make-fixture-repo.js';
 
+// The full card set of a team whose commits fall in one calendar month (the fixtures):
+// every card but the monthly timeline (see cardIdsFor).
+const TEAM_IDS = cardIdsFor({ contributors: { total: 2 } });
+
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const BIN = fileURLToPath(new URL('../bin/gitwrapped.js', import.meta.url));
 const TODAY = '2026-10-05';
 const pad = (n) => String(n).padStart(2, '0');
 // The fixture has two authors, so its card set is every card (contributors included).
-const STEMS = CARD_IDS.map((id, i) => `${pad(i + 1)}-${id}`);
+const STEMS = TEAM_IDS.map((id, i) => `${pad(i + 1)}-${id}`);
 const at = (date) => ({ hash: date, author: 'A', email: 'a@x', date, subject: 'feat: x', files: [], filesChanged: 0, linesAdded: 0, linesRemoved: 0 });
 
 function bin(args, env = {}) {
@@ -297,9 +301,9 @@ describe('viewer page', () => {
     assert.equal(r.status, 0, r.stderr);
     const page = readFileSync(join(out, 'wrapped.html'), 'utf8');
     const sections = [...page.matchAll(/<section class="slide[^"]*" id="(card-\d+)" data-card="([^"]*)"/g)];
-    assert.deepEqual(sections.map((m) => m[1]), CARD_IDS.map((_, i) => `card-${i + 1}`));
-    assert.deepEqual(sections.map((m) => m[2]), [...CARD_IDS]);
-    assert.equal((page.match(/<span class="bar[^"]*"><i><\/i><\/span>/g) ?? []).length, CARD_IDS.length);
+    assert.deepEqual(sections.map((m) => m[1]), TEAM_IDS.map((_, i) => `card-${i + 1}`));
+    assert.deepEqual(sections.map((m) => m[2]), [...TEAM_IDS]);
+    assert.equal((page.match(/<span class="bar[^"]*"><i><\/i><\/span>/g) ?? []).length, TEAM_IDS.length);
     const ids = [...page.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
     assert.equal(new Set(ids).size, ids.length, `duplicate ids: ${ids.filter((x, i) => ids.indexOf(x) !== i)}`);
     assert.ok(page.includes(`<meta http-equiv="Content-Security-Policy" content="${CSP}">`));

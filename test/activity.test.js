@@ -8,9 +8,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { generate } from '../src/cli.js';
 import { makeFixtureRepo } from '../scripts/make-fixture-repo.js';
-import { buildCards, buildCardSpecs, CARD_IDS, formatDay, layoutCard, renderCard } from '../src/cards/index.js';
+import { buildCards, buildCardSpecs, CARD_IDS, cardIdsFor, formatDay, layoutCard, renderCard } from '../src/cards/index.js';
 import { calendarLevels, calendarMonthLabels, calendarWindow, CONTENT_BOTTOM, CONTENT_TOP } from '../src/cards/svg.js';
 import { computeDaily, computeStats, dayKeyFromEpoch, epochDay, mondayOf } from '../src/stats/index.js';
+
+// The full card set of a team whose commits fall in one calendar month (the fixtures):
+// every card but the monthly timeline (see cardIdsFor).
+const TEAM_IDS = cardIdsFor({ contributors: { total: 2 } });
 
 const TODAY = '2026-10-05';
 const at = (date) => ({ hash: date, author: 'A', email: 'a@x', date, subject: 'feat: x', files: [{ path: 'src/a.js', added: 1, removed: 0 }], filesChanged: 1, linesAdded: 1, linesRemoved: 0 });
@@ -312,7 +316,7 @@ describe('activity card', () => {
     const spec = activitySpec(computeStats([], { today: TODAY }), {});
     assert.equal(spec.big, '0');
     assert.equal(spec.subtitle, 'No commits yet — go ship something!');
-    const svg = buildCards(computeStats([], { today: TODAY }))[CARD_IDS.indexOf('activity')].svg;
+    const svg = buildCards(computeStats([], { today: TODAY }))[TEAM_IDS.indexOf('activity')].svg;
     assert.equal(cellRects(svg).length, 56);
     assert.ok(!/NaN|undefined|null/.test(svg));
   });
@@ -379,7 +383,7 @@ describe('re-running into an older output folder', () => {
     writeFileSync(join(out, 'wrapped.html'), 'old'); // an earlier run's marker
     const fakePng = async () => Buffer.from('89504e470d0a1a0a', 'hex');
     await generate({ path: fixture.dir, out }, { today: TODAY, renderPng: fakePng });
-    const expected = CARD_IDS.map((id, i) => `${pad(i + 1)}-${id}`);
+    const expected = TEAM_IDS.map((id, i) => `${pad(i + 1)}-${id}`);
     assert.deepEqual(readdirSync(join(out, 'cards')).sort(), [...expected.map((f) => `${f}.svg`), '05-mine.svg', 'notes.svg'].sort());
     assert.deepEqual(readdirSync(join(out, 'png')).sort(), [...expected.map((f) => `${f}.png`), 'keep.png'].sort());
     // Without PNGs, every known card PNG goes (old numbering included); others stay.

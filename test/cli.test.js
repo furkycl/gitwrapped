@@ -9,6 +9,10 @@ import { parseCli, run, HELP_TEXT, readVersion } from '../src/cli.js';
 import { CARD_IDS, cardIdsFor } from '../src/cards/index.js';
 import { makeFixtureRepo } from '../scripts/make-fixture-repo.js';
 
+// The full card set of a team whose commits fall in one calendar month (the fixtures):
+// every card but the monthly timeline (see cardIdsFor).
+const TEAM_IDS = cardIdsFor({ contributors: { total: 2 } });
+
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const BIN = fileURLToPath(new URL('../bin/gitwrapped.js', import.meta.url));
 const PKG = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
@@ -225,14 +229,14 @@ describe('run', () => {
     assert.equal(r.stderr, '');
     const html = join(dest, 'wrapped.html');
     assert.ok(r.stdout.startsWith(`gitwrapped: ${fixture.commits.length} commits → ${html}\n`), r.stdout);
-    const expected = CARD_IDS.map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}.svg`);
+    const expected = TEAM_IDS.map((id, i) => `${String(i + 1).padStart(2, '0')}-${id}.svg`);
     assert.deepEqual(readdirSync(join(dest, 'cards')).sort(), expected);
-    assert.ok(r.stdout.includes(`${CARD_IDS.length} cards in ${join(dest, 'cards')}\n`), r.stdout);
+    assert.ok(r.stdout.includes(`${TEAM_IDS.length} cards in ${join(dest, 'cards')}\n`), r.stdout);
     assert.ok(!r.stdout.includes(expected[0]), 'card files are not listed one by one');
     assert.ok(!r.stdout.includes('\x1b'), 'no ANSI escapes when not a TTY');
     const page = readFileSync(html, 'utf8');
     assert.match(page, /^<!doctype html>/);
-    assert.equal((page.match(/<svg\b/g) ?? []).length, CARD_IDS.length);
+    assert.equal((page.match(/<svg\b/g) ?? []).length, TEAM_IDS.length);
     assert.match(page, /<title>gitwrapped · [^<]+<\/title>/);
     assert.match(readFileSync(join(dest, 'share.svg'), 'utf8'), /^<svg [^>]*width="1200" height="630"/);
     assert.ok(r.stdout.includes(`share image: ${join(dest, 'share.svg')}`), r.stdout);

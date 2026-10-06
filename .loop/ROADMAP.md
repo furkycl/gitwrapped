@@ -76,7 +76,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
   - [x] CHANGELOG 1.3.0 + version bump, regenerate docs/self-wrapped (run `git fetch --unshallow` first — loop clones are shallow) + hero GIF, README in sync
 
 ## M10 — 1.4 (proposed by loop turn 039 per the M8 owner note "do not finish the loop"; owner may prune)
-- [ ] Longest break: the longest gap between two consecutive active days in the window (from/to dates, days) on the streak card, stats.json `stats.streaks.longestBreak` and recap; localized en/tr; tests
+- [x] Longest break: the longest gap between two consecutive active days in the window (from/to dates, days) on the streak card, stats.json `stats.streaks.longestBreak` and recap; localized en/tr; tests
 - [ ] `--md`: also write `<out>/wrapped.md`, a Markdown summary (headline numbers, peak hour, streaks, hot files, languages, personality; links the card SVGs) for READMEs and PR descriptions, localized via `--lang`, no emails; tests
 - [ ] Commit size mix: share of tiny (<10 lines) / small / medium / large (>500 lines) non-merge commits (same ignore rules as hot files) on the totals or messages card, stats.json `stats.commitSizes`; tests
 - [ ] 1.4.0 release prep: cold audit of the 1.4 work + fixes, CHANGELOG 1.4.0, bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync (split if too big)

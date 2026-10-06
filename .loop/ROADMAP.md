@@ -54,5 +54,5 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - 1.1.0 release prep (split in turn 024):
   - Fix the pre-1.1.0 cold audit findings (see STATE turn 024 note) — split in turn 025:
     - [x] HIGH/MED: --no-png stale-PNG cleanup outside owned out dir, symlinked output targets, future-dated commits vs current streak/activity window, viewer hover tooltips blocked by tap zones
-    - [ ] LOW: --author email privacy on images, --open non-zero exit, dormant-repo activity copy, steady-shipper span with mixed offsets, recap nits (−0, bidi chars), viewer a11y, future-dated commits still stretch the footer date range + steady-shipper span
+    - [x] LOW: --author email privacy on images, --open non-zero exit, dormant-repo activity copy, steady-shipper span with mixed offsets, recap nits (−0, bidi chars), viewer a11y, future-dated commits still stretch the footer date range + steady-shipper span
   - [ ] CHANGELOG 1.1.0 + version bump, regenerate docs/self-wrapped + hero GIF (10 cards), README in sync

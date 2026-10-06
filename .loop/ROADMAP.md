@@ -81,4 +81,12 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] Commit size mix: share of tiny (<10 lines) / small / medium / large (>500 lines) non-merge commits (same ignore rules as hot files) on the totals or messages card, stats.json `stats.commitSizes`; tests
 - 1.4.0 release prep (split in turn 043):
   - [x] Cold audit of the 1.4 work (longest break, --md, commit size mix; diff 97545d0..main) + fix every real bug found, with tests
-  - [ ] CHANGELOG 1.4.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync
+  - [x] CHANGELOG 1.4.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync
+
+## M11 — 1.5 (proposed by loop turn 044 per the M8 owner note "do not finish the loop"; owner may prune)
+- [ ] Conventional-commit mix: share of feat/fix/docs/refactor/test/chore/other subjects (`type(scope)!:` prefix, case-insensitive) on the messages card when ≥20% of commits use the convention, stats.json `stats.commitTypes`, recap and wrapped.md; en/tr; tests
+- [ ] First commit: the first commit in the window (day, subject, short hash) on the intro card ("It all began with …") and in stats.json `stats.firstCommit`, recap and wrapped.md; emails never shown; en/tr; tests
+- [ ] Co-authors: count `Co-authored-by:` trailers per commit (after .mailmap, names only) — "N commits paired" on the totals or team card, top co-author, stats.json `stats.coAuthors`; en/tr; tests
+- 1.5.0 release prep (split as before):
+  - [ ] Cold audit of the 1.5 work (diff 1.4.0 release commit..main) + fix every real bug found, with tests
+  - [ ] CHANGELOG 1.5.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync

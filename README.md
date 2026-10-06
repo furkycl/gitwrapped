@@ -98,7 +98,7 @@ gitwrapped [path...] [options]
 | `path`                | Path to the git repository (default: `.`; an empty path also means `.`). Give several paths for one Wrapped of all of them (see [Several repos at once](#several-repos-at-once)) |
 | `--since YYYY-MM-DD`  | Only include commits made on or after this day (the author's local calendar day)       |
 | `--until YYYY-MM-DD`  | Only include commits made on or before this day, inclusive (the author's local calendar day) |
-| `--year YYYY`         | One calendar year, the classic Wrapped: same as `--since YYYY-01-01 --until YYYY-12-31` (can't be combined with them) |
+| `--year YYYY`         | One calendar year, the classic Wrapped: same as `--since YYYY-01-01 --until YYYY-12-31` (can't be combined with them), plus a comparison with the year before (see [Year over year](#year-over-year)) |
 | `--author <email>`    | Only include commits by this author email (exact, case-insensitive match against the email after `.mailmap` is applied) |
 | `--out <dir>`         | Output directory (default: `gitwrapped-out`, created if needed)                        |
 | `--lang <code>`       | Language of the cards, share image, viewer and terminal recap: `en` (English, default) or `tr` (Türkçe). Also `--lang=tr`; an unknown code is an error. `stats.json` and file names stay the same in every language |
@@ -154,6 +154,22 @@ npx @furkycl/gitwrapped --no-png
 # CI or logs: no color, first line is machine-friendly
 NO_COLOR=1 npx @furkycl/gitwrapped --no-png | head -1
 ```
+
+## Year over year
+
+With `--year`, gitwrapped also reads the year before with the same filters (`--author`,
+every repo given, `.mailmap`, `--max-commits`) and compares the two:
+
+- the totals card adds three rows: commits, lines changed (added + removed) and active
+  days vs the previous year, as signed changes (`+42`, `−1,203`, `±0`);
+- the outro card opens with one line, e.g. "vs 2024: +42 commits, −1,203 lines
+  changed, +5 active days.";
+- the terminal recap gets a `vs 2024` line, and `stats.json` a `yearOverYear` object
+  (see [JSON output](#json-output)).
+
+When either year has no commits (your first year in the repo, or a quiet one) there is
+nothing to compare, and nothing is added. `--since` / `--until` windows are never
+compared, even when they cover exactly one calendar year.
 
 ## Several repos at once
 
@@ -224,7 +240,7 @@ but it does contain commit subjects and hashes and repo-relative file paths (see
 | `asOf`          | `YYYY-MM-DD` the current streak is counted up to: today, or the end of a past `--until` / `--year` window |
 | `filters`       | `{since, until, author, maxCommits}` as used (`--year` shows as since/until); dates and author are `null` when not set, `maxCommits` is the cap in effect |
 | `truncated`     | `true` when `--max-commits` cut the history short                             |
-| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `hotFiles`, `languages`, `contributors`, `messages`, `personality`, and `repos` with several repos |
+| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `hotFiles`, `languages`, `contributors`, `messages`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
 
 ```json
 {
@@ -291,6 +307,15 @@ of all commits with one decimal; a repo with no commits in the window is listed 
 zeros). File paths everywhere in `stats` carry the repo prefix (`api/src/server.js`).
 With a single repo there is no `repos` key at all, and the file is the same as before.
 
+With `--year`, `stats.yearOverYear` (the last key of `stats`) compares that year with
+the one before: `{"year": 2025, "previousYear": 2024, "commits": {"current": 412,
+"previous": 370, "delta": 42}, "lines": {...}, "activeDays": {...},
+"previousTruncated": false}`. `lines` is lines changed (added + removed, as in
+`totals`), each `delta` is `current - previous`, and `previousTruncated` is `true` when
+the previous year hit `--max-commits`. The key is absent without `--year`, and also when
+either year has no commits (a repo's first year, or a quiet year): there is nothing to
+compare, and the output is the same as for `--since YYYY-01-01 --until YYYY-12-31`.
+
 Without `--json` no stats.json is written, and one left over from an earlier `--json` run
 is left as it is.
 
@@ -333,6 +358,12 @@ is left as it is.
   recap says so. You can change this with `--max-commits n`; with a date window or
   `--author` it counts only matching commits. If `git log` output is still too large,
   gitwrapped asks you to narrow it with `--since` / `--until` / `--year` or `--author`.
+- **`--year` reads the year before too:** with the same `--author`, repos, `.mailmap`
+  and `--max-commits`, for the year-over-year comparison (skipped when the year itself
+  has no commits). If the cap cuts that year short, the recap says so and its numbers
+  cover only its most recent commits (`previousTruncated` in `stats.json`). If that
+  extra read fails, gitwrapped prints a one-line warning, leaves the comparison out and
+  still writes everything else.
 - **`--author` reads the history twice:** once for your commits and once for everyone's
   (same window and `--max-commits`), so the team card can rank you. If the cap cuts the
   second read short, you're ranked within the most recent commits by everyone, and the

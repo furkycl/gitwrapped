@@ -2,11 +2,16 @@
 // checks it). Turkish puts no plural suffix after a number ("8 commit", "3 gün"), and the
 // copy avoids attaching case suffixes to numbers, names or dates (their vowel harmony
 // depends on how the value is read aloud), so every template works for any value.
-import { formatDecimal, formatInteger } from './format.js';
+import { formatDecimal, formatDelta, formatInteger } from './format.js';
 
 const num = (n) => formatInteger(n, '.');
 const dec = (n) => formatDecimal(n, '.', ',');
 const plural = (n, [one, many]) => `${num(n)} ${n === 1 ? one : many}`;
+const delta = (n) => formatDelta(n, '.');
+const signedPlural = (n, [one, many]) => `${delta(n)} ${Math.abs(Math.round(n)) === 1 ? one : many}`;
+/** The same, kept on one line on the cards (no-break spaces). */
+const signedPluralNb = (n, unit) => signedPlural(n, unit).replace(/ /g, '\u00a0');
+const yoyChanges = (commits, lines, days) => `${signedPlural(commits, UNITS.commit)}, ${signedPlural(lines, UNITS.line)}, ${signedPlural(days, UNITS.activeDay)}`;
 const pad2 = (n) => String(n).padStart(2, '0');
 
 const UNITS = {
@@ -33,6 +38,7 @@ export default {
   // --- formatting ----------------------------------------------------------------------
   num,
   dec,
+  delta,
   pct: (r) => `%${r}`,
   // Turkish casing: i → İ, ı → I. The explicit i → İ first keeps it right even on a
   // Node build without full ICU (where the locale argument is ignored). The brands "git"
@@ -96,6 +102,15 @@ export default {
     linesChanged: 'Değişen satırlar',
     linesAdded: 'Eklenen satır',
     linesRemoved: 'Silinen satır',
+  },
+
+  // "<yıl> yılına göre" needs no suffix on the number itself.
+  yoy: {
+    commits: (year) => `Commit farkı (${year})`,
+    lines: (year) => `Satır farkı (${year})`,
+    activeDays: (year) => `Gün farkı (${year})`,
+    changes: yoyChanges,
+    summary: (year, commits, lines, days) => `${year} yılına göre: ${signedPluralNb(commits, UNITS.commit)}, ${signedPluralNb(lines, ['değişen satır', 'değişen satır'])}, ${signedPluralNb(days, UNITS.activeDay)}.`,
   },
 
   peak: {
@@ -343,6 +358,7 @@ export default {
     languageDetail: (share, basis, tiedMore) => `${basis === 'files' ? 'dosyaların' : 'satırların'} ${share} kadarı${tiedMore > 0 ? `, ${num(tiedMore)} dil ile berabere` : ''}`,
     team: 'Ekip',
     repos: 'Repolar',
+    vsYear: (year) => `${year} ile fark`,
     moreRepos: (n) => `…ve ${num(n)} repo daha`,
     youAre: 'sıran',
     ofCommits: (share) => `commit'lerin ${share} kadarı`,
@@ -359,6 +375,7 @@ export default {
     truncatedFiltered: (n) => `Not: eşleşen commit sayısı ${n} üzerinde; yalnızca en yeni ${n} commit incelendi.`,
     truncated: (n) => `Not: bu repoda ${n} üzerinde commit var; yalnızca en yeni ${n} commit incelendi.`,
     truncatedRepos: (n) => `Not: bu repolarda toplam ${n} üzerinde commit var; yalnızca en yeni ${n} commit incelendi.`,
+    previousYearTruncated: (n, year) => `Not: ${year} yılında eşleşen commit sayısı ${n} üzerinde; karşılaştırma o yılın yalnızca en yeni ${n} commit'ini sayıyor.`,
     teamTruncated: (n) => `Not: katkıcı kartı seni herkesin en yeni ${n} commit'i içinde sıralıyor.`,
     shallow: "Not: sığ klon (shallow clone): en eski (sınır) commit'in satır sayıları atlandı ve daha eski geçmiş eksik.",
     unborn: "Not: geçerli dalda (HEAD) henüz commit yok ve gitwrapped yalnızca HEAD'in geçmişini okur. Commit'i olan bir dala geç (ör. git switch main) ve tekrar çalıştır.",

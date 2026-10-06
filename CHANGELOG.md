@@ -45,6 +45,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   labels, and `stats.repos` holds the per-repo breakdown (`name`, `commits`,
   `linesAdded`, `linesRemoved`, `filesTouched`, `share`). The terminal recap gets a
   "Repos" block with one line per repo.
+- Year over year: with `--year`, the year before is read too (same `--author`, repos,
+  `.mailmap` and `--max-commits`) and compared on commits, lines changed and active
+  days. The totals card adds three "vs <year>" rows with the signed change (`+42`,
+  `−3`, `±0`), the outro card opens with a one-line summary, the recap gets a
+  "vs <year>" line, and `stats.json` gets `stats.yearOverYear` (`year`, `previousYear`,
+  `commits` / `lines` / `activeDays` as `{current, previous, delta}`,
+  `previousTruncated`). Nothing is added when either year has no commits, and runs
+  without `--year` are unchanged. When `--max-commits` cuts the previous year short the
+  recap adds a note; when its read fails, a warning, and the run goes on without the
+  comparison.
+- Card text keeps no-break spaces (U+00A0) together when wrapping, measured as a space.
 
 ## [1.1.0] - 2026-10-06
 

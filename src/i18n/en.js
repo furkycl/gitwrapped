@@ -2,10 +2,16 @@
 // image, the HTML viewer and the terminal recap. tr.js has exactly the same keys and
 // function signatures (test/i18n.test.js checks it). Functions take raw numbers / plain
 // strings and do their own formatting; `units` are [singular, plural] word pairs.
-import { formatInteger } from './format.js';
+import { formatDelta, formatInteger } from './format.js';
 
 const num = (n) => formatInteger(n, ',');
 const plural = (n, [one, many]) => `${num(n)} ${n === 1 ? one : many}`;
+const delta = (n) => formatDelta(n, ',');
+/** A signed change with its unit: "+42 commits", "−1 line", "±0 active days". */
+const signedPlural = (n, [one, many]) => `${delta(n)} ${Math.abs(Math.round(n)) === 1 ? one : many}`;
+/** The same, kept on one line on the cards (no-break spaces). */
+const signedPluralNb = (n, unit) => signedPlural(n, unit).replace(/ /g, '\u00a0');
+const yoyChanges = (commits, lines, days) => `${signedPlural(commits, UNITS.commit)}, ${signedPlural(lines, UNITS.line)}, ${signedPlural(days, UNITS.activeDay)}`;
 
 const UNITS = {
   commit: ['commit', 'commits'],
@@ -33,6 +39,8 @@ export default {
   num,
   /** An average with at most one decimal: 1234.5 → "1,234.5". */
   dec: (n) => (Math.round((typeof n === 'number' && Number.isFinite(n) ? n : 0) * 10) / 10).toLocaleString('en-US', { maximumFractionDigits: 1 }),
+  /** A signed change: 42 → "+42", -3 → "−3", 0 → "±0". */
+  delta,
   /** A whole percent: 74 → "74%". */
   pct: (r) => `${r}%`,
   /** Upper-casing for eyebrows, captions and tile labels. */
@@ -107,6 +115,19 @@ export default {
     linesChanged: 'Lines changed',
     linesAdded: 'Lines added',
     linesRemoved: 'Lines removed',
+  },
+
+  /**
+   * A --year run compared with the previous year (stats.yearOverYear): row labels on the
+   * totals card, and the change in commits / lines changed / active days as one phrase.
+   */
+  yoy: {
+    commits: (year) => `Commits vs ${year}`,
+    lines: (year) => `Lines vs ${year}`,
+    activeDays: (year) => `Active days vs ${year}`,
+    changes: yoyChanges,
+    /** The outro's one-line summary; each change stays on one line (no-break spaces). */
+    summary: (year, commits, lines, days) => `vs ${year}: ${signedPluralNb(commits, UNITS.commit)}, ${signedPluralNb(lines, UNITS.line)}\u00a0changed, ${signedPluralNb(days, UNITS.activeDay)}.`,
   },
 
   peak: {
@@ -357,6 +378,8 @@ export default {
     languageDetail: (share, basis, tiedMore) => `${share} ${basis === 'files' ? 'of files' : 'of lines'}${tiedMore > 0 ? `, tied with ${tiedMore} more` : ''}`,
     team: 'Team',
     repos: 'Repos',
+    /** The year-over-year line's label: "vs 2024". */
+    vsYear: (year) => `vs ${year}`,
     moreRepos: (n) => `…and ${num(n)} more`,
     youAre: "you're",
     ofCommits: (share) => `${share} of commits`,
@@ -374,6 +397,8 @@ export default {
     truncatedFiltered: (n) => `Note: more than ${n} matching commits; only the most recent ${n} were analyzed.`,
     truncated: (n) => `Note: this repo has more than ${n} commits; only the most recent ${n} were analyzed.`,
     truncatedRepos: (n) => `Note: these repos have more than ${n} commits together; only the most recent ${n} were analyzed.`,
+    /** --year: the previous year (`year`) hit the commit cap. */
+    previousYearTruncated: (n, year) => `Note: ${year} has more than ${n} matching commits; the comparison with it counts only its most recent ${n}.`,
     teamTruncated: (n) => `Note: the contributors card ranks you within the most recent ${n} commits by everyone.`,
     shallow: 'Note: shallow clone: line counts for the oldest (boundary) commit are skipped, and older history is missing.',
     unborn: 'Note: the current branch (HEAD) has no commits yet, and gitwrapped only reads HEAD\'s history. Check out a branch with commits (e.g. git switch main) and run again.',

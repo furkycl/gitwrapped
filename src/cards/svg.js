@@ -70,10 +70,18 @@ const LETTER = /\p{L}/u;
 /** A color emoji renders wider than a CJK ideograph in most emoji fonts: ~1.3em. */
 const EMOJI_WIDTH = 1.3;
 
+/**
+ * Runs of whitespace that text layout collapses to one space and breaks lines at: every
+ * whitespace character except the no-break space (U+00A0), which keeps "+5\u00a0days"
+ * together on one line.
+ */
+const SPACES = /[^\S\u00a0]+/g;
+
 /** Width of one code point, in em (emoji clusters are handled by measureText). */
 function charWidth(ch) {
   const cp = ch.codePointAt(0);
   if (cp >= 0x20 && cp <= 0x7e) return ASCII_WIDTHS[cp - 0x20] / 1000;
+  if (cp === 0xa0) return ASCII_WIDTHS[0] / 1000; // no-break space: as wide as a space
   if (ZERO_WIDTH.test(ch) || STRIPPED_CHAR.test(ch)) return 0;
   if (FULL_WIDTH.test(ch)) return 1;
   if (cp === 0x2026 || cp === 0x2014) return 1; // ellipsis, em dash
@@ -208,7 +216,7 @@ export function fitKeepTail(text, { maxWidth, width, fallback, sep = ' · ' }) {
 }
 
 export function truncateStart(text, { maxWidth, fontSize }) {
-  text = String(text ?? '').replace(/\s+/g, ' ').trim();
+  text = String(text ?? '').replace(SPACES, ' ').trim();
   if (measureText(text, fontSize) <= maxWidth) return text;
   // Keep graphemes from the end while they fit next to the ellipsis (linear).
   const gs = graphemes(text);
@@ -226,7 +234,7 @@ export function truncateStart(text, { maxWidth, fontSize }) {
  * both ends, so names that share a prefix or a suffix stay distinguishable.
  */
 export function truncateMiddle(text, { maxWidth, fontSize }) {
-  text = String(text ?? '').replace(/\s+/g, ' ').trim();
+  text = String(text ?? '').replace(SPACES, ' ').trim();
   if (measureText(text, fontSize) <= maxWidth) return text;
   const gs = graphemes(text);
   const budget = maxWidth - measureText(ELLIPSIS, fontSize);
@@ -323,7 +331,7 @@ export function fitCount(value, maxWidth, size, factor = 1.02, lang) {
  */
 export function wrapText(text, { maxWidth, fontSize, maxLines = Infinity } = {}) {
   if (!(maxWidth > 0) || !(fontSize > 0)) throw new TypeError('wrapText needs positive maxWidth and fontSize');
-  const words = String(text ?? '').split(/\s+/).filter(Boolean);
+  const words = String(text ?? '').split(SPACES).filter(Boolean);
   // One line past maxLines is enough to know the text must be ellipsized: stop there, so
   // a huge input costs no more than the lines that are kept.
   const limit = Math.max(1, maxLines) + 1;
@@ -385,7 +393,7 @@ const TICK = { size: 30 };
 const MAX_CHART_ITEMS = 6;
 
 const clampNum = (n) => (typeof n === 'number' && Number.isFinite(n) && n > 0 ? n : 0);
-const s1 = (v) => (v === null || v === undefined ? '' : String(v).replace(/\s+/g, ' ').trim());
+const s1 = (v) => (v === null || v === undefined ? '' : String(v).replace(SPACES, ' ').trim());
 /** Heavy-weight width estimate (see BIG_WEIGHT_FACTOR). */
 const heavyWidth = (text, size) => measureText(text, size) * BIG_WEIGHT_FACTOR;
 

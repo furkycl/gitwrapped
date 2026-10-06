@@ -72,5 +72,5 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] Monthly timeline card: commits per month across the window (bars, peak month called out), localized en/tr, all themes; stats.json `stats.months`; tests
 - [x] Biggest commit: largest commit by lines changed (subject, date, +/−) on the messages card and in stats.json/recap, ignoring the same paths as hot files; tests
 - 1.3.0 release prep (split in turn 038):
-  - [ ] Cold audit of the 1.3 work (--exclude, monthly timeline card, biggest commit; diff 6bb9c58..main) + fix every real bug found, with tests
+  - [x] Cold audit of the 1.3 work (--exclude, monthly timeline card, biggest commit; diff 6bb9c58..main) + fix every real bug found, with tests
   - [ ] CHANGELOG 1.3.0 + version bump, regenerate docs/self-wrapped (run `git fetch --unshallow` first — loop clones are shallow) + hero GIF, README in sync

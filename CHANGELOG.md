@@ -60,9 +60,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instead of the machine's local midnight, so a date window gives the same commits in
   every time zone.
 - `--since` (and `--until`) dates before 1970 are rejected with a clear message.
+- Privacy: with `--author`, the intro card, share image and `wrapped.html` show only the
+  part of the email before the first `@` ("Starring ada."), never an address or domain.
+  For `Name <email>` only the name is shown, for a regex alternation (`a@x.io|b@y.io`)
+  the first alternative's local part, and nothing at all for `@domain`. `stats.json`
+  still records the full value in `filters.author`.
+- `--open` prints `Opening <path>…` first, then waits up to 1.5 seconds for the opener
+  command (`xdg-open`, `open`, `rundll32`) and warns when it exits with an error in
+  that time, not only when it cannot be started. It never waits for the browser.
+- `totals.firstDay` / `totals.lastDay` are now the earliest / latest author-local days,
+  so `firstDay <= lastDay` always holds with mixed time-zone offsets (before, they were
+  the days of the earliest / latest instants).
+- The activity card of a repo that went quiet more than 30 days ago reads "12 months to
+  <Mon YYYY>" instead of "Your last 12 months".
+- `--since` / `--until` ignore surrounding whitespace, like `--year`.
+- Viewer accessibility: the story is a `region` with the "carousel" role description,
+  the pause button uses only `aria-label` (no `aria-pressed` alongside it), single-key
+  shortcuts are ignored while typing in a text field, and every card has a
+  screen-reader text version of its content (linked with `aria-describedby`).
+- An empty run on a HEAD without commits (a new or orphan branch) while other branches
+  or tags exist adds a note that only HEAD is read, suggesting to check out a branch.
 
 ### Fixed
 
+- The Steady Shipper span no longer drops to 0 days when offsets put the earliest
+  commit's day after the latest one's.
+- A future-dated commit (clock skew, e.g. 2099) no longer stretches the date range on the
+  cards (intro, footers, share image), the longest streak shown on the cards and in the
+  recap, or the Steady Shipper span and streak: days after tomorrow are left out, as on
+  the activity calendar. `stats.json` and the totals still count them.
+- The recap prints `0` instead of `−0` / `+0` for zero (or rounded-to-zero, or invalid
+  negative) line counts, like the cards.
+- Bidi embedding / override / isolate controls (U+202A–202E, U+2066–2069) and the
+  Unicode line / paragraph separators are stripped from the recap, the cards and the
+  `wrapped.html` title / heading, so a commit message or repo name cannot visually
+  reorder text. Card text measures them as zero width, so truncation matches what is
+  drawn.
+- README: the built-in language count is exact (86).
 - `--since` in the first week of 1970 no longer sends git a pre-1970 bound it cannot parse.
 - `--no-png` no longer deletes `share.png` / `png/NN-<card>.png` in an `--out` folder that
   gitwrapped did not create (one without a `wrapped.html` from an earlier run).

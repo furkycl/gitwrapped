@@ -4,9 +4,18 @@ import { createHash } from 'node:crypto';
 
 export const AUTO_ADVANCE_MS = 6000;
 
-/** Escape a string for HTML text and double-quoted attribute contexts. */
+// Control characters (except tab / LF / CR), DEL and C1 controls, the bidi embedding /
+// override / isolate controls (U+202A-202E, U+2066-2069) and the Unicode line / paragraph
+// separators: never wanted in the page (a repo name could otherwise reorder the <title>
+// or <h1>), and the same set escapeXml() strips from the cards.
+const STRIP_HTML = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u2028\u2029\u202A-\u202E\u2066-\u2069]/g;
+
+/**
+ * Escape a string for HTML text and double-quoted attribute contexts; strips the
+ * characters above.
+ */
 export function escapeHtml(value) {
-  return String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  return String(value).replace(STRIP_HTML, '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 }
 
 /** Decode the few XML entities escapeXml() produces, so a label can be re-escaped for HTML. */
@@ -21,12 +30,13 @@ export function svgTitle(svg) {
 }
 
 /** Ensure the root <svg> carries role="img" and an aria-label (cards already do). */
-function accessibleSvg(svg, label) {
+function accessibleSvg(svg, label, describedBy) {
   const s = String(svg).replace(/^\s*<\?xml[^>]*\?>\s*/, '').trim();
   return s.replace(/<svg\b([^>]*)>/, (whole, attrs) => {
     let a = attrs;
     if (!/\srole=/.test(a)) a += ' role="img"';
     if (!/\saria-label=/.test(a)) a += ` aria-label="${escapeHtml(label)}"`;
+    if (describedBy && !/\saria-describedby=/.test(a)) a += ` aria-describedby="${escapeHtml(describedBy)}"`;
     return `<svg${a}>`;
   });
 }
@@ -150,7 +160,6 @@ const SCRIPT = `
     paused = p;
     story.classList.toggle('paused', p);
     pauseBtn.setAttribute('aria-label', p ? 'Play' : 'Pause');
-    pauseBtn.setAttribute('aria-pressed', p ? 'true' : 'false');
     pauseBtn.textContent = p ? '\\u25B6' : '\\u275A\\u275A';
   }
 
@@ -207,6 +216,7 @@ const SCRIPT = `
   function cardSvg(i) {
     var svg = slides[i].querySelector('svg');
     var clone = svg.cloneNode(true);
+    clone.removeAttribute('aria-describedby'); // points into this page only
     var box = svg.viewBox && svg.viewBox.baseVal;
     var w = (box && box.width) || 1080;
     var h = (box && box.height) || 1920;
@@ -470,8 +480,17 @@ const SCRIPT = `
   function isSpace(e) { return e.key === ' ' || e.key === 'Spacebar'; }
   // Toolbar buttons keep their own Space/Enter activation.
   function isToolbarControl(t) { return Boolean(t && t.classList && t.classList.contains('btn')); }
+  // Single-character shortcuts (P, K, D, ?) never fire while typing in a text field.
+  // Defensive: the page has no text fields of its own today, but a browser extension or
+  // a later control (search, rename) could add one.
+  function isEditable(t) {
+    if (!t) return false;
+    var tag = String(t.tagName || '').toLowerCase();
+    return tag === 'input' || tag === 'textarea' || tag === 'select' || Boolean(t.isContentEditable);
+  }
 
   document.addEventListener('keydown', function (e) {
+    // Shortcuts never take a modified key (browser / OS / assistive-tech shortcuts).
     if (e.altKey || e.ctrlKey || e.metaKey) return;
     if (helpOpen) {
       // Only Esc while the dialog is open; a native modal dialog closes itself on Esc.
@@ -480,6 +499,7 @@ const SCRIPT = `
       }
       return;
     }
+    if (isEditable(e.target)) return;
     switch (e.key) {
       case 'ArrowRight': case 'PageDown': userNext(); break;
       case 'ArrowLeft': case 'PageUp': userPrev(); break;
@@ -548,6 +568,8 @@ export const CSP = [
 /**
  * Build a complete, self-contained HTML5 story viewer for `cards` ([{id, svg}] from
  * buildCards). The SVG markup is inlined as-is (it is generated and escaped by us).
+ * A card's optional `description` (plain text, see cardDescription) becomes a visually
+ * hidden paragraph the SVG points to with aria-describedby.
  * No external requests: no fonts, scripts, stylesheets or images by URL.
  */
 export function buildViewerHtml(cards = [], { title } = {}) {
@@ -555,13 +577,17 @@ export function buildViewerHtml(cards = [], { title } = {}) {
   const n = list.length;
   const docTitle = escapeHtml(String(title ?? '').trim() || 'gitwrapped');
   const slides = list
-    .map(({ id, svg }, i) => {
+    .map(({ id, svg, description }, i) => {
       const label = svgTitle(svg) ?? `Card ${i + 1}`;
+      const desc = typeof description === 'string' ? description.trim() : '';
+      const descId = desc ? `card-${i + 1}-desc` : null;
       return [
         `<section class="slide${i === 0 ? ' active' : ''}" id="card-${i + 1}" data-card="${escapeHtml(id ?? '')}"`,
         ` data-title="${escapeHtml(label)}" aria-roledescription="slide" aria-label="${escapeHtml(`${i + 1} of ${n}`)}"`,
         ` aria-hidden="${i === 0 ? 'false' : 'true'}">\n`,
-        accessibleSvg(svg, label),
+        accessibleSvg(svg, label, descId),
+        // aria-hidden: read once, as the SVG's description, not again as page text.
+        desc ? `\n<p class="sr" id="${descId}" aria-hidden="true">${escapeHtml(desc)}</p>` : '',
         '\n</section>',
       ].join('');
     })
@@ -584,12 +610,12 @@ export function buildViewerHtml(cards = [], { title } = {}) {
 <h1 class="title">${docTitle}</h1>
 </header>
 <main class="stage" id="page-main">
-<div class="story" id="story" aria-roledescription="carousel" aria-label="${docTitle}">
+<div class="story" id="story" role="region" aria-roledescription="carousel" aria-label="${docTitle}">
 <div class="bars" aria-hidden="true">${bars}</div>
 ${slides}
 <button type="button" class="nav prev" id="prev" aria-label="Previous card"></button>
 <button type="button" class="nav next" id="next" aria-label="Next card"></button>
-<button type="button" class="pause" id="pause" aria-label="Pause" aria-pressed="false">&#10074;&#10074;</button>
+<button type="button" class="pause" id="pause" aria-label="Pause">&#10074;&#10074;</button>
 <p class="sr" id="status" aria-live="polite"></p>
 </div>
 </main>

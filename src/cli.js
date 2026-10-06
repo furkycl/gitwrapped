@@ -155,8 +155,9 @@ export function parseCli(argv) {
     }
   }
 
-  let since = values.since === undefined ? undefined : validateDate('since', values.since);
-  let until = values.until === undefined ? undefined : validateDate('until', values.until);
+  // Surrounding whitespace is ignored, as for --year (e.g. a quoted " 2025-01-01").
+  let since = values.since === undefined ? undefined : validateDate('since', values.since.trim());
+  let until = values.until === undefined ? undefined : validateDate('until', values.until.trim());
   let year;
   if (values.year !== undefined) {
     if (since || until) throw new Error('--year cannot be combined with --since or --until');
@@ -392,17 +393,18 @@ function removeOldCardFiles(dir, ext, keep) {
  * `until` (YYYY-MM-DD, inclusive) ends the window; when it is before `today` (default: the
  * machine's local date) the current streak is computed relative to `until` instead.
  * With `json`, <out>/stats.json (see json.js) is written too.
- * Returns {commits, stats, repoName, truncated, limit, shallow, html, cardsDir, cardFiles,
+ * Returns {commits, stats, repoName, truncated, limit, shallow, unbornWithRefs, html, cardsDir, cardFiles,
  * shareSvg, pngDir, pngFiles, sharePng, pngSkipped, statsJson, asOf, pastWindow} with the
  * written paths
  * (joined onto `out`; PNG paths null/[] when skipped, statsJson null without `json`);
  * `truncated` is true when the cap cut the history short, `shallow` when the repo is a
- * shallow clone; `asOf` is the day the current streak is relative to and `pastWindow`
+ * shallow clone, `unbornWithRefs` when HEAD has no commits but other branches / tags
+ * exist; `asOf` is the day the current streak is relative to and `pastWindow`
  * whether that is a past `until`.
  * `renderPng` (svg, {width}) → Promise<Buffer> replaces the PNG renderer (for tests).
  */
 export async function generate({ path, since, until, author, out, png = true, maxCommits = DEFAULT_LIMIT, json = false }, { today, renderPng: rasterize = renderPng } = {}) {
-  const { commits, truncated, limit, shallow } = await readHistory(path, { since, until, author, limit: maxCommits });
+  const { commits, truncated, limit, shallow, unborn = false, otherRefs = false } = await readHistory(path, { since, until, author, limit: maxCommits });
   // A past window's "current" streak is the one running when the window closed; its end
   // day is over, so there is no "today isn't over yet" grace day (todayComplete).
   const ref = today ?? localToday();
@@ -411,7 +413,7 @@ export async function generate({ path, since, until, author, out, png = true, ma
   const stats = computeStats(commits, { today: asOf, todayComplete: pastWindow });
   const name = await repoName(path);
   const cards = buildCards(stats, { repoName: name, since, until, author, today: ref });
-  const shareSvg = renderShareCard(stats, { repoName: name, since, until, author });
+  const shareSvg = renderShareCard(stats, { repoName: name, since, until, author, today: ref });
 
   const cardsDir = join(out, 'cards');
   const pngDir = join(out, 'png');
@@ -484,6 +486,7 @@ export async function generate({ path, since, until, author, out, png = true, ma
     truncated,
     limit,
     shallow: Boolean(shallow),
+    unbornWithRefs: Boolean(unborn && otherRefs),
     html,
     cardsDir,
     cardFiles: files.map((f) => f.file),
@@ -534,13 +537,19 @@ export function openCommand(file, platform = process.platform) {
   return { command: 'xdg-open', args: [file] };
 }
 
+/** How long --open waits for the opener command to fail before moving on. */
+export const OPEN_WAIT_MS = 1500;
+
 /**
  * Open `file` in the default browser: spawn openCommand() detached, with stdio ignored
- * and unref'd, so it never keeps gitwrapped running. Resolves once the process started;
- * rejects with the spawn error (e.g. ENOENT when xdg-open is missing). Never waits for
- * the browser. `spawn` and `platform` can be replaced for tests.
+ * and unref'd, so it never keeps gitwrapped running past the wait below.
+ * Rejects with the spawn error (e.g. ENOENT when xdg-open is missing), or with an Error
+ * when the opener exits with a non-zero code within `waitMs` (default OPEN_WAIT_MS),
+ * e.g. xdg-open finding no browser. Resolves when it exits with 0, is ended by a signal,
+ * or is still running after `waitMs`: gitwrapped then moves on and never waits for the
+ * browser itself. `spawn`, `platform` and `waitMs` can be replaced for tests.
  */
-export function openInBrowser(file, { platform = process.platform, spawn: spawnFn = spawn } = {}) {
+export function openInBrowser(file, { platform = process.platform, spawn: spawnFn = spawn, waitMs = OPEN_WAIT_MS } = {}) {
   const { command, args } = openCommand(file, platform);
   return new Promise((resolvePromise, reject) => {
     let child;
@@ -550,8 +559,23 @@ export function openInBrowser(file, { platform = process.platform, spawn: spawnF
       reject(err);
       return;
     }
-    child.once('error', reject);
-    child.once('spawn', () => resolvePromise());
+    let timer = null;
+    let settled = false;
+    const settle = (err) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (err) reject(err);
+      else resolvePromise();
+    };
+    child.once('error', settle);
+    child.once('exit', (code) => {
+      settle(typeof code === 'number' && code !== 0 ? new Error(`${command} exited with code ${code}`) : null);
+    });
+    // The timer (not the child) keeps the process alive for at most waitMs.
+    child.once('spawn', () => {
+      if (!settled) timer = setTimeout(() => settle(null), waitMs);
+    });
     child.unref?.();
   });
 }
@@ -607,7 +631,9 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
   if (result.shallow) {
     notes.push('Note: shallow clone: line counts for the oldest (boundary) commit are skipped, and older history is missing.');
   }
-  if (result.commits === 0 && opts.author && !opts.author.includes('@')) {
+  if (result.unbornWithRefs) {
+    notes.push('Note: the current branch (HEAD) has no commits yet, and gitwrapped only reads HEAD\'s history. Check out a branch with commits (e.g. git switch main) and run again.');
+  } else if (result.commits === 0 && opts.author && !opts.author.includes('@')) {
     notes.push(`Note: no commits by "${opts.author}". --author expects an email address (e.g. you@example.com).`);
   } else if (result.commits === 0 && (opts.since || opts.until || opts.author)) {
     notes.push(`Note: no commits match ${filterText(opts)}.`);
@@ -618,6 +644,7 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
       repoName: result.repoName,
       window: windowLabel(opts),
       streakAtWindowEnd: result.pastWindow,
+      today: result.asOf,
       notes,
       paths: {
         html: result.html,
@@ -634,9 +661,10 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
   if (result.pngSkipped) stderr.write(`gitwrapped: PNG export skipped: ${result.pngSkipped}\n`);
   if (opts.open) {
     const target = resolve(result.html);
+    // Say so first: the opener may take up to OPEN_WAIT_MS to report a failure.
+    stdout.write(`Opening ${stripControl(target)}…\n`);
     try {
       await openFile(target);
-      stdout.write(`Opening ${stripControl(target)}\n`);
     } catch (err) {
       const why = err?.code ?? (String(err?.message ?? err).split('\n')[0] || 'unknown error');
       stderr.write(`gitwrapped: could not open a browser (${why}); open ${target} yourself\n`);

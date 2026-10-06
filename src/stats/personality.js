@@ -1,3 +1,4 @@
+import { daysUpTo, longestRun } from './daily.js';
 import { epochDay } from './time.js';
 
 /** The commit archetypes, in tie-break order. Steady Shipper is also the fallback. */
@@ -44,7 +45,10 @@ const sumAt = (arr, idx) => idx.reduce((s, i) => s + num(arr[i]), 0);
  *   share − 0.15) / 0.35; fixaholic = (messages.counts.fix / non-merge commits − 0.15) / 0.45
  *   (non-merge commits: the `nonMergeCommits` option, else totals.commits);
  *   steady-shipper = 0.7 × activeDays / span + 0.3 × min(1, longest
- *   streak / 14), where span is firstDay..lastDay inclusive (density capped at 1).
+ *   streak / 14), where span is the days from the earlier to the later of firstDay /
+ *   lastDay, inclusive (density capped at 1). With the `today` option ('YYYY-MM-DD') and
+ *   stats.daily.days, days after today + 1 (future-dated commits) count toward neither
+ *   activeDays, the span nor the longest streak (see daily.js daysUpTo / longestRun).
  * - archetype: the top score, unless fewer than 3 commits are dated or the top score is
  *   below 0.25, in which case steady-shipper. `reason` is a short sentence quoting the
  *   real number behind it; with fewer than 3 dated commits it is "Not enough commits yet."
@@ -70,12 +74,29 @@ export function computePersonality(stats, opts) {
   const fixes = Math.min(num(stats.messages?.counts?.fix), nonMerge);
   const fixShare = nonMerge > 0 ? fixes / nonMerge : 0;
 
-  const activeDays = num(totals.activeDays);
-  const first = epochDay(totals.firstDay);
-  const last = epochDay(totals.lastDay);
-  const span = first !== null && last !== null && last >= first ? last - first + 1 : 0;
+  let activeDays = num(totals.activeDays);
+  // The span runs from the earliest to the latest active day, whatever order the two
+  // days arrive in (mixed offsets can make the earliest instant's day the later one).
+  let a = epochDay(totals.firstDay);
+  let b = epochDay(totals.lastDay);
+  // With `today` and the daily list, future-dated days (after today + 1) are left out of
+  // both the span and the active-day count, so one commit dated 2099 does not turn a
+  // daily committer into a 0.01 density.
+  // The longest streak is recomputed over the kept days too (a 2099 run is not a streak).
+  let longest = num(stats.streaks?.longest?.length);
+  const daily = Array.isArray(stats.daily?.days) ? stats.daily.days : null;
+  if (daily && epochDay(opts?.today ?? '') !== null) {
+    const keptDays = daysUpTo(daily, opts.today);
+    const kept = keptDays.map((x) => epochDay(x.day));
+    if (kept.length > 0 && kept.length < daily.length) {
+      activeDays = kept.length;
+      a = Math.min(...kept);
+      b = Math.max(...kept);
+      longest = longestRun(keptDays).length;
+    }
+  }
+  const span = a !== null && b !== null ? Math.abs(b - a) + 1 : 0;
   const density = span > 0 ? Math.min(1, activeDays / span) : 0;
-  const longest = num(stats.streaks?.longest?.length);
   const steady = activeDays > 0 ? 0.7 * density + 0.3 * Math.min(1, longest / 14) : 0;
 
   const raw = {

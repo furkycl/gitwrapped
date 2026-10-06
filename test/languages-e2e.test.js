@@ -434,7 +434,8 @@ describe('--open', () => {
       const o = join(fake, 'my out & co');
       const r = bin([repo, '--out', o, '--open'], { env: { PATH: `${fake}${delimiter}${process.env.PATH}` } });
       assert.equal(r.status, 0, r.stderr);
-      assert.equal(r.stderr, '');
+      // The fake opener exits 3 right away: that is reported, and the run still succeeds.
+      assert.match(r.stderr, /^gitwrapped: could not open a browser \((xdg-open|open) exited with code 3\); open .*wrapped\.html yourself\n$/);
       const deadline = Date.now() + 10_000;
       while (!existsSync(log) && Date.now() < deadline) await new Promise((res) => setTimeout(res, 50));
       assert.equal(readFileSync(log, 'utf8'), `1\n${join(o, 'wrapped.html')}\n`);

@@ -227,7 +227,9 @@ describe('formatDateRange edge cases', () => {
   test('offsets can make firstDay later than lastDay: the range is still ordered', () => {
     // Earliest instant (10:30Z) is local Jan 2 at +14:00; latest (11:00Z) is local Jan 1 at -12:00.
     const s = computeStats([commit('2026-01-02T00:30:00+14:00'), commit('2026-01-01T23:00:00-12:00')], { today: '2026-01-05' });
-    assert.equal(s.totals.firstDay, '2026-01-02');
+    // firstDay / lastDay are the min / max local days, not the earliest instant's day.
+    assert.equal(s.totals.firstDay, '2026-01-01');
+    assert.equal(s.totals.lastDay, '2026-01-02');
     assert.equal(footerText(s, { repoName: 'demo' }), 'demo · Jan 1 – Jan 2, 2026');
     assert.equal(formatDateRange('2026-10-05', '2026-10-04'), 'Oct 4 – Oct 5, 2026');
   });

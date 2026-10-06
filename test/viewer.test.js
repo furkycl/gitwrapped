@@ -28,8 +28,9 @@ describe('buildViewerHtml', () => {
 
   test('inlines every card SVG in order, first one active', () => {
     let pos = 0;
+    const plain = html.replace(/ aria-describedby="card-\d+-desc"/g, '');
     for (const { svg } of cards) {
-      const at = html.indexOf(svg.trim(), pos);
+      const at = plain.indexOf(svg.trim(), pos);
       assert.ok(at > pos, 'card svg inlined in order');
       pos = at;
     }

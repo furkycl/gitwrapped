@@ -502,6 +502,33 @@ describe('viewer script: keyboard', () => {
     v.key('ArrowRight');
     assert.equal(v.active, 1);
   });
+
+  test('shortcuts are ignored while typing in a text field (WCAG 2.1.4)', () => {
+    const v = boot({ reduced: false });
+    for (const target of [{ tagName: 'INPUT' }, { tagName: 'textarea' }, { tagName: 'DIV', isContentEditable: true }]) {
+      for (const k of ['d', '?', 'p', 'ArrowRight', ' ']) {
+        assert.equal(v.doc.fire('keydown', { key: k, target }).prevented, false, `${k} in ${target.tagName}`);
+      }
+    }
+    assert.equal(v.images, 0, 'no download started');
+    assert.equal(v.help.open, false);
+    assert.equal(v.paused, false);
+    assert.equal(v.active, 0);
+    v.key('d');
+    assert.equal(v.images, 1, 'D works elsewhere');
+  });
+
+  test('a tap still navigates by x position: left third back, the rest forward', () => {
+    const v = boot({ hash: '#3' });
+    const tap = (x) => {
+      v.story.fire('pointerdown', { pointerId: 1, clientX: x, clientY: 80, pointerType: 'touch', target: v.slides[0] });
+      v.story.fire('pointerup', { pointerId: 1, clientX: x, clientY: 80 });
+    };
+    tap(80);
+    assert.equal(v.active, 3);
+    tap(10);
+    assert.equal(v.active, 2);
+  });
 });
 
 describe('viewer script: no cards', () => {

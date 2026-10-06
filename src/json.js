@@ -53,13 +53,18 @@ export function toJsonSafe(value) {
  * streak is relative to (today, or a past window's end). Unset date / author filters are
  * null; maxCommits is the cap in effect. `repo` is a display name (the folder's
  * basename), never a full path.
+ * A multi-repo run passes `repos` (two or more labels, see repoLabels in src/git.js): then
+ * `repo` is null and a `repos` array of the labels follows it (stats.repos holds the
+ * per-repo numbers). Without it the document is exactly the single-repo one.
  */
-export function buildStatsJson({ stats, repoName, version, asOf, filters = {}, truncated = false }) {
+export function buildStatsJson({ stats, repoName, repos, version, asOf, filters = {}, truncated = false }) {
   const or = (v) => (v === undefined || v === '' ? null : v);
+  const multi = Array.isArray(repos) && repos.length > 1;
   const doc = {
     schemaVersion: STATS_SCHEMA_VERSION,
     generator: { name: '@furkycl/gitwrapped', version: or(version) },
-    repo: or(repoName),
+    repo: multi ? null : or(repoName),
+    ...(multi ? { repos: repos.map(String) } : {}),
     asOf: or(asOf),
     filters: {
       since: or(filters.since),

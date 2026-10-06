@@ -146,8 +146,10 @@ describe('parseCli', () => {
     );
   });
 
-  test('two positionals throw', () => {
-    assert.throws(() => parseCli(['a', 'b']), /at most one path, got 2/);
+  test('two positionals are a multi-repo run (path is the first)', () => {
+    const o = parseCli(['a', 'b']);
+    assert.equal(o.path, 'a');
+    assert.deepEqual(o.paths, ['a', 'b']);
   });
 
   test('missing value for --since throws', () => {
@@ -350,7 +352,6 @@ describe('run', () => {
 
   const errorCases = [
     [['--bogus'], /Unknown option '--bogus'/],
-    [['a', 'b'], /at most one path/],
     [['--since', '2025-02-30'], /not a real calendar date/],
     [['--since', 'nope'], /YYYY-MM-DD/],
     [['--out='], /--out requires a non-empty value/],

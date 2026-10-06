@@ -90,12 +90,12 @@ Requirements:
 ## Usage
 
 ```bash
-gitwrapped [path] [options]
+gitwrapped [path...] [options]
 ```
 
 | Argument / option     | What it does                                                                           |
 |-----------------------|----------------------------------------------------------------------------------------|
-| `path`                | Path to the git repository (default: `.`; an empty path also means `.`)               |
+| `path`                | Path to the git repository (default: `.`; an empty path also means `.`). Give several paths for one Wrapped of all of them (see [Several repos at once](#several-repos-at-once)) |
 | `--since YYYY-MM-DD`  | Only include commits made on or after this day (the author's local calendar day)       |
 | `--until YYYY-MM-DD`  | Only include commits made on or before this day, inclusive (the author's local calendar day) |
 | `--year YYYY`         | One calendar year, the classic Wrapped: same as `--since YYYY-01-01 --until YYYY-12-31` (can't be combined with them) |
@@ -103,7 +103,7 @@ gitwrapped [path] [options]
 | `--out <dir>`         | Output directory (default: `gitwrapped-out`, created if needed)                        |
 | `--lang <code>`       | Language of the cards, share image, viewer and terminal recap: `en` (English, default) or `tr` (Türkçe). Also `--lang=tr`; an unknown code is an error. `stats.json` and file names stay the same in every language |
 | `--theme <name>`      | Color theme of the cards, share image, PNGs and viewer: `default` (the colorful gradients), `mono` (grayscale) or `neon` (near-black with neon glows). Also `--theme=mono`; an unknown name is an error. Only colors change: the layout, `stats.json` and file names are the same in every theme |
-| `--max-commits <n>`   | Analyze at most the n most recent commits that match the other filters (default: 50000) |
+| `--max-commits <n>`   | Analyze at most the n most recent commits that match the other filters (default: 50000; with several repos, in total) |
 | `--no-png`            | Skip PNG rendering (faster; SVG + HTML only)                                           |
 | `--json`              | Also write every computed stat to `<out>/stats.json` (see [JSON output](#json-output)) |
 | `--open`              | Open `<out>/wrapped.html` in your default browser when done, printing `Opening <path>…` first (`open` on macOS, `xdg-open` on Linux, `rundll32 url.dll,FileProtocolHandler <file:// URL>` on Windows). It waits at most 1.5 seconds for that command (never for the browser): if it can't be started or exits with an error in that time, gitwrapped prints a one-line warning with the path and still exits 0 |
@@ -145,12 +145,42 @@ npx @furkycl/gitwrapped --theme neon
 # Another repo, into a folder of your choice
 npx @furkycl/gitwrapped ~/code/my-app --out ~/Desktop/my-app-wrapped
 
+# Several repos in one Wrapped
+npx @furkycl/gitwrapped ~/code/api ~/code/web ~/code/docs --year 2025
+
 # Fast mode: skip PNG rendering
 npx @furkycl/gitwrapped --no-png
 
 # CI or logs: no color, first line is machine-friendly
 NO_COLOR=1 npx @furkycl/gitwrapped --no-png | head -1
 ```
+
+## Several repos at once
+
+Pass more than one path to merge their histories into a single Wrapped:
+
+```bash
+npx @furkycl/gitwrapped ~/code/api ~/code/web ~/code/docs
+```
+
+- Every repo is read with the same `--since` / `--until` / `--year` / `--author`
+  filters, then the commits are merged, newest first (by author date).
+- `--max-commits n` caps the merged history at n commits in total: each repo is read
+  with the same cap (cut in git's log order), then the commits are merged and cut again
+  to the n most recent by author date.
+- File paths are prefixed with the repo's label (`api/src/server.js`), so hot files,
+  languages and "files touched" never mix up two repos' `src/index.js`. A repo's label is
+  the folder name of its top level; two repos with the same folder name become `app` and
+  `app-2`. Lockfiles and build output are still ignored at each repo's own root.
+- The cards call the run "3 repos" (intro, footer, outro, share image), the intro names
+  the repos, and the totals and hot-files cards add a per-repo breakdown (commits and
+  lines per repo; files touched per repo): up to four repos, or the top three plus
+  "+N more". The terminal recap lists each repo's commits and lines.
+- Contributors (and `--author`'s "you vs the team") are counted across all the repos.
+- Every path must be a git repository (the error names the one that isn't), and two
+  paths of the same repository (`. ./src`, or a `git worktree` of a repo already given)
+  are an error; both are checked before any history is read. A commit that appears in two
+  repos (a fork, or a second clone) is counted once, under the first repo given.
 
 ## Card language (`--lang`)
 
@@ -189,11 +219,12 @@ but it does contain commit subjects and hashes and repo-relative file paths (see
 |-----------------|-------------------------------------------------------------------------------|
 | `schemaVersion` | `1`; bumped only when a key is removed or changes meaning                     |
 | `generator`     | `{"name": "@furkycl/gitwrapped", "version": "<version>"}`                     |
-| `repo`          | The repository's folder name                                                  |
+| `repo`          | The repository's folder name (`null` when several repos were given)           |
+| `repos`         | Only with several repos: their labels, in the order given (e.g. `["api", "web", "api-2"]`) |
 | `asOf`          | `YYYY-MM-DD` the current streak is counted up to: today, or the end of a past `--until` / `--year` window |
 | `filters`       | `{since, until, author, maxCommits}` as used (`--year` shows as since/until); dates and author are `null` when not set, `maxCommits` is the cap in effect |
 | `truncated`     | `true` when `--max-commits` cut the history short                             |
-| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `hotFiles`, `languages`, `contributors`, `messages`, `personality` |
+| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `hotFiles`, `languages`, `contributors`, `messages`, `personality`, and `repos` with several repos |
 
 ```json
 {
@@ -252,6 +283,13 @@ history the contributors were counted in hit `--max-commits` (the second, unfilt
 read with `--author`; otherwise the same read as the top-level `truncated`), so the
 ranking covers only the most recent commits. Everything else in `stats` still covers
 only your commits.
+
+With several repos, `stats.repos` is the per-repo breakdown, most commits first:
+`[{"name": "api", "commits": 120, "linesAdded": 9100, "linesRemoved": 2300,
+"filesTouched": 64, "share": 61.2}, ...]` (counted like `totals`; `share` is the percent
+of all commits with one decimal; a repo with no commits in the window is listed with
+zeros). File paths everywhere in `stats` carry the repo prefix (`api/src/server.js`).
+With a single repo there is no `repos` key at all, and the file is the same as before.
 
 Without `--json` no stats.json is written, and one left over from an earlier `--json` run
 is left as it is.

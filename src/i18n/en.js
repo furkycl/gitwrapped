@@ -19,6 +19,7 @@ const UNITS = {
   card: ['card', 'cards'],
   png: ['PNG', 'PNGs'],
   fix: ['fix', 'fixes'],
+  repo: ['repo', 'repos'],
 };
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -65,6 +66,22 @@ export default {
   empty: 'No commits yet — go ship something!',
   yourRepo: 'your repo',
   calendarOf: (days) => `Commit calendar of ${plural(days, UNITS.activeDay)}`,
+
+  /** A multi-repo run (`gitwrapped repoA repoB ...`). */
+  repos: {
+    /** What the cards call the repos together: "3 repos". */
+    name: (n) => plural(n, UNITS.repo),
+    /** The intro's line naming them; `list` is already joined ("api, web and 2 more"). */
+    featuring: (list) => `Featuring ${list}.`,
+    /** The last item of that list when not every repo is named. */
+    andMore: (n) => `${num(n)} more`,
+    /** The label of the bar folding the remaining repos together. */
+    moreBar: (n) => `+${num(n)} more`,
+    commitsByRepo: 'Commits by repo',
+    commitsBarTitle: (name, commits, added, removed) => `${name}: ${plural(commits, UNITS.commit)}, ${added} / ${removed} lines`,
+    filesByRepo: 'Files touched by repo',
+    filesBarTitle: (name, files) => `${name}: ${plural(files, UNITS.file)} touched`,
+  },
 
   intro: {
     eyebrow: 'gitwrapped presents',
@@ -339,6 +356,8 @@ export default {
     /** "(74% of lines, tied with 1 more)". */
     languageDetail: (share, basis, tiedMore) => `${share} ${basis === 'files' ? 'of files' : 'of lines'}${tiedMore > 0 ? `, tied with ${tiedMore} more` : ''}`,
     team: 'Team',
+    repos: 'Repos',
+    moreRepos: (n) => `…and ${num(n)} more`,
     youAre: "you're",
     ofCommits: (share) => `${share} of commits`,
     top: 'top:',
@@ -354,9 +373,12 @@ export default {
   notes: {
     truncatedFiltered: (n) => `Note: more than ${n} matching commits; only the most recent ${n} were analyzed.`,
     truncated: (n) => `Note: this repo has more than ${n} commits; only the most recent ${n} were analyzed.`,
+    truncatedRepos: (n) => `Note: these repos have more than ${n} commits together; only the most recent ${n} were analyzed.`,
     teamTruncated: (n) => `Note: the contributors card ranks you within the most recent ${n} commits by everyone.`,
     shallow: 'Note: shallow clone: line counts for the oldest (boundary) commit are skipped, and older history is missing.',
     unborn: 'Note: the current branch (HEAD) has no commits yet, and gitwrapped only reads HEAD\'s history. Check out a branch with commits (e.g. git switch main) and run again.',
+    /** A multi-repo run; `repos` is the joined list of labels ("api and web"). */
+    unbornRepos: (repos) => `Note: the current branch (HEAD) has no commits yet in ${repos}, and gitwrapped only reads HEAD's history. Check out a branch with commits there (e.g. git switch main) and run again.`,
     authorNotEmail: (author) => `Note: no commits by "${author}". --author expects an email address (e.g. you@example.com).`,
     noMatch: (filters) => `Note: no commits match ${filters}.`,
   },

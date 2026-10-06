@@ -32,6 +32,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   before; an unknown name is an error (exit 2). Full-opacity white text keeps a WCAG contrast of at
   least 4.5:1 on every `mono` / `neon` background, also under panels and glows.
   `src/cards/themes.js` exports the tables (`COLOR_THEMES`) and `contrastRatio()`.
+- Multi-repo Wrapped: `gitwrapped repoA repoB ...` merges several repos' histories into
+  one story. Every repo is read with the same `--since` / `--until` / `--year` /
+  `--author` filters; `--max-commits` caps the merged history in total. File paths are
+  prefixed with the repo's label (its folder name; `app`, `app-2` on a clash), commits
+  shared by two repos count once, and the same repository given twice (also as a
+  worktree) is an error. The cards name the run "N repos", the intro names the repos,
+  and the totals and hot-files cards add per-repo charts (commits and lines per repo,
+  files touched per repo; top three plus "+N more" beyond four). Contributors are
+  counted across all the repos. Single-repo output is unchanged.
+- In `stats.json` of a multi-repo run: `repo` is `null`, a top-level `repos` lists the
+  labels, and `stats.repos` holds the per-repo breakdown (`name`, `commits`,
+  `linesAdded`, `linesRemoved`, `filesTouched`, `share`). The terminal recap gets a
+  "Repos" block with one line per repo.
 
 ## [1.1.0] - 2026-10-06
 

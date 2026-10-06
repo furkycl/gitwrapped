@@ -192,15 +192,59 @@ export function shownDayRange(stats, today) {
   return { firstDay: dayKeyOf(Math.min(...epochs)), lastDay: dayKeyOf(Math.max(...epochs)) };
 }
 
+/**
+ * The per-repo rows of a multi-repo run (stats.repos, see stats/repos.js), or null for a
+ * single repo (no rows, or just one): cards then look exactly as they always did.
+ */
+export function repoRows(stats) {
+  const rows = (Array.isArray(stats?.repos) ? stats.repos : []).filter((r) => text(r?.name));
+  return rows.length > 1 ? rows : null;
+}
+
+/**
+ * The name the cards, share image, viewer title and recap use for the run: "3 repos"
+ * (in `lang`) for a multi-repo run (see repoRows), else `repoName` (default "your repo").
+ */
+export function displayRepoName(stats, { repoName, lang } = {}) {
+  const L = getStrings(lang);
+  const rows = repoRows(stats);
+  return rows ? L.repos.name(rows.length) : (text(repoName) ?? L.yourRepo);
+}
+
+/** How many repos a breakdown names before folding the rest into "+N more". */
+const SHOWN_REPOS = 3;
+
+/**
+ * At most SHOWN_REPOS + 1 rows: every repo when that many or fewer, else the first
+ * SHOWN_REPOS and one folded row `{name: "+N more", ...sums}` (numeric keys summed).
+ */
+function foldRepos(rows, L) {
+  if (rows.length <= SHOWN_REPOS + 1) return rows.map((r) => ({ ...r, name: clip(text(r.name)) }));
+  const rest = rows.slice(SHOWN_REPOS);
+  const sum = (k) => rest.reduce((n, r) => n + num(r[k]), 0);
+  return [
+    ...rows.slice(0, SHOWN_REPOS).map((r) => ({ ...r, name: clip(text(r.name)) })),
+    { name: L.repos.moreBar(rest.length), more: true, commits: sum('commits'), linesAdded: sum('linesAdded'), linesRemoved: sum('linesRemoved'), filesTouched: sum('filesTouched') },
+  ];
+}
+
+/** The intro's "Featuring a, b and c." line: up to SHOWN_REPOS names, then "N more". */
+function featuring(rows, L) {
+  const names = rows.map((r) => clip(text(r.name)));
+  const list = names.length <= SHOWN_REPOS + 1 ? names : [...names.slice(0, SHOWN_REPOS), L.repos.andMore(names.length - SHOWN_REPOS)];
+  return L.repos.featuring(L.andList(list));
+}
+
 function intro(s, ctx) {
   const { L } = ctx;
   const I = L.intro;
   const commits = num(s.totals?.commits);
-  const parts = [];
-  if (commits === 0) parts.push(L.empty);
-  else parts.push(I.lead);
+  const lead = commits === 0 ? L.empty : I.lead;
   const who = authorName(ctx.author);
-  if (who) parts.push(I.starring(who));
+  const starring = who ? [I.starring(who)] : [];
+  // A multi-repo run names its repos first; the lead moves last, so it is the sentence
+  // dropped when the subtitle runs out of lines.
+  const parts = ctx.repos ? [featuring(ctx.repos, L), ...starring, lead] : [lead, ...starring];
   const shown = shownDayRange(s, ctx.today);
   const range = formatDateRange(shown.firstDay, shown.lastDay, L.code);
   const year = windowYear(ctx.since, ctx.until);
@@ -219,7 +263,7 @@ function intro(s, ctx) {
   };
 }
 
-function totals(s, { L }) {
+function totals(s, { L, repos }) {
   const T = L.totals;
   const t = s.totals ?? {};
   const commits = num(t.commits);
@@ -233,20 +277,45 @@ function totals(s, { L }) {
     { label: T.filesTouched, value: L.num(t.filesTouched) },
   ];
   if (num(t.authors) > 1) rows.push({ label: T.contributors, value: L.num(t.authors) });
+  const split = {
+    kind: 'split',
+    title: T.linesChanged,
+    segments: [
+      { label: T.linesAdded, value: signedLines(t.linesAdded, '+', L), amount: Math.max(0, num(t.linesAdded)) },
+      { label: T.linesRemoved, value: signedLines(t.linesRemoved, '−', L), amount: Math.max(0, num(t.linesRemoved)) },
+    ],
+  };
   return {
     eyebrow: T.eyebrow,
     big: L.num(commits),
     title: commits === 1 ? L.units.commit[0] : L.units.commit[1],
     subtitle: perDay > 0 ? T.perDay(perDay) : T.everyOne,
     lines: rows,
-    chart: {
-      kind: 'split',
-      title: T.linesChanged,
-      segments: [
-        { label: T.linesAdded, value: signedLines(t.linesAdded, '+', L), amount: Math.max(0, num(t.linesAdded)) },
-        { label: T.linesRemoved, value: signedLines(t.linesRemoved, '−', L), amount: Math.max(0, num(t.linesRemoved)) },
-      ],
-    },
+    // A multi-repo run adds commits per repo (the split chart stays first: when space is
+    // short, charts are dropped from the end).
+    chart: repos ? [split, repoCommitBars(repos, L)] : split,
+  };
+}
+
+/** Commits per repo as bars (the totals card of a multi-repo run). */
+function repoCommitBars(repos, L) {
+  return {
+    kind: 'hbars',
+    title: L.repos.commitsByRepo,
+    items: foldRepos(repos, L).map((r) => {
+      const added = signedLines(r.linesAdded, '+', L);
+      const removed = signedLines(r.linesRemoved, '−', L);
+      return { label: r.name, sub: `${added} / ${removed}`, subWhole: true, value: plural(r.commits, 'commit', L), amount: num(r.commits), title: L.repos.commitsBarTitle(r.name, r.commits, added, removed) };
+    }),
+  };
+}
+
+/** Distinct files touched per repo as bars (the hot-files card of a multi-repo run). */
+function repoFileBars(repos, L) {
+  return {
+    kind: 'hbars',
+    title: L.repos.filesByRepo,
+    items: foldRepos(repos, L).map((r) => ({ label: r.name, value: plural(r.filesTouched, 'file', L), amount: num(r.filesTouched), title: L.repos.filesBarTitle(r.name, r.filesTouched) })),
   };
 }
 
@@ -445,11 +514,11 @@ function activity(s, ctx = { L: EN }) {
   };
 }
 
-function hotFiles(s, { L }) {
+function hotFiles(s, { L, repos }) {
   const H = L.hotFiles;
   const files = (Array.isArray(s.hotFiles) ? s.hotFiles : []).filter((f) => text(f?.path));
   if (files.length === 0) {
-    return { eyebrow: H.eyebrow, big: H.noneBig, title: H.noneTitle, subtitle: H.noneSubtitle };
+    return { eyebrow: H.eyebrow, big: H.noneBig, title: H.noneTitle, subtitle: H.noneSubtitle, ...(repos ? { chart: repoFileBars(repos, L) } : {}) };
   }
   const [top] = files;
   const tied = files.length > 1 && num(files[1].commits) === num(top.commits);
@@ -458,19 +527,30 @@ function hotFiles(s, { L }) {
     big: basename(top.path),
     title: tied ? H.titleTied : H.title,
     subtitle: H.subtitle(top.commits, signedLines(top.linesAdded, '+', L), signedLines(top.linesRemoved, '−', L)),
-    chart: {
-      kind: 'hbars',
-      title: H.chartTitle,
-      items: files.slice(0, 5).map((f) => ({
-        label: basename(f.path),
-        sub: dirname(f.path),
-        value: plural(f.commits, 'commit', L),
-        amount: num(f.commits),
-        truncate: 'middle',
-        title: H.barTitle(f.path, f.commits, signedLines(f.linesAdded, '+', L), signedLines(f.linesRemoved, '−', L)),
-      })),
-    },
+    chart: hotFileCharts(files, repos, L),
   };
+}
+
+/**
+ * The hot-files card's charts: the most-touched files (paths of a multi-repo run start
+ * with the repo label, shown dimmed after the file name), plus, for several repos, the
+ * files touched per repo; then the file list is cut to 3 so both fit.
+ */
+function hotFileCharts(files, repos, L) {
+  const H = L.hotFiles;
+  const list = {
+    kind: 'hbars',
+    title: H.chartTitle,
+    items: files.slice(0, repos ? 3 : 5).map((f) => ({
+      label: basename(f.path),
+      sub: dirname(f.path),
+      value: plural(f.commits, 'commit', L),
+      amount: num(f.commits),
+      truncate: 'middle',
+      title: H.barTitle(f.path, f.commits, signedLines(f.linesAdded, '+', L), signedLines(f.linesRemoved, '−', L)),
+    })),
+  };
+  return repos ? [list, repoFileBars(repos, L)] : list;
 }
 
 /** A whole-number share as text; a non-zero amount that rounds to 0% reads "<1%". */
@@ -738,6 +818,9 @@ export function footerText(stats, { repoName, since, until, today, lang }) {
  * talks about the streak at the end of the window instead of "right now". Returns
  * `[{id, svg, description}]` for cardIdsFor(stats), in CARD_IDS order; `description` is
  * the card's content as plain text (see cardDescription).
+ * A multi-repo run (stats.repos with 2+ rows, see repoRows) is named "N repos" instead of
+ * `repoName`, the intro names the repos, and the totals / hot-files cards get a per-repo
+ * chart; single-repo cards are unchanged.
  */
 export function buildCards(stats, opts = {}) {
   return buildCardSpecs(stats, opts).map(({ id, spec }) => ({ id, svg: renderCard(spec), description: cardDescription(spec) }));
@@ -800,7 +883,8 @@ const colorThemeField = (name) => (isColorTheme(name) && name !== DEFAULT_COLOR_
 export function buildCardSpecs(stats, { repoName, since, until, author, today, lang, colorTheme } = {}) {
   stats = stats ?? {};
   const L = getStrings(lang);
-  const ctx = { L, lang: L.code, repoName: text(repoName) ?? L.yourRepo, since: text(since), until: text(until), author: text(author), today: text(today) };
+  const repos = repoRows(stats);
+  const ctx = { L, lang: L.code, repoName: displayRepoName(stats, { repoName, lang }), repos, since: text(since), until: text(until), author: text(author), today: text(today) };
   // The day the cards are "as of": today, or the end of a window that ended before it.
   const t = parseDay(ctx.today);
   const u = parseDay(ctx.until);
@@ -820,7 +904,7 @@ export function buildCardSpecs(stats, { repoName, since, until, author, today, l
 export function renderShareCard(stats, { repoName, since, until, author, today, lang, colorTheme } = {}) {
   stats = stats ?? {};
   const L = getStrings(lang);
-  const ctx = { L, lang: L.code, repoName: text(repoName) ?? L.yourRepo, since: text(since), until: text(until), author: text(author), today: text(today) };
+  const ctx = { L, lang: L.code, repoName: displayRepoName(stats, { repoName, lang }), since: text(since), until: text(until), author: text(author), today: text(today) };
   const year = windowYear(ctx.since, ctx.until);
   const commits = num(stats.totals?.commits);
   const top = (Array.isArray(stats.hotFiles) ? stats.hotFiles : []).find((f) => text(f?.path));

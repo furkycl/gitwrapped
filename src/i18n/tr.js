@@ -21,6 +21,7 @@ const UNITS = {
   card: ['kart', 'kart'],
   png: ['PNG', 'PNG'],
   fix: ['fix', 'fix'],
+  repo: ['repo', 'repo'],
 };
 
 const MONTHS = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
@@ -59,6 +60,17 @@ export default {
   empty: 'Henüz commit yok — hadi bir şeyler ship et!',
   yourRepo: 'repon',
   calendarOf: (days) => `${num(days)} aktif günlük commit takvimi`,
+
+  repos: {
+    name: (n) => plural(n, UNITS.repo),
+    featuring: (list) => `Kadroda: ${list}.`,
+    andMore: (n) => `${num(n)} repo daha`,
+    moreBar: (n) => `+${num(n)} repo daha`,
+    commitsByRepo: 'Repo başına commit',
+    commitsBarTitle: (name, commits, added, removed) => `${name}: ${plural(commits, UNITS.commit)}, ${added} / ${removed} satır`,
+    filesByRepo: 'Repo başına dokunulan dosya',
+    filesBarTitle: (name, files) => `${name}: dokunulan ${plural(files, UNITS.file)}`,
+  },
 
   intro: {
     eyebrow: 'gitwrapped sunar',
@@ -330,6 +342,8 @@ export default {
     topLanguage: 'Favori dil',
     languageDetail: (share, basis, tiedMore) => `${basis === 'files' ? 'dosyaların' : 'satırların'} ${share} kadarı${tiedMore > 0 ? `, ${num(tiedMore)} dil ile berabere` : ''}`,
     team: 'Ekip',
+    repos: 'Repolar',
+    moreRepos: (n) => `…ve ${num(n)} repo daha`,
     youAre: 'sıran',
     ofCommits: (share) => `commit'lerin ${share} kadarı`,
     top: 'zirvede:',
@@ -344,9 +358,11 @@ export default {
   notes: {
     truncatedFiltered: (n) => `Not: eşleşen commit sayısı ${n} üzerinde; yalnızca en yeni ${n} commit incelendi.`,
     truncated: (n) => `Not: bu repoda ${n} üzerinde commit var; yalnızca en yeni ${n} commit incelendi.`,
+    truncatedRepos: (n) => `Not: bu repolarda toplam ${n} üzerinde commit var; yalnızca en yeni ${n} commit incelendi.`,
     teamTruncated: (n) => `Not: katkıcı kartı seni herkesin en yeni ${n} commit'i içinde sıralıyor.`,
     shallow: "Not: sığ klon (shallow clone): en eski (sınır) commit'in satır sayıları atlandı ve daha eski geçmiş eksik.",
     unborn: "Not: geçerli dalda (HEAD) henüz commit yok ve gitwrapped yalnızca HEAD'in geçmişini okur. Commit'i olan bir dala geç (ör. git switch main) ve tekrar çalıştır.",
+    unbornRepos: (repos) => `Not: şu repolarda geçerli dalda (HEAD) henüz commit yok: ${repos}. gitwrapped yalnızca HEAD'in geçmişini okur. Oradaki commit'i olan bir dala geç (ör. git switch main) ve tekrar çalıştır.`,
     authorNotEmail: (author) => `Not: "${author}" için commit yok. --author bir e-posta adresi bekler (ör. sen@example.com).`,
     noMatch: (filters) => `Not: ${filters} ile eşleşen commit yok.`,
   },

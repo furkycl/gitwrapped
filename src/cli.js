@@ -1,9 +1,9 @@
 import { parseArgs, promisify } from 'node:util';
 import { execFile, spawn } from 'node:child_process';
-import { accessSync, constants as fsConstants, lstatSync, mkdirSync, readdirSync, readFileSync, rmdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { accessSync, constants as fsConstants, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
-import { buildCards, CARD_IDS, renderShareCard, windowLabel } from './cards/index.js';
-import { DEFAULT_LIMIT, readHistory } from './git.js';
+import { buildCards, CARD_IDS, displayRepoName, renderShareCard, windowLabel } from './cards/index.js';
+import { DEFAULT_LIMIT, mergeHistories, readHistory, repoLabels } from './git.js';
 import { buildStatsJson } from './json.js';
 import { renderPng } from './png.js';
 import { computeStats, localToday } from './stats/index.js';
@@ -14,7 +14,7 @@ import { COLOR_THEME_NAMES, DEFAULT_COLOR_THEME, isColorTheme } from './cards/th
 
 const execFileAsync = promisify(execFile);
 
-export const HELP_TEXT = `Usage: gitwrapped [path] [options]
+export const HELP_TEXT = `Usage: gitwrapped [path...] [options]
 
 Turn a git repo's commit history into shareable story cards.
 Writes <out>/wrapped.html (open it in a browser), <out>/cards/*.svg,
@@ -22,6 +22,8 @@ Writes <out>/wrapped.html (open it in a browser), <out>/cards/*.svg,
 
 Arguments:
   path                 Path to the git repository (default: ".")
+                       Give several paths to merge their histories into one
+                       Wrapped (file paths are shown as <repo>/<path>)
 
 Options:
   --since YYYY-MM-DD   Only include commits on or after this date
@@ -36,7 +38,7 @@ Options:
                        default (gradients), mono (grayscale) or
                        neon (dark with neon glows)
   --max-commits <n>    Analyze at most the n most recent commits
-                       (default: 50000)
+                       (default: 50000; with several repos, in total)
   --no-png             Skip PNG rendering (faster; SVG + HTML only)
   --json               Also write every stat to <out>/stats.json
   --open               Open <out>/wrapped.html in your default browser
@@ -147,7 +149,8 @@ function normalizeArgv(argv) {
 /**
  * Parse CLI arguments (without node/script prefix).
  * Returns {help:true}, {version:true}, or {path, since, author, out, png, maxCommits}
- * plus, only when given: color (false for --no-color; absent = auto), until, year
+ * plus, only when given: paths (every path, when more than one was given; `path` is then
+ * the first), color (false for --no-color; absent = auto), until, year
  * (--year YYYY also sets since/until to Jan 1 / Dec 31 of that year), json (true),
  * open (true), lang (a code from src/i18n LANGS, e.g. 'tr'; absent = English) and
  * theme (a non-default color theme from cards/themes.js, e.g. 'mono'; absent = default).
@@ -166,10 +169,6 @@ export function parseCli(argv) {
 
   if (values.help) return { help: true };
   if (values.version) return { version: true };
-
-  if (positionals.length > 1) {
-    throw new Error(`expected at most one path, got ${positionals.length}: ${positionals.join(' ')}`);
-  }
 
   for (const name of ['since', 'until', 'year', 'author', 'out', 'lang', 'theme', 'max-commits']) {
     if (values[name] !== undefined && values[name].trim() === '') {
@@ -195,9 +194,11 @@ export function parseCli(argv) {
   const lang = values.lang === undefined ? undefined : validateLang(values.lang);
   const theme = values.theme === undefined ? undefined : validateTheme(values.theme);
 
+  // An empty path ("") means the current directory, like the default.
+  const paths = positionals.map((p) => p || '.');
   return {
-    // An empty path ("") means the current directory, like the default.
-    path: positionals[0] || '.',
+    path: paths[0] ?? '.',
+    ...(paths.length > 1 ? { paths } : {}),
     since,
     author: values.author?.trim(),
     out: values.out?.trim() ?? 'gitwrapped-out',
@@ -250,6 +251,97 @@ export async function repoName(repoPath) {
   } catch {
     return fallback;
   }
+}
+
+/**
+ * `p` as one canonical string, so two spellings of the same folder compare equal:
+ * symlinks resolved with the OS's own realpath (realpathSync.native: on Windows it also
+ * expands 8.3 short names such as RUNNER~1, which git never prints but os.tmpdir() may
+ * contain, and normalizes "D:/a" to "D:\\a"), lower-cased on Windows; falls back to the
+ * JS realpath, then to the resolved path.
+ */
+export function realKey(p) {
+  let real;
+  try {
+    real = realpathSync.native(p);
+  } catch {
+    try {
+      real = realpathSync(p);
+    } catch {
+      real = resolve(p);
+    }
+  }
+  return process.platform === 'win32' ? real.toLowerCase() : real;
+}
+
+/**
+ * Which repository `repoPath` belongs to: `{keys, name, known}`. `keys` identify it: the
+ * real path of its top level (absent for a bare repo) and of its common git dir, which
+ * every `git worktree` of one repository shares; two paths are the same repository when
+ * any key matches. `name` is what repoName() would show. `known` is false when git could
+ * not tell (not a repo, missing path, ...): `keys` is then just the path itself.
+ */
+export async function repoIdentity(repoPath) {
+  const ask = async (args) => {
+    try {
+      const { stdout } = await execFileAsync('git', ['-C', repoPath, ...args], { encoding: 'utf8', env: repoEnv() });
+      return stdout.trim();
+    } catch {
+      return '';
+    }
+  };
+  const top = await ask(['rev-parse', '--show-toplevel']);
+  // Printed relative to `repoPath` (e.g. ".git") unless it lies elsewhere.
+  const common = await ask(['rev-parse', '--git-common-dir']);
+  const keys = [top && realKey(top), common && realKey(resolve(repoPath, common))].filter(Boolean);
+  if (keys.length === 0) return { keys: [realKey(repoPath)], name: bareRepoName(repoPath) || 'repo', known: false };
+  return { keys, name: (top && basename(top)) || bareRepoName(repoPath) || 'repo', known: true };
+}
+
+/**
+ * Read several repos with the same filters and cap (each read like readHistory) and merge
+ * them (see mergeHistories in git.js): commits newest first, labeled with their repo and
+ * with "<label>/" path prefixes; at most `limit` in total.
+ * Before any history is read, every path is identified (repoIdentity, in the given order):
+ * a path git cannot identify fails right there with readHistory's error (so the first bad
+ * path is the one named), and two paths of the same repository (including a worktree of
+ * one already given) are an error. `labels` (when given) are reused and that check is
+ * skipped (the unfiltered second read of an --author run).
+ * Returns {commits, truncated, limit, shallow, unborn, otherRefs, unbornRepos, labels}:
+ * shallow is true when it is true for any repo; unbornRepos lists the labels of repos
+ * whose HEAD has no commits while other branches / tags exist (unborn / otherRefs are
+ * true when there is one).
+ */
+async function readRepos(paths, { since, until, author, limit, labels }) {
+  let names = labels;
+  if (!names) {
+    const seen = new Map();
+    const found = [];
+    for (const p of paths) {
+      const id = await repoIdentity(p);
+      // Not identifiable: let readHistory say why (missing path, not a repo, ownership).
+      if (!id.known) await readHistory(p, { limit: 1 });
+      const dup = id.keys.find((k) => seen.has(k));
+      if (dup) throw new Error(`the same repository was given twice: ${seen.get(dup)} and ${p}`);
+      for (const k of id.keys) seen.set(k, p);
+      found.push(id.name);
+    }
+    names = repoLabels(found);
+  }
+  const reads = [];
+  for (const p of paths) reads.push(await readHistory(p, { since, until, author, limit }));
+  const merged = mergeHistories(reads.map((r, i) => ({ label: names[i], commits: r.commits, truncated: r.truncated })), { limit });
+  const unbornRepos = names.filter((_, i) => reads[i].unborn && reads[i].otherRefs);
+  return {
+    commits: merged.commits,
+    truncated: merged.truncated,
+    limit,
+    shallow: reads.some((r) => r.shallow),
+    unborn: unbornRepos.length > 0,
+    otherRefs: unbornRepos.length > 0,
+    unbornRepos,
+    labels: names,
+  };
 }
 
 /** fs.Stats for `p`, or null if nothing is there (or it cannot be inspected). */
@@ -436,10 +528,18 @@ function removeOldCardFiles(dir, ext, keep) {
  * shallow clone, `unbornWithRefs` when HEAD has no commits but other branches / tags
  * exist; `asOf` is the day the current streak is relative to and `pastWindow`
  * whether that is a past `until`.
+ * With `paths` (two or more repos) their histories are merged (see readRepos): the same
+ * filters apply to each, `maxCommits` caps the merged history (the most recent commits by
+ * author date across all repos), file paths get a "<repo>/" prefix, stats get a per-repo
+ * breakdown (stats.repos), the cards name the run "N repos", and the result has `repos`
+ * (the labels) and `unbornRepos` (labels of repos whose HEAD has no commits while other
+ * branches / tags exist); `path` is then ignored.
  * `renderPng` (svg, {width}) → Promise<Buffer> replaces the PNG renderer (for tests).
  */
-export async function generate({ path, since, until, author, out, png = true, maxCommits = DEFAULT_LIMIT, json = false, lang = DEFAULT_LANG, theme = DEFAULT_COLOR_THEME }, { today, renderPng: rasterize = renderPng } = {}) {
-  const { commits, truncated, limit, shallow, unborn = false, otherRefs = false } = await readHistory(path, { since, until, author, limit: maxCommits });
+export async function generate({ path, paths, since, until, author, out, png = true, maxCommits = DEFAULT_LIMIT, json = false, lang = DEFAULT_LANG, theme = DEFAULT_COLOR_THEME }, { today, renderPng: rasterize = renderPng } = {}) {
+  const multi = Array.isArray(paths) && paths.length > 1;
+  const read = (opts) => (multi ? readRepos(paths, opts) : readHistory(path, opts));
+  const { commits, truncated, limit, shallow, unborn = false, otherRefs = false, labels, unbornRepos } = await read({ since, until, author, limit: maxCommits });
   // A past window's "current" streak is the one running when the window closed; its end
   // day is over, so there is no "today isn't over yet" grace day (todayComplete).
   const ref = today ?? localToday();
@@ -448,7 +548,7 @@ export async function generate({ path, since, until, author, out, png = true, ma
   // --author filters in git, so the team behind the contributors card ("you vs the
   // team") needs a second read of the same window and cap without the author filter.
   // Not when the author has no commits here: there is no "you" to rank, so no card.
-  const team = author && commits.length > 0 ? await readHistory(path, { since, until, limit: maxCommits }) : null;
+  const team = author && commits.length > 0 ? await read({ since, until, limit: maxCommits, labels }) : null;
   const stats = computeStats(commits, {
     today: asOf,
     todayComplete: pastWindow,
@@ -456,8 +556,10 @@ export async function generate({ path, since, until, author, out, png = true, ma
     author,
     // Whether the history the contributors were counted in was capped.
     teamTruncated: team ? Boolean(team.truncated) : Boolean(truncated),
+    ...(multi ? { repos: labels } : {}),
   });
-  const name = await repoName(path);
+  // Several repos are named together ("3 repos", in `lang`); one repo by its folder.
+  const name = multi ? displayRepoName(stats, { lang }) : await repoName(path);
   const cards = buildCards(stats, { repoName: name, since, until, author, today: ref, lang, colorTheme: theme });
   const shareSvg = renderShareCard(stats, { repoName: name, since, until, author, today: ref, lang, colorTheme: theme });
 
@@ -471,6 +573,7 @@ export async function generate({ path, since, until, author, out, png = true, ma
     ? buildStatsJson({
       stats,
       repoName: name,
+      ...(multi ? { repos: labels } : {}),
       version: readVersion(),
       asOf,
       filters: { since, until, author, maxCommits: limit },
@@ -529,11 +632,13 @@ export async function generate({ path, since, until, author, out, png = true, ma
     commits: commits.length,
     stats,
     repoName: name,
+    ...(multi ? { repos: labels } : {}),
     truncated,
     teamTruncated: Boolean(team?.truncated),
     limit,
     shallow: Boolean(shallow),
     unbornWithRefs: Boolean(unborn && otherRefs),
+    ...(multi ? { unbornRepos } : {}),
     html,
     cardsDir,
     cardFiles: files.map((f) => f.file),
@@ -672,7 +777,7 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
   const notes = [];
   if (result.truncated) {
     const n = limitText();
-    notes.push(opts.since || opts.until || opts.author ? N.truncatedFiltered(n) : N.truncated(n));
+    notes.push(opts.since || opts.until || opts.author ? N.truncatedFiltered(n) : opts.paths ? N.truncatedRepos(n) : N.truncated(n));
   }
   if (result.teamTruncated && !result.truncated) {
     notes.push(N.teamTruncated(limitText()));
@@ -681,7 +786,7 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
     notes.push(N.shallow);
   }
   if (result.unbornWithRefs) {
-    notes.push(N.unborn);
+    notes.push(result.unbornRepos ? N.unbornRepos(L.andList(result.unbornRepos.map(stripControl))) : N.unborn);
   } else if (result.commits === 0 && opts.author && !opts.author.includes('@')) {
     notes.push(N.authorNotEmail(opts.author));
   } else if (result.commits === 0 && (opts.since || opts.until || opts.author)) {

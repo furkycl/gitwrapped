@@ -1,5 +1,5 @@
 // Languages: lines changed and files touched per language, from numstat.
-import { isIgnoredPath } from './files.js';
+import { isIgnoredPath, repoRelativePath } from './files.js';
 
 /** The bucket for files whose language is not in the table. */
 export const OTHER = 'Other';
@@ -231,7 +231,7 @@ export function computeLanguages(commits) {
   let hasCSource = false;
   for (const c of commits ?? []) {
     for (const f of c?.files ?? []) {
-      if (!f || typeof f.path !== 'string' || f.binary === true || isIgnoredPath(f.path)) continue;
+      if (!f || typeof f.path !== 'string' || f.binary === true || isIgnoredPath(repoRelativePath(c, f.path))) continue;
       if (f.added === '-' || f.removed === '-') continue;
       const ext = extensionOf(f.path.split('/').pop());
       let name = languageOf(f.path);

@@ -1,15 +1,16 @@
 // Stats engine: pure functions over readCommits() output. No git calls, no I/O.
 import { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONTRIBUTORS } from './contributors.js';
 import { computeDaily, daysUpTo, longestRun, shownLongest } from './daily.js';
-import { computeHotFiles, isIgnoredPath } from './files.js';
+import { computeHotFiles, isIgnoredPath, repoRelativePath } from './files.js';
 import { computeTimeHabits } from './habits.js';
 import { computeLanguages, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER as OTHER_LANGUAGE, percentShares } from './languages.js';
 import { computeMessages, isMergeCommit } from './messages.js';
 import { ARCHETYPES, computePersonality } from './personality.js';
 import { computeStreaks, localToday } from './streaks.js';
+import { computeRepos } from './repos.js';
 import { computeTotals } from './totals.js';
 
-export { computeTotals, computeTimeHabits, computeStreaks, computeDaily, daysUpTo, longestRun, shownLongest, computeHotFiles, isIgnoredPath };
+export { computeTotals, computeTimeHabits, computeStreaks, computeDaily, daysUpTo, longestRun, shownLongest, computeHotFiles, isIgnoredPath, repoRelativePath, computeRepos };
 export { computeLanguages, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER_LANGUAGE, percentShares };
 export { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONTRIBUTORS };
 export { computeMessages, computePersonality, isMergeCommit, ARCHETYPES, localToday };
@@ -27,9 +28,12 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * `team` when given (the unfiltered history of an --author run, so "you" can be ranked
  * against everyone), else from `commits`; `author` (the --author email) picks "you";
  * `teamTruncated` says whether that read was capped (contributors.truncated).
+ * `repos` (the labels of a multi-repo run, see mergeHistories in src/git.js): with two or
+ * more, `stats.repos` is the per-repo breakdown (see repos.js), as the last key; with
+ * fewer the key is absent, so single-repo stats are unchanged.
  * Later milestones add keys.
  */
-export function computeStats(commits = [], { today, todayComplete, team, author, teamTruncated = false } = {}) {
+export function computeStats(commits = [], { today, todayComplete, team, author, teamTruncated = false, repos } = {}) {
   const stats = {
     totals: computeTotals(commits),
     habits: computeTimeHabits(commits),
@@ -42,5 +46,6 @@ export function computeStats(commits = [], { today, todayComplete, team, author,
   };
   const nonMergeCommits = (commits ?? []).filter((c) => !isMergeCommit(c)).length;
   stats.personality = computePersonality(stats, { nonMergeCommits, today: today ?? localToday() });
+  if (Array.isArray(repos) && repos.length > 1) stats.repos = computeRepos(commits, repos);
   return stats;
 }

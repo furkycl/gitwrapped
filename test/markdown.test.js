@@ -222,7 +222,8 @@ describe('buildMarkdown', () => {
     // JavaScript is the headline language (the only programming one) despite its size.
     assert.match(md, /^\| JavaScript \| \\<1% \| 5 \|$/m);
     assert.match(md, /^\| Other \|/m);
-    assert.doesNotMatch(md, /100%/);
+    // No table row reads 100% (the commit size mix of this one-commit repo is 100% large).
+    assert.doesNotMatch(md, /^\|.*100%/m);
   });
 
   test('Turkish: headings, labels and number format from tr.js', () => {

@@ -1,7 +1,7 @@
 // The story-card set: turns computeStats() output into Wrapped-style SVG cards.
 // Pure and deterministic. Every card copes with empty stats (0 commits, null peaks,
 // no hot files, null messages) and never prints "null", "undefined" or "NaN".
-import { calendarWindow, formatNumber, renderCard } from './svg.js';
+import { calendarWindow, formatNumber, renderCardWithLayout } from './svg.js';
 
 export { formatNumber };
 import { renderShareSvg } from './share.js';
@@ -381,12 +381,10 @@ function sizeStack(s, L) {
     // Purely additive: left out when the card is short of space, before anything shrinks.
     optional: true,
     title: T.commitSizes,
-    segments: mix.map((b) => ({
-      label: T.sizes[b.id],
-      value: L.pct(b.share),
-      amount: b.count,
-      title: T.sizeTitle(T.sizes[b.id], T.sizeRanges[b.id], b.count, L.pct(b.share)),
-    })),
+    segments: mix.map((b) => {
+      const pct = sizeShareText(b, mix, L);
+      return { label: T.sizes[b.id], value: pct, amount: b.count, title: T.sizeTitle(T.sizes[b.id], T.sizeRanges[b.id], b.count, pct) };
+    }),
   };
 }
 
@@ -679,6 +677,21 @@ function hotFileCharts(files, repos, L) {
 
 /** A whole-number share as text; a non-zero amount that rounds to 0% reads "<1%". */
 export const pctText = (share, amount, L = EN) => (num(share) === 0 && num(amount) > 0 ? `<${L.pct(1)}` : L.pct(Math.round(num(share))));
+
+/**
+ * One bucket of a shownCommitSizes() mix as text, by the languages card's rule: a bucket
+ * with commits never reads "0%" (under 1% of the commits reads "<1%", so equal counts
+ * always read the same), and none reads 100% while another bucket has commits (capped at
+ * 99%). Card, recap and wrapped.md all use this; stats.json keeps the raw shares.
+ */
+export const sizeShareText = (b, mix, L = EN) => {
+  const count = num(b.count);
+  if (count <= 0) return L.pct(0);
+  const total = mix.reduce((a, x) => a + Math.max(0, num(x.count)), 0);
+  if ((count / total) * 100 < 1) return `<${L.pct(1)}`;
+  const others = mix.some((x) => x !== b && num(x.count) > 0);
+  return L.pct(others ? Math.min(99, Math.round(num(b.share))) : Math.round(num(b.share)));
+};
 
 /**
  * Up to five languages as bars (the headline language always among them), the rest and
@@ -1045,7 +1058,18 @@ export function footerText(stats, { repoName, since, until, today, lang }) {
  * chart; single-repo cards are unchanged.
  */
 export function buildCards(stats, opts = {}) {
-  return buildCardSpecs(stats, opts).map(({ id, spec }) => ({ id, svg: renderCard(spec), description: cardDescription(spec) }));
+  return buildCardSpecs(stats, opts).map(({ id, spec }) => {
+    const { svg, drawnCharts } = renderCardWithLayout(spec);
+    // The description covers exactly the charts drawn: charts the layout left out for lack
+    // of room (see layoutCard) are left out of it too.
+    return { id, svg, description: cardDescription(onlyCharts(spec, drawnCharts)) };
+  });
+}
+
+/** `spec` with only the charts at `indices` (into spec.chart; a single spec is index 0). */
+function onlyCharts(spec, indices) {
+  const list = Array.isArray(spec.chart) ? spec.chart : spec.chart ? [spec.chart] : [];
+  return { ...spec, chart: indices.map((i) => list[i]) };
 }
 
 /** Text for a description: control / bidi characters dropped, whitespace collapsed. */

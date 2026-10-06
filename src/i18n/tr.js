@@ -166,7 +166,7 @@ export default {
     isOn: (days) => `Şu an ${num(days)} günlük bir serin var. Sakın bozma!`,
     isNone: 'Şu an devam eden bir serin yok — başlamak için bugün harika bir gün.',
     breakTitle: 'En uzun mola',
-    breakValue: (days) => `${num(days)} günlük mola`,
+    breakValue: (days) => `${num(days)} gün`,
     breakNote: (from, to) => `${from} ile ${to} arası`,
   },
 

@@ -76,14 +76,14 @@ describe('streak card break panel (extra)', () => {
     const d = stats.streaks.longestBreak.days;
     assert.ok(d > 9999);
     assert.match(streakSpec(stats).chart[1].value, /^\d{2},\d{3} days off$/);
-    assert.match(streakSpec(stats, { lang: 'tr' }).chart[1].value, /^\d{2}\.\d{3} günlük mola$/);
+    assert.match(streakSpec(stats, { lang: 'tr' }).chart[1].value, /^\d{2}\.\d{3} gün$/);
     assert.match(formatSummary(stats, { today: TODAY }), /Break +longest \d{2},\d{3} days \(Jan 1, 1990 – Dec 30, 2025\)/);
   });
 
-  test('a one-day break is singular ("1 day off" / "1 günlük mola")', () => {
+  test('a one-day break is singular ("1 day off" / "1 gün")', () => {
     const stats = computeStats(cases.small, { today: TODAY });
     assert.equal(streakSpec(stats).chart[1].value, '1 day off');
-    assert.equal(streakSpec(stats, { lang: 'tr' }).chart[1].value, '1 günlük mola');
+    assert.equal(streakSpec(stats, { lang: 'tr' }).chart[1].value, '1 gün');
     assert.match(formatSummary(stats, { today: TODAY }), /Break +longest 1 day \(/);
   });
 
@@ -91,7 +91,7 @@ describe('streak card break panel (extra)', () => {
     const stats = computeStats(cases.typical, { today: TODAY });
     const svg = streakCard(stats, { lang: 'tr' }).svg;
     assert.match(svg, /EN UZUN MOLA/);
-    assert.match(svg, /220 günlük mola/);
+    assert.match(svg, /220 gün</);
     assert.match(svg, /1 Haz 2025 ile 8 Oca 2026 arası/);
     assert.match(streakCard(stats).svg, /LONGEST BREAK/i);
   });
@@ -243,7 +243,7 @@ describe('longest break end to end (extra)', () => {
     assert.match(text, /\n {2}Mola +en uzun 53 gün \(6 Oca 2025 – 1 Mar 2025\)\n/);
     const svg = streakSvg(out('tr'));
     assert.match(svg, /EN UZUN MOLA/);
-    assert.match(svg, /53 günlük mola/);
+    assert.match(svg, /53 gün</);
     assert.match(svg, /6 Oca 2025 ile 1 Mar 2025 arası/);
     assert.doesNotMatch(svg, /days off|Longest break/i);
   });

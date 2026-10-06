@@ -5,7 +5,8 @@
 // part only (authorName), and email-shaped text in any repo-derived text (subjects,
 // paths, repo and contributor names) is cut out by escapeMarkdown.
 
-import { authorName, displayRepoName, formatDateRange, formatDay, pctText, repoRows, shownDayRange } from './cards/index.js';
+import { authorName, displayRepoName, formatDateRange, formatDay, pctText, repoRows, shownDayRange, sizeShareText } from './cards/index.js';
+import { shownCommitSizes } from './stats/sizes.js';
 import { shownLongest, shownLongestBreak } from './stats/daily.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { contributorName, hasTeamCard, shareLabel } from './stats/contributors.js';
@@ -25,9 +26,9 @@ const CONTROL = /[\x00-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069\u2028\u2029]/g;
  * of it be). Repo-derived text is only ever placed after a fixed prefix of ours (a list
  * label, a table "|", "# ", a quote mark), never at the start of a line, so block syntax
  * such as "1." or "- " cannot trigger and "." / "-" / "+" stay as they are; "#" is
- * escaped because a trailing run would close a heading.
+ * escaped because a trailing run would close a heading, "$" because GitHub reads "$x$" as math.
  */
-const SPECIAL = /[\\`*_{}[\]()#!|<>~&@]/g;
+const SPECIAL = /[\\`*_{}[\]()#!|<>~&@$]/g;
 
 /**
  * An email-like token: local@domain, the domain with or without a dot ("ada@localhost",
@@ -132,6 +133,9 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
     ];
     const yoy = yearOverYear(stats);
     if (yoy) numbers.push(item(escapeMarkdown(L.recap.vsYear(yoy.previousYear)), escapeMarkdown(L.yoy.changes(yoy.commits, yoy.lines, yoy.activeDays))));
+    // The commit size mix, as on the totals card and the recap; only when there is one.
+    const mix = shownCommitSizes(stats?.commitSizes);
+    if (mix) numbers.push(item(escapeMarkdown(L.totals.commitSizes), escapeMarkdown(mix.map((b) => `${sizeShareText(b, mix, L)} ${L.recap.sizeNames[b.id]}`).join(' · '))));
     section(M.numbers, numbers);
 
     // --- habits -----------------------------------------------------------------------

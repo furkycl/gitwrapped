@@ -154,8 +154,8 @@ describe('cards', () => {
     assert.equal(displayRepoName(stats, { repoName: 'proj' }), 'proj');
     const specs = buildCardSpecs(stats, { repoName: 'proj', today: TODAY });
     const totals = specs.find((s) => s.id === 'totals').spec;
-    assert.equal(Array.isArray(totals.chart), false);
-    assert.equal(totals.chart.kind, 'split');
+    // The lines split, plus the commit size mix (no per-repo bars).
+    assert.deepEqual([].concat(totals.chart).map((c) => c.kind), ['split', 'stack']);
     assert.equal(Array.isArray(specs.find((s) => s.id === 'hot-files').spec.chart), false);
   });
 
@@ -168,7 +168,9 @@ describe('cards', () => {
           const L = lang === 'tr' ? tr : en;
           for (const id of ['totals', 'hot-files']) {
             const { spec } = specs.find((s) => s.id === id);
-            assert.ok(Array.isArray(spec.chart) && spec.chart.length === 2, `${id} has two charts`);
+            // The totals card also has the commit size mix, last (dropped first when short of space).
+            assert.ok(Array.isArray(spec.chart) && spec.chart.length === (id === 'totals' ? 3 : 2), `${id} has its charts`);
+            if (id === 'totals') assert.equal(spec.chart[2].kind, 'stack');
             const repoChart = spec.chart[1];
             assert.equal(repoChart.items.length, Math.min(n, 4));
             if (n > 4) assert.equal(repoChart.items.at(-1).label, L.repos.moreBar(n - 3));

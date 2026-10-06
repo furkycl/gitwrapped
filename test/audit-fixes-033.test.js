@@ -386,7 +386,8 @@ describe('tester: totals bigMin floor', () => {
     assert.ok(r.stats.yearOverYear);
     const spec = buildCardSpecs(r.stats, { repoName: r.repoName, since: '2025-01-01', until: '2025-12-31', today: TODAY }).find((c) => c.id === 'totals').spec;
     assert.equal(Object.hasOwn(spec, 'bigMin'), false);
-    assert.equal(Array.isArray(spec.chart), false);
+    // No per-repo bars: the lines split and the commit size mix only.
+    assert.deepEqual([].concat(spec.chart).map((c) => c.kind), ['split', 'stack']);
   });
 
   test('multi-repo totals spec carries bigMin 140; zero-commit totals does not', async (t) => {

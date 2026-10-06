@@ -13,6 +13,7 @@ import { hasTeamCard, shareLabel, TOP_CONTRIBUTORS } from '../stats/contributors
 import { personalityReason } from '../stats/personality.js';
 import { yearOverYear } from '../stats/yoy.js';
 import { shownBiggestLines } from '../stats/biggest.js';
+import { shownCommitSizes } from '../stats/sizes.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from '../i18n/index.js';
 import { DEFAULT_COLOR_THEME, isColorTheme } from './themes.js';
 
@@ -348,17 +349,44 @@ function totals(s, { L, repos }) {
       { label: T.linesRemoved, value: signedLines(t.linesRemoved, '−', L), amount: Math.max(0, num(t.linesRemoved)) },
     ],
   };
+  // The commit size mix (stats.commitSizes) as a stacked bar, only when there is one;
+  // without it the card is exactly as before.
+  const sizes = sizeStack(s, L);
+  // A multi-repo run adds commits per repo (the split chart stays first: when space is
+  // short, charts are dropped from the end, so the size mix, last, goes before the repo bars).
+  const charts = [split, ...(repos ? [repoCommitBars(repos, L)] : []), ...(sizes ? [sizes] : [])];
   return {
     eyebrow: T.eyebrow,
     big: L.num(commits),
     title: commits === 1 ? L.units.commit[0] : L.units.commit[1],
     subtitle: perDay > 0 ? T.perDay(perDay) : T.everyOne,
     lines: rows,
-    // A multi-repo run adds commits per repo (the split chart stays first: when space is
-    // short, charts are dropped from the end). The commit count stays the hero: it keeps
-    // at least 140px while that chart is compacted or dropped (--year adds three rows).
-    chart: repos ? [split, repoCommitBars(repos, L)] : split,
+    // The commit count stays the hero: in a multi-repo run it keeps at least 140px while
+    // the charts are compacted or dropped (--year adds three rows).
+    chart: charts.length === 1 ? split : charts,
     ...(repos ? { bigMin: TOTALS_BIG_MIN } : {}),
+  };
+}
+
+/**
+ * The commit size mix (see shownCommitSizes) as a 4-segment stacked bar for the totals
+ * card: tiny → large, each with its share; null when there is nothing to show.
+ */
+function sizeStack(s, L) {
+  const mix = shownCommitSizes(s.commitSizes);
+  if (!mix) return null;
+  const T = L.totals;
+  return {
+    kind: 'stack',
+    // Purely additive: left out when the card is short of space, before anything shrinks.
+    optional: true,
+    title: T.commitSizes,
+    segments: mix.map((b) => ({
+      label: T.sizes[b.id],
+      value: L.pct(b.share),
+      amount: b.count,
+      title: T.sizeTitle(T.sizes[b.id], T.sizeRanges[b.id], b.count, L.pct(b.share)),
+    })),
   };
 }
 
@@ -1057,6 +1085,7 @@ export function cardDescription(spec = {}) {
     const items = [];
     if (c.kind === 'callout') items.push(pair(c.title, c.value), plain(c.note));
     else if (c.kind === 'split') items.push(plain(c.title), ...(c.segments ?? []).map((x) => pair(x?.label, x?.value)));
+    else if (c.kind === 'stack') items.push(plain(c.title), ...(c.segments ?? []).filter((x) => num(x?.amount) > 0).map((x) => plain(x?.title) || pair(x?.label, x?.value)));
     else if (c.kind === 'hbars') items.push(plain(c.title), ...(c.items ?? []).map((x) => plain(x?.title) || pair(x?.label, x?.value)));
     else if (c.kind === 'bars') items.push(plain(c.title), ...(c.titles ?? []).filter((t, i) => num(c.values?.[i]) > 0).map(plain));
     else if (c.kind === 'tiles') items.push(...(c.items ?? []).map((x) => pair(x?.label, x?.value)), ...(c.wide ? [pair(c.wide.label, `${plain(c.wide.value)} (${plain(c.wide.note)})`)] : []));

@@ -71,7 +71,8 @@ describe('formatSummary', () => {
     assert.match(out, /8 cards in out\/cards\n/);
     assert.match(out, /8 PNGs in out\/png\n/);
     assert.match(out, /share image: out\/share\.png\n$/);
-    assert.ok(lines.length >= 8 && lines.length <= 16, `compact: ${lines.length} lines`);
+    assert.match(out, /Sizes {8}\S/);
+    assert.ok(lines.length >= 8 && lines.length <= 17, `compact: ${lines.length} lines`);
   });
 
   test('color: true adds ANSI escapes but keeps the first line plain', () => {

@@ -23,7 +23,7 @@ Ten 1080x1920 story cards, plus a monthly timeline when your commits span two or
 calendar months and a team card in a repo with more than one contributor (up to twelve):
 
 1. **Intro**: the repo name, the date range in plain English ("Oct 4 – Oct 5, 2026") and how many commits there are to unwrap, plus whose story it is when you pass `--author` (the part of the email before the `@` only: "Starring ada.").
-2. **Totals**: commits, a lines added vs. removed bar, active days and files touched (and contributors, when there is more than one).
+2. **Totals**: commits, a lines added vs. removed bar, active days and files touched (and contributors, when there is more than one), plus your commit size mix: the share of tiny (under 10 lines), small (10–99), medium (100–500) and large (over 500 lines changed) commits as one stacked bar. The bar only uses spare room: when the card is short of space (with `--year`'s three extra rows, say) it is left out, and nothing else on the card shrinks for it (the mix is still in the recap and `stats.json`). Sizes count the same files as hot files (lockfiles, build output and the rest are left out, and so is anything you `--exclude`) and skip merge commits.
 3. **Power hour**: the hour of the day you commit the most, with a 24-hour bar chart and a Monday-to-Sunday weekday chart (hover a bar in `wrapped.html` for its count).
 4. **Streak**: your longest run of consecutive days with a commit, with a longest vs. current bar comparison and your longest break (the most days without a commit between two active days) when you took one.
 5. **Activity**: a GitHub-style calendar of commits per day (weeks as rows, Monday to Sunday, brighter the busier the day), with your number of active days and your busiest day. Hover a day in `wrapped.html` for its count. It covers up to the last 53 weeks of your history. For a repo that went quiet more than a month ago it says "12 months to Apr 2021" instead of "Your last 12 months".
@@ -56,7 +56,7 @@ You also get:
 - **Terminal recap**: commits, active days, lines, power hour, streak, longest break, hottest file,
   top language, team (in a repo with more than one contributor: the top contributor, or
   with `--author` your rank, e.g. `Team  7 contributors · you're #2 (31% of commits)`),
-  top word, biggest commit and personality, printed right after the run.
+  top word, biggest commit, commit size mix and personality, printed right after the run.
 - **JSON** (optional, `--json`): every computed stat in `stats.json`, for your own
   dashboards and scripts.
 - **Markdown** (optional, `--md`): a `wrapped.md` summary to paste into a README or a PR
@@ -105,7 +105,7 @@ gitwrapped [path...] [options]
 | `--until YYYY-MM-DD`  | Only include commits made on or before this day, inclusive (the author's local calendar day) |
 | `--year YYYY`         | One calendar year, the classic Wrapped: same as `--since YYYY-01-01 --until YYYY-12-31` (can't be combined with them), plus a comparison with the year before (see [Year over year](#year-over-year)) |
 | `--author <email>`    | Only include commits by this author email (exact, case-insensitive match against the email after `.mailmap` is applied) |
-| `--exclude <glob>`    | Leave matching files out of lines added/removed, files touched, hot files, languages and the biggest commit (and the per-repo, per-contributor and year-over-year lines). Repeatable. Commits still count: a commit that only touched excluded files still counts toward commits, active days, streaks and habits (see [Excluding files](#excluding-files)) |
+| `--exclude <glob>`    | Leave matching files out of lines added/removed, files touched, hot files, languages, the biggest commit and the commit size mix (and the per-repo, per-contributor and year-over-year lines). Repeatable. Commits still count: a commit that only touched excluded files still counts toward commits, active days, streaks and habits (see [Excluding files](#excluding-files)) |
 | `--out <dir>`         | Output directory (default: `gitwrapped-out`, created if needed)                        |
 | `--lang <code>`       | Language of the cards, share image, viewer and terminal recap: `en` (English, default) or `tr` (Türkçe). Also `--lang=tr`; an unknown code is an error. `stats.json` and file names stay the same in every language |
 | `--theme <name>`      | Color theme of the cards, share image, PNGs and viewer: `default` (the colorful gradients), `mono` (grayscale) or `neon` (near-black with neon glows). Also `--theme=mono`; an unknown name is an error. Only colors change: the layout, `stats.json` and file names are the same in every theme |
@@ -168,8 +168,8 @@ NO_COLOR=1 npx @furkycl/gitwrapped --no-png | head -1
 ## Excluding files
 
 `--exclude <glob>` (repeatable) drops matching files before any stat is computed: lines
-added / removed, files touched, hot files, languages, the biggest commit, the per-repo
-breakdown, the team card's lines and the year-over-year lines changed all leave them out. Commits are never
+added / removed, files touched, hot files, languages, the biggest commit, the commit size
+mix, the per-repo breakdown, the team card's lines and the year-over-year lines changed all leave them out. Commits are never
 dropped: a commit that only touched excluded files still counts toward commits, active
 days, streaks, time habits and the team card's commit counts. Matching is
 gitignore-like and case-sensitive:
@@ -233,9 +233,10 @@ npx @furkycl/gitwrapped ~/code/api ~/code/web ~/code/docs
 - The cards call the run "3 repos" (intro, footer, outro, share image), the intro names
   the repos, and the totals and hot-files cards add a per-repo breakdown (commits and
   lines per repo; files touched per repo): up to four repos, or the top three plus
-  "+N more". When the totals card is short of space (with `--year`'s three extra rows,
-  say) its per-repo chart is left out so the commit count stays big; the per-repo
-  numbers are still in the recap and `stats.json`. The terminal recap lists each repo's
+  "+N more". The per-repo chart usually leaves no spare room for the commit size bar,
+  so it is left out there. When the totals card is short of space (with `--year`'s three
+  extra rows, say) its per-repo chart is left out too so the commit count stays big; the
+  per-repo numbers and the size mix are still in the recap and `stats.json`. The terminal recap lists each repo's
   commits and lines.
 - Contributors (and `--author`'s "you vs the team") are counted across all the repos.
 - Every path must be a git repository (the error names the one that isn't), and two
@@ -286,7 +287,7 @@ but it does contain commit subjects and hashes and repo-relative file paths (see
 | `asOf`          | `YYYY-MM-DD` the current streak is counted up to: today, or the end of a past `--until` / `--year` window |
 | `filters`       | `{since, until, author, maxCommits, exclude}` as used (`--year` shows as since/until); dates and author are `null` when not set, `maxCommits` is the cap in effect, `exclude` the `--exclude` patterns in order (`[]` when none) |
 | `truncated`     | `true` when `--max-commits` cut the history short                             |
-| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `months`, `hotFiles`, `languages`, `contributors`, `messages`, `biggestCommit`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
+| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `months`, `hotFiles`, `languages`, `contributors`, `messages`, `biggestCommit`, `commitSizes`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
 
 ```json
 {
@@ -343,6 +344,16 @@ snapshots don't make a commit big, and `--exclude`d files are left out too; merg
 are skipped, and a tie goes to the earliest commit. History is read with `--no-renames`,
 so a commit that moves or renames large files counts their lines as removed and added
 again, and can be the biggest commit.
+
+`stats.commitSizes` is the commit size mix:
+`{"total", "tiny", "small", "medium", "large", "shares": {"tiny", "small", "medium", "large"}}`.
+`total` is the number of non-merge commits, and each one is counted in exactly one bucket
+by its lines changed (added + removed): `tiny` under 10 lines (0–9, so a commit that only
+touched ignored or binary files is tiny), `small` 10–99, `medium` 100–500 and `large`
+over 500. Lines are counted over the same files as `biggestCommit` (and hot files), so
+lockfiles, build output and `--exclude`d files don't count. `shares` are whole percents of
+`total` (largest-remainder rounding, so they always add up to exactly 100; all `0` without
+commits). The totals card shows the mix only when there is at least one such commit.
 
 `stats.languages` lists every language found, most lines first, with `"Other"` (file
 types gitwrapped doesn't know) always last. `type` is `"programming"`, `"data"` (JSON,

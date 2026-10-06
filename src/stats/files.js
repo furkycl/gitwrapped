@@ -143,9 +143,10 @@ export function computeHotFiles(commits, { limit = 5 } = {}) {
  * `commits` with the files matched by `isExcluded` (a path predicate, see compileExcludes
  * in src/glob.js) removed, for --exclude. Each path is checked as it is inside its own
  * repo (repoRelativePath) and, in a multi-repo run, also as shown ("<repo>/<path>", with
- * `{labelled: true}`, which only path patterns such as `api/docs/` or `/web` match; name
- * patterns such as `docs` or `api*` never match a repo's label): a match on either drops
- * the file. A commit that loses files is copied with `files`,
+ * `{labelled: true}`, which only path patterns whose first segment is literal, such as
+ * `api/docs/` or `/web`, match; name patterns such as `docs` or `api*` and patterns
+ * starting with a wildcard such as `*` + `/generated/` never match a repo's label): a match
+ * on either drops the file. A commit that loses files is copied with `files`,
  * `filesChanged`, `linesAdded` and `linesRemoved` recomputed from the files it keeps (a
  * missing or non-finite count adds 0); other commits are kept as they are (same object).
  * Commits are never dropped, even when every file is excluded: commit counts, active

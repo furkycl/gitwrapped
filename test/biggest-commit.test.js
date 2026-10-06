@@ -80,7 +80,7 @@ describe('computeBiggestCommit', () => {
     assert.equal(computeBiggestCommit([merge]), null);
   });
 
-  test('ties: earliest date, unparseable dates last, then input order', () => {
+  test('ties: earliest date, unparseable dates last, then the later in input order (older in git order)', () => {
     const later = commit('2026-03-05T10:00:00Z', 'later', [f('a.js', 10)]);
     const earlier = commit('2026-03-05T09:00:00Z', 'earlier', [f('a.js', 5, 5)]);
     const undated = commit('nope', 'undated', [f('a.js', 10)]);
@@ -88,12 +88,12 @@ describe('computeBiggestCommit', () => {
     assert.equal(computeBiggestCommit([undated, later]).subject, 'later');
     const undated2 = commit(undefined, 'undated 2', [f('a.js', 10)]);
     const r = computeBiggestCommit([undated, undated2]);
-    assert.equal(r.subject, 'undated');
+    assert.equal(r.subject, 'undated 2');
     assert.equal(r.date, null);
     const same1 = commit('2026-03-05T10:00:00Z', 'first', [f('a.js', 10)]);
     const same2 = commit('2026-03-05T11:00:00+01:00', 'second', [f('a.js', 10)]); // same instant
-    assert.equal(computeBiggestCommit([same1, same2]).subject, 'first');
-    assert.equal(computeBiggestCommit([same2, same1]).subject, 'second');
+    assert.equal(computeBiggestCommit([same1, same2]).subject, 'second');
+    assert.equal(computeBiggestCommit([same2, same1]).subject, 'first');
   });
 
   test('invalid input never throws: bad counts add 0, bad files are skipped', () => {

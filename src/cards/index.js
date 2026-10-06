@@ -520,6 +520,16 @@ function dailySummary(days) {
 /** Days a window must end before "today" to count as a dormant repo's final months. */
 const DORMANT_DAYS = 30;
 
+/**
+ * Whether a history whose last active day is `lastDay` (an epoch day) went quiet as of
+ * `asOf` ('YYYY-MM-DD'): it ended more than DORMANT_DAYS before. Used by the activity and
+ * months cards, so both agree. An invalid `asOf` or `lastDay` → false.
+ */
+function wentQuiet(lastDay, asOf) {
+  const a = epochDay(asOf ?? '');
+  return a !== null && Number.isFinite(lastDay) && a - lastDay > DORMANT_DAYS;
+}
+
 function activity(s, ctx = { L: EN }) {
   const d = s.daily ?? {};
   let days = (Array.isArray(d.days) ? d.days : [])
@@ -556,10 +566,9 @@ function activity(s, ctx = { L: EN }) {
     ({ busiest, activeWeeks: weeks } = dailySummary(days));
     // A repo that went quiet long ago: its grid ends well before today, so "your last 12
     // months" would be wrong; name the month the window ends instead.
-    const asOf = epochDay(ctx.asOf ?? '');
     const lastDay = Math.max(...days.map((x) => epochDay(x.day)));
     const end = parseDay(dayKeyOf(lastDay));
-    eyebrow = asOf !== null && end && asOf - lastDay > DORMANT_DAYS
+    eyebrow = end && wentQuiet(lastDay, ctx.asOf)
       ? A.monthsTo(end.month, end.year)
       : A.last12;
   } else {
@@ -904,8 +913,9 @@ function months(s, ctx) {
   const values = list.map((m) => m.commits);
   // Tick labels: every `step`-th month of the year (step divides 12, so January is always
   // labelled), January as its year, the others by their short name. A label needs about
-  // 80px; the chart is 888px (the content width) wide.
-  const need = 80 / (888 / Math.max(1, list.length));
+  // 100px (a year such as "2025" is ~84px at the 30px bold tick size, plus a gap); the
+  // chart is 888px (the content width) wide.
+  const need = 100 / (888 / Math.max(1, list.length));
   const step = [1, 2, 3, 4, 6, 12].find((k) => k >= need) ?? 12;
   const labels = list.map((m) => {
     const p = monthParts(m.month);
@@ -928,14 +938,22 @@ function months(s, ctx) {
     highlight,
     peakLabel: peak && !steady ? L.num(peak.commits) : '',
   };
-  // A clipped timeline that ends before the month the cards are "as of" (a repo that went
-  // quiet) names its last month instead of saying "your last 24 months".
+  // A clipped timeline of a repo that went quiet (its last active day more than
+  // DORMANT_DAYS before the cards' "as of" day, the same test as the activity card) names
+  // its last month instead of saying "your last 24 months".
   let eyebrow = M.eyebrow;
   if (clipped) {
-    const last = monthIndex(list[list.length - 1].month);
-    const asOf = parseDay(ctx.asOf);
-    const end = monthParts(list[list.length - 1].month);
-    eyebrow = asOf && last < asOf.year * 12 + asOf.month - 1 ? M.monthsTo(list.length, end.month, end.year) : M.lastMonths(list.length);
+    const lastKey = list[list.length - 1].month;
+    const end = monthParts(lastKey);
+    // The last active day of that month from stats.daily; without day data, the month's
+    // last day.
+    const inLast = (Array.isArray(s.daily?.days) ? s.daily.days : [])
+      .filter((x) => num(x?.commits) > 0 && typeof x?.day === 'string' && x.day.startsWith(`${lastKey}-`))
+      .map((x) => epochDay(x.day))
+      .filter((e) => e !== null);
+    const nextMonth = end.month === 12 ? `${end.year + 1}-01-01` : `${end.year}-${String(end.month + 1).padStart(2, '0')}-01`;
+    const lastDay = inLast.length > 0 ? Math.max(...inLast) : epochDay(nextMonth) - 1;
+    eyebrow = wentQuiet(lastDay, ctx.asOf) ? M.monthsTo(list.length, end.month, end.year) : M.lastMonths(list.length);
   }
   if (!peak) return { eyebrow, big: '0', title: L.units.commit[1], subtitle: L.empty, chart };
   const activeText = active === list.length ? M.everyMonth(list.length) : M.active(active, list.length);

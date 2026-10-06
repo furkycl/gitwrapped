@@ -27,7 +27,7 @@ calendar months and a team card in a repo with more than one contributor (up to 
 3. **Power hour**: the hour of the day you commit the most, with a 24-hour bar chart and a Monday-to-Sunday weekday chart (hover a bar in `wrapped.html` for its count).
 4. **Streak**: your longest run of consecutive days with a commit, with a longest vs. current bar comparison.
 5. **Activity**: a GitHub-style calendar of commits per day (weeks as rows, Monday to Sunday, brighter the busier the day), with your number of active days and your busiest day. Hover a day in `wrapped.html` for its count. It covers up to the last 53 weeks of your history. For a repo that went quiet more than a month ago it says "12 months to Apr 2021" instead of "Your last 12 months".
-6. **Month by month** (only when your commits span two or more calendar months): commits per month as a bar chart, from your first active month to your last (months without commits show as empty bars), with the peak month among the months shown called out ("Mar 2026 was your peak month"; a tie goes to the earliest month, and when every active month has the same count it says so instead) and how many of those months had commits. It shows your most recent 24 months at most ("Your last 24 months", or "24 months to Apr 2019" for a repo that went quiet); `stats.json` keeps every month, and its `peak` is over all of them. Months are the author's own calendar months, like the activity calendar, and commits dated after tomorrow are left off. A history inside one calendar month skips this card, and the cards after it then move up a number.
+6. **Month by month** (only when your commits span two or more calendar months): commits per month as a bar chart, from your first active month to your last (months without commits show as empty bars), with the peak month among the months shown called out ("Mar 2026 was your peak month"; a tie goes to the earliest month, and when every active month has the same count it says so instead) and how many of those months had commits. It shows your most recent 24 months at most ("Your last 24 months", or "24 months to Apr 2019" for a repo that went quiet more than a month ago, like the activity card); `stats.json` keeps every month, and its `peak` is over all of them. Months are the author's own calendar months, like the activity calendar, and commits dated after tomorrow are left off. A history inside one calendar month skips this card, and the cards after it then move up a number.
 7. **Hot files**: the five files you edit most as a bar list. Lockfiles, build output (`dist/`, `build/`, ...), dependency folders, vendored code (a root `vendor/` or `third_party/`), minified files and test snapshots (`*.snap`, `__snapshots__/`) are ignored.
 8. **Languages**: your top programming language and its share of the lines you changed ("72% · Mostly TypeScript", or "Led by" under half, with ties named), with bars for your top five languages plus "Other". Data formats (JSON, YAML, ...) and prose (Markdown, ...) show in the bars, but they only lead the card when there's no code at all. Languages come from file extensions and well-known names like `Dockerfile` and `Makefile` (86 built in); lockfiles, build output, vendored code, test snapshots and binary files are left out, as for hot files.
 9. **The team** (only when the history has two or more contributors): how many people committed and the top five by commits as bars ("Ada Lovelace leads the pack with 54% of the commits"). With `--author` it ranks you against everyone in the same window: "#2 of 7 contributors", your share of the commits and lines, and a "you" marker on your bar (a sixth bar when you're outside the top five). Contributors are counted per email after `.mailmap`, and only their git author names are shown, never an email. A single-author repo skips this card, and so does an `--author` with no commits in the window (there's no "you" to rank); the cards after it then move up a number.
@@ -170,8 +170,9 @@ dropped: a commit that only touched excluded files still counts toward commits, 
 days, streaks, time habits and the team card's commit counts. Matching is
 gitignore-like and case-sensitive:
 
-- `*` matches anything except `/`, `?` one character except `/`, `**` anything
-  including `/` (`**/x` also matches `x` at the root). Everything else is literal (no
+- `*` matches anything except `/`, `?` one character except `/`, `**` as a whole path
+  segment anything including `/` (`**/x` also matches `x` at the root; inside a name,
+  as in `src**.js`, it is a plain `*`). Everything else is literal (no
   `[abc]`, `{a,b}` or `!` negation).
 - A pattern without a `/` matches a file or folder name at any depth: `*.min.js`,
   `fixtures`, `CHANGELOG.md`.
@@ -185,8 +186,10 @@ gitignore-like and case-sensitive:
   (`src/x.js`, so `src/` excludes every repo's `src/`). A pattern with a `/` inside or a
   leading `/` is also tried against the shown path with the repo's label
   (`api/src/x.js`, so `api/src/` excludes only that repo's, and `/web` a whole repo's
-  files). A name pattern never matches a label: `docs` drops `docs/` folders in every
-  repo, not a repo called `docs`.
+  files), when its first segment has no wildcard. A name pattern, or a pattern that
+  starts with a wildcard, never matches a label: `docs` drops `docs/` folders in every
+  repo, not a repo called `docs`, and `*/generated/` drops the same files as with one
+  repo.
 
 `stats.json` echoes the patterns as `filters.exclude`.
 

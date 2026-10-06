@@ -1,16 +1,13 @@
 import { daysUpTo, longestRun } from './daily.js';
 import { epochDay } from './time.js';
+import { getStrings } from '../i18n/index.js';
+
+const EN = getStrings('en');
+const IDS = ['night-owl', 'early-bird', 'friday-deployer', 'fixaholic', 'weekend-warrior', 'steady-shipper'];
 
 /** The commit archetypes, in tie-break order. Steady Shipper is also the fallback. */
 export const ARCHETYPES = Object.freeze(
-  [
-    { id: 'night-owl', name: 'Night Owl', roast: 'Your best ideas arrive after midnight. So do your worst ones.' },
-    { id: 'early-bird', name: 'Early Bird', roast: 'You push code before the coffee is even brewed. Show-off.' },
-    { id: 'friday-deployer', name: 'Friday Deployer', roast: 'You ship on Fridays and call it courage. Your on-call rotation calls it something else.' },
-    { id: 'fixaholic', name: 'Fixaholic', roast: 'Every bug you fix is a bug you lovingly wrote first.' },
-    { id: 'weekend-warrior', name: 'Weekend Warrior', roast: 'Weekends are for touching grass. You touched git instead.' },
-    { id: 'steady-shipper', name: 'Steady Shipper', roast: 'Reliable, consistent, low drama. Frankly, a little suspicious.' },
-  ].map((a) => Object.freeze(a)),
+  IDS.map((id) => Object.freeze({ id, name: EN.personality.archetypes[id].name, roast: EN.personality.archetypes[id].roast })),
 );
 
 const BY_ID = new Map(ARCHETYPES.map((a) => [a.id, a]));
@@ -25,8 +22,6 @@ const clamp01 = (x) => Math.min(1, Math.max(0, x));
 // The tiny nudge makes exact halves round up despite float noise: (0.25 − 0.10) / 0.40
 // evaluates to 0.37499999999999994, which should still report as 0.38.
 const round2 = (x) => Math.round(x * 100 + 1e-9) / 100;
-const pct = (share) => `${Math.round(share * 100)}%`;
-const days = (n) => `${n} ${n === 1 ? 'day' : 'days'}`;
 /** clamp01((share − baseline) / range): 0 at or below the baseline, 1 at baseline + range. */
 const above = (share, baseline, range) => clamp01((share - baseline) / range);
 const sumAt = (arr, idx) => idx.reduce((s, i) => s + num(arr[i]), 0);
@@ -107,15 +102,7 @@ export function computePersonality(stats, opts) {
     'weekend-warrior': above(weekend, 0.15, 0.35),
     'steady-shipper': steady,
   };
-  const reasons = {
-    'night-owl': `${pct(night)} of your commits land between 10 PM and 4 AM.`,
-    'early-bird': `${pct(morning)} of your commits land between 5 AM and 9 AM.`,
-    'friday-deployer': `${pct(friday)} of your commits land on a Friday.`,
-    fixaholic: `${pct(fixShare)} of your commit messages are fixes.`,
-    'weekend-warrior': `${pct(weekend)} of your commits land on a Saturday or Sunday.`,
-    'steady-shipper': `You committed on ${activeDays} of ${days(span)}, with a longest streak of ${days(longest)}.`,
-  };
-
+  const facts = { night, morning, friday, fixShare, weekend, activeDays, span, longest };
   // Array#sort is stable, so equal scores keep ARCHETYPES order.
   const scores = ARCHETYPES.map(({ id, name }) => ({ id, name, score: round2(clamp01(raw[id])) }))
     .sort((a, b) => b.score - a.score);
@@ -123,8 +110,43 @@ export function computePersonality(stats, opts) {
   const enough = dated >= MIN_DATED;
   const id = enough && scores[0].score >= MIN_SCORE ? scores[0].id : 'steady-shipper';
   const { name, roast } = BY_ID.get(id);
-  return {
-    archetype: { id, name, roast, reason: enough ? reasons[id] : 'Not enough commits yet.' },
+  const result = {
+    archetype: { id, name, roast, reason: enough ? reasonText(id, facts, EN) : EN.personality.notEnough },
     scores,
   };
+  // The numbers behind the reason, so the cards can phrase it in another language
+  // (personalityReason). Under a module-private symbol and non-enumerable: JSON
+  // (stats.json walks Object.keys), spreads and deep-equality checks never see it.
+  Object.defineProperty(result, FACTS, { value: Object.freeze({ ...facts, enough }) });
+  return result;
+}
+
+/** Key of the facts behind a computePersonality() result (see personalityReason). */
+const FACTS = Symbol('personality facts');
+
+/** The reason sentence for archetype `id` from `facts`, in the language of `L`. */
+function reasonText(id, facts, L) {
+  const pct = (share) => Math.round(share * 100);
+  const r = L.personality.reasons;
+  switch (id) {
+    case 'night-owl': return r[id](pct(facts.night));
+    case 'early-bird': return r[id](pct(facts.morning));
+    case 'friday-deployer': return r[id](pct(facts.friday));
+    case 'fixaholic': return r[id](pct(facts.fixShare));
+    case 'weekend-warrior': return r[id](pct(facts.weekend));
+    default: return r['steady-shipper'](facts.activeDays, facts.span, facts.longest);
+  }
+}
+
+/**
+ * The archetype's reason sentence in the language of string table `L` (see
+ * src/i18n), for `personality` as returned by computePersonality(). Null when that object
+ * did not come from computePersonality() (e.g. hand-built or parsed from stats.json):
+ * the caller then keeps the stored English `reason`.
+ */
+export function personalityReason(personality, L) {
+  const facts = personality && typeof personality === 'object' ? personality[FACTS] : undefined;
+  const id = personality?.archetype?.id;
+  if (!facts || typeof id !== 'string') return null;
+  return facts.enough ? reasonText(id, facts, L) : L.personality.notEnough;
 }

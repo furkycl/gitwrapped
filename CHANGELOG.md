@@ -18,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   numbered without gaps.
 - `stats.contributors` in `stats.json` (`total`, `top`, `you`, `authorFilter`,
   `truncated`) and a "Team" line in the terminal recap.
+- `--lang tr|en` (also `--lang=tr`): the cards, the 1200x630 share image, the PNGs, the
+  `wrapped.html` viewer (labels, buttons, aria text, live-region messages,
+  `<html lang>`) and the terminal recap in Turkish, with Turkish dates, 24-hour times,
+  number and percent formats and Turkish upper-casing. English stays the default and
+  its output is unchanged; an unknown code is an error (exit 2). `stats.json` is
+  language-neutral and identical for every `--lang`. All strings live in one table per
+  language under `src/i18n/`, and a test checks every key exists in every language.
 
 ## [1.1.0] - 2026-10-06
 

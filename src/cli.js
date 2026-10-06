@@ -9,6 +9,7 @@ import { renderPng } from './png.js';
 import { computeStats, localToday } from './stats/index.js';
 import { formatSummary, shouldUseColor, stripControl } from './summary.js';
 import { buildViewerHtml } from './viewer.js';
+import { DEFAULT_LANG, getStrings, isLang, LANGS } from './i18n/index.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -28,6 +29,8 @@ Options:
   --author <email>     Only include commits by this author email
                        (exact email match, case-insensitive, after .mailmap)
   --out <dir>          Output directory (default: "gitwrapped-out")
+  --lang <code>        Language of the cards, viewer and recap:
+                       en (English, default) or tr (Türkçe)
   --max-commits <n>    Analyze at most the n most recent commits
                        (default: 50000)
   --no-png             Skip PNG rendering (faster; SVG + HTML only)
@@ -46,6 +49,7 @@ const OPTIONS = {
   year: { type: 'string' },
   author: { type: 'string' },
   out: { type: 'string' },
+  lang: { type: 'string' },
   'max-commits': { type: 'string' },
   'no-png': { type: 'boolean' },
   json: { type: 'boolean' },
@@ -80,6 +84,12 @@ function validateYear(value) {
   if (!/^\d{4}$/.test(v) || n < 1970) {
     throw new Error(`invalid --year "${value}": expected a four-digit year from 1970 to 9999`);
   }
+  return v;
+}
+
+function validateLang(value) {
+  const v = value.trim().toLowerCase();
+  if (!isLang(v)) throw new Error(`invalid --lang "${value}": expected one of ${LANGS.join(', ')}`);
   return v;
 }
 
@@ -127,8 +137,8 @@ function normalizeArgv(argv) {
  * Parse CLI arguments (without node/script prefix).
  * Returns {help:true}, {version:true}, or {path, since, author, out, png, maxCommits}
  * plus, only when given: color (false for --no-color; absent = auto), until, year
- * (--year YYYY also sets since/until to Jan 1 / Dec 31 of that year), json (true) and
- * open (true).
+ * (--year YYYY also sets since/until to Jan 1 / Dec 31 of that year), json (true),
+ * open (true) and lang (a code from src/i18n LANGS, e.g. 'tr'; absent = English).
  * Throws an Error with a user-facing message on invalid input.
  */
 export function parseCli(argv) {
@@ -149,7 +159,7 @@ export function parseCli(argv) {
     throw new Error(`expected at most one path, got ${positionals.length}: ${positionals.join(' ')}`);
   }
 
-  for (const name of ['since', 'until', 'year', 'author', 'out', 'max-commits']) {
+  for (const name of ['since', 'until', 'year', 'author', 'out', 'lang', 'max-commits']) {
     if (values[name] !== undefined && values[name].trim() === '') {
       throw new Error(`--${name} requires a non-empty value`);
     }
@@ -170,6 +180,8 @@ export function parseCli(argv) {
     throw new Error(`--since ${since} is after --until ${until}`);
   }
 
+  const lang = values.lang === undefined ? undefined : validateLang(values.lang);
+
   return {
     // An empty path ("") means the current directory, like the default.
     path: positionals[0] || '.',
@@ -183,6 +195,7 @@ export function parseCli(argv) {
     ...(year ? { year } : {}),
     ...(values.json ? { json: true } : {}),
     ...(values.open ? { open: true } : {}),
+    ...(lang ? { lang } : {}),
   };
 }
 
@@ -392,7 +405,10 @@ function removeOldCardFiles(dir, ext, keep) {
  * At most `maxCommits` (default 50,000) of the most recent commits are analyzed.
  * `until` (YYYY-MM-DD, inclusive) ends the window; when it is before `today` (default: the
  * machine's local date) the current streak is computed relative to `until` instead.
- * With `json`, <out>/stats.json (see json.js) is written too.
+ * With `json`, <out>/stats.json (see json.js) is written too (language-neutral: `lang`
+ * does not change it).
+ * `lang` (a src/i18n code, default 'en') is the language of the cards, the share image
+ * and the viewer.
  * With `author`, the history is read a second time without it (same window and cap) for
  * stats.contributors, which then ranks that author against everyone ("you vs the team");
  * that second read is skipped when the author has no commits in the window.
@@ -407,7 +423,7 @@ function removeOldCardFiles(dir, ext, keep) {
  * whether that is a past `until`.
  * `renderPng` (svg, {width}) → Promise<Buffer> replaces the PNG renderer (for tests).
  */
-export async function generate({ path, since, until, author, out, png = true, maxCommits = DEFAULT_LIMIT, json = false }, { today, renderPng: rasterize = renderPng } = {}) {
+export async function generate({ path, since, until, author, out, png = true, maxCommits = DEFAULT_LIMIT, json = false, lang = DEFAULT_LANG }, { today, renderPng: rasterize = renderPng } = {}) {
   const { commits, truncated, limit, shallow, unborn = false, otherRefs = false } = await readHistory(path, { since, until, author, limit: maxCommits });
   // A past window's "current" streak is the one running when the window closed; its end
   // day is over, so there is no "today isn't over yet" grace day (todayComplete).
@@ -427,8 +443,8 @@ export async function generate({ path, since, until, author, out, png = true, ma
     teamTruncated: team ? Boolean(team.truncated) : Boolean(truncated),
   });
   const name = await repoName(path);
-  const cards = buildCards(stats, { repoName: name, since, until, author, today: ref });
-  const shareSvg = renderShareCard(stats, { repoName: name, since, until, author, today: ref });
+  const cards = buildCards(stats, { repoName: name, since, until, author, today: ref, lang });
+  const shareSvg = renderShareCard(stats, { repoName: name, since, until, author, today: ref, lang });
 
   const cardsDir = join(out, 'cards');
   const pngDir = join(out, 'png');
@@ -446,8 +462,8 @@ export async function generate({ path, since, until, author, out, png = true, ma
       truncated,
     })
     : null;
-  const label = windowLabel({ since, until });
-  const page = buildViewerHtml(cards, { title: `gitwrapped · ${name}${label ? ` · ${label}` : ''}` });
+  const label = windowLabel({ since, until, lang });
+  const page = buildViewerHtml(cards, { title: `gitwrapped · ${name}${label ? ` · ${label}` : ''}`, lang });
   const stem = (id, i) => `${String(i + 1).padStart(2, '0')}-${id}`;
   const files = cards.map(({ id, svg }, i) => ({ file: join(cardsDir, `${stem(id, i)}.svg`), svg }));
   const pngTargets = png ? cards.map(({ id, svg }, i) => ({ file: join(pngDir, `${stem(id, i)}.png`), svg, width: 1080 })) : [];
@@ -635,28 +651,26 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
     stderr.write(`gitwrapped: ${err?.message ?? String(err)}\n`);
     return 1;
   }
+  const L = getStrings(opts.lang);
+  const N = L.notes;
+  const limitText = () => L.num(result.limit);
   const notes = [];
   if (result.truncated) {
-    const n = result.limit.toLocaleString('en-US');
-    notes.push(
-      opts.since || opts.until || opts.author
-        ? `Note: more than ${n} matching commits; only the most recent ${n} were analyzed.`
-        : `Note: this repo has more than ${n} commits; only the most recent ${n} were analyzed.`,
-    );
+    const n = limitText();
+    notes.push(opts.since || opts.until || opts.author ? N.truncatedFiltered(n) : N.truncated(n));
   }
   if (result.teamTruncated && !result.truncated) {
-    const n = result.limit.toLocaleString('en-US');
-    notes.push(`Note: the contributors card ranks you within the most recent ${n} commits by everyone.`);
+    notes.push(N.teamTruncated(limitText()));
   }
   if (result.shallow) {
-    notes.push('Note: shallow clone: line counts for the oldest (boundary) commit are skipped, and older history is missing.');
+    notes.push(N.shallow);
   }
   if (result.unbornWithRefs) {
-    notes.push('Note: the current branch (HEAD) has no commits yet, and gitwrapped only reads HEAD\'s history. Check out a branch with commits (e.g. git switch main) and run again.');
+    notes.push(N.unborn);
   } else if (result.commits === 0 && opts.author && !opts.author.includes('@')) {
-    notes.push(`Note: no commits by "${opts.author}". --author expects an email address (e.g. you@example.com).`);
+    notes.push(N.authorNotEmail(opts.author));
   } else if (result.commits === 0 && (opts.since || opts.until || opts.author)) {
-    notes.push(`Note: no commits match ${filterText(opts)}.`);
+    notes.push(N.noMatch(filterText(opts)));
   }
   stdout.write(
     formatSummary(result.stats, {
@@ -666,6 +680,7 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
       streakAtWindowEnd: result.pastWindow,
       today: result.asOf,
       notes,
+      lang: opts.lang,
       paths: {
         html: result.html,
         cardsDir: result.cardsDir,
@@ -682,7 +697,7 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
   if (opts.open) {
     const target = resolve(result.html);
     // Say so first: the opener may take up to OPEN_WAIT_MS to report a failure.
-    stdout.write(`Opening ${stripControl(target)}…\n`);
+    stdout.write(`${L.recap.opening(stripControl(target))}\n`);
     try {
       await openFile(target);
     } catch (err) {

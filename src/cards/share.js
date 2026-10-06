@@ -1,6 +1,7 @@
 // Share summary card: one landscape 1200x630 SVG (the usual link-preview / social image
 // size) in the same visual language as the story cards. Pure layout: buildShareCard() in
 // index.js turns stats into the strings drawn here.
+import { getStrings } from '../i18n/index.js';
 import { escapeXml, fitCount, fitKeepTail, FONT_FAMILY, measureText, sanitizeIdPrefix, textEl, THEMES, truncateStart, wrapText } from './svg.js';
 
 export const SHARE_WIDTH = 1200;
@@ -56,20 +57,25 @@ function background(id, t) {
   ].join('');
 }
 
-function tile(x, width, { label, value }) {
+function tile(x, width, { label, value }, L) {
   const inner = width - 2 * TILE_PAD;
   const parts = [`<rect x="${x}" y="${TILE_TOP}" width="${width}" height="${TILE_HEIGHT}" rx="28" fill="#ffffff" fill-opacity="0.14"/>`];
-  const lab = fitLine(str(label).toUpperCase(), inner, 20, 2.5);
+  const lab = fitLine(L.upper(str(label)), inner, 20, 2.5);
   if (lab) parts.push(textEl(x + TILE_PAD, TILE_TOP + 48, lab, { size: 20, weight: 800, opacity: 0.85, spacing: 2.5 }));
   // A count too wide for the tile at 36px switches to compact form (12.3K), never wraps.
   const raw = str(value) || '—';
-  const v = fitCount(raw, inner, 36, WEIGHT_FACTOR) ?? raw;
+  const v = fitCount(raw, inner, 36, WEIGHT_FACTOR, L.code) ?? raw;
   const size = fitSize(v, inner, 64, 36);
   if (size) {
     parts.push(textEl(x + TILE_PAD, TILE_TOP + 140, v, { size, weight: 900, spacing: -0.02 * size }));
   } else {
-    const lines = wrapText(v, { maxWidth: inner / WEIGHT_FACTOR, fontSize: 34, maxLines: 2 });
-    lines.forEach((l, i) => parts.push(textEl(x + TILE_PAD, TILE_TOP + 118 + i * 40, l, { size: 34, weight: 900 })));
+    // Two lines at 34px; a value that would be cut there (long words, e.g. Turkish
+    // archetype names like "Hafta Sonu Savaşçısı") steps down to 26px before it is cut.
+    const maxWidth = inner / WEIGHT_FACTOR;
+    const fits = (fs) => wrapText(v, { maxWidth, fontSize: fs }).length <= 2 && v.split(/\s+/).every((w) => measureText(w, fs) <= maxWidth);
+    const fs = [34, 32, 30, 28, 26].find(fits) ?? 34;
+    const lines = wrapText(v, { maxWidth, fontSize: fs, maxLines: 2 });
+    lines.forEach((l, i) => parts.push(textEl(x + TILE_PAD, TILE_TOP + 118 + i * Math.round(fs * 40 / 34), l, { size: fs, weight: 900 })));
   }
   return parts.join('');
 }
@@ -78,20 +84,22 @@ function tile(x, width, { label, value }) {
  * Render the share card. All fields are optional strings except `tiles` (up to 4
  * `{label, value}`) and `file` (`{label, path, value}` or null; `path` is shortened from
  * the start, `note` replaces the whole pill text when there is no file). Deterministic;
- * all text XML-escaped; every id starts with `idPrefix` (default `gw-share`).
+ * all text XML-escaped; every id starts with `idPrefix` (default `gw-share`). `lang` (an
+ * src/i18n code, default 'en') sets the upper-casing rules and number format.
  */
-export function renderShareSvg({ theme: themeName, eyebrow, title, tiles, file, note, footer, idPrefix } = {}) {
+export function renderShareSvg({ theme: themeName, eyebrow, title, tiles, file, note, footer, idPrefix, lang } = {}) {
+  const L = getStrings(lang);
   const t = Object.hasOwn(THEMES, themeName ?? '') ? THEMES[themeName] : THEMES.pulse;
   const ids = sanitizeIdPrefix(idPrefix) || 'gw-share';
   const body = [];
 
-  const eb = str(eyebrow).toUpperCase();
+  const eb = L.upper(str(eyebrow));
   body.push(`<rect x="${PAD}" y="56" width="56" height="8" rx="4" fill="#ffffff"/>`);
   if (eb) {
     body.push(textEl(PAD, 112, fitLine(eb, INNER, 26, 4), { size: 26, weight: 800, opacity: 0.9, spacing: 4 }));
   }
 
-  const name = str(title) || 'your repo';
+  const name = str(title) || L.yourRepo;
   const size = fitSize(name, INNER, 88, 44);
   const nameLine = size ? name : fitLine(name, INNER, 44);
   body.push(textEl(PAD, 200, nameLine, { size: size ?? 44, weight: 900, spacing: -0.02 * (size ?? 44) }));
@@ -99,7 +107,7 @@ export function renderShareSvg({ theme: themeName, eyebrow, title, tiles, file, 
   const list = (Array.isArray(tiles) ? tiles : []).slice(0, 4);
   if (list.length > 0) {
     const w = Math.floor((INNER - TILE_GAP * (list.length - 1)) / list.length);
-    list.forEach((tl, i) => body.push(tile(PAD + i * (w + TILE_GAP), w, tl ?? {})));
+    list.forEach((tl, i) => body.push(tile(PAD + i * (w + TILE_GAP), w, tl ?? {}, L)));
   }
 
   const pillText = 30;
@@ -109,7 +117,7 @@ export function renderShareSvg({ theme: themeName, eyebrow, title, tiles, file, 
   if (path) {
     const label = str(file.label);
     const value = str(file.value);
-    const labelText = fitLine(label.toUpperCase(), 280, 22, 2);
+    const labelText = fitLine(L.upper(label), 280, 22, 2);
     const valueText = fitLine(value, 300, 26);
     const labelW = labelText ? widthOf(labelText, 22, 2) + 20 : 0;
     const valueW = valueText ? widthOf(valueText, 26) + 24 : 0;

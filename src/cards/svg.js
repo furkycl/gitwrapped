@@ -2,6 +2,7 @@
 // Pure and deterministic (no randomness, no dates, no I/O). Text uses a system font
 // stack only, so the SVGs need no external fonts, images or stylesheets.
 import { dayKeyFromEpoch, epochDay, mondayOf } from '../stats/time.js';
+import { formatInteger, getStrings } from '../i18n/index.js';
 
 export const CARD_WIDTH = 1080;
 export const CARD_HEIGHT = 1920;
@@ -13,6 +14,8 @@ const CONTENT_WIDTH = CARD_WIDTH - 2 * PAD_X;
 // approximation and bold faces can run wider than it predicts.
 const WRAP_WIDTH = Math.floor(CONTENT_WIDTH * 0.95);
 const ELLIPSIS = '…';
+/** The default string table (see src/i18n). */
+const EN = getStrings('en');
 
 const theme = (stops, glow, angle) => Object.freeze({ stops: Object.freeze(stops), glow, angle });
 
@@ -263,13 +266,10 @@ export function truncateMiddle(text, { maxWidth, fontSize }) {
  * Non-numbers and non-finite values → "0".
  */
 export function formatNumber(n) {
-  const v = Math.round(typeof n === 'number' && Number.isFinite(n) ? n : 0);
-  // BigInt prints every digit of an integral double, where String() would switch to 1e+21.
-  const digits = BigInt(Math.abs(v)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  return v < 0 ? `−${digits}` : digits;
+  return formatInteger(n, ',');
 }
 
-const SUFFIXES = ['K', 'M', 'B', 'T'];
+const escapeRe = (c) => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
  * A count in compact form for tight spots: 950 → "950", 12,345 → "12.3K",
@@ -278,15 +278,16 @@ const SUFFIXES = ['K', 'M', 'B', 'T'];
  * ("12,345"; a leading '+', '−' or '-' is kept). Never scientific notation; anything that is
  * not a finite count → "0".
  */
-export function compactNumber(n) {
+export function compactNumber(n, lang) {
+  const { sep, point, suffixes: SUFFIXES } = getStrings(lang).compact;
   let neg = false;
   let plus = false;
   if (typeof n === 'string') {
-    const m = /^([+\u2212-])?(\d{1,3}(?:,\d{3})*|\d+)$/.exec(n.trim());
+    const m = new RegExp(`^([+\\u2212-])?(\\d{1,3}(?:${escapeRe(sep)}\\d{3})*|\\d+)$`).exec(n.trim());
     if (!m) return '0';
     if (m[1] === '+') plus = true;
     else neg = Boolean(m[1]);
-    n = Number(m[2].replace(/,/g, ''));
+    n = Number(m[2].split(sep).join(''));
   }
   if (typeof n !== 'number' || !Number.isFinite(n)) return '0';
   if (n < 0) {
@@ -302,24 +303,25 @@ export function compactNumber(n) {
     unit += 1;
   }
   const last = unit === SUFFIXES.length - 1;
-  if (last && v >= 9999.5) return `${sign}9,999T+`;
+  if (last && v >= 9999.5) return `${sign}9${sep}999${SUFFIXES[unit]}+`;
   const r = Math.round(v * 10) / 10;
-  const shown = r < 100 ? r.toFixed(1) : String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const shown = r < 100 ? r.toFixed(1).replace('.', point) : String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, sep);
   return `${sign}${shown}${SUFFIXES[unit]}`;
 }
 
-const NUMBER_VALUE = /^([+\u2212-]?\d{1,3}(?:,\d{3})*)(\s.*)?$/;
+/** A count with an optional unit after it ("12,345" / "12,345 days"), per language. */
+const numberValue = (sep) => new RegExp(`^([+\\u2212-]?\\d{1,3}(?:${escapeRe(sep)}\\d{3})*)(\\s.*)?$`);
 
 /**
  * A tile value that fits `maxWidth` at `size`: as is when it fits, else, for a count
  * ("12,345" or "12,345 days"), the count in compact form; null when neither fits.
  */
-export function fitCount(value, maxWidth, size, factor = 1.02) {
+export function fitCount(value, maxWidth, size, factor = 1.02, lang) {
   const w = (t) => measureText(t, size) * factor;
   if (w(value) <= maxWidth) return value;
-  const m = NUMBER_VALUE.exec(value);
+  const m = numberValue(getStrings(lang).compact.sep).exec(value);
   if (!m) return null;
-  const compact = `${compactNumber(m[1])}${m[2] ?? ''}`;
+  const compact = `${compactNumber(m[1], lang)}${m[2] ?? ''}`;
   return w(compact) <= maxWidth ? compact : null;
 }
 
@@ -433,8 +435,8 @@ function fitLabel(label, maxWidth, size, truncate) {
 }
 
 /** Small-caps chart caption (upper-cased, letter-spaced) at the top of a block. */
-function caption(y, text) {
-  const t = fitSpaced(s1(text).toUpperCase(), CONTENT_WIDTH, CAPTION.size, CAPTION.spacing);
+function caption(y, text, L = EN) {
+  const t = fitSpaced(L.upper(s1(text)), CONTENT_WIDTH, CAPTION.size, CAPTION.spacing);
   return t ? textEl(PAD_X, y + CAPTION.size * 0.76, t, { size: CAPTION.size, weight: 800, opacity: 0.75, spacing: CAPTION.spacing }) : '';
 }
 
@@ -532,7 +534,7 @@ const clampCenter = (cx, width) => Math.min(PAD_X + CONTENT_WIDTH - width / 2, M
  * (tick labels; '' for none), titles: string[] (hover text per bar), highlight: index[],
  * peakLabel: string (shown above the first highlighted bar), maxBarHeight}`.
  */
-function barsBlock(spec, compact = false) {
+function barsBlock(spec, compact = false, L = EN) {
   const values = (Array.isArray(spec.values) ? spec.values : []).slice(0, 64).map(clampNum);
   if (values.length === 0) return null;
   const n = values.length;
@@ -559,7 +561,7 @@ function barsBlock(spec, compact = false) {
       const slot = CONTENT_WIDTH / n;
       const gap = Math.max(2, Math.round(slot * (n > 12 ? 0.24 : 0.3)));
       const w = slot - gap;
-      const parts = [caption(y, cap)];
+      const parts = [caption(y, cap, L)];
       values.forEach((v, i) => {
         const x = PAD_X + i * slot + gap / 2;
         const t = titleEl(s1(titles[i]));
@@ -594,7 +596,7 @@ function barsBlock(spec, compact = false) {
  * title, truncate}]}`: label (bold) with an optional dimmer `sub` after it, `value` right
  * aligned, and a bar proportional to `amount` / the largest amount. At most 6 items.
  */
-function hbarsBlock(spec, compact = false) {
+function hbarsBlock(spec, compact = false, L = EN) {
   const items = (Array.isArray(spec.items) ? spec.items : [])
     .filter((it) => it && (s1(it.label) || s1(it.value)))
     .slice(0, MAX_CHART_ITEMS)
@@ -619,7 +621,7 @@ function hbarsBlock(spec, compact = false) {
     maxHeight: capH + n * ITEM + (n - 1) * maxGap,
     render: (y, height) => {
       const gap = n > 1 ? (height - capH - n * ITEM) / (n - 1) : 0;
-      const parts = [caption(y, cap)];
+      const parts = [caption(y, cap, L)];
       items.forEach((it, i) => {
         const top = y + capH + i * (ITEM + gap);
         const baseline = top + LABEL * 0.8;
@@ -656,7 +658,7 @@ function hbarsBlock(spec, compact = false) {
  * amount}, {label, value, amount}]}`: the first segment is solid (left), the second
  * translucent (right); labels sit under each end.
  */
-function splitBlock(spec) {
+function splitBlock(spec, compact = false, L = EN) {
   const segs = (Array.isArray(spec.segments) ? spec.segments : []).slice(0, 2)
     .map((sg) => ({ label: s1(sg?.label), value: s1(sg?.value), amount: clampNum(sg?.amount) }));
   if (segs.length < 2) return null;
@@ -670,7 +672,7 @@ function splitBlock(spec) {
     kind: 'split',
     height,
     render: (y) => {
-      const parts = [caption(y, cap)];
+      const parts = [caption(y, cap, L)];
       const barY = y + capH;
       const [a, b] = segs;
       const total = a.amount + b.amount;
@@ -691,7 +693,7 @@ function splitBlock(spec) {
       const half = CONTENT_WIDTH / 2 - 16;
       [[a, PAD_X, 'start'], [b, PAD_X + CONTENT_WIDTH, 'end']].forEach(([sg, x, anchor]) => {
         const label = fitEnd(sg.label, half, LABEL);
-        const value = fitCount(sg.value, half, VALUE, BIG_WEIGHT_FACTOR) ?? fitEnd(sg.value, half, VALUE);
+        const value = fitCount(sg.value, half, VALUE, BIG_WEIGHT_FACTOR, L.code) ?? fitEnd(sg.value, half, VALUE);
         if (label) parts.push(textEl(x, lBase, label, { size: LABEL, weight: 700, opacity: 0.75, anchor }));
         if (value) parts.push(textEl(x, vBase, value, { size: VALUE, weight: 900, anchor }));
       });
@@ -706,8 +708,8 @@ const PANEL_FILL = 'fill="#ffffff" fill-opacity="0.14"';
  * A translucent panel with a caption, one big fitted value and a note line.
  * Spec: `{kind: 'callout', title, value, note}`.
  */
-function calloutBlock(spec) {
-  const cap = s1(spec.title).toUpperCase();
+function calloutBlock(spec, compact = false, L = EN) {
+  const cap = L.upper(s1(spec.title));
   const value = s1(spec.value);
   const note = s1(spec.note);
   if (!value && !note) return null;
@@ -740,10 +742,10 @@ function calloutBlock(spec) {
  * Spec: `{kind: 'tiles', items: [{label, value}] (up to 4), wide: {label, value, note,
  * truncate} | null}`.
  */
-function tilesBlock(spec) {
-  const items = (Array.isArray(spec.items) ? spec.items : []).slice(0, 4).map((t) => ({ label: s1(t?.label).toUpperCase(), value: s1(t?.value) || '—' }));
+function tilesBlock(spec, compact = false, L = EN) {
+  const items = (Array.isArray(spec.items) ? spec.items : []).slice(0, 4).map((t) => ({ label: L.upper(s1(t?.label)), value: s1(t?.value) || '—' }));
   const wide = spec.wide && (s1(spec.wide.value) || s1(spec.wide.label))
-    ? { label: s1(spec.wide.label).toUpperCase(), value: s1(spec.wide.value), note: s1(spec.wide.note), truncate: spec.wide.truncate === 'start' ? 'start' : 'end' }
+    ? { label: L.upper(s1(spec.wide.label)), value: s1(spec.wide.value), note: s1(spec.wide.note), truncate: spec.wide.truncate === 'start' ? 'start' : 'end' }
     : null;
   if (items.length === 0 && !wide) return null;
   const TILE_H = 196;
@@ -759,7 +761,7 @@ function tilesBlock(spec) {
   // One value size for all tiles (the largest every fitting value allows, 44..72px);
   // values that do not fit at 44px wrap onto two lines instead.
   // Counts that do not fit even at 44px switch to compact form (12.3K) rather than wrap.
-  for (const t of items) t.value = fitCount(t.value, tileInner, 44, BIG_WEIGHT_FACTOR) ?? t.value;
+  for (const t of items) t.value = fitCount(t.value, tileInner, 44, BIG_WEIGHT_FACTOR, L.code) ?? t.value;
   const fits = items.map((t) => Math.min(72, Math.floor(tileInner / Math.max(measureText(t.value, 1) * BIG_WEIGHT_FACTOR, 0.001))));
   const shared = Math.min(72, ...fits.filter((f) => f >= 44));
   return {
@@ -787,7 +789,7 @@ function tilesBlock(spec) {
         parts.push(`<rect x="${X0}" y="${round(wy)}" width="${FULL}" height="${WIDE_H}" rx="36" ${PANEL_FILL}/>`);
         const lab = fitSpaced(wide.label, inner, 24, 2.5);
         if (lab) parts.push(textEl(X0 + TP, wy + 54, lab, { size: 24, weight: 800, opacity: 0.8, spacing: 2.5 }));
-        const note = fitCount(wide.note, inner * 0.4, 34, BIG_WEIGHT_FACTOR) ?? fitEnd(wide.note, inner * 0.4, 34);
+        const note = fitCount(wide.note, inner * 0.4, 34, BIG_WEIGHT_FACTOR, L.code) ?? fitEnd(wide.note, inner * 0.4, 34);
         const noteW = note ? heavyWidth(note, 34) + 28 : 0;
         const value = fitLabel(wide.value, inner - noteW, 48, wide.truncate);
         if (value) parts.push(textEl(X0 + TP, wy + 118, value, { size: 48, weight: 900, spacing: -0.5 }));
@@ -816,13 +818,10 @@ const CAL = {
   empty: 0.08,
   levels: [0.3, 0.5, 0.75, 1],
 };
-const CAL_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const CAL_WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-
-/** 'YYYY-MM-DD' → "Oct 4, 2026" (the year as written, 4 digits). */
-function calDate(key) {
+/** 'YYYY-MM-DD' → "Oct 4, 2026" / "4 Eki 2026" (the year as written, 4 digits). */
+function calDate(key, L = EN) {
   const [y, m, d] = key.split('-');
-  return `${CAL_MONTHS[+m - 1]} ${+d}, ${y}`;
+  return L.date(+d, +m, y);
 }
 
 /** Month (1-12) of an epoch day; null outside years 0-9999. */
@@ -899,14 +898,14 @@ export function calendarWindow(days) {
  * 1st of each month (and each panel's first row), and a Less → More legend sits under
  * the grid on the right.
  */
-function calendarBlock(spec, compact = false) {
+function calendarBlock(spec, compact = false, L = EN) {
   const win = calendarWindow(spec.days);
   const { weeks, counts } = win;
   const levelOf = calendarLevels(counts.size ? [...counts.values()] : [1]);
   const cap = s1(spec.title);
   const capH = cap ? CAPTION.height : 0;
   const hasDates = win.start !== null;
-  const gutter = hasDates ? Math.ceil(Math.max(...CAL_MONTHS.map((m) => heavyWidth(m, CAL.month.size)))) + CAL.month.gap : 0;
+  const gutter = hasDates ? Math.ceil(Math.max(...L.months.map((m) => heavyWidth(m, CAL.month.size)))) + CAL.month.gap : 0;
   const pitchRatio = 1 + CAL.gapRatio;
   const gridW = (cell) => 7 * cell + 6 * cell * CAL.gapRatio;
   const gridH = (rows, cell) => rows * cell * pitchRatio - cell * CAL.gapRatio;
@@ -944,7 +943,7 @@ function calendarBlock(spec, compact = false) {
       const used = capH + CAL.head.height + rows * pitch - gap + CAL.legend.space + CAL.legend.height;
       const x0 = PAD_X + (CONTENT_WIDTH - totalW) / 2;
       const top = y + Math.max(0, (height - used) / 2);
-      const parts = [caption(top, cap)];
+      const parts = [caption(top, cap, L)];
       const gridTop = top + capH + CAL.head.height;
       for (let p = 0; p < panels; p++) {
         const px = x0 + p * (panelW + CAL.panelGap);
@@ -954,13 +953,13 @@ function calendarBlock(spec, compact = false) {
         if (first >= last) continue;
         // Weekday letters shrink with small cells so they never run together.
         const headSize = Math.round(Math.min(CAL.head.size, Math.max(18, pitch * 0.78)));
-        CAL_WEEKDAYS.forEach((d, col) => {
+        L.calendarWeekdays.forEach((d, col) => {
           parts.push(textEl(gx + col * pitch + cell / 2, gridTop - 16, d, { size: headSize, weight: 800, opacity: CAL.head.opacity, anchor: 'middle' }));
         });
         const labels = hasDates ? calendarMonthLabels(win.start, first, last, Math.ceil((2 * CAL.month.size + 8) / pitch)) : [];
         for (const { row, month } of labels) {
           const ry = gridTop + (row - first) * pitch;
-          parts.push(textEl(px, ry + cell / 2 + CAL.month.size * 0.36, CAL_MONTHS[month - 1], { size: CAL.month.size, weight: 700, opacity: CAL.month.opacity }));
+          parts.push(textEl(px, ry + cell / 2 + CAL.month.size * 0.36, L.months[month - 1], { size: CAL.month.size, weight: 700, opacity: CAL.month.opacity }));
         }
         for (let w = first; w < last; w++) {
           const ry = gridTop + (w - first) * pitch;
@@ -969,25 +968,25 @@ function calendarBlock(spec, compact = false) {
             const e = hasDates ? monday + col : null;
             const n = e === null ? 0 : counts.get(e) ?? 0;
             const op = n > 0 ? CAL.levels[levelOf(n)] : CAL.empty;
-            const t = n > 0 ? titleEl(`${calDate(dayKeyFromEpoch(e))}: ${n === 1 ? '1 commit' : `${formatNumber(n)} commits`}`) : '';
+            const t = n > 0 ? titleEl(L.calendar.cell(calDate(dayKeyFromEpoch(e), L), n)) : '';
             parts.push(`<rect x="${round(gx + col * pitch)}" y="${round(ry)}" width="${cell}" height="${cell}" rx="${rx}" fill-opacity="${op}">${t}</rect>`);
           }
         }
       }
       // Legend: "Less ▢▢▢▢▢ More", right-aligned under the grid.
-      const L = CAL.legend;
-      const ly = gridTop + rows * pitch - gap + L.space;
+      const LG = CAL.legend;
+      const ly = gridTop + rows * pitch - gap + LG.space;
       const right = x0 + totalW;
-      const moreW = heavyWidth('More', L.size);
+      const moreW = heavyWidth(L.calendar.more, LG.size);
       const swEnd = right - moreW - 12;
       const ops = [CAL.empty, ...CAL.levels];
-      const swStart = swEnd - ops.length * L.swatch - (ops.length - 1) * L.gap;
-      const base = ly + L.height / 2 + L.size * 0.36;
-      parts.push(textEl(swStart - 12, base, 'Less', { size: L.size, weight: 700, opacity: CAL.month.opacity, anchor: 'end' }));
+      const swStart = swEnd - ops.length * LG.swatch - (ops.length - 1) * LG.gap;
+      const base = ly + LG.height / 2 + LG.size * 0.36;
+      parts.push(textEl(swStart - 12, base, L.calendar.less, { size: LG.size, weight: 700, opacity: CAL.month.opacity, anchor: 'end' }));
       ops.forEach((op, i) => {
-        parts.push(`<rect x="${round(swStart + i * (L.swatch + L.gap))}" y="${round(ly + (L.height - L.swatch) / 2)}" width="${L.swatch}" height="${L.swatch}" rx="${round(L.swatch * CAL.radiusRatio)}" fill-opacity="${op}"/>`);
+        parts.push(`<rect x="${round(swStart + i * (LG.swatch + LG.gap))}" y="${round(ly + (LG.height - LG.swatch) / 2)}" width="${LG.swatch}" height="${LG.swatch}" rx="${round(LG.swatch * CAL.radiusRatio)}" fill-opacity="${op}"/>`);
       });
-      parts.push(textEl(right, base, 'More', { size: L.size, weight: 700, opacity: CAL.month.opacity, anchor: 'end' }));
+      parts.push(textEl(right, base, L.calendar.more, { size: LG.size, weight: 700, opacity: CAL.month.opacity, anchor: 'end' }));
       return parts.join('');
     },
   };
@@ -995,10 +994,13 @@ function calendarBlock(spec, compact = false) {
 
 const CHARTS = { bars: barsBlock, hbars: hbarsBlock, split: splitBlock, callout: calloutBlock, tiles: tilesBlock, calendar: calendarBlock };
 
-/** Chart blocks for `chart` (one spec or an array); `compact` asks for smaller minimums. */
-function chartBlocks(chart, compact = false) {
+/**
+ * Chart blocks for `chart` (one spec or an array); `compact` asks for smaller minimums;
+ * `L` is the string table (src/i18n) for upper-casing, numbers and calendar labels.
+ */
+function chartBlocks(chart, compact = false, L = EN) {
   const list = Array.isArray(chart) ? chart : chart ? [chart] : [];
-  return list.map((c) => (c && Object.hasOwn(CHARTS, c.kind) ? CHARTS[c.kind](c, compact) : null)).filter(Boolean);
+  return list.map((c) => (c && Object.hasOwn(CHARTS, c.kind) ? CHARTS[c.kind](c, compact, L) : null)).filter(Boolean);
 }
 
 /** `text` on one line with letter `spacing` px, cut at the end with '…' to fit `maxWidth`. */
@@ -1077,14 +1079,15 @@ function fitFooter(text) {
  * where eyebrow / watermark / footer are `{top, bottom, left, right}` boxes (or null).
  * Every block lies within [CONTENT_TOP, CONTENT_BOTTOM] and no two blocks overlap.
  */
-export function layoutCard({ eyebrow, title, big, subtitle, titleSize, lines, chart, number, footer } = {}) {
+export function layoutCard({ eyebrow, title, big, subtitle, titleSize, lines, chart, number, footer, lang } = {}) {
+  const L = getStrings(lang);
   // A display-size title (e.g. the intro's "Wrapped"): 73..160px; anything else → 72px.
   const tSize = Number.isFinite(titleSize) ? Math.min(160, Math.max(TITLE.size, Math.round(titleSize))) : TITLE.size;
   const content = { big: s1(big), title: s1(title), subtitle: s1(subtitle), titleSize: tSize };
   const available = CONTENT_BOTTOM - CONTENT_TOP;
   const rows = rowsBlock(lines);
   let compact = false;
-  let charts = chartBlocks(chart);
+  let charts = chartBlocks(chart, false, L);
   const opts = { bigMax: BIG_MAX, titleLines: TITLE.maxLines, subtitleLines: SUBTITLE.maxLines };
   const build = () => {
     const head = headBlocks(content, opts);
@@ -1099,7 +1102,7 @@ export function layoutCard({ eyebrow, title, big, subtitle, titleSize, lines, ch
     if (opts.bigMax > BIG_MIN) opts.bigMax = Math.max(BIG_MIN, Math.floor(opts.bigMax * 0.85));
     else if (!compact && charts.length > 0) {
       compact = true;
-      charts = chartBlocks(chart, true);
+      charts = chartBlocks(chart, true, L);
     } else if (opts.subtitleLines > 2) opts.subtitleLines -= 1;
     else if (opts.titleLines > 2) opts.titleLines -= 1;
     else if (charts.length > 0) charts = charts.slice(0, -1);
@@ -1135,7 +1138,7 @@ export function layoutCard({ eyebrow, title, big, subtitle, titleSize, lines, ch
     place(body, 'body', CONTENT_BOTTOM - Math.min(spare * 0.1, 24) - bodyH);
   }
 
-  const eb = s1(eyebrow).toUpperCase();
+  const eb = L.upper(s1(eyebrow));
   const ebFit = eb ? fitEyebrow(eb) : null;
   const num = s1(number);
   const markWidth = num ? heavyWidth(num, WATERMARK.size) : 0;
@@ -1162,6 +1165,8 @@ export function layoutCard({ eyebrow, title, big, subtitle, titleSize, lines, ch
  *   (a commits-per-day heatmap). See
  *   the *Block functions above for each spec. Charts that do not fit are dropped, last first.
  * `number` is a short card number ("03") drawn as a faint watermark top-right.
+ * `lang` (an src/i18n code, default 'en') sets the upper-casing rules, the number format
+ * of compacted counts and the calendar's month / weekday / legend labels.
  * `theme` is a THEMES key (unknown → 'pulse'). `footer` is small text right of the
  * "gitwrapped" brand. `idPrefix` prefixes every element id (default `gw-<theme>`);
  * pass a unique one per card when several SVGs are inlined into one HTML page.
@@ -1187,7 +1192,7 @@ export function renderCard(opts = {}) {
   const { line: footLine, size: footSize } = layout.footer;
   if (footLine) body.push(textEl(PAD_X + CONTENT_WIDTH, FOOTER_BASELINE - 2, footLine, { size: footSize, weight: 600, opacity: 0.8, anchor: 'end' }));
 
-  const label = escapeXml([eb ? s1(opts.eyebrow).toUpperCase() : '', s1(opts.big), s1(opts.title)].filter(Boolean).join(' — ') || 'gitwrapped card');
+  const label = escapeXml([eb ? getStrings(opts.lang).upper(s1(opts.eyebrow)) : '', s1(opts.big), s1(opts.title)].filter(Boolean).join(' — ') || 'gitwrapped card');
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${CARD_WIDTH}" height="${CARD_HEIGHT}" viewBox="0 0 ${CARD_WIDTH} ${CARD_HEIGHT}" role="img" aria-label="${label}">`,
     `<title>${label}</title>`,

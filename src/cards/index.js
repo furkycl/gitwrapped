@@ -5,10 +5,12 @@ import { calendarWindow, formatNumber, renderCard } from './svg.js';
 
 export { formatNumber };
 import { renderShareSvg } from './share.js';
-import { dayKeyFromEpoch as dayKeyOf, epochDay, hourLabel, mondayOf, WEEKDAY_NAMES } from '../stats/time.js';
+import { dayKeyFromEpoch as dayKeyOf, epochDay, mondayOf, WEEKDAY_NAMES } from '../stats/time.js';
 import { languageHeadline, OTHER as OTHER_LANGUAGE } from '../stats/languages.js';
 import { daysUpTo, shownLongest } from '../stats/daily.js';
 import { hasTeamCard, shareLabel, TOP_CONTRIBUTORS } from '../stats/contributors.js';
+import { personalityReason } from '../stats/personality.js';
+import { DEFAULT_LANG, getStrings } from '../i18n/index.js';
 
 export { renderCard, layoutCard, wrapText, escapeXml, measureText, truncateStart, THEMES, CARD_WIDTH, CARD_HEIGHT } from './svg.js';
 export { renderShareSvg, SHARE_WIDTH, SHARE_HEIGHT } from './share.js';
@@ -37,20 +39,21 @@ export function cardIdsFor(stats) {
   return CARD_IDS.filter((id) => !APPLIES[id] || APPLIES[id](stats));
 }
 
-const EMPTY_LINE = 'No commits yet — go ship something!';
+/** The default string table (see src/i18n). */
+const EN = getStrings(DEFAULT_LANG);
 
 /** A finite number, else 0. */
 const num = (n) => (typeof n === 'number' && Number.isFinite(n) ? n : 0);
 
 
 /** A line count with a leading sign ("+12" / "−3"); 0 → "0". Negatives clamp to 0. */
-const signedLines = (n, sign) => {
+const signedLines = (n, sign, L = EN) => {
   const v = Math.max(0, Math.round(num(n)));
-  return v === 0 ? '0' : `${sign}${formatNumber(v)}`;
+  return v === 0 ? '0' : `${sign}${L.num(v)}`;
 };
 
-/** "1 commit", "2,048 commits". */
-const plural = (n, word, many = `${word}s`) => `${formatNumber(n)} ${num(n) === 1 ? word : many}`;
+/** "1 commit", "2,048 commits" (`unit` is a key of the string table's `units`). */
+const plural = (n, unit, L = EN) => `${L.num(n)} ${num(n) === 1 ? L.units[unit][0] : L.units[unit][1]}`;
 
 const basename = (path) => String(path).split('/').filter(Boolean).pop() ?? String(path);
 /** The directory part of a path, with its trailing '/' ('' for a top-level file). */
@@ -58,8 +61,6 @@ const dirname = (path) => {
   const parts = String(path).split('/').filter(Boolean);
   return parts.length > 1 ? `${parts.slice(0, -1).join('/')}/` : '';
 };
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** 'YYYY-MM-DD' → {year, month (1-12), day}, or null when it is not that shape. */
 function parseDay(s) {
@@ -69,10 +70,13 @@ function parseDay(s) {
   return { year, month, day, key };
 }
 
-/** 'YYYY-MM-DD' → "Oct 4, 2026" (English month names, no locale lookup); else null. */
-export function formatDay(s) {
+/**
+ * 'YYYY-MM-DD' → "Oct 4, 2026" (`lang` 'tr': "4 Eki 2026"; month names from the string
+ * table, no locale lookup); else null.
+ */
+export function formatDay(s, lang) {
   const d = parseDay(s);
-  return d ? `${MONTHS[d.month - 1]} ${d.day}, ${d.year}` : null;
+  return d ? getStrings(lang).date(d.day, d.month, d.year) : null;
 }
 
 /**
@@ -81,19 +85,19 @@ export function formatDay(s) {
  * "Dec 30, 2025 – Jan 2, 2026". One valid day and one missing/invalid → that day alone;
  * neither valid → the given strings as they are (shown once if equal); both missing → ''.
  */
-export function formatDateRange(first, last) {
+export function formatDateRange(first, last, lang) {
   let a = parseDay(first);
   let b = parseDay(last);
   if (a && b && epochDay(a.key) > epochDay(b.key)) [a, b] = [b, a];
   if (!a || !b) {
     const one = a ?? b;
-    if (one) return formatDay(one.key);
+    if (one) return formatDay(one.key, lang);
     const raw = [first, last].map((x) => (typeof x === 'string' ? text(x) : null)).filter(Boolean);
     return [...new Set(raw)].join(' – ');
   }
-  if (a.key === b.key) return formatDay(a.key);
-  if (a.year === b.year) return `${MONTHS[a.month - 1]} ${a.day} – ${MONTHS[b.month - 1]} ${b.day}, ${b.year}`;
-  return `${formatDay(a.key)} – ${formatDay(b.key)}`;
+  if (a.key === b.key) return formatDay(a.key, lang);
+  if (a.year === b.year) return getStrings(lang).sameYearRange(a.day, a.month, b.day, b.month, b.year);
+  return `${formatDay(a.key, lang)} – ${formatDay(b.key, lang)}`;
 }
 const quote = (s) => `“${s}”`;
 const text = (s) => (typeof s === 'string' && s.trim() ? s.trim() : null);
@@ -113,17 +117,15 @@ const clip = (s) => {
 };
 
 /** An average with at most one decimal, e.g. 42.53 → "42.5", 23 → "23", 1234.5 → "1,234.5". */
-const formatAverage = (n) => (Math.round(num(n) * 10) / 10).toLocaleString('en-US', { maximumFractionDigits: 1 });
+const formatAverage = (n, L = EN) => L.dec(num(n));
 
-function hourQuip(hour) {
+/** Upper bounds (exclusive) of the hours each quip in the string table's peak.quips covers. */
+const QUIP_HOURS = [5, 9, 12, 14, 18, 22];
+
+function hourQuip(hour, L) {
   if (hour === null || hour === undefined) return '';
-  if (hour < 5) return 'The bugs come out at night, and so do you.';
-  if (hour < 9) return 'Pushing code before the standup. Respect.';
-  if (hour < 12) return 'Peak-morning productivity. Textbook.';
-  if (hour < 14) return 'Lunch break? Never heard of it.';
-  if (hour < 18) return 'The afternoon grind is real.';
-  if (hour < 22) return 'After-hours hero.';
-  return 'Late-night shipping, as is tradition.';
+  const i = QUIP_HOURS.findIndex((h) => hour < h);
+  return L.peak.quips[i === -1 ? QUIP_HOURS.length : i];
 }
 
 /**
@@ -140,14 +142,16 @@ export function windowYear(since, until) {
 /**
  * The requested date window as short text, or null when neither bound is given:
  * "2025" (a whole calendar year), "Jan 3 – Mar 9, 2025", "since Jan 3, 2025",
- * "until Mar 9, 2025".
+ * "until Mar 9, 2025". `lang` (an src/i18n code) picks the language ('tr': "3 Oca 2025 ve
+ * sonrası").
  */
-export function windowLabel({ since, until } = {}) {
+export function windowLabel({ since, until, lang } = {}) {
   since = text(since);
   until = text(until);
-  if (since && until) return windowYear(since, until) ?? formatDateRange(since, until);
-  if (since) return `since ${formatDay(since) ?? since}`;
-  if (until) return `until ${formatDay(until) ?? until}`;
+  const L = getStrings(lang);
+  if (since && until) return windowYear(since, until) ?? formatDateRange(since, until, lang);
+  if (since) return L.since(formatDay(since, lang) ?? since);
+  if (until) return L.until(formatDay(until, lang) ?? until);
   return null;
 }
 
@@ -187,57 +191,58 @@ export function shownDayRange(stats, today) {
 }
 
 function intro(s, ctx) {
+  const { L } = ctx;
+  const I = L.intro;
   const commits = num(s.totals?.commits);
   const parts = [];
-  if (commits === 0) parts.push(EMPTY_LINE);
-  else parts.push("Your commits, your chaos, your story. Let's see what you've been up to.");
+  if (commits === 0) parts.push(L.empty);
+  else parts.push(I.lead);
   const who = authorName(ctx.author);
-  if (who) parts.push(`Starring ${who}.`);
+  if (who) parts.push(I.starring(who));
   const shown = shownDayRange(s, ctx.today);
-  const range = formatDateRange(shown.firstDay, shown.lastDay);
+  const range = formatDateRange(shown.firstDay, shown.lastDay, L.code);
   const year = windowYear(ctx.since, ctx.until);
-  const title = year ? `Your ${year} in git` : 'Your story so far';
+  const title = year ? I.yearTitle(year) : I.soFar;
   return {
-    eyebrow: 'gitwrapped presents',
+    eyebrow: I.eyebrow,
     big: ctx.repoName,
-    title: 'Wrapped',
+    title: I.title,
     titleSize: 136,
     subtitle: parts.join(' '),
     chart: commits > 0
-      ? { kind: 'callout', title, value: range || plural(commits, 'commit'), note: `${plural(commits, 'commit')} to unwrap` }
+      ? { kind: 'callout', title, value: range || plural(commits, 'commit', L), note: I.toUnwrap(commits) }
       : year
-        ? { kind: 'callout', title, value: 'A quiet year', note: `no commits in ${year}` }
-        : { kind: 'callout', title, value: 'Chapter one', note: 'starts with your first commit' },
+        ? { kind: 'callout', title, value: I.quietYear, note: I.noCommitsIn(year) }
+        : { kind: 'callout', title, value: I.chapterOne, note: I.firstCommit },
   };
 }
 
-function totals(s) {
+function totals(s, { L }) {
+  const T = L.totals;
   const t = s.totals ?? {};
   const commits = num(t.commits);
   if (commits === 0) {
-    return { eyebrow: 'The grand total', big: '0', title: 'commits', subtitle: EMPTY_LINE };
+    return { eyebrow: T.eyebrow, big: '0', title: L.units.commit[1], subtitle: L.empty };
   }
   const days = num(t.activeDays);
   const perDay = days > 0 ? Math.round((commits / days) * 10) / 10 : 0;
   const rows = [
-    { label: 'Active days', value: formatNumber(days) },
-    { label: 'Files touched', value: formatNumber(t.filesTouched) },
+    { label: T.activeDays, value: L.num(days) },
+    { label: T.filesTouched, value: L.num(t.filesTouched) },
   ];
-  if (num(t.authors) > 1) rows.push({ label: 'Contributors', value: formatNumber(t.authors) });
+  if (num(t.authors) > 1) rows.push({ label: T.contributors, value: L.num(t.authors) });
   return {
-    eyebrow: 'The grand total',
-    big: formatNumber(commits),
-    title: commits === 1 ? 'commit' : 'commits',
-    subtitle: perDay > 0
-      ? `That's ${perDay >= 100 ? formatNumber(perDay) : perDay} ${perDay === 1 ? 'commit' : 'commits'} per active day.`
-      : 'Every one of them counts.',
+    eyebrow: T.eyebrow,
+    big: L.num(commits),
+    title: commits === 1 ? L.units.commit[0] : L.units.commit[1],
+    subtitle: perDay > 0 ? T.perDay(perDay) : T.everyOne,
     lines: rows,
     chart: {
       kind: 'split',
-      title: 'Lines changed',
+      title: T.linesChanged,
       segments: [
-        { label: 'Lines added', value: signedLines(t.linesAdded, '+'), amount: Math.max(0, num(t.linesAdded)) },
-        { label: 'Lines removed', value: signedLines(t.linesRemoved, '−'), amount: Math.max(0, num(t.linesRemoved)) },
+        { label: T.linesAdded, value: signedLines(t.linesAdded, '+', L), amount: Math.max(0, num(t.linesAdded)) },
+        { label: T.linesRemoved, value: signedLines(t.linesRemoved, '−', L), amount: Math.max(0, num(t.linesRemoved)) },
       ],
     },
   };
@@ -251,42 +256,60 @@ const peaks = (values) => {
   return max > 0 ? values.flatMap((v, i) => (v === max ? [i] : [])) : [];
 };
 
-const HOUR_TICKS = { 0: '12a', 6: '6a', 12: '12p', 18: '6p', 23: '11p' };
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]; // Monday first
-const WEEK_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+/** An hour (0-23) as the language says it ("9 PM", "21:00"); `fallback` for anything else. */
+const hourText = (hour, L, fallback) => (Number.isInteger(hour) && hour >= 0 && hour < 24 ? L.hourLabel(hour) : fallback);
 
 /** The commits-by-hour and by-weekday bar charts for the power-hour card. */
-function habitCharts(h) {
+function habitCharts(h, L) {
   const hours = counts(h.byHour, 24);
   const week = counts(h.byWeekday, 7);
   const days = WEEK_ORDER.map((d) => week[d]);
   const bar = (values, labelOf, titles) => {
     const hl = peaks(values);
-    return { values, labels: values.map((_, i) => labelOf(i)), titles, highlight: hl, peakLabel: hl.length ? formatNumber(values[hl[0]]) : '' };
+    return { values, labels: values.map((_, i) => labelOf(i)), titles, highlight: hl, peakLabel: hl.length ? L.num(values[hl[0]]) : '' };
   };
+  const P = L.peak;
+  const dayName = (d) => (L === EN ? WEEKDAY_NAMES[d] : L.weekdays[d]);
   return [
-    { kind: 'bars', title: 'Commits by hour', maxBarHeight: 240, ...bar(hours, (i) => HOUR_TICKS[i] ?? '', hours.map((v, i) => `${hourLabel(i)}: ${plural(v, 'commit')}`)) },
-    { kind: 'bars', title: 'By weekday', maxBarHeight: 150, ...bar(days, (i) => WEEK_LETTERS[WEEK_ORDER[i]], days.map((v, i) => `${WEEKDAY_NAMES[WEEK_ORDER[i]]}: ${plural(v, 'commit')}`)) },
+    { kind: 'bars', title: P.byHour, maxBarHeight: 240, ...bar(hours, (i) => L.hourTicks[i] ?? '', hours.map((v, i) => P.barTitle(hourText(i, L, ''), v))) },
+    { kind: 'bars', title: P.byWeekday, maxBarHeight: 150, ...bar(days, (i) => L.weekLetters[WEEK_ORDER[i]], days.map((v, i) => P.barTitle(dayName(WEEK_ORDER[i]), v))) },
   ];
 }
 
-function peakHour(s) {
+/** The power hour as shown: stats' label in English, else the hour in the card's language. */
+function peakHourText(h, L) {
+  const label = text(h?.peakHourLabel);
+  if (!label || L === EN) return label;
+  return hourText(h.peakHour, L, label);
+}
+
+/** The busiest weekday's name: stats' own in English, else from the string table. */
+function peakDayText(h, L) {
+  const day = text(h?.peakWeekdayName);
+  if (!day || L === EN) return day;
+  return Number.isInteger(h.peakWeekday) && L.weekdays[h.peakWeekday] ? L.weekdays[h.peakWeekday] : day;
+}
+
+function peakHour(s, { L }) {
+  const P = L.peak;
   const h = s.habits ?? {};
-  const label = text(h.peakHourLabel);
+  const label = peakHourText(h, L);
   if (!label) {
-    return { eyebrow: 'Your power hour', big: 'Zzz', title: 'No power hour yet', subtitle: "Commit something and we'll find your golden hour.", chart: habitCharts(h) };
+    return { eyebrow: P.eyebrow, big: P.noneBig, title: P.noneTitle, subtitle: P.noneSubtitle, chart: habitCharts(h, L) };
   }
   const parts = [];
-  if (h.peakHourTied) parts.push(`${label} is tied for your power hour, with ${plural(h.peakHourCount, 'commit')}. ${hourQuip(h.peakHour)}`);
-  else parts.push(`${plural(h.peakHourCount, 'commit')} landed in the ${label} hour. ${hourQuip(h.peakHour)}`);
-  const day = text(h.peakWeekdayName);
-  if (day) parts.push(h.peakWeekdayTied ? `${day} is tied for your busiest day.` : `${day} is your busiest day.`);
+  if (h.peakHourTied) parts.push(`${P.tied(label, h.peakHourCount)} ${hourQuip(h.peakHour, L)}`);
+  else parts.push(`${P.landed(h.peakHourCount, label)} ${hourQuip(h.peakHour, L)}`);
+  const day = peakDayText(h, L);
+  if (day) parts.push(h.peakWeekdayTied ? P.dayTied(day) : P.dayBusiest(day));
   return {
-    eyebrow: 'Your power hour',
+    eyebrow: P.eyebrow,
     big: label,
-    title: h.peakHourTied ? 'is one of your power hours' : 'is when you commit the most',
+    title: h.peakHourTied ? P.titleTied : P.title,
     subtitle: parts.join(' '),
-    chart: habitCharts(h),
+    chart: habitCharts(h, L),
   };
 }
 
@@ -299,10 +322,13 @@ function windowEnd(ctx) {
   const today = parseDay(ctx.today);
   if (!end || !today || epochDay(end.key) >= epochDay(today.key)) return null;
   const year = windowYear(ctx.since, ctx.until);
-  return year ? `at the end of ${year}` : `on ${formatDay(ctx.until) ?? ctx.until}`;
+  const S = ctx.L.streak;
+  return year ? S.endOfYear(year) : S.onDay(formatDay(ctx.until, ctx.L.code) ?? ctx.until);
 }
 
 function streak(s, ctx) {
+  const { L } = ctx;
+  const S = L.streak;
   // Future-dated days (after today + 1) never make the longest streak shown (daily.js).
   const longest = shownLongest(s, ctx.today) ?? {};
   const current = s.streaks?.current ?? {};
@@ -312,35 +338,36 @@ function streak(s, ctx) {
   const chart = {
     kind: 'hbars',
     size: 'large',
-    title: end ? 'Longest vs. at window end' : 'Longest vs. current',
+    title: end ? S.chartTitleEnd : S.chartTitle,
     items: [
-      { label: 'Longest', value: plural(len, 'day'), amount: len },
-      { label: end ? 'Window end' : 'Current', value: plural(cur, 'day'), amount: cur },
+      { label: S.longest, value: plural(len, 'day', L), amount: len },
+      { label: end ? S.windowEnd : S.current, value: plural(cur, 'day', L), amount: cur },
     ],
   };
   if (len === 0) {
-    return { eyebrow: 'Your longest streak', big: '0', title: 'day streak', subtitle: 'No streak yet — one commit starts it.', chart };
+    return { eyebrow: S.eyebrow, big: '0', title: S.zeroTitle, subtitle: S.zeroSubtitle, chart };
   }
   const range = len > 1 && text(longest.start) && text(longest.end)
-    ? formatDateRange(longest.start, longest.end)
-    : (formatDay(longest.start) ?? text(longest.start));
-  chart.items[0].title = range ? `Longest: ${plural(len, 'day')}, ${range}` : '';
+    ? formatDateRange(longest.start, longest.end, L.code)
+    : (formatDay(longest.start, L.code) ?? text(longest.start));
+  chart.items[0].title = range ? S.longestTitle(len, range) : '';
   return {
-    eyebrow: 'Your longest streak',
-    big: formatNumber(len),
-    title: len === 1 ? 'day streak' : 'days in a row',
+    eyebrow: S.eyebrow,
+    big: L.num(len),
+    title: len === 1 ? S.titleOne : S.titleMany,
     subtitle: [
-      range ? `${len === 1 ? 'On' : 'From'} ${range}.` : '',
-      streakNow(cur, end),
+      range ? (len === 1 ? S.onRange(range) : S.fromRange(range)) : '',
+      streakNow(cur, end, L),
     ].filter(Boolean).join(' '),
     chart,
   };
 }
 
 /** The current-streak sentence; `end` ("at the end of 2025") phrases it for a past window. */
-function streakNow(cur, end) {
-  if (end) return cur > 0 ? `You were on a ${formatNumber(cur)}-day streak ${end}.` : `No streak was running ${end}.`;
-  return cur > 0 ? `You're on a ${formatNumber(cur)}-day streak right now. Keep it alive!` : 'No streak running right now — today is a great day to start one.';
+function streakNow(cur, end, L) {
+  const S = L.streak;
+  if (end) return cur > 0 ? S.wasOn(cur, end) : S.wasNone(end);
+  return cur > 0 ? S.isOn(cur) : S.isNone;
 }
 
 /** Busiest day (ties → earliest) and distinct Monday-first weeks of `days` ([{day, commits}]). */
@@ -357,13 +384,15 @@ function dailySummary(days) {
 /** Days a window must end before "today" to count as a dormant repo's final months. */
 const DORMANT_DAYS = 30;
 
-function activity(s, ctx = {}) {
+function activity(s, ctx = { L: EN }) {
   const d = s.daily ?? {};
   let days = (Array.isArray(d.days) ? d.days : [])
     .filter((x) => parseDay(x?.day) && num(x?.commits) > 0)
     .map((x) => ({ day: parseDay(x.day).key, commits: num(x.commits) }));
+  const { L } = ctx;
+  const A = L.activity;
   if (days.length === 0) {
-    return { eyebrow: 'Your commit calendar', big: '0', title: 'active days', subtitle: EMPTY_LINE, chart: { kind: 'calendar', days: [] } };
+    return { eyebrow: A.calendar, big: '0', title: A.title(0), subtitle: L.empty, chart: { kind: 'calendar', days: [] } };
   }
   // Future-dated days (clock skew) would stretch the grid past today and push real weeks
   // out of the 53-week window. The calendar ends at the day after `ctx.today` at the
@@ -395,90 +424,62 @@ function activity(s, ctx = {}) {
     const lastDay = Math.max(...days.map((x) => epochDay(x.day)));
     const end = parseDay(dayKeyOf(lastDay));
     eyebrow = asOf !== null && end && asOf - lastDay > DORMANT_DAYS
-      ? `12 months to ${MONTHS[end.month - 1]} ${end.year}`
-      : 'Your last 12 months';
+      ? A.monthsTo(end.month, end.year)
+      : A.last12;
   } else {
     const epochs = days.map((x) => epochDay(x.day));
     const span = Math.max(...epochs) - Math.min(...epochs) + 1;
-    eyebrow = span >= 300 ? 'Your year in commits' : 'Your commit calendar';
+    eyebrow = span >= 300 ? A.year : A.calendar;
   }
   const parts = [];
-  if (busiest) parts.push(`Busiest day: ${formatDay(busiest.day)} with ${plural(busiest.commits, 'commit')}.`);
-  if (weeks > 0) parts.push(weeks === 1 ? 'You showed up in 1 week.' : `You showed up in ${formatNumber(weeks)} different weeks.`);
+  if (busiest) parts.push(A.busiest(formatDay(busiest.day, L.code), busiest.commits));
+  if (weeks > 0) parts.push(A.weeks(weeks));
   return {
     eyebrow,
-    big: formatNumber(days.length),
-    title: days.length === 1 ? 'active day' : 'active days',
+    big: L.num(days.length),
+    title: A.title(days.length),
     subtitle: parts.join(' '),
     chart: { kind: 'calendar', days },
   };
 }
 
-function hotFiles(s) {
+function hotFiles(s, { L }) {
+  const H = L.hotFiles;
   const files = (Array.isArray(s.hotFiles) ? s.hotFiles : []).filter((f) => text(f?.path));
   if (files.length === 0) {
-    return { eyebrow: 'Your hot files', big: 'Nothing', title: 'No hot files yet', subtitle: 'Edit a file a few times and it will show up here.' };
+    return { eyebrow: H.eyebrow, big: H.noneBig, title: H.noneTitle, subtitle: H.noneSubtitle };
   }
   const [top] = files;
   const tied = files.length > 1 && num(files[1].commits) === num(top.commits);
   return {
-    eyebrow: 'Your hot files',
+    eyebrow: H.eyebrow,
     big: basename(top.path),
-    title: tied ? 'is one of your most-touched files' : "is the file you can't stop touching",
-    subtitle: `${plural(top.commits, 'commit')}, ${signedLines(top.linesAdded, '+')} / ${signedLines(top.linesRemoved, '−')} lines.`,
+    title: tied ? H.titleTied : H.title,
+    subtitle: H.subtitle(top.commits, signedLines(top.linesAdded, '+', L), signedLines(top.linesRemoved, '−', L)),
     chart: {
       kind: 'hbars',
-      title: 'Most-touched files',
+      title: H.chartTitle,
       items: files.slice(0, 5).map((f) => ({
         label: basename(f.path),
         sub: dirname(f.path),
-        value: plural(f.commits, 'commit'),
+        value: plural(f.commits, 'commit', L),
         amount: num(f.commits),
         truncate: 'middle',
-        title: `${f.path}: ${plural(f.commits, 'commit')}, ${signedLines(f.linesAdded, '+')} / ${signedLines(f.linesRemoved, '−')} lines`,
+        title: H.barTitle(f.path, f.commits, signedLines(f.linesAdded, '+', L), signedLines(f.linesRemoved, '−', L)),
       })),
     },
   };
 }
 
 /** A whole-number share as text; a non-zero amount that rounds to 0% reads "<1%". */
-const pctText = (share, amount) => (num(share) === 0 && num(amount) > 0 ? '<1%' : `${Math.round(num(share))}%`);
-
-const LANGUAGE_QUIPS = {
-  JavaScript: 'Runs everywhere, including your commit log.',
-  TypeScript: 'Types all the way down.',
-  Python: 'Indentation is a lifestyle.',
-  Go: 'if err != nil { keepShipping() }',
-  Rust: 'The borrow checker approves.',
-  Java: 'AbstractSingletonCommitFactoryBean energy.',
-  Kotlin: 'Null safety, but make it fun.',
-  Swift: 'Swift by name, swift by nature.',
-  C: 'Living dangerously, one pointer at a time.',
-  'C++': 'Template wizardry detected.',
-  'C#': 'Semicolons and LINQ, a classic duo.',
-  Ruby: 'Optimized for developer happiness.',
-  PHP: 'Still powering half the web.',
-  Shell: 'chmod +x and hope for the best.',
-  HTML: 'Hypertext is still the best text.',
-  CSS: 'Centering divs since day one.',
-  SCSS: 'Nesting like a pro.',
-  Markdown: 'Docs-driven development. Respect.',
-  JSON: 'Config is code, apparently.',
-  YAML: 'Indentation-sensitive config whisperer.',
-  SQL: 'SELECT * FROM good_decisions.',
-  Dart: 'Hot reload, hot streak.',
-  Haskell: 'Pure, lazy, and proud of it.',
-  Elixir: 'Let it crash, then commit again.',
-};
-
-/** "A and B", "A, B and C". */
-const andList = (names) => (names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
+const pctText = (share, amount, L = EN) => (num(share) === 0 && num(amount) > 0 ? `<${L.pct(1)}` : L.pct(Math.round(num(share))));
 
 /**
  * Up to five languages as bars (the headline language always among them), the rest and
  * unknown file types folded into one "Other" bar. No bar reads 100% while others exist.
  */
-function languageBars(h) {
+function languageBars(h, L) {
+  const G = L.languages;
   const { rows, basis } = h;
   const known = rows.filter((l) => l.name !== 'Other');
   let top = known.slice(0, 5);
@@ -486,89 +487,103 @@ function languageBars(h) {
   const rest = rows.filter((l) => !top.includes(l));
   const cap = (share) => (rows.length > 1 ? Math.min(99, share) : share);
   const row = (label, amount, files, lines, share) => {
-    const pct = pctText(cap(share), amount);
-    return { label, sub: plural(files, 'file'), value: pct, amount, title: `${label}: ${plural(lines, 'line')} changed in ${plural(files, 'file')} (${pct})` };
+    const pct = pctText(cap(share), amount, L);
+    return { label, sub: plural(files, 'file', L), value: pct, amount, title: G.barTitle(label, lines, files, pct) };
   };
   const items = top.map((l) => row(l.name, l[basis], l.files, l.lines, l.share));
   if (rest.length > 0) {
     const sum = (k) => rest.reduce((n, l) => n + l[k], 0);
-    items.push(row('Other', sum(basis), sum('files'), sum('lines'), sum('share')));
+    items.push(row(G.other, sum(basis), sum('files'), sum('lines'), sum('share')));
   }
-  return { kind: 'hbars', title: basis === 'files' ? 'Share of files touched' : 'Share of lines changed', items };
+  return { kind: 'hbars', title: basis === 'files' ? G.shareOfFiles : G.shareOfLines, items };
 }
 
-function languages(s) {
+function languages(s, { L }) {
+  const G = L.languages;
   const l = s.languages ?? {};
   const h = languageHeadline(l);
-  const eyebrow = 'Your languages';
+  const eyebrow = G.eyebrow;
   if (!h) {
     const files = (Array.isArray(l.languages) ? l.languages : []).reduce((n, x) => n + num(x?.files), 0);
     return {
       eyebrow,
-      big: 'None',
-      title: 'No code languages detected',
-      subtitle: files > 0
-        ? `${plural(files, 'file')} changed, none in a language we recognize. Mysterious.`
-        : 'Write some code and your languages will show up here.',
+      big: G.noneBig,
+      title: G.noneTitle,
+      subtitle: files > 0 ? G.noneFiles(files) : G.noneAtAll,
     };
   }
   // The share is the headline number (a language name as the big word would start with a
   // glyph like "J" whose hook reaches past the left padding at that size).
   let title;
-  if (h.tied.length > 3) title = `${h.tied.length}-way tie at the top`;
-  else if (h.tied.length > 1) title = `Tied at the top: ${andList(h.tied)}`;
-  else if (h.only) title = `All ${h.name}, all the time`;
-  else title = h.rawShare >= 50 ? `Mostly ${h.name}` : `Led by ${h.name}`;
+  if (h.tied.length > 3) title = G.tieMany(h.tied.length);
+  else if (h.tied.length > 1) title = G.tied(L.andList(h.tied));
+  else if (h.only) title = G.only(h.name);
+  else title = h.rawShare >= 50 ? G.mostly(h.name) : G.ledBy(h.name);
   const code = h.rows.some((x) => x.type === 'programming');
-  const quip = LANGUAGE_QUIPS[h.name] ?? (!code ? 'No code this time, just words and data.' : h.count === 1 ? 'One language, total commitment.' : 'Polyglot energy.');
+  const quip = (Object.hasOwn(G.quips, h.name) ? G.quips[h.name] : null) ?? (!code ? G.noCode : h.count === 1 ? G.oneLanguage : G.polyglot);
   // Count files in the same pool as the language count (programming languages when there
   // is code, else the known data / prose ones), so "N languages across M files" agree.
   const pool = h.rows.filter((x) => x.name !== OTHER_LANGUAGE && (!code || x.type === 'programming'));
   const files = pool.reduce((n, x) => n + x.files, 0);
-  const counted = h.count === 1 ? 'You stuck to 1 language' : `You wrote${code ? ' code' : ''} in ${plural(h.count, 'language')}`;
   return {
     eyebrow,
-    big: pctText(h.share, h.amount),
+    big: pctText(h.share, h.amount, L),
     title,
-    subtitle: `${quip} ${counted} across ${plural(files, 'file')}.`,
-    chart: languageBars(h),
+    subtitle: `${quip} ${G.summary(h.count, code, files)}`,
+    chart: languageBars(h, L),
   };
 }
 
-function messages(s) {
+function messages(s, { L }) {
+  const M = L.messages;
   const m = s.messages ?? {};
   const longest = clip(text(m.longest?.subject));
   const shortest = clip(text(m.shortest?.subject));
   if (!longest || !shortest) {
-    return { eyebrow: 'Message hall of fame', big: '…', title: 'No commit messages yet', subtitle: EMPTY_LINE };
+    return { eyebrow: M.eyebrow, big: '…', title: M.noneTitle, subtitle: L.empty };
   }
   // A "favorite" word needs to show up at least twice; otherwise use the average-length copy.
   const word = num(m.topWord?.count) >= 2 ? clip(text(m.topWord?.word)) : null;
   const counts = m.counts ?? {};
   const oops = num(counts.oops);
-  const quip = oops > 0
-    ? `“Oops” happened ${oops === 1 ? 'once' : `${formatNumber(oops)} times`}. We've all been there.`
-    : `Your messages average ${formatAverage(m.averageLength)} characters.`;
+  const quip = oops > 0 ? M.oops(oops) : M.average(formatAverage(m.averageLength, L));
   // With a single commit, longest and shortest are the same message: show it once.
-  const rows = [{ label: `Longest: ${quote(longest)}` }];
-  if (shortest !== longest) rows.push({ label: `Shortest: ${quote(shortest)}` });
+  const rows = [{ label: M.longest(quote(longest)) }];
+  if (shortest !== longest) rows.push({ label: M.shortest(quote(shortest)) });
   return {
-    eyebrow: 'Message hall of fame',
+    eyebrow: M.eyebrow,
     // Same rounding as the subtitle, so the two numbers always agree.
-    big: word ? quote(word) : formatAverage(m.averageLength),
-    title: word ? `was your favorite word (${plural(m.topWord.count, 'time')})` : 'characters per message, on average',
+    big: word ? quote(word) : formatAverage(m.averageLength, L),
+    title: word ? M.favorite(m.topWord.count) : M.averageTitle,
     subtitle: quip,
     lines: [
       ...rows,
-      { label: '“fix” commits', value: formatNumber(counts.fix) },
-      { label: '“wip” commits', value: formatNumber(counts.wip) },
-      { label: '“oops” commits', value: formatNumber(oops) },
+      { label: M.fixCommits, value: L.num(counts.fix) },
+      { label: M.wipCommits, value: L.num(counts.wip) },
+      { label: M.oopsCommits, value: L.num(oops) },
     ],
   };
 }
 
-function personality(s) {
+/**
+ * The archetype as shown: name, roast and reason from stats in English, else from the
+ * string table by archetype id (the reason re-phrased from computePersonality's numbers,
+ * see personalityReason; stats' own text when the id or the numbers are unknown).
+ */
+function archetypeText(p, L) {
+  const a = p?.archetype ?? {};
+  const local = L !== EN && typeof a.id === 'string' && Object.hasOwn(L.personality.archetypes, a.id) ? L.personality.archetypes[a.id] : null;
+  if (!local) return { name: text(a.name), roast: text(a.roast), reason: text(a.reason) };
+  return { name: local.name, roast: local.roast, reason: personalityReason(p, L) ?? text(a.reason) };
+}
+
+/** An archetype score's name in the card's language (by id), else as stats has it. */
+const scoreName = (x, L) => (L !== EN && typeof x?.id === 'string' && Object.hasOwn(L.personality.archetypes, x.id) ? L.personality.archetypes[x.id].name : x.name);
+
+function personality(s, { L }) {
+  const Y = L.personality;
   const a = s.personality?.archetype ?? {};
+  const shown = archetypeText(s.personality, L);
   const all = Array.isArray(s.personality?.scores) ? s.personality.scores : [];
   // Score bars only back up the headline when it is the top scorer; with too few commits
   // (or no standout habit) the headline is the steady-shipper fallback and bars like
@@ -578,20 +593,21 @@ function personality(s) {
     .filter((x) => text(x?.name) && num(x.score) > 0)
     .slice(0, 3);
   return {
-    eyebrow: 'Your commit personality',
-    big: text(a.name) ?? 'Steady Shipper',
-    title: text(a.roast) ?? '',
-    subtitle: text(a.reason) ?? '',
+    eyebrow: Y.eyebrow,
+    big: shown.name ?? Y.archetypes['steady-shipper'].name,
+    title: shown.roast ?? '',
+    subtitle: shown.reason ?? '',
     chart: scores.length > 0
       ? {
         kind: 'hbars',
         size: 'large',
-        title: 'Your habit scores',
+        title: Y.chartTitle,
         scaleMax: 1,
         items: scores.map((x) => {
           const share = Math.min(1, Math.max(0, num(x.score)));
-          const pct = `${Math.round(share * 100)}%`;
-          return { label: x.name, value: pct, amount: share, title: `${x.name}: ${pct}` };
+          const pct = L.pct(Math.round(share * 100));
+          const name = scoreName(x, L);
+          return { label: name, value: pct, amount: share, title: `${name}: ${pct}` };
         }),
       }
       : null,
@@ -599,18 +615,19 @@ function personality(s) {
 }
 
 /** A contributor's display name (clipped like other free text), "Unknown" when missing. */
-const personName = (p) => clip(text(p?.name)) ?? 'Unknown';
+const personName = (p, L = EN) => clip(text(p?.name)) ?? L.contributors.unknown;
 
 /** One contributor as a bar row; `you` marks the --author's row. */
-function contributorRow(p, you) {
-  const name = personName(p);
-  const share = shareLabel(p?.share, p?.commits);
+function contributorRow(p, you, L) {
+  const C = L.contributors;
+  const name = personName(p, L);
+  const share = shareLabel(p?.share, p?.commits, L.pct);
   return {
     label: name,
-    sub: you ? (num(p.rank) > TOP_CONTRIBUTORS ? `you · #${formatNumber(p.rank)}` : 'you') : '',
-    value: plural(p?.commits, 'commit'),
+    sub: you ? (num(p.rank) > TOP_CONTRIBUTORS ? C.youRank(p.rank) : C.you) : '',
+    value: plural(p?.commits, 'commit', L),
     amount: num(p?.commits),
-    title: `${you ? `${name} (you)` : name}: #${formatNumber(p?.rank)}, ${plural(p?.commits, 'commit')} (${share}), ${signedLines(p?.added, '+')} / ${signedLines(p?.removed, '−')} lines`,
+    title: C.barTitle(you ? C.youName(name) : name, p?.rank, p?.commits, share, signedLines(p?.added, '+', L), signedLines(p?.removed, '−', L)),
   };
 }
 
@@ -619,68 +636,73 @@ function contributorRow(p, you) {
  * contributors by commits; with --author, where "you" rank among them. Shows git author
  * names (after .mailmap) only, never an email.
  */
-function contributors(s) {
+function contributors(s, { L }) {
+  const C = L.contributors;
   const c = s.contributors ?? {};
   const total = num(c.total);
   const top = (Array.isArray(c.top) ? c.top : []).filter((p) => p && num(p.commits) > 0).slice(0, TOP_CONTRIBUTORS);
   const you = c.you && num(c.you.commits) > 0 && num(c.you.rank) > 0 ? c.you : null;
   const isYou = (p) => you !== null && num(p.rank) === num(you.rank);
-  const items = top.map((p) => contributorRow(p, isYou(p)));
+  const items = top.map((p) => contributorRow(p, isYou(p), L));
   // "You" outside the top five get a sixth row of their own.
-  if (you && !top.some(isYou)) items.push(contributorRow(you, true));
-  const chart = items.length > 0 ? { kind: 'hbars', title: 'Top contributors by commits', items } : null;
-  const eyebrow = 'The team';
+  if (you && !top.some(isYou)) items.push(contributorRow(you, true, L));
+  const chart = items.length > 0 ? { kind: 'hbars', title: C.chartTitle, items } : null;
+  const eyebrow = C.eyebrow;
   if (you) {
-    const share = shareLabel(you.share, you.commits);
+    const share = shareLabel(you.share, you.commits, L.pct);
     return {
       eyebrow,
-      big: `#${formatNumber(you.rank)}`,
-      title: `of ${plural(total, 'contributor')}`,
-      subtitle: `You made ${share} of the commits: ${plural(you.commits, 'commit')}, ${signedLines(you.added, '+')} / ${signedLines(you.removed, '−')} lines.`,
+      big: `#${L.num(you.rank)}`,
+      title: C.ofTotal(total),
+      subtitle: C.youMade(share, you.commits, signedLines(you.added, '+', L), signedLines(you.removed, '−', L)),
       chart,
     };
   }
   const lead = top[0];
   const tied = top.filter((p) => num(p.commits) === num(lead?.commits));
-  let subtitle = 'Teamwork makes the commits work.';
+  let subtitle = C.teamwork;
   if (lead && tied.length > 1) {
-    const who = tied.length > 3 ? 'Several people' : andList(tied.map(personName));
-    subtitle = `${who} share the lead with ${plural(lead.commits, 'commit')} each.`;
+    const who = tied.length > 3 ? C.several : L.andList(tied.map((p) => personName(p, L)));
+    subtitle = C.shareLead(who, lead.commits);
   } else if (lead) {
-    subtitle = `${personName(lead)} leads the pack with ${shareLabel(lead.share, lead.commits)} of the commits.`;
+    subtitle = C.leads(personName(lead, L), shareLabel(lead.share, lead.commits, L.pct));
   }
   return {
     eyebrow,
-    big: formatNumber(total),
-    title: 'contributors',
+    big: L.num(total),
+    title: C.title,
     subtitle,
     chart,
   };
 }
 
 /** The four headline stats shared by the outro card and the share image. */
-function summaryTiles(s, ctx = {}) {
+function summaryTiles(s, ctx) {
+  const { L } = ctx;
+  const O = L.outro;
   const commits = num(s.totals?.commits);
   return [
-    { label: 'Commits', value: formatNumber(commits) },
-    { label: 'Power hour', value: text(s.habits?.peakHourLabel) ?? 'None yet' },
-    { label: 'Best streak', value: plural(num(shownLongest(s, ctx.today)?.length), 'day') },
-    { label: 'Personality', value: commits > 0 ? (text(s.personality?.archetype?.name) ?? 'Steady Shipper') : 'TBD' },
+    { label: O.commits, value: L.num(commits) },
+    { label: O.powerHour, value: peakHourText(s.habits, L) ?? O.noneYet },
+    { label: O.bestStreak, value: plural(num(shownLongest(s, ctx.today)?.length), 'day', L) },
+    { label: O.personality, value: commits > 0 ? (archetypeText(s.personality, L).name ?? L.personality.archetypes['steady-shipper'].name) : O.tbd },
   ];
 }
 
 function outro(s, ctx) {
+  const { L } = ctx;
+  const O = L.outro;
   const commits = num(s.totals?.commits);
   const top = (Array.isArray(s.hotFiles) ? s.hotFiles : []).find((f) => text(f?.path));
   return {
-    eyebrow: "That's a wrap",
-    big: 'Thanks!',
-    title: commits > 0 ? `${ctx.repoName}, in one card` : EMPTY_LINE,
-    subtitle: 'Made with gitwrapped. Share your cards and tag a teammate.',
+    eyebrow: O.eyebrow,
+    big: O.big,
+    title: commits > 0 ? O.inOneCard(ctx.repoName) : L.empty,
+    subtitle: O.subtitle,
     chart: {
       kind: 'tiles',
       items: summaryTiles(s, ctx),
-      wide: top ? { label: 'Hottest file', value: top.path, note: plural(top.commits, 'commit'), truncate: 'start' } : null,
+      wide: top ? { label: O.hottestFile, value: top.path, note: plural(top.commits, 'commit', L), truncate: 'start' } : null,
     },
   };
 }
@@ -693,17 +715,19 @@ const CARD_THEMES = { intro: 'pulse', totals: 'ocean', 'peak-hour': 'cosmic', st
  * were given ("<repo> · since <date>", "<repo> · 2025", see windowLabel). The repo
  * name is left out when it is "gitwrapped", which the footer brand already says.
  * With `today` ('YYYY-MM-DD'), future-dated days do not stretch the range (shownDayRange).
+ * `lang` picks the date format (see src/i18n).
  */
-export function footerText(stats, { repoName, since, until, today }) {
+export function footerText(stats, { repoName, since, until, today, lang }) {
   const t = shownDayRange(stats, today);
-  const range = windowLabel({ since, until }) ?? formatDateRange(t.firstDay, t.lastDay);
+  const range = windowLabel({ since, until, lang }) ?? formatDateRange(t.firstDay, t.lastDay, lang);
   const repo = repoName.toLowerCase() === 'gitwrapped' ? '' : repoName;
   return [repo, range].filter(Boolean).join(' · ');
 }
 
 /**
  * Build the full card set from computeStats() output.
- * Options: `repoName` (default "your repo"), `since`, `until` and `author` (as passed
+ * Options: `lang` (an src/i18n code, default 'en': every string on the cards),
+ * `repoName` (default "your repo"), `since`, `until` and `author` (as passed
  * to the CLI; shown in the copy when given), and `today` ('YYYY-MM-DD', the date the
  * stats' current streak is relative to): when `until` is before `today`, the streak card
  * talks about the streak at the end of the window instead of "right now". Returns
@@ -727,8 +751,10 @@ const pair = (label, value) => [plain(label), plain(value)].filter(Boolean).join
  * A plain-text version of a card spec for assistive tech (the viewer links it to the
  * card with aria-describedby): eyebrow, headline, subtitle, list rows and the chart's
  * values, as sentences. The calendar is summarized by its active-day count.
+ * `spec.lang` (an src/i18n code) picks the language of the few words added here.
  */
 export function cardDescription(spec = {}) {
+  const L = getStrings(spec.lang);
   const out = [];
   const add = (x) => {
     const t = plain(x);
@@ -736,7 +762,7 @@ export function cardDescription(spec = {}) {
   };
   add(spec.eyebrow);
   // "1,234 commits" reads as one phrase; a title that is its own sentence (a roast) is not.
-  if (/^[A-Z]\S*\s/.test(plain(spec.title))) {
+  if ((L === EN ? /^[A-Z]\S*\s/ : /^\p{Lu}\S*\s/u).test(plain(spec.title))) {
     add(spec.big);
     add(spec.title);
   } else {
@@ -752,7 +778,7 @@ export function cardDescription(spec = {}) {
     else if (c.kind === 'hbars') items.push(plain(c.title), ...(c.items ?? []).map((x) => plain(x?.title) || pair(x?.label, x?.value)));
     else if (c.kind === 'bars') items.push(plain(c.title), ...(c.titles ?? []).filter((t, i) => num(c.values?.[i]) > 0).map(plain));
     else if (c.kind === 'tiles') items.push(...(c.items ?? []).map((x) => pair(x?.label, x?.value)), ...(c.wide ? [pair(c.wide.label, `${plain(c.wide.value)} (${plain(c.wide.note)})`)] : []));
-    else if (c.kind === 'calendar') items.push(plain(c.title) || `Commit calendar of ${plural((c.days ?? []).length, 'active day')}`);
+    else if (c.kind === 'calendar') items.push(plain(c.title) || L.calendarOf((c.days ?? []).length));
     for (const x of items) add(x);
   }
   return out.join(' ');
@@ -763,9 +789,10 @@ export function cardDescription(spec = {}) {
  * `[{id, spec}]` for cardIdsFor(stats), numbered 01, 02, ... in that order;
  * buildCards() renders exactly these. Useful for layout checks.
  */
-export function buildCardSpecs(stats, { repoName, since, until, author, today } = {}) {
+export function buildCardSpecs(stats, { repoName, since, until, author, today, lang } = {}) {
   stats = stats ?? {};
-  const ctx = { repoName: text(repoName) ?? 'your repo', since: text(since), until: text(until), author: text(author), today: text(today) };
+  const L = getStrings(lang);
+  const ctx = { L, lang: L.code, repoName: text(repoName) ?? L.yourRepo, since: text(since), until: text(until), author: text(author), today: text(today) };
   // The day the cards are "as of": today, or the end of a window that ended before it.
   const t = parseDay(ctx.today);
   const u = parseDay(ctx.until);
@@ -773,7 +800,7 @@ export function buildCardSpecs(stats, { repoName, since, until, author, today } 
   const footer = footerText(stats, ctx);
   return cardIdsFor(stats).map((id, i) => ({
     id,
-    spec: { theme: CARD_THEMES[id], footer, number: String(i + 1).padStart(2, '0'), idPrefix: `gw-${id}`, ...BUILDERS[id](stats, ctx) },
+    spec: { theme: CARD_THEMES[id], footer, number: String(i + 1).padStart(2, '0'), idPrefix: `gw-${id}`, ...(L === EN ? {} : { lang: L.code }), ...BUILDERS[id](stats, ctx) },
   }));
 }
 
@@ -782,9 +809,10 @@ export function buildCardSpecs(stats, { repoName, since, until, author, today } 
  * repo name, four stat tiles (commits, longest streak, power hour, personality) and the
  * hottest file. Same options as buildCards(); copes with empty stats. Returns an SVG string.
  */
-export function renderShareCard(stats, { repoName, since, until, author, today } = {}) {
+export function renderShareCard(stats, { repoName, since, until, author, today, lang } = {}) {
   stats = stats ?? {};
-  const ctx = { repoName: text(repoName) ?? 'your repo', since: text(since), until: text(until), author: text(author), today: text(today) };
+  const L = getStrings(lang);
+  const ctx = { L, lang: L.code, repoName: text(repoName) ?? L.yourRepo, since: text(since), until: text(until), author: text(author), today: text(today) };
   const year = windowYear(ctx.since, ctx.until);
   const commits = num(stats.totals?.commits);
   const top = (Array.isArray(stats.hotFiles) ? stats.hotFiles : []).find((f) => text(f?.path));
@@ -792,11 +820,12 @@ export function renderShareCard(stats, { repoName, since, until, author, today }
   return renderShareSvg({
     theme: 'pulse',
     idPrefix: 'gw-share',
-    eyebrow: authorName(ctx.author) ? `${year ? `${year} ` : ''}Git Wrapped · ${authorName(ctx.author)}` : `My ${year ? `${year} ` : ''}Git Wrapped`,
+    eyebrow: authorName(ctx.author) ? L.share.eyebrowAuthor(year, authorName(ctx.author)) : L.share.eyebrow(year),
     title: ctx.repoName,
     tiles: [c, streakTile, hour, persona],
-    file: top ? { label: 'Hottest file', path: top.path, value: plural(top.commits, 'commit') } : null,
-    note: commits > 0 ? 'No hot files yet.' : EMPTY_LINE,
+    file: top ? { label: L.outro.hottestFile, path: top.path, value: plural(top.commits, 'commit', L) } : null,
+    note: commits > 0 ? L.share.noHotFiles : L.empty,
     footer: footerText(stats, ctx),
+    ...(L === EN ? {} : { lang: L.code }),
   });
 }

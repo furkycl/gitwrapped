@@ -4,7 +4,7 @@ import { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONT
 import { computeDaily, daysUpTo, longestGap, longestRun, shownLongest, shownLongestBreak } from './daily.js';
 import { computeHotFiles, isIgnoredPath, repoRelativePath } from './files.js';
 import { computeTimeHabits } from './habits.js';
-import { computeLanguages, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER as OTHER_LANGUAGE, percentShares } from './languages.js';
+import { computeLanguages, languageBarRows, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER as OTHER_LANGUAGE, percentShares } from './languages.js';
 import { computeMessages, isMergeCommit } from './messages.js';
 import { computeMonths, monthsFromDays } from './months.js';
 import { ARCHETYPES, computePersonality } from './personality.js';
@@ -14,7 +14,7 @@ import { computeTotals } from './totals.js';
 import { computeYearOverYear, yearOverYear } from './yoy.js';
 
 export { computeTotals, computeTimeHabits, computeStreaks, computeDaily, daysUpTo, longestGap, longestRun, shownLongest, shownLongestBreak, computeHotFiles, isIgnoredPath, repoRelativePath, computeRepos, computeYearOverYear, yearOverYear };
-export { computeLanguages, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER_LANGUAGE, percentShares };
+export { computeLanguages, languageBarRows, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER_LANGUAGE, percentShares };
 export { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONTRIBUTORS };
 export { computeBiggestCommit, shownBiggestLines, computeMessages, computePersonality, isMergeCommit, ARCHETYPES, localToday };
 export { computeMonths, monthsFromDays };

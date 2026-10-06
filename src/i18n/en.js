@@ -424,7 +424,53 @@ export default {
     cardsIn: (count, dir) => `${count} in ${dir}`,
     shareImage: 'share image:',
     statsJson: 'stats JSON:',
+    markdown: 'Markdown summary:',
     opening: (file) => `Opening ${file}…`,
+  },
+
+  // --- Markdown summary (--md, <out>/wrapped.md) ---------------------------------------
+  markdown: {
+    /** The top heading. */
+    title: (repo) => `${repo} Wrapped`,
+    noCommits: 'No commits found: nothing to sum up yet.',
+    numbers: 'In numbers',
+    commits: 'Commits',
+    lines: 'Lines',
+    /** After a "+N / −M" count. */
+    linesWord: 'lines',
+    files: 'Files',
+    habits: 'When you commit',
+    busiestDay: 'Busiest weekday',
+    tied: 'tied',
+    streaks: 'Streaks',
+    longestStreak: 'Longest streak',
+    currentStreak: 'Current streak',
+    windowEndStreak: 'Streak at window end',
+    longestBreak: 'Longest break',
+    hotFiles: 'Hot files',
+    file: 'File',
+    languages: 'Languages',
+    language: 'Language',
+    contributor: 'Contributor',
+    share: 'Share',
+    repo: 'Repo',
+    cards: 'Story cards',
+    /** Alt text of each card image, by card id (src/cards CARD_IDS). */
+    cardNames: {
+      intro: 'Intro',
+      totals: 'The grand total',
+      'peak-hour': 'Power hour',
+      streak: 'Longest streak',
+      activity: 'Commit calendar',
+      months: 'Month by month',
+      'hot-files': 'Hot files',
+      languages: 'Languages',
+      contributors: 'The team',
+      messages: 'Message hall of fame',
+      personality: 'Commit personality',
+      outro: "That's a wrap",
+    },
+    footer: 'Made with gitwrapped.',
   },
 
   /** Notes printed above the recap. `n` is the commit cap (already formatted). */

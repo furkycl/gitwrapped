@@ -322,3 +322,29 @@ export function languageHeadline(stat) {
     rows,
   };
 }
+
+/**
+ * The language rows the languages card charts (and wrapped.md tabulates), from a
+ * languageHeadline() result `h`: the first `max` known languages, the headline language
+ * always among them (it replaces the last one when it would not be), then every other row
+ * (unknown file types included) folded into one OTHER row. Each row is `{name, other,
+ * amount, files, lines, share}`: `amount` is lines or files per `h.basis`, `share` is
+ * capped at 99 while more than one row exists (so no row reads 100% next to others), and
+ * `other` marks the folded row.
+ */
+export function languageBarRows(h, max = 5) {
+  const rows = Array.isArray(h?.rows) ? h.rows : [];
+  const basis = h?.basis === 'files' ? 'files' : 'lines';
+  const known = rows.filter((l) => l.name !== OTHER);
+  let top = known.slice(0, max);
+  const head = known.find((l) => l.name === h?.name);
+  if (head && !top.includes(head)) top = [...top.slice(0, max - 1), head];
+  const rest = rows.filter((l) => !top.includes(l));
+  const cap = (share) => (rows.length > 1 ? Math.min(99, share) : share);
+  const out = top.map((l) => ({ name: l.name, other: false, amount: l[basis], files: l.files, lines: l.lines, share: cap(l.share) }));
+  if (rest.length > 0) {
+    const sum = (k) => rest.reduce((n, l) => n + l[k], 0);
+    out.push({ name: OTHER, other: true, amount: sum(basis), files: sum('files'), lines: sum('lines'), share: cap(sum('share')) });
+  }
+  return out;
+}

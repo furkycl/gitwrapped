@@ -64,5 +64,5 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] Multi-repo Wrapped: `gitwrapped repoA repoB ...` merges histories (per-repo breakdown on the totals/hot-files cards, repo-prefixed paths); tests
 - [x] Year-over-year: with `--year`, compare against the previous year on the totals and outro cards (+/- commits, lines, active days); tests
 - 1.2.0 release prep (split in turn 033):
-  - [x] Cold audit of the 1.2 work + fixes (team ranking under --max-commits, multi-repo --year headline floor, recap display widths, localized "Text")
+  - [x] Cold audit of the 1.2 work (contributors, --lang, --theme, multi-repo, year-over-year; diff e33281b..main) + fix every real bug found, with tests
   - [ ] CHANGELOG 1.2.0 + version bump, regenerate docs/self-wrapped + hero GIF, README in sync

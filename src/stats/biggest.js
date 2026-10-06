@@ -18,8 +18,11 @@ const count = (n) => (typeof n === 'number' && Number.isFinite(n) && n > 0 ? n :
  * - files: how many distinct counted paths the commit touches.
  * Merge commits (see isMergeCommit) are skipped, and a commit whose counted lines are 0
  * cannot be the biggest (null when no commit has any). Ties go to the earliest commit by
- * date; commits with an unparseable date come after dated ones; then input order (as in
- * computeMessages).
+ * date; commits with an unparseable date come after dated ones; on the same instant (or
+ * both undated) the later one in input order wins: the input is newest first (git log,
+ * or mergeHistories in src/git.js for several repos, which keeps equal instants repo by
+ * repo in git's order), so that is the older commit in git order (in a multi-repo run,
+ * the one from the later repo).
  * Invalid input policy: never throws; files without a string path are skipped, and a
  * missing, negative or non-finite line count adds 0. Empty input → null.
  */
@@ -40,8 +43,9 @@ export function computeBiggestCommit(commits) {
     if (lines === 0) continue;
     const t = localParts(c.date);
     const ms = t ? t.ms : Infinity;
-    // Strictly more lines wins; on a tie the earlier instant wins (input order otherwise).
-    if (best && (lines < best.lines || (lines === best.lines && !(ms < best.ms)))) continue;
+    // Strictly more lines wins; on a tie the earlier instant wins, and on the same instant
+    // the later one in input order (git log lists newest first, so the older commit).
+    if (best && (lines < best.lines || (lines === best.lines && ms > best.ms))) continue;
     const subject = typeof c.subject === 'string' && c.subject.trim() ? c.subject.trim() : null;
     best = { hash: typeof c.hash === 'string' ? c.hash : null, subject, date: t ? t.dayKey : null, linesAdded, linesRemoved, lines, files: paths.size, ms };
   }

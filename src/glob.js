@@ -20,7 +20,8 @@ function normalize(pattern) {
 /**
  * A glob body (no anchor / trailing slash; '/' separated) as tokens: a string for a
  * literal character, else STAR / ANY / GLOBSTAR / DIRS. Runs of three or more stars count
- * as "**", and redundant neighbours collapse ("**" + "/" + "**" + "/" → one DIRS; DIRS next
+ * as "**"; a "**" that is not a whole segment (other characters before or after it in
+ * its segment) is a plain STAR; and redundant neighbours collapse ("**" + "/" + "**" + "/" → one DIRS; DIRS next
  * to GLOBSTAR → GLOBSTAR; "**" + "*" is already one run), so no input grows the work.
  */
 function tokenize(body) {
@@ -46,12 +47,14 @@ function tokenize(body) {
         i = j;
         continue;
       }
+      // Only a "**" that is a whole path segment crosses '/'; elsewhere ("src**.js",
+      // "test**") it is a plain "*", as in gitignore.
       const atStart = i === 0 || body[i - 1] === '/';
       if (atStart && body[j] === '/') {
         push(DIRS);
         i = j + 1;
       } else {
-        push(GLOBSTAR);
+        push(atStart && j === body.length ? GLOBSTAR : STAR);
         i = j;
       }
       continue;
@@ -112,7 +115,8 @@ function reachable(tokens, text) {
  * Compile one --exclude glob into a predicate `(path) => boolean` over '/'-separated
  * paths as git prints them (repo-relative). Semantics, gitignore-like:
  * - `*` matches any characters except '/', `?` exactly one character except '/',
- *   `**` any characters including '/'; a `**` segment followed by '/' also matches
+ *   a `**` segment any characters including '/' (a `**` with other characters in its
+ *   segment, like `src**.js`, is a plain `*`); a `**` segment followed by '/' also matches
  *   zero directories (`**` + `/x.js` matches `x.js` at the root and at any depth), and
  *   `docs/**` matches everything under `docs/`.
  *   Everything else is literal (no `[...]` classes, no `!` negation, no `{a,b}`), and
@@ -131,7 +135,10 @@ function reachable(tokens, text) {
  * - Backslashes are read as '/' (for Windows users); surrounding whitespace is ignored.
  * Matching is linear in pattern length × path length (no regex, no backtracking), so no
  * pattern can make it slow. The predicate has `named: true` for a name pattern (no '/'
- * other than a trailing one, not anchored), else `named: false`.
+ * other than a trailing one, not anchored), else `named: false`, and `label: true` when
+ * it may be tried against a multi-repo "<repo>/<path>" label: a path pattern whose first
+ * segment has no wildcard (`api/src/`, `/web`), so that segment can only match a repo
+ * label literally (`*` + `/generated/` or `**` + `/x.js` never match a label).
  * Throws an Error with a user-facing message for an empty pattern (or one that is only
  * an anchor and slashes, like "/" or "./").
  */
@@ -166,19 +173,23 @@ export function compileGlob(pattern) {
   // A name pattern (no '/' inside, not anchored) matches at any depth of a repo-relative
   // path; excludeFiles never tries it against a multi-repo "<repo>/<path>" label.
   match.named = named;
+  match.label = !named && !/[*?]/.test(body.split('/')[0]);
   return match;
 }
 
 /**
  * One predicate `(path, {labelled = false} = {}) => boolean` for several --exclude
  * patterns: true when any of them matches (see compileGlob). With `labelled: true` (a
- * multi-repo "<repo>/<path>" as shown) only path patterns are tried, never name patterns,
- * so `docs` or `api*` cannot match a repo's label and drop a whole repo.
+ * multi-repo "<repo>/<path>" as shown) only path patterns whose first segment is literal
+ * are tried (compileGlob's `label`), never name patterns or a pattern starting with a
+ * wildcard, so `docs`, `api*` or `*` + `/generated/` cannot match a repo's label: `docs`
+ * cannot drop a whole repo, and `*` + `/generated/` excludes the same files as in a
+ * single-repo run.
  * No patterns (empty / missing) → null, so callers can skip filtering.
  * Throws like compileGlob for an invalid pattern.
  */
 export function compileExcludes(patterns) {
   const list = (patterns ?? []).map(compileGlob);
   if (list.length === 0) return null;
-  return (path, { labelled = false } = {}) => list.some((m) => !(labelled && m.named) && m(path));
+  return (path, { labelled = false } = {}) => list.some((m) => (!labelled || m.label) && m(path));
 }

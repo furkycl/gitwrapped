@@ -10,6 +10,7 @@ import { computeStats, localToday } from './stats/index.js';
 import { formatSummary, shouldUseColor, stripControl } from './summary.js';
 import { buildViewerHtml } from './viewer.js';
 import { DEFAULT_LANG, getStrings, isLang, LANGS } from './i18n/index.js';
+import { COLOR_THEME_NAMES, DEFAULT_COLOR_THEME, isColorTheme } from './cards/themes.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -31,6 +32,9 @@ Options:
   --out <dir>          Output directory (default: "gitwrapped-out")
   --lang <code>        Language of the cards, viewer and recap:
                        en (English, default) or tr (Türkçe)
+  --theme <name>       Color theme of the cards, share image and viewer:
+                       default (gradients), mono (grayscale) or
+                       neon (dark with neon glows)
   --max-commits <n>    Analyze at most the n most recent commits
                        (default: 50000)
   --no-png             Skip PNG rendering (faster; SVG + HTML only)
@@ -50,6 +54,7 @@ const OPTIONS = {
   author: { type: 'string' },
   out: { type: 'string' },
   lang: { type: 'string' },
+  theme: { type: 'string' },
   'max-commits': { type: 'string' },
   'no-png': { type: 'boolean' },
   json: { type: 'boolean' },
@@ -90,6 +95,12 @@ function validateYear(value) {
 function validateLang(value) {
   const v = value.trim().toLowerCase();
   if (!isLang(v)) throw new Error(`invalid --lang "${value}": expected one of ${LANGS.join(', ')}`);
+  return v;
+}
+
+function validateTheme(value) {
+  const v = value.trim().toLowerCase();
+  if (!isColorTheme(v)) throw new Error(`invalid --theme "${value}": expected one of ${COLOR_THEME_NAMES.join(', ')}`);
   return v;
 }
 
@@ -138,7 +149,8 @@ function normalizeArgv(argv) {
  * Returns {help:true}, {version:true}, or {path, since, author, out, png, maxCommits}
  * plus, only when given: color (false for --no-color; absent = auto), until, year
  * (--year YYYY also sets since/until to Jan 1 / Dec 31 of that year), json (true),
- * open (true) and lang (a code from src/i18n LANGS, e.g. 'tr'; absent = English).
+ * open (true), lang (a code from src/i18n LANGS, e.g. 'tr'; absent = English) and
+ * theme (a non-default color theme from cards/themes.js, e.g. 'mono'; absent = default).
  * Throws an Error with a user-facing message on invalid input.
  */
 export function parseCli(argv) {
@@ -159,7 +171,7 @@ export function parseCli(argv) {
     throw new Error(`expected at most one path, got ${positionals.length}: ${positionals.join(' ')}`);
   }
 
-  for (const name of ['since', 'until', 'year', 'author', 'out', 'lang', 'max-commits']) {
+  for (const name of ['since', 'until', 'year', 'author', 'out', 'lang', 'theme', 'max-commits']) {
     if (values[name] !== undefined && values[name].trim() === '') {
       throw new Error(`--${name} requires a non-empty value`);
     }
@@ -181,6 +193,7 @@ export function parseCli(argv) {
   }
 
   const lang = values.lang === undefined ? undefined : validateLang(values.lang);
+  const theme = values.theme === undefined ? undefined : validateTheme(values.theme);
 
   return {
     // An empty path ("") means the current directory, like the default.
@@ -196,6 +209,7 @@ export function parseCli(argv) {
     ...(values.json ? { json: true } : {}),
     ...(values.open ? { open: true } : {}),
     ...(lang ? { lang } : {}),
+    ...(theme && theme !== DEFAULT_COLOR_THEME ? { theme } : {}),
   };
 }
 
@@ -408,7 +422,8 @@ function removeOldCardFiles(dir, ext, keep) {
  * With `json`, <out>/stats.json (see json.js) is written too (language-neutral: `lang`
  * does not change it).
  * `lang` (a src/i18n code, default 'en') is the language of the cards, the share image
- * and the viewer.
+ * and the viewer. `theme` (a cards/themes.js color theme, default 'default') is their
+ * colors (stats.json does not change with it either).
  * With `author`, the history is read a second time without it (same window and cap) for
  * stats.contributors, which then ranks that author against everyone ("you vs the team");
  * that second read is skipped when the author has no commits in the window.
@@ -423,7 +438,7 @@ function removeOldCardFiles(dir, ext, keep) {
  * whether that is a past `until`.
  * `renderPng` (svg, {width}) → Promise<Buffer> replaces the PNG renderer (for tests).
  */
-export async function generate({ path, since, until, author, out, png = true, maxCommits = DEFAULT_LIMIT, json = false, lang = DEFAULT_LANG }, { today, renderPng: rasterize = renderPng } = {}) {
+export async function generate({ path, since, until, author, out, png = true, maxCommits = DEFAULT_LIMIT, json = false, lang = DEFAULT_LANG, theme = DEFAULT_COLOR_THEME }, { today, renderPng: rasterize = renderPng } = {}) {
   const { commits, truncated, limit, shallow, unborn = false, otherRefs = false } = await readHistory(path, { since, until, author, limit: maxCommits });
   // A past window's "current" streak is the one running when the window closed; its end
   // day is over, so there is no "today isn't over yet" grace day (todayComplete).
@@ -443,8 +458,8 @@ export async function generate({ path, since, until, author, out, png = true, ma
     teamTruncated: team ? Boolean(team.truncated) : Boolean(truncated),
   });
   const name = await repoName(path);
-  const cards = buildCards(stats, { repoName: name, since, until, author, today: ref, lang });
-  const shareSvg = renderShareCard(stats, { repoName: name, since, until, author, today: ref, lang });
+  const cards = buildCards(stats, { repoName: name, since, until, author, today: ref, lang, colorTheme: theme });
+  const shareSvg = renderShareCard(stats, { repoName: name, since, until, author, today: ref, lang, colorTheme: theme });
 
   const cardsDir = join(out, 'cards');
   const pngDir = join(out, 'png');
@@ -463,7 +478,7 @@ export async function generate({ path, since, until, author, out, png = true, ma
     })
     : null;
   const label = windowLabel({ since, until, lang });
-  const page = buildViewerHtml(cards, { title: `gitwrapped · ${name}${label ? ` · ${label}` : ''}`, lang });
+  const page = buildViewerHtml(cards, { title: `gitwrapped · ${name}${label ? ` · ${label}` : ''}`, lang, colorTheme: theme });
   const stem = (id, i) => `${String(i + 1).padStart(2, '0')}-${id}`;
   const files = cards.map(({ id, svg }, i) => ({ file: join(cardsDir, `${stem(id, i)}.svg`), svg }));
   const pngTargets = png ? cards.map(({ id, svg }, i) => ({ file: join(pngDir, `${stem(id, i)}.png`), svg, width: 1080 })) : [];

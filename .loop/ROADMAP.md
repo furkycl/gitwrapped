@@ -63,4 +63,6 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] `--theme`: alternative color themes for the cards (default gradient set + at least "mono" and "neon"), applied to SVG/PNG/share/viewer; layout and contrast tests
 - [x] Multi-repo Wrapped: `gitwrapped repoA repoB ...` merges histories (per-repo breakdown on the totals/hot-files cards, repo-prefixed paths); tests
 - [x] Year-over-year: with `--year`, compare against the previous year on the totals and outro cards (+/- commits, lines, active days); tests
-- [ ] 1.2.0 release prep: cold audit + fixes, CHANGELOG 1.2.0, version bump, regenerate docs/self-wrapped + hero GIF, README in sync
+- 1.2.0 release prep (split in turn 033):
+  - [x] Cold audit of the 1.2 work + fixes (team ranking under --max-commits, multi-repo --year headline floor, recap display widths, localized "Text")
+  - [ ] CHANGELOG 1.2.0 + version bump, regenerate docs/self-wrapped + hero GIF, README in sync

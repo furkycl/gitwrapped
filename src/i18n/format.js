@@ -27,3 +27,13 @@ export function formatDecimal(n, sep, point) {
   return r < 0 && tenths > 0 ? `−${body}` : body;
 }
 
+
+/**
+ * A signed change with `sep` as the thousands separator: 42 → "+42", -1203 → "−1,203"
+ * (U+2212), and 0 (also anything that rounds to 0, or a non-number) → "±0", never "−0".
+ */
+export function formatDelta(n, sep = ',') {
+  const v = Math.round(typeof n === 'number' && Number.isFinite(n) ? n : 0);
+  if (v === 0) return '±0';
+  return v > 0 ? `+${formatInteger(v, sep)}` : formatInteger(v, sep);
+}

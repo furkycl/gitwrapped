@@ -5,6 +5,7 @@ import { shownLongest } from './stats/daily.js';
 import { languageHeadline } from './stats/languages.js';
 import { hasTeamCard, shareLabel } from './stats/contributors.js';
 import { DEFAULT_LANG, getStrings } from './i18n/index.js';
+import { yearOverYear } from './stats/yoy.js';
 
 const EN = getStrings(DEFAULT_LANG);
 
@@ -114,6 +115,8 @@ function shortWord(w, max = 32) {
  *   personality are written in that language (notes are passed in already translated)
  * A multi-repo run (stats.repos with two or more rows) gets a "Repos" line and one line
  * per repo (commits and lines; the first five, then "…and N more").
+ * A --year run with a comparison (stats.yearOverYear) gets a "vs <previous year>" line
+ * with the change in commits, lines changed and active days.
  * A "Team" line (top contributor, or the --author's rank) appears exactly when the
  * contributors card is built (see hasTeamCard in stats/contributors.js).
  * The first line is always `gitwrapped: N commits → <html>` (no color), so it is easy
@@ -155,6 +158,10 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
       }
       if (shown.length < repos.length) lines.push(`    ${c('dim', R.moreRepos(repos.length - shown.length))}`);
     }
+
+    // --year: the change since the previous year (stats.yearOverYear), as on the cards.
+    const yoy = yearOverYear(stats);
+    if (yoy) lines.push(`  ${label(R.vsYear(yoy.previousYear))}${c('cyan', L.yoy.changes(yoy.commits, yoy.lines, yoy.activeDays))}`);
 
     const h = stats?.habits ?? {};
     if (h.peakHourLabel) {

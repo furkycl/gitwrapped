@@ -10,6 +10,7 @@ import { languageHeadline, OTHER as OTHER_LANGUAGE } from '../stats/languages.js
 import { daysUpTo, shownLongest } from '../stats/daily.js';
 import { hasTeamCard, shareLabel, TOP_CONTRIBUTORS } from '../stats/contributors.js';
 import { personalityReason } from '../stats/personality.js';
+import { yearOverYear } from '../stats/yoy.js';
 import { DEFAULT_LANG, getStrings } from '../i18n/index.js';
 import { DEFAULT_COLOR_THEME, isColorTheme } from './themes.js';
 
@@ -277,6 +278,15 @@ function totals(s, { L, repos }) {
     { label: T.filesTouched, value: L.num(t.filesTouched) },
   ];
   if (num(t.authors) > 1) rows.push({ label: T.contributors, value: L.num(t.authors) });
+  // --year: the change since the previous year (at most 6 rows in all).
+  const yoy = yearOverYear(s);
+  if (yoy) {
+    rows.push(
+      { label: L.yoy.commits(yoy.previousYear), value: L.delta(yoy.commits) },
+      { label: L.yoy.lines(yoy.previousYear), value: L.delta(yoy.lines) },
+      { label: L.yoy.activeDays(yoy.previousYear), value: L.delta(yoy.activeDays) },
+    );
+  }
   const split = {
     kind: 'split',
     title: T.linesChanged,
@@ -776,11 +786,14 @@ function outro(s, ctx) {
   const O = L.outro;
   const commits = num(s.totals?.commits);
   const top = (Array.isArray(s.hotFiles) ? s.hotFiles : []).find((f) => text(f?.path));
+  // --year: one sentence on the change since the previous year, first (when the subtitle
+  // runs out of lines, trailing sentences are dropped).
+  const yoy = commits > 0 ? yearOverYear(s) : null;
   return {
     eyebrow: O.eyebrow,
     big: O.big,
     title: commits > 0 ? O.inOneCard(ctx.repoName) : L.empty,
-    subtitle: O.subtitle,
+    subtitle: yoy ? `${L.yoy.summary(yoy.previousYear, yoy.commits, yoy.lines, yoy.activeDays)} ${O.subtitle}` : O.subtitle,
     chart: {
       kind: 'tiles',
       items: summaryTiles(s, ctx),

@@ -28,7 +28,8 @@ Arguments:
 Options:
   --since YYYY-MM-DD   Only include commits on or after this date
   --until YYYY-MM-DD   Only include commits on or before this date
-  --year YYYY          One calendar year: --since YYYY-01-01 --until YYYY-12-31
+  --year YYYY          One calendar year: --since YYYY-01-01 --until YYYY-12-31,
+                       compared with the year before (commits, lines, active days)
   --author <email>     Only include commits by this author email
                        (exact email match, case-insensitive, after .mailmap)
   --out <dir>          Output directory (default: "gitwrapped-out")
@@ -312,7 +313,7 @@ export async function repoIdentity(repoPath) {
  * whose HEAD has no commits while other branches / tags exist (unborn / otherRefs are
  * true when there is one).
  */
-async function readRepos(paths, { since, until, author, limit, labels }) {
+async function readRepos(paths, { since, until, author, limit, labels }, readFn = readHistory) {
   let names = labels;
   if (!names) {
     const seen = new Map();
@@ -320,7 +321,7 @@ async function readRepos(paths, { since, until, author, limit, labels }) {
     for (const p of paths) {
       const id = await repoIdentity(p);
       // Not identifiable: let readHistory say why (missing path, not a repo, ownership).
-      if (!id.known) await readHistory(p, { limit: 1 });
+      if (!id.known) await readFn(p, { limit: 1 });
       const dup = id.keys.find((k) => seen.has(k));
       if (dup) throw new Error(`the same repository was given twice: ${seen.get(dup)} and ${p}`);
       for (const k of id.keys) seen.set(k, p);
@@ -329,7 +330,7 @@ async function readRepos(paths, { since, until, author, limit, labels }) {
     names = repoLabels(found);
   }
   const reads = [];
-  for (const p of paths) reads.push(await readHistory(p, { since, until, author, limit }));
+  for (const p of paths) reads.push(await readFn(p, { since, until, author, limit }));
   const merged = mergeHistories(reads.map((r, i) => ({ label: names[i], commits: r.commits, truncated: r.truncated })), { limit });
   const unbornRepos = names.filter((_, i) => reads[i].unborn && reads[i].otherRefs);
   return {
@@ -519,7 +520,7 @@ function removeOldCardFiles(dir, ext, keep) {
  * With `author`, the history is read a second time without it (same window and cap) for
  * stats.contributors, which then ranks that author against everyone ("you vs the team");
  * that second read is skipped when the author has no commits in the window.
- * Returns {commits, stats, repoName, truncated, teamTruncated, limit, shallow, unbornWithRefs, html, cardsDir, cardFiles,
+ * Returns {commits, stats, repoName, truncated, teamTruncated, previousYearTruncated, previousYearError, limit, shallow, unbornWithRefs, html, cardsDir, cardFiles,
  * shareSvg, pngDir, pngFiles, sharePng, pngSkipped, statsJson, asOf, pastWindow} with the
  * written paths
  * (joined onto `out`; PNG paths null/[] when skipped, statsJson null without `json`);
@@ -534,11 +535,22 @@ function removeOldCardFiles(dir, ext, keep) {
  * breakdown (stats.repos), the cards name the run "N repos", and the result has `repos`
  * (the labels) and `unbornRepos` (labels of repos whose HEAD has no commits while other
  * branches / tags exist); `path` is then ignored.
- * `renderPng` (svg, {width}) → Promise<Buffer> replaces the PNG renderer (for tests).
+ * With `year` ('YYYY', what --year gave; `since` / `until` are then that year's Jan 1 /
+ * Dec 31) the previous calendar year is read too, with the same author filter, repos and
+ * cap, for stats.yearOverYear (this year vs the previous one on commits, lines changed
+ * and active days; see stats/yoy.js); the totals and outro cards and the recap then show
+ * the change. That read is skipped when this year has no commits, and nothing is shown
+ * when either year has none. Without `year` nothing changes.
+ * When that extra read fails, the run goes on without the comparison and the result's
+ * `previousYearError` holds the reason (else null); `previousYearTruncated` is true when
+ * --max-commits cut the previous year short (its numbers then cover only its most recent
+ * commits).
+ * `renderPng` (svg, {width}) → Promise<Buffer> replaces the PNG renderer (for tests), and
+ * `readHistory` (same contract as git.js readHistory) the history reader.
  */
-export async function generate({ path, paths, since, until, author, out, png = true, maxCommits = DEFAULT_LIMIT, json = false, lang = DEFAULT_LANG, theme = DEFAULT_COLOR_THEME }, { today, renderPng: rasterize = renderPng } = {}) {
+export async function generate({ path, paths, since, until, year, author, out, png = true, maxCommits = DEFAULT_LIMIT, json = false, lang = DEFAULT_LANG, theme = DEFAULT_COLOR_THEME }, { today, renderPng: rasterize = renderPng, readHistory: readFn = readHistory } = {}) {
   const multi = Array.isArray(paths) && paths.length > 1;
-  const read = (opts) => (multi ? readRepos(paths, opts) : readHistory(path, opts));
+  const read = (opts) => (multi ? readRepos(paths, opts, readFn) : readFn(path, opts));
   const { commits, truncated, limit, shallow, unborn = false, otherRefs = false, labels, unbornRepos } = await read({ since, until, author, limit: maxCommits });
   // A past window's "current" streak is the one running when the window closed; its end
   // day is over, so there is no "today isn't over yet" grace day (todayComplete).
@@ -549,6 +561,21 @@ export async function generate({ path, paths, since, until, author, out, png = t
   // team") needs a second read of the same window and cap without the author filter.
   // Not when the author has no commits here: there is no "you" to rank, so no card.
   const team = author && commits.length > 0 ? await read({ since, until, limit: maxCommits, labels }) : null;
+  // --year: the previous calendar year, read with the same filters and cap, for the
+  // year-over-year comparison (stats.yearOverYear). Only when the window is exactly that
+  // year, and not when it has no commits: there is nothing to compare (see stats/yoy.js).
+  // The comparison is an extra: if its read fails, the run goes on without it.
+  const isYear = year !== undefined && /^\d{4}$/.test(String(year)) && since === `${year}-01-01` && until === `${year}-12-31`;
+  const prevYear = isYear ? Number(year) - 1 : null;
+  let previous = null;
+  let previousYearError = null;
+  if (prevYear && commits.length > 0) {
+    try {
+      previous = await read({ since: `${prevYear}-01-01`, until: `${prevYear}-12-31`, author, limit: maxCommits, labels });
+    } catch (err) {
+      previousYearError = String(err?.message ?? err).split('\n')[0] || 'unknown error';
+    }
+  }
   const stats = computeStats(commits, {
     today: asOf,
     todayComplete: pastWindow,
@@ -557,6 +584,7 @@ export async function generate({ path, paths, since, until, author, out, png = t
     // Whether the history the contributors were counted in was capped.
     teamTruncated: team ? Boolean(team.truncated) : Boolean(truncated),
     ...(multi ? { repos: labels } : {}),
+    ...(previous ? { previousYear: { year: prevYear + 1, commits: previous.commits, truncated: Boolean(previous.truncated) } } : {}),
   });
   // Several repos are named together ("3 repos", in `lang`); one repo by its folder.
   const name = multi ? displayRepoName(stats, { lang }) : await repoName(path);
@@ -635,6 +663,8 @@ export async function generate({ path, paths, since, until, author, out, png = t
     ...(multi ? { repos: labels } : {}),
     truncated,
     teamTruncated: Boolean(team?.truncated),
+    previousYearTruncated: Boolean(stats.yearOverYear?.previousTruncated),
+    previousYearError,
     limit,
     shallow: Boolean(shallow),
     unbornWithRefs: Boolean(unborn && otherRefs),
@@ -743,9 +773,10 @@ function filterText({ since, until, year, author }) {
  * Run the CLI. Resolves to a process exit code.
  * `openFile(path)` (default openInBrowser) opens wrapped.html for --open; it may return a
  * promise. If it throws or rejects, a one-line warning goes to stderr and the run still
- * succeeds. Tests pass their own so no real browser is launched.
+ * succeeds. Tests pass their own so no real browser is launched. `renderPng` and
+ * `readHistory` are passed on to generate() (for tests).
  */
-export async function run(argv, { stdout = process.stdout, stderr = process.stderr, env = process.env, today, renderPng: rasterize, openFile = openInBrowser } = {}) {
+export async function run(argv, { stdout = process.stdout, stderr = process.stderr, env = process.env, today, renderPng: rasterize, readHistory: readFn, openFile = openInBrowser } = {}) {
   let opts;
   try {
     opts = parseCli(argv);
@@ -766,7 +797,7 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
 
   let result;
   try {
-    result = await generate(opts, { today, ...(rasterize ? { renderPng: rasterize } : {}) });
+    result = await generate(opts, { today, ...(rasterize ? { renderPng: rasterize } : {}), ...(readFn ? { readHistory: readFn } : {}) });
   } catch (err) {
     stderr.write(`gitwrapped: ${err?.message ?? String(err)}\n`);
     return 1;
@@ -781,6 +812,9 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
   }
   if (result.teamTruncated && !result.truncated) {
     notes.push(N.teamTruncated(limitText()));
+  }
+  if (result.previousYearTruncated) {
+    notes.push(N.previousYearTruncated(limitText(), result.stats.yearOverYear.previousYear));
   }
   if (result.shallow) {
     notes.push(N.shallow);
@@ -814,6 +848,7 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
     }),
   );
   if (result.pngSkipped) stderr.write(`gitwrapped: PNG export skipped: ${result.pngSkipped}\n`);
+  if (result.previousYearError) stderr.write(`gitwrapped: year-over-year comparison skipped: ${result.previousYearError}\n`);
   if (opts.open) {
     const target = resolve(result.html);
     // Say so first: the opener may take up to OPEN_WAIT_MS to report a failure.

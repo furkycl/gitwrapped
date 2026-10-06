@@ -4,7 +4,7 @@
 import en from './en.js';
 import tr from './tr.js';
 
-export { formatDecimal, formatInteger } from './format.js';
+export { formatDecimal, formatDelta, formatInteger } from './format.js';
 
 /** Supported --lang codes, default first. */
 export const LANGS = Object.freeze(['en', 'tr']);

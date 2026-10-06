@@ -9,8 +9,9 @@ import { ARCHETYPES, computePersonality } from './personality.js';
 import { computeStreaks, localToday } from './streaks.js';
 import { computeRepos } from './repos.js';
 import { computeTotals } from './totals.js';
+import { computeYearOverYear, yearOverYear } from './yoy.js';
 
-export { computeTotals, computeTimeHabits, computeStreaks, computeDaily, daysUpTo, longestRun, shownLongest, computeHotFiles, isIgnoredPath, repoRelativePath, computeRepos };
+export { computeTotals, computeTimeHabits, computeStreaks, computeDaily, daysUpTo, longestRun, shownLongest, computeHotFiles, isIgnoredPath, repoRelativePath, computeRepos, computeYearOverYear, yearOverYear };
 export { computeLanguages, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER_LANGUAGE, percentShares };
 export { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONTRIBUTORS };
 export { computeMessages, computePersonality, isMergeCommit, ARCHETYPES, localToday };
@@ -31,9 +32,13 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * `repos` (the labels of a multi-repo run, see mergeHistories in src/git.js): with two or
  * more, `stats.repos` is the per-repo breakdown (see repos.js), as the last key; with
  * fewer the key is absent, so single-repo stats are unchanged.
+ * `previousYear` (a --year run: `{year, commits, truncated}` with the previous calendar
+ * year's commits, read with the same filters): `stats.yearOverYear` compares the two
+ * years (see yoy.js), as the last key; it is absent when there is nothing to compare
+ * (no previousYear, or either year has no commits), so other runs are unchanged.
  * Later milestones add keys.
  */
-export function computeStats(commits = [], { today, todayComplete, team, author, teamTruncated = false, repos } = {}) {
+export function computeStats(commits = [], { today, todayComplete, team, author, teamTruncated = false, repos, previousYear } = {}) {
   const stats = {
     totals: computeTotals(commits),
     habits: computeTimeHabits(commits),
@@ -47,5 +52,9 @@ export function computeStats(commits = [], { today, todayComplete, team, author,
   const nonMergeCommits = (commits ?? []).filter((c) => !isMergeCommit(c)).length;
   stats.personality = computePersonality(stats, { nonMergeCommits, today: today ?? localToday() });
   if (Array.isArray(repos) && repos.length > 1) stats.repos = computeRepos(commits, repos);
+  if (previousYear) {
+    const yoy = computeYearOverYear(stats.totals, previousYear);
+    if (yoy) stats.yearOverYear = yoy;
+  }
   return stats;
 }

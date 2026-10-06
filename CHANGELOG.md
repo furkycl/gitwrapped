@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Commit size mix: the totals card now shows the share of tiny (under 10 lines), small
+  (10–99), medium (100–500) and large (over 500 lines changed) non-merge commits as one
+  stacked bar, the recap gets a "Sizes" line, and `stats.json` gets `stats.commitSizes`
+  (`{total, tiny, small, medium, large, shares}`; shares are whole percents that add up
+  to 100). Lines are counted like the biggest commit: lockfiles, build output, vendored
+  code and `--exclude`d files are left out, so a commit that only touched those is tiny.
+  The bar only uses spare room: without commits to count, or when the totals card is
+  short of space (e.g. `--year`'s extra rows), it is left out and the card is exactly as
+  before (nothing else shrinks for it). English and Turkish.
+
 - `--md`: also writes `<out>/wrapped.md`, a Markdown summary for READMEs and PR
   descriptions: headline numbers (and the year-over-year change with `--year`), power
   hour and busiest weekday, streaks and the longest break, the top five hot files and

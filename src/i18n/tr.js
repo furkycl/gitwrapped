@@ -103,6 +103,10 @@ export default {
     linesChanged: 'Değişen satırlar',
     linesAdded: 'Eklenen satır',
     linesRemoved: 'Silinen satır',
+    commitSizes: 'Commit boyutları',
+    sizes: { tiny: 'Minik', small: 'Küçük', medium: 'Orta', large: 'Büyük' },
+    sizeRanges: { tiny: '10 satırdan az', small: '10–99 satır', medium: '100–500 satır', large: '500 satırdan fazla' },
+    sizeTitle: (name, range, commits, pct) => `${name} (${range}): ${plural(commits, UNITS.commit)} (${pct})`,
   },
 
   // "<yıl> yılına göre" needs no suffix on the number itself.
@@ -389,6 +393,8 @@ export default {
     top: 'zirvede:',
     topWord: 'Favori kelime',
     biggest: 'En büyük',
+    sizes: 'Boyutlar',
+    sizeNames: { tiny: 'minik', small: 'küçük', medium: 'orta', large: 'büyük' },
     you: 'Kişiliğin',
     cardsIn: (count, dir) => `${count}: ${dir}`,
     shareImage: 'paylaşım görseli:',

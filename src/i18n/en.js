@@ -117,6 +117,11 @@ export default {
     linesChanged: 'Lines changed',
     linesAdded: 'Lines added',
     linesRemoved: 'Lines removed',
+    /** The commit size mix (stats.commitSizes): caption, bucket names, hover text per bucket. */
+    commitSizes: 'Commit sizes',
+    sizes: { tiny: 'Tiny', small: 'Small', medium: 'Medium', large: 'Large' },
+    sizeRanges: { tiny: 'under 10 lines', small: '10–99 lines', medium: '100–500 lines', large: 'over 500 lines' },
+    sizeTitle: (name, range, commits, pct) => `${name} (${range}): ${plural(commits, UNITS.commit)} (${pct})`,
   },
 
   /**
@@ -420,6 +425,9 @@ export default {
     top: 'top:',
     topWord: 'Top word',
     biggest: 'Biggest',
+    /** The commit size line: label, then "62% tiny · 25% small · 10% medium · 3% large". */
+    sizes: 'Sizes',
+    sizeNames: { tiny: 'tiny', small: 'small', medium: 'medium', large: 'large' },
     you: 'You are',
     cardsIn: (count, dir) => `${count} in ${dir}`,
     shareImage: 'share image:',

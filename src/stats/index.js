@@ -10,6 +10,7 @@ import { computeMonths, monthsFromDays } from './months.js';
 import { ARCHETYPES, computePersonality } from './personality.js';
 import { computeStreaks, localToday } from './streaks.js';
 import { computeRepos } from './repos.js';
+import { COMMIT_SIZE_BUCKETS, COMMIT_SIZE_IDS, commitSizeOf, computeCommitSizes, shownCommitSizes, sizeShares } from './sizes.js';
 import { computeTotals } from './totals.js';
 import { computeYearOverYear, yearOverYear } from './yoy.js';
 
@@ -18,6 +19,7 @@ export { computeLanguages, languageBarRows, languageHeadline, languageOf, langua
 export { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONTRIBUTORS };
 export { computeBiggestCommit, shownBiggestLines, computeMessages, computePersonality, isMergeCommit, ARCHETYPES, localToday };
 export { computeMonths, monthsFromDays };
+export { COMMIT_SIZE_BUCKETS, COMMIT_SIZE_IDS, commitSizeOf, computeCommitSizes, shownCommitSizes, sizeShares };
 export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAMES } from './time.js';
 
 /**
@@ -29,7 +31,9 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * `today` + 1, see daily.js daysUpTo). `daily` is commits per author-local day (see daily.js);
  * `languages` is lines / files per language (see languages.js). `biggestCommit` is the
  * non-merge commit with the most lines changed, ignored paths left out as for hot files
- * (see biggest.js), or null.
+ * (see biggest.js), or null. `commitSizes` is how many non-merge commits are tiny (< 10
+ * lines), small (10-99), medium (100-500) or large (> 500), counted like biggestCommit,
+ * with whole-percent shares (see sizes.js).
  * `months` is commits per author-local calendar month, zero-filled from the first to the
  * last active month, with the peak month (see months.js).
  * `contributors` ranks who made the commits (see contributors.js). It is computed from
@@ -57,6 +61,7 @@ export function computeStats(commits = [], { today, todayComplete, team, author,
     contributors: computeContributors(team ?? commits, { author, truncated: teamTruncated }),
     messages: computeMessages(commits),
     biggestCommit: computeBiggestCommit(commits),
+    commitSizes: computeCommitSizes(commits),
   };
   const nonMergeCommits = (commits ?? []).filter((c) => !isMergeCommit(c)).length;
   stats.personality = computePersonality(stats, { nonMergeCommits, today: today ?? localToday() });

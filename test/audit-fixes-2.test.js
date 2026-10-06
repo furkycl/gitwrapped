@@ -196,7 +196,7 @@ describe('9. text hygiene', () => {
     const stats = computeStats([...['2026-10-04', '2026-10-05'].map((d) => commit(`${d}T10:00:00+00:00`, 'fix: things'))], { today: TODAY });
     const cards = buildCards(stats, { repoName: 'demo', today: TODAY });
     const byId = Object.fromEntries(cards.map((c) => [c.id, c.description]));
-    assert.match(byId.totals, /^The grand total\. 2 commits\. .*Lines added: \+4\. Lines removed: −2\.$/);
+    assert.match(byId.totals, /^The grand total\. 2 commits\. .*Lines added: \+4\. Lines removed: −2\. Commit sizes\. Tiny \(under 10 lines\): 2 commits \(100%\)\.$/);
     assert.match(byId.streak, /2 days in a row/);
     assert.match(byId['hot-files'], /src\/a\.js: 2 commits/);
     assert.match(byId.outro, /Commits: 2\./);

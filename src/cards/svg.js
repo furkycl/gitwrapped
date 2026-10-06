@@ -701,6 +701,73 @@ function splitBlock(spec, compact = false, L = EN) {
   };
 }
 
+/** Fill opacities of a stacked bar's segments, first (solid) to last (faintest). */
+const STACK_OPACITY = [1, 0.7, 0.45, 0.25];
+
+/**
+ * One 100% bar split into up to 4 segments, left to right, each fainter than the last.
+ * Spec: `{kind: 'stack', title, segments: [{label, value, amount, title}]}` (2-4 segments):
+ * zero-amount segments take no bar space (non-zero ones are at least 12px wide); under the
+ * bar every segment gets an equal column with a swatch and its label, and its value
+ * (e.g. "62%") above. `title` is the hover text of the segment and its column.
+ */
+function stackBlock(spec, compact = false, L = EN) {
+  const segs = (Array.isArray(spec.segments) ? spec.segments : []).slice(0, STACK_OPACITY.length)
+    .map((sg) => ({ label: s1(sg?.label), value: s1(sg?.value), amount: clampNum(sg?.amount), title: s1(sg?.title) }));
+  if (segs.length < 2) return null;
+  const cap = s1(spec.title);
+  const capH = cap ? CAPTION.height : 0;
+  const BAR = 32;
+  const VALUE = 44;
+  const LABEL = 28;
+  const SWATCH = 20;
+  const MIN_W = 12;
+  const GAP_X = 6;
+  const height = capH + BAR + 20 + VALUE * 0.76 + 14 + LABEL * 0.76 + 8;
+  return {
+    kind: 'stack',
+    height,
+    render: (y) => {
+      const parts = [caption(y, cap, L)];
+      const barY = y + capH;
+      const live = segs.map((sg, i) => ({ ...sg, i })).filter((sg) => sg.amount > 0);
+      const total = live.reduce((a, sg) => a + sg.amount, 0);
+      if (total === 0) {
+        parts.push(`<rect x="${PAD_X}" y="${round(barY)}" width="${CONTENT_WIDTH}" height="${BAR}" rx="${BAR / 2}" fill-opacity="0.15"/>`);
+      } else {
+        const usable = CONTENT_WIDTH - GAP_X * (live.length - 1);
+        const widths = live.map((sg) => Math.max(MIN_W, (sg.amount / total) * usable));
+        // The widest segment gives back what the minimum widths added.
+        const widest = widths.indexOf(Math.max(...widths));
+        widths[widest] -= widths.reduce((a, b) => a + b, 0) - usable;
+        let x = PAD_X;
+        live.forEach((sg, k) => {
+          const w = widths[k];
+          const op = STACK_OPACITY[sg.i] === 1 ? '' : ` fill-opacity="${STACK_OPACITY[sg.i]}"`;
+          parts.push(`<rect x="${round(x)}" y="${round(barY)}" width="${round(w)}" height="${BAR}" rx="${round(Math.min(BAR / 2, w / 2))}"${op}>${titleEl(sg.title)}</rect>`);
+          x += w + GAP_X;
+        });
+      }
+      const vBase = barY + BAR + 20 + VALUE * 0.76;
+      const lBase = vBase + 14 + LABEL * 0.76;
+      const colW = CONTENT_WIDTH / segs.length;
+      const room = colW - 16;
+      segs.forEach((sg, i) => {
+        const x = PAD_X + i * colW;
+        const g = [titleEl(sg.title)];
+        const value = fitEnd(sg.value, room, VALUE);
+        if (value) g.push(textEl(x, vBase, value, { size: VALUE, weight: 900 }));
+        const op = STACK_OPACITY[i] === 1 ? '' : ` fill-opacity="${STACK_OPACITY[i]}"`;
+        g.push(`<rect x="${round(x)}" y="${round(lBase - LABEL * 0.76 + (LABEL * 0.76 - SWATCH) / 2)}" width="${SWATCH}" height="${SWATCH}" rx="${SWATCH / 4}"${op}/>`);
+        const label = fitEnd(sg.label, room - SWATCH - 10, LABEL);
+        if (label) g.push(textEl(x + SWATCH + 10, lBase, label, { size: LABEL, weight: 700, opacity: 0.75 }));
+        parts.push(`<g>${g.join('')}</g>`);
+      });
+      return parts.join('');
+    },
+  };
+}
+
 const PANEL_FILL = 'fill="#ffffff" fill-opacity="0.14"';
 
 /**
@@ -991,7 +1058,7 @@ function calendarBlock(spec, compact = false, L = EN) {
   };
 }
 
-const CHARTS = { bars: barsBlock, hbars: hbarsBlock, split: splitBlock, callout: calloutBlock, tiles: tilesBlock, calendar: calendarBlock };
+const CHARTS = { bars: barsBlock, hbars: hbarsBlock, split: splitBlock, stack: stackBlock, callout: calloutBlock, tiles: tilesBlock, calendar: calendarBlock };
 
 /**
  * Chart blocks for `chart` (one spec or an array); `compact` asks for smaller minimums;
@@ -999,7 +1066,11 @@ const CHARTS = { bars: barsBlock, hbars: hbarsBlock, split: splitBlock, callout:
  */
 function chartBlocks(chart, compact = false, L = EN) {
   const list = Array.isArray(chart) ? chart : chart ? [chart] : [];
-  return list.map((c) => (c && Object.hasOwn(CHARTS, c.kind) ? CHARTS[c.kind](c, compact, L) : null)).filter(Boolean);
+  return list.map((c) => {
+    const block = c && Object.hasOwn(CHARTS, c.kind) ? CHARTS[c.kind](c, compact, L) : null;
+    if (block && c.optional === true) block.optional = true;
+    return block;
+  }).filter(Boolean);
 }
 
 /** `text` on one line with letter `spacing` px, cut at the end with '…' to fit `maxWidth`. */
@@ -1101,11 +1172,19 @@ export function layoutCard({ eyebrow, title, big, subtitle, titleSize, bigMin, l
   // (the text-only layout always fits). A `bigMin` floor holds the big word until the
   // charts are gone.
   let l = build();
+  // Optional charts (`optional: true`) are purely additive: they are left out, last first,
+  // unless they fit as they are, before anything else shrinks.
+  while (l.total > available && charts.some((b) => b.optional)) {
+    const i = charts.findLastIndex((b) => b.optional);
+    charts = charts.filter((_, j) => j !== i);
+    l = build();
+  }
   while (l.total > available) {
     if (opts.bigMax > bigFloor) opts.bigMax = Math.max(bigFloor, Math.floor(opts.bigMax * 0.85));
     else if (!compact && charts.length > 0) {
       compact = true;
-      charts = chartBlocks(chart, true, L);
+      // Any optional chart is gone by now (they all fit, or none is left), so none comes back.
+      charts = chartBlocks(chart, true, L).filter((b) => !b.optional);
     } else if (opts.subtitleLines > 2) opts.subtitleLines -= 1;
     else if (opts.titleLines > 2) opts.titleLines -= 1;
     else if (charts.length > 0) {
@@ -1168,9 +1247,11 @@ export function layoutCard({ eyebrow, title, big, subtitle, titleSize, bigMin, l
  *   truncate 'start' keeps the end of long labels such as file paths). At most 6 rows.
  * - `chart`: one chart spec or an array of them, drawn below the rows; kinds are
  *   'bars' (vertical bar chart), 'hbars' (horizontal bar list), 'split' (one bar split
- *   in two), 'callout' (a panel with one big value), 'tiles' (2x2 stat tiles) and 'calendar'
+ *   in two), 'stack' (one bar split in up to four), 'callout' (a panel with one big value), 'tiles' (2x2 stat tiles) and 'calendar'
  *   (a commits-per-day heatmap). See
  *   the *Block functions above for each spec. Charts that do not fit are dropped, last first.
+ *   A chart with `optional: true` is purely additive: unless the card fits with it before
+ *   anything shrinks, it is left out first, and the card is laid out exactly as without it.
  * `number` is a short card number ("03") drawn as a faint watermark top-right.
  * `bigMin` (px) is a floor the big word keeps while charts are compacted and dropped
  * (default: none, it may shrink to 72px first).

@@ -24,7 +24,7 @@ calendar months and a team card in a repo with more than one contributor (up to 
 
 1. **Intro**: the repo name, the date range in plain English ("Oct 4 – Oct 5, 2026") and how many commits there are to unwrap, plus whose story it is when you pass `--author` (the part of the email before the `@` only: "Starring ada."), and where it all began: an "It all began with" panel with the first commit in the window, its quoted subject on one line ("“Initial commit”") and its day and short hash below ("Jan 3, 2025 · 1a2b3c4"; with several repos, its repo too). Merge commits are skipped. The subject is shortened to fit its line (first a smaller font, then cut with "…"), a long repo label is cut with "…" so the day and hash always show, and when the card has no room for the panel it is left out (it is still in the recap, `wrapped.md` and `stats.json`).
 2. **Totals**: commits, a lines added vs. removed bar, active days and files touched (and contributors, when there is more than one), plus your commit size mix: the share of tiny (under 10 lines), small (10–99), medium (100–500) and large (over 500 lines changed) commits as one stacked bar. The bar only uses spare room: when the card is short of space (with `--year`'s three extra rows, say) it is left out, and nothing else on the card shrinks for it (the mix is still in the recap and `stats.json`). Sizes count the same files as hot files (lockfiles, build output and the rest are left out, and so is anything you `--exclude`) and skip merge commits. When some of your commits were paired (a `Co-authored-by:` trailer, see the team card) and the team card is not there to show it (or has no room for it, or you passed `--author`), a "Paired (top: Ada)" row with their count is added, again only when it fits without anything else shrinking. After it, when files were added or deleted in the window, a "Born / buried 12 / 3" row follows on the same terms (spare room only; it never takes the place of the pairing row or anything else, and it is always in the recap, `wrapped.md` and `stats.json`). Last, when pull requests were merged or there are merge commits in the window (see `stats.merges` below), a "Merged PRs / merges 12 / 8" row (or "Merged PRs 12" in a squash-merge repo, "Merge commits 8 · 6%" without PR numbers) follows, again in spare room only. When the totals card has no room for it (a team repo with the pairing and born / buried rows, `--year`'s comparison rows), the outro shows it instead (never both).
-3. **Power hour**: the hour of the day you commit the most, with a 24-hour bar chart and a Monday-to-Sunday weekday chart (hover a bar in `wrapped.html` for its count). Hours are each commit's own local time. When your commits came from two or more time zones (UTC offsets), the card always says so, in the first of these that fits: "Committed from 3 time zones, mostly UTC+03:00." at the end of the subtitle, or a "3 time zones · mostly UTC+03:00" row (both charts kept, the big number at most one step smaller); else the sentence takes the place of the hour's quip, then of the quip and the busiest-weekday sentence (the hour's sentence always stays). "mostly" is left out when two offsets tie. With a single time zone the card is unchanged.
+3. **Power hour**: the hour of the day you commit the most, with a 24-hour bar chart and a Monday-to-Sunday weekday chart (hover a bar in `wrapped.html` for its count). Hours are each commit's own local time. When your commits came from two or more time zones (UTC offsets), the card always says so, in the first of these that fits: "Committed from 3 time zones, mostly UTC+03:00." at the end of the subtitle, or a "3 time zones · mostly UTC+03:00" row (both charts kept, the big number at most one step smaller); else the sentence takes the place of the hour's quip, then of the quip and the busiest-weekday sentence (the hour's sentence always stays). "mostly" is left out when two offsets tie. With a single time zone the card is unchanged. When at least one commit landed between midnight and 04:59 (author-local), a "Late nights  12 commits · 4%" row follows when it fits like the time-zones row: both charts kept and the big number at most one step smaller (one step in all, shared with the time-zones row; a card that had already shrunk gets no more), with the title and subtitle unchanged. After it, a "Latest night  4:12 AM · Mar 3, 2024" row with your latest-ever commit time is added only in spare room (nothing shrinks for it). Otherwise the card is exactly as before. A night power hour's quip makes the subtitle four lines long, which leaves no room for the row, so it shows mostly with a daytime or evening power hour; the recap, `wrapped.md` and `stats.json` always have the late nights.
 4. **Streak**: your longest run of consecutive days with a commit, with a longest vs. current bar comparison and your longest break (the most days without a commit between two active days) when you took one. With two or more active days, a "2.4 per active day  every 3 days" row adds your cadence (commits per active day and the median gap between your active days, "every day" when it is 1), only when there is room for it: the same charts and panels drawn, the big number, text and bars at their usual size (the bar chart may give up some spare spacing between its bars) and the row shown whole; otherwise the card is exactly as before (the cadence is always in the recap, `wrapped.md` and `stats.json`).
 5. **Activity**: a GitHub-style calendar of commits per day (weeks as rows, Monday to Sunday, brighter the busier the day), with your number of active days and your busiest day. Hover a day in `wrapped.html` for its count. It covers up to the last 53 weeks of your history, and so does its busiest day: on a history longer than about a year it is the busiest day of the weeks on the grid, while the recap, `wrapped.md` and `stats.json` give the busiest day of the whole window. For a repo that went quiet more than a month ago it says "12 months to Apr 2021" instead of "Your last 12 months". When you made at least one weekend commit and the grid shows your whole history (no more than 53 weeks, nothing dated in the future), a "Weekends  12 commits · 8%" row adds how many commits landed on a Saturday or Sunday (author-local), only when there is room for it: the calendar's cells may get smaller to make room, but never below their normal minimum size, and nothing else shrinks; otherwise the card is exactly as before.
 6. **Month by month** (only when your commits span two or more calendar months): commits per month as a bar chart, from your first active month to your last (months without commits show as empty bars), with the peak month among the months shown called out ("Mar 2026 was your peak month"; a tie goes to the earliest month, and when every active month has the same count it says so instead) and how many of those months had commits. It shows your most recent 24 months at most ("Your last 24 months", or "24 months to Apr 2019" for a repo that went quiet more than a month ago, like the activity card); `stats.json` keeps every month, and its `peak` is over all of them. Months are the author's own calendar months, like the activity calendar, and commits dated after tomorrow are left off. A history inside one calendar month skips this card, and the cards after it then move up a number.
@@ -57,6 +57,8 @@ You also get:
   whole window (e.g. `Busiest day  Oct 2, 2026 (14 commits)`), time zones (with two or
   more UTC offsets, e.g. `Time zones  3 time zones · mostly UTC+03:00 (62% of commits)`),
   weekend commits (with at least one, e.g. `Weekends  12 commits (8% of commits)`),
+  late nights (with at least one commit between 00:00 and 04:59, e.g.
+  `Late nights  12 commits (4% of commits) · latest 4:12 AM on Mar 3, 2024`),
   streak, longest break, cadence (with two or more active days, e.g.
   `Cadence  2.4 commits per active day · every 3 days`),
   hottest file, top folders (with two or more, e.g.
@@ -328,7 +330,7 @@ but it does contain commit subjects and hashes, tag names and repo-relative file
 | `asOf`          | `YYYY-MM-DD` the current streak is counted up to: today, or the end of a past `--until` / `--year` window |
 | `filters`       | `{since, until, author, maxCommits, exclude}` as used (`--year` shows as since/until); dates and author are `null` when not set, `maxCommits` is the cap in effect, `exclude` the `--exclude` patterns in order (`[]` when none) |
 | `truncated`     | `true` when `--max-commits` cut the history short                             |
-| `stats`         | Every computed stat: `totals`, `habits`, `timezones`, `weekend`, `streaks`, `cadence`, `daily`, `busiestDay`, `months`, `hotFiles`, `folders`, `fileLifecycle`, `languages`, `contributors`, `messages`, `biggestCommit`, `commitSizes`, `commitTypes`, `emoji`, `reverts`, `firstCommit`, `coAuthors`, `releases`, `merges`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
+| `stats`         | Every computed stat: `totals`, `habits`, `timezones`, `weekend`, `lateNights`, `streaks`, `cadence`, `daily`, `busiestDay`, `months`, `hotFiles`, `folders`, `fileLifecycle`, `languages`, `contributors`, `messages`, `biggestCommit`, `commitSizes`, `commitTypes`, `emoji`, `reverts`, `firstCommit`, `coAuthors`, `releases`, `merges`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
 
 ```json
 {
@@ -345,6 +347,7 @@ but it does contain commit subjects and hashes, tag names and repo-relative file
       "offsets": [{ "offset": "+03:00", "commits": 301 }, { "offset": "-05:00", "commits": 111 }]
     },
     "weekend": { "commits": 33, "share": 0.08 },
+    "lateNights": { "commits": 18, "share": 0.044, "latest": { "date": "2024-03-03", "time": "04:12" } },
     "busiestDay": { "day": "2025-03-04", "commits": 14 },
     "folders": [{ "path": "src", "lines": 18452, "added": 14210, "deleted": 4242, "commits": 301 }, "..."],
     "fileLifecycle": { "added": 57, "deleted": 12 },
@@ -418,6 +421,25 @@ every dated commit in the window, merge commits and future-dated ones included, 
 the same count the Weekend Warrior personality scores;
 the recap, `wrapped.md` and the activity card quote the same whole percent as Weekend
 Warrior's reason (never "100%" short of every commit, "<1%" for a share that rounds to 0), and only when there is at least one weekend commit.
+
+`stats.lateNights` is how many commits landed between 00:00 and 04:59 in each author's own
+local time, as `{"commits": n, "share": x, "latest": {"date": "YYYY-MM-DD", "time": "HH:MM"}}`.
+`commits` and `share` work like `stats.weekend`: every dated commit counts (merges and
+future-dated ones included), `share` is of the dated commits, `0`..`1` with 3 decimals and
+at most `0.999` unless every commit is a late-night one. `latest` is your latest-ever commit
+time of day, where the night wraps: the day is taken to end at 05:00, so 04:59 is the latest
+possible and 00:30 is later than 23:59. It is that commit's own author-local day and
+`HH:MM` (no hash, no email); commits in the same minute tie and the earliest of them wins.
+Commits dated after tomorrow (clock skew) still count in `commits` and `share` but are left
+out of `latest`, unless every commit is (so when every late-night commit is future-dated,
+`commits` can be 1 or more while `latest` is an evening time).
+Without a late-night commit `latest` is your latest evening (or daytime) commit, and it is
+`null` without dated commits (`{"commits": 0, "share": 0, "latest": null}`). Late nights
+(00:00–04:59) are not the Night Owl personality's window (22:00–03:59): both are counted from
+the same hours of `stats.habits.byHour`, so they never disagree, but they overlap only from
+midnight to 03:59, and the two percents can differ. The power-hour card (with room), the
+recap and `wrapped.md` show the late nights only when there is at least one, with the same
+whole percent rule as the weekend line ("<1%" for a share that rounds to 0).
 
 `stats.fileLifecycle` is how many files were born and buried in the window, as
 `{"added": n, "deleted": n}`: the files the commits added and deleted (both `0` when none).
@@ -670,7 +692,8 @@ README, a PR description or release notes:
 - the power hour, busiest weekday and busiest day (the date with the most commits), the
   time zones (with two or more UTC offsets: how many and the most common one), the
   weekend commits (with at least one: how many landed on a Saturday or Sunday and their
-  share), the longest streak, the current one (when a streak is running), the longest break
+  share), the late nights (with at least one: how many commits landed between 00:00 and
+  04:59, their share and the latest-ever commit time), the longest streak, the current one (when a streak is running), the longest break
   and the cadence (with two or more active days: commits per active day and the median gap
   between active days);
 - tables of the top five hot files, top folders (with two or more) and languages, and, in a repo with more than one

@@ -70,6 +70,8 @@ export default {
   calendarWeekdays: ['M', 'T', 'W', 'T', 'F', 'S', 'S'],
   /** 0-23 → "12 AM" … "11 PM". */
   hourLabel: (h) => `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? 'AM' : 'PM'}`,
+  /** A clock time, hour 0-23 and minute 0-59 → "4:12 AM", "12:05 AM" (the late-nights line). */
+  clock: (h, m) => `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`,
   /** Tick labels under the commits-by-hour chart. */
   hourTicks: { 0: '12a', 6: '6a', 12: '12p', 18: '6p', 23: '11p' },
   /** "Oct 4, 2026" (`year` as given). */
@@ -187,6 +189,13 @@ export default {
      * the most common offset ("UTC+03:00"), or null when two offsets tie for it.
      */
     timezones: (n, top) => `Committed from ${num(n)} time zones${top ? `, mostly ${top}` : ''}.`,
+    /**
+     * The late-nights rows (stats.lateNights, commits between 00:00 and 04:59): "Late
+     * nights" and "12 commits · 4%", then "Latest night" and "4:12 AM · Mar 3, 2024".
+     */
+    lateNights: 'Late nights',
+    latestLabel: 'Latest night',
+    latestValue: (time, day) => `${time} · ${day}`,
     titleTied: 'is one of your power hours',
     title: 'is when you commit the most',
   },
@@ -509,6 +518,12 @@ export default {
     mostly: (offset) => `mostly ${offset}`,
     /** The weekend line (stats.weekend): label, "12 commits", then "(8% of commits)". */
     weekend: 'Weekends',
+    /**
+     * The late-nights line (stats.lateNights): label, "12 commits", then "(4% of
+     * commits) · latest 4:12 AM on Mar 3, 2024".
+     */
+    lateNights: 'Late nights',
+    latestAt: (time, day) => `latest ${time} on ${day}`,
     hottestFile: 'Hottest file',
     /** The files born / buried line (stats.fileLifecycle): label, then "12 born · 3 buried". */
     fileLifecycle: 'Files',
@@ -577,6 +592,12 @@ export default {
     busiestDay: 'Busiest day',
     /** Commits on an author-local Saturday or Sunday (stats.weekend): "12 commits (8% of commits)". */
     weekend: 'Weekend commits',
+    /**
+     * Commits between 00:00 and 04:59 author-local (stats.lateNights): "12 commits (4% of
+     * commits), latest at 4:12 AM on Mar 3, 2024".
+     */
+    lateNights: 'Late-night commits',
+    latestAt: (time, day) => `latest at ${time} on ${day}`,
     /** Files added / deleted in the window (stats.fileLifecycle): "12 files added, 3 deleted". */
     fileLifecycle: 'Files born / buried',
     fileLifecycleValue: (added, deleted) => `${plural(added, UNITS.file)} added, ${num(deleted)} deleted`,

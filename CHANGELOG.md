@@ -35,6 +35,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   subject with an out-of-range number falls back to its trailing `(#N)`.
   English and Turkish ("Merge'ler", "Birleşen PR / merge", "12 pull request birleştirdin").
 
+- Late nights: how many commits landed between 00:00 and 04:59 author-local (every dated
+  commit counts, as for the power hour), their share, and the latest-ever commit time of
+  day, where the day ends at 05:00 (04:59 is the latest, 00:30 beats 23:59; ties go to the
+  earliest commit; commits dated after tomorrow are left out of it). `stats.json` gets `stats.lateNights` (`{commits, share, latest: {date,
+  time} | null}`, author-local day and `HH:MM`, no hash or email). With at least one
+  late-night commit the recap gets a "Late nights  12 commits (4% of commits) · latest
+  4:12 AM on Mar 3, 2024" line, `wrapped.md` a "Late-night commits" item, and the
+  power-hour card a "Late nights  12 commits · 4%" row when it fits with the big number at
+  most one step smaller (one step in all, shared with the time-zones row), then a "Latest
+  commit" row in spare room only; byte-identical otherwise (a night power hour's longer
+  subtitle usually leaves no room). Counted from
+  the same hours as the Night Owl personality (22:00–03:59), so the two never disagree.
+  English and Turkish ("Gece mesaisi", "en geç 3 Mar 2024 04:12").
+
 ## [1.8.0] - 2026-10-07
 
 ### Added

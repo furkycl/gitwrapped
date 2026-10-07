@@ -14,6 +14,7 @@ import { shownFileLifecycle } from './stats/files.js';
 import { shownFolders } from './stats/folders.js';
 import { shownTimezones, utcLabel } from './stats/timezones.js';
 import { shownWeekend, weekendPercentLabel } from './stats/weekend.js';
+import { shownLateNights } from './stats/latenights.js';
 import { shownCadence } from './stats/cadence.js';
 import { shownBusiestDay, shownLongest, shownLongestBreak } from './stats/daily.js';
 import { shownBiggestLines } from './stats/biggest.js';
@@ -201,6 +202,14 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
     // Commits on an author-local Saturday or Sunday (stats.weekend), as in the recap.
     const weekend = shownWeekend(stats);
     if (weekend) habits.push(item(M.weekend, `${plural(weekend.commits, 'commit', L)} (${L.recap.ofCommits(weekendPercentLabel(weekend.percent, L.pct))})`));
+    // Commits between 00:00 and 04:59 author-local (stats.lateNights) and the latest-ever
+    // commit time, as in the recap.
+    const late = shownLateNights(stats);
+    if (late) {
+      const on = late.latest ? formatDay(late.latest.date, lang) : null;
+      const latest = on ? `, ${M.latestAt(L.clock(late.latest.hour, late.latest.minute), escapeMarkdown(on))}` : '';
+      habits.push(item(M.lateNights, `${plural(late.commits, 'commit', L)} (${L.recap.ofCommits(weekendPercentLabel(late.percent, L.pct))})${latest}`));
+    }
     section(M.habits, habits);
 
     // --- streaks ----------------------------------------------------------------------

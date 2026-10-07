@@ -12,6 +12,8 @@ jobs:
   test:
     name: test (${{ matrix.os }}, node ${{ matrix.node-version }})
     runs-on: ${{ matrix.os }}
+    # A stalled runner or child process fails the job instead of holding it for hours.
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:

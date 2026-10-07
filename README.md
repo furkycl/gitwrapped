@@ -629,8 +629,11 @@ per repo (`#12` in two repos is two). A revert merged through a pull request
 (`Revert "x (#70)" (#71)`) is a pull request of its own and does not take `#70` back out.
 Only subjects are read, so a merge without a number in its subject (a plain
 `Merge branch 'x'`, GitLab's merge requests) counts as a merge commit but not as a pull
-request. With `--author`, only that author's commits count (the merge commits they made and
-the pull requests in their subjects).
+request. These are numbers read from subjects, not checked against a forge: in a repo that
+does not squash-merge, a subject ending in an issue reference like `fix crash (#12)` counts
+too. With `--author`, only that author's commits count (the merge commits they made and
+the pull requests in their subjects), so a `Merge pull request #N` commit counts for whoever
+merged it, not for the pull request's author.
 
 With several repos, `stats.repos` is the per-repo breakdown, most commits first:
 `[{"name": "api", "commits": 120, "linesAdded": 9100, "linesRemoved": 2300,

@@ -89,4 +89,12 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] Co-authors: count `Co-authored-by:` trailers per commit (after .mailmap, names only) — "N commits paired" on the totals or team card, top co-author, stats.json `stats.coAuthors`; en/tr; tests
 - 1.5.0 release prep (split as before):
   - [x] Cold audit of the 1.5 work (diff 1.4.0 release commit..main) + fix every real bug found, with tests — known lead from turn 046: `stats.messages` longest/shortest subjects (stats.json) and the viewer's screen-reader text (wrapped.html) still carry raw emails, and the biggest-commit card/recap subject is not scrubbed; route them through src/privacy.js scrubEmails
-  - [ ] CHANGELOG 1.5.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync
+  - [x] CHANGELOG 1.5.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync
+
+## M12 — 1.6 (proposed by loop turn 050 per the M8 owner note "do not finish the loop"; owner may prune)
+- [ ] Releases shipped: tags (lightweight + annotated, peeled to their commit) pointing at analyzed commits in the window — count, first and latest tag name + day — on the outro card ("You shipped N releases"), stats.json `stats.releases`, recap and wrapped.md; multi-repo summed (repo-prefixed names); en/tr; tests
+- [ ] Commit emoji: share of subjects with an emoji (incl. `:gitmoji:` shortcodes) and the top 3 emoji on the messages card when ≥5% of commits use one, stats.json `stats.emoji`, recap and wrapped.md; en/tr; tests
+- [ ] Reverts: commits that revert another (`Revert "…"` subject or `This reverts commit <hash>` body), count + share, folded into the messages card and the Fixaholic roast, stats.json `stats.reverts`, recap and wrapped.md; en/tr; tests
+- 1.6.0 release prep (split as before):
+  - [ ] Cold audit of the 1.6 work (diff 1.5.0 release commit..main) + fix every real bug found, with tests
+  - [ ] CHANGELOG 1.6.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync

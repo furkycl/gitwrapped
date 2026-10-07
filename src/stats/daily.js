@@ -18,15 +18,6 @@ export function daysUpTo(days, today) {
 }
 
 /**
- * Commits per author-local calendar day (the same days as streaks.js / totals.js).
- * Returns `{days, busiest, activeWeeks}`:
- * - days: `[{day: 'YYYY-MM-DD', commits}]`, active days only, sorted ascending.
- * - busiest: the day with the most commits as `{day, commits}` (ties → the earliest day);
- *   null when there are no active days.
- * - activeWeeks: distinct Monday-first weeks with at least one commit.
- * Pure and deterministic; commits with an unparseable date are skipped.
- */
-/**
  * The longest run of consecutive days in `days` ([{day}], any order; invalid days are
  * skipped) as `{length, start, end}` (dayKeys; ties → the earliest run), or length 0
  * with null start / end when there are none. Same rule as streaks.js's longest.
@@ -85,6 +76,46 @@ export function shownLongestBreak(stats, today) {
   return longestGap(kept);
 }
 
+/**
+ * The day with the most commits in `days` ([{day: 'YYYY-MM-DD', commits}], any order) as a
+ * fresh `{day, commits}` (ties → the earliest day), or null when there is none. Entries
+ * with an invalid day or a commit count that is not a positive integer are skipped.
+ */
+export function busiestOf(days) {
+  let best = null;
+  for (const x of Array.isArray(days) ? days : []) {
+    const e = epochDay(x?.day);
+    if (e === null || !Number.isInteger(x.commits) || x.commits <= 0) continue;
+    if (!best || x.commits > best.commits || (x.commits === best.commits && e < best.e)) best = { e, day: x.day, commits: x.commits };
+  }
+  return best ? { day: best.day, commits: best.commits } : null;
+}
+
+/**
+ * The busiest calendar day to show in the recap and wrapped.md: stats.busiestDay (falling
+ * back to stats.daily.busiest), except that when `today` is given and stats.daily.days has
+ * future-dated days (see daysUpTo), it is recomputed over the kept days only, as
+ * shownLongest does, so a burst of commits dated 2099 is never "your busiest day".
+ * Returns `{day, commits}` or null (no active days, or no valid busiest day). stats.json
+ * keeps the raw value.
+ */
+export function shownBusiestDay(stats, today) {
+  const all = daysUpTo(stats?.daily?.days, null);
+  const kept = daysUpTo(all, today);
+  if (kept.length > 0 && kept.length < all.length) return busiestOf(kept);
+  const raw = stats?.busiestDay !== undefined ? stats.busiestDay : stats?.daily?.busiest;
+  return busiestOf(raw ? [raw] : []);
+}
+
+/**
+ * Commits per author-local calendar day (the same days as streaks.js / totals.js).
+ * Returns `{days, busiest, activeWeeks}`:
+ * - days: `[{day: 'YYYY-MM-DD', commits}]`, active days only, sorted ascending.
+ * - busiest: the day with the most commits as `{day, commits}` (ties → the earliest day);
+ *   null when there are no active days.
+ * - activeWeeks: distinct Monday-first weeks with at least one commit.
+ * Pure and deterministic; commits with an unparseable date are skipped.
+ */
 export function computeDaily(commits) {
   const counts = new Map(); // epoch day → {day, commits}
   for (const c of commits ?? []) {
@@ -98,8 +129,6 @@ export function computeDaily(commits) {
   }
   const sorted = [...counts.keys()].sort((a, b) => a - b);
   const days = sorted.map((e) => ({ ...counts.get(e) }));
-  let busiest = null;
-  for (const d of days) if (!busiest || d.commits > busiest.commits) busiest = d; // strict: earliest wins ties
   const weeks = new Set(sorted.map(mondayOf));
-  return { days, busiest: busiest ? { ...busiest } : null, activeWeeks: weeks.size };
+  return { days, busiest: busiestOf(days), activeWeeks: weeks.size };
 }

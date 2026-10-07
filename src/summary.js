@@ -1,7 +1,7 @@
 // The console recap printed after a run: a short Wrapped-style summary plus where the
 // output went. Pure string building; colors are raw ANSI escapes (no dependencies).
 
-import { shownLongest, shownLongestBreak } from './stats/daily.js';
+import { shownBusiestDay, shownLongest, shownLongestBreak } from './stats/daily.js';
 import { languageHeadline } from './stats/languages.js';
 import { hasTeamCard, shareLabel } from './stats/contributors.js';
 import { shownCoAuthors } from './stats/coauthors.js';
@@ -161,14 +161,17 @@ function shortText(s, maxWidth = 48) {
  *   markdown} (pngDir / sharePng null when PNGs were not written; statsJson only with
  *   --json, markdown only with --md)
  * - notes: extra notice lines (e.g. the commit cap), shown in yellow
- * - today: 'YYYY-MM-DD'; when given, the longest streak leaves out future-dated days
- *   (after today + 1), as on the cards (see stats/daily.js shownLongest)
+ * - today: 'YYYY-MM-DD'; when given, the busiest day, longest streak and break leave out
+ *   future-dated days (after today + 1), as on the cards (see stats/daily.js shownLongest)
  * - lang: an src/i18n code (default 'en'); labels, units, numbers, the power hour and the
  *   personality are written in that language (notes are passed in already translated)
  * A multi-repo run (stats.repos with two or more rows) gets a "Repos" line and one line
  * per repo (commits and lines; the first five, then "…and N more").
  * A --year run with a comparison (stats.yearOverYear) gets a "vs <previous year>" line
  * with the change in commits, lines changed and active days.
+ * A "Busiest day" line shows the calendar day with the most commits and its commit count
+ * (stats.busiestDay, ties → the earliest day; future-dated days left out with `today`, see
+ * stats/daily.js shownBusiestDay) when there is one.
  * A "Break" line shows the longest break between two active days (stats.streaks.longestBreak,
  * future-dated days left out with `today` as on the streak card) when there is one.
  * A "First commit" line shows the first commit in the window (stats.firstCommit: subject,
@@ -243,6 +246,15 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
       // English keeps stats' own label ("2 AM"); other languages say the hour their way.
       const hour = L !== EN && Number.isInteger(h.peakHour) && h.peakHour >= 0 && h.peakHour < 24 ? L.hourLabel(h.peakHour) : sc(h.peakHourLabel);
       lines.push(`  ${label(R.powerHour)}${c('cyan', hour)} ${c('dim', `(${plural(h.peakHourCount, 'commit', L)}${tied})`)}`);
+    }
+
+    // The calendar day with the most commits over the whole window (future-dated days left
+    // out with `today`); only when there is one. On a history longer than the activity
+    // card's 53-week grid, the card's busiest day is that of the grid, so it can differ.
+    const busiest = shownBusiestDay(stats, today);
+    if (busiest) {
+      const [y, mo, d] = busiest.day.split('-').map(Number);
+      lines.push(`  ${label(R.busiestDay)}${c('cyan', L.date(d, mo, y))} ${c('dim', `(${plural(busiest.commits, 'commit', L)})`)}`);
     }
 
     const s = stats?.streaks ?? {};

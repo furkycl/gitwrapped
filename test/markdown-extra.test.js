@@ -228,7 +228,7 @@ describe('output shape', () => {
     const headings = md.match(/^##? .*$/gm);
     const enHeadings = [en.markdown.numbers, en.markdown.habits, en.markdown.streaks, en.markdown.hotFiles, en.markdown.languages, en.markdown.cards, en.contributors.eyebrow, en.personality.eyebrow, en.recap.repos];
     for (const h of headings) for (const e of enHeadings) assert.ok(!h.includes(e), `English heading "${e}" in "${h}"`);
-    const enLabels = [en.markdown.busiestDay, en.markdown.longestStreak, en.markdown.longestBreak, en.markdown.currentStreak, en.markdown.file, en.markdown.contributor, en.markdown.footer, en.recap.powerHour, en.totals.activeDays, en.totals.filesTouched];
+    const enLabels = [en.markdown.busiestWeekday, en.markdown.busiestDay, en.markdown.longestStreak, en.markdown.longestBreak, en.markdown.currentStreak, en.markdown.file, en.markdown.contributor, en.markdown.footer, en.recap.powerHour, en.totals.activeDays, en.totals.filesTouched];
     for (const l of enLabels) assert.ok(!md.includes(l), `English "${l}" in Turkish output`);
     assert.doesNotMatch(md, /\b(Biggest commit|Starring|days|commits|lines)\b/);
     // Every card alt text is Turkish too.

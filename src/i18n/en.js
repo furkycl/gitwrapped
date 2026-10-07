@@ -453,6 +453,8 @@ export default {
     atWindowEnd: 'at window end',
     /** The longest-break line: label, then "longest 12 days (Mar 3, 2025 – Mar 16, 2025)". */
     breakLabel: 'Break',
+    /** The busiest-day line: label, "Oct 4, 2026", then "(12 commits)". */
+    busiestDay: 'Busiest day',
     hottestFile: 'Hottest file',
     topLanguage: 'Top language',
     /** "(74% of lines, tied with 1 more)". */
@@ -506,7 +508,10 @@ export default {
     linesWord: 'lines',
     files: 'Files',
     habits: 'When you commit',
-    busiestDay: 'Busiest weekday',
+    /** The weekday with the most commits (stats.habits.peakWeekday). */
+    busiestWeekday: 'Busiest weekday',
+    /** The calendar day with the most commits: "Oct 4, 2026 (12 commits)". */
+    busiestDay: 'Busiest day',
     tied: 'tied',
     streaks: 'Streaks',
     longestStreak: 'Longest streak',

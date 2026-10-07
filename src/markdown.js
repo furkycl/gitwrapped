@@ -10,7 +10,7 @@ import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
 import { shownEmoji } from './stats/emoji.js';
 import { shownReverts } from './stats/reverts.js';
-import { shownLongest, shownLongestBreak } from './stats/daily.js';
+import { shownBusiestDay, shownLongest, shownLongestBreak } from './stats/daily.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { contributorName, hasTeamCard, shareLabel } from './stats/contributors.js';
 import { shownCoAuthors } from './stats/coauthors.js';
@@ -93,8 +93,9 @@ const item = (label, value) => `- **${label}:** ${value}`;
  * - window: the requested date window, already formatted (windowLabel); without it the
  *   first – last active day is shown
  * - author: the --author value; only its name part (authorName) is shown, never the email
- * - today: 'YYYY-MM-DD'; future-dated days are left out of the streak, break and date
- *   range as on the cards (shownLongest, shownLongestBreak, shownDayRange)
+ * - today: 'YYYY-MM-DD'; future-dated days are left out of the busiest day, streak, break
+ *   and date range as on the cards (shownBusiestDay, shownLongest, shownLongestBreak,
+ *   shownDayRange)
  * - streakAtWindowEnd: the current streak is relative to a past window's end
  * - lang: an src/i18n code (default English)
  * - cards: [{id, file}] the card SVGs in order, `file` relative to the Markdown file
@@ -169,8 +170,14 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
       habits.push(item(L.recap.powerHour, `${L.hourLabel(h.peakHour)} (${plural(h.peakHourCount, 'commit', L)}${tied(h.peakHourTied)})`));
     }
     if (Number.isInteger(h.peakWeekday) && h.peakWeekday >= 0 && h.peakWeekday < 7) {
-      habits.push(item(M.busiestDay, `${L.weekdays[h.peakWeekday]} (${plural(h.peakWeekdayCount, 'commit', L)}${tied(h.peakWeekdayTied)})`));
+      habits.push(item(M.busiestWeekday, `${L.weekdays[h.peakWeekday]} (${plural(h.peakWeekdayCount, 'commit', L)}${tied(h.peakWeekdayTied)})`));
     }
+    // The calendar day with the most commits over the whole window, as in the recap
+    // (future-dated days left out with `today`). The activity card's busiest day is that of
+    // its 53-week grid, so on a longer history it can differ.
+    const busiest = shownBusiestDay(stats, today);
+    const busiestOn = busiest ? formatDay(busiest.day, lang) : null;
+    if (busiestOn) habits.push(item(M.busiestDay, `${escapeMarkdown(busiestOn)} (${plural(busiest.commits, 'commit', L)})`));
     section(M.habits, habits);
 
     // --- streaks ----------------------------------------------------------------------

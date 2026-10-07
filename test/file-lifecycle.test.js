@@ -8,6 +8,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { mergeHistories, parseLifecycleLog, readCommits, readLifecycle } from '../src/git.js';
 import { computeFileLifecycle, computeStats, shownFileLifecycle } from '../src/stats/index.js';
 import { excludeFiles } from '../src/stats/files.js';
@@ -320,10 +321,10 @@ describe('git (real repos)', () => {
 // Tester additions: odd paths through the real -z read, a file born and buried inside the
 // window, --author / --max-commits through the real read, and the binary end to end.
 describe('git (real repos): odd paths, author, cap, CLI', () => {
-  const BIN = new URL('../bin/gitwrapped.js', import.meta.url).pathname;
+  const BIN = fileURLToPath(new URL('../bin/gitwrapped.js', import.meta.url));
   const ADA = { GIT_AUTHOR_NAME: 'Ada', GIT_AUTHOR_EMAIL: 'ada@example.com' };
   const BOB = { GIT_AUTHOR_NAME: 'Bob', GIT_AUTHOR_EMAIL: 'bob@example.com' };
-  const base = { GIT_COMMITTER_NAME: 'C', GIT_COMMITTER_EMAIL: 'c@example.com', GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null', LC_ALL: 'C' };
+  const base = { GIT_COMMITTER_NAME: 'C', GIT_COMMITTER_EMAIL: 'c@example.com', GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: process.platform === 'win32' ? 'NUL' : '/dev/null', LC_ALL: 'C' };
   const git = (cwd, args, extra = {}) => execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8', env: { ...process.env, ...base, ...extra } });
   const write = (dir, path, text) => {
     mkdirSync(join(dir, path, '..'), { recursive: true });

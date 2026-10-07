@@ -31,7 +31,9 @@ Arguments:
 
 Options:
   --since YYYY-MM-DD   Only include commits on or after this date
+                       (or relative to today: 30d, 12w, 6m, 1y)
   --until YYYY-MM-DD   Only include commits on or before this date
+                       (or relative to today: 30d, 12w, 6m, 1y)
   --year YYYY          One calendar year: --since YYYY-01-01 --until YYYY-12-31,
                        compared with the year before (commits, lines, active days)
   --author <email>     Only include commits by this author email
@@ -84,7 +86,7 @@ const OPTIONS = {
 function validateDate(name, value) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!m) {
-    throw new Error(`invalid --${name} "${value}": expected format YYYY-MM-DD`);
+    throw new Error(`invalid --${name} "${value}": expected format YYYY-MM-DD or a relative window like 30d, 12w, 6m, 1y`);
   }
   const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
   // Same range as --year (and git cannot represent earlier dates anyway).
@@ -98,6 +100,62 @@ function validateDate(name, value) {
     throw new Error(`invalid --${name} "${value}": not a real calendar date`);
   }
   return value;
+}
+
+const RELATIVE_WINDOW = /^(\d+)([dwmy])$/i;
+const MAX_RELATIVE = 9999;
+const DAY_MS = 86400000;
+
+function daysInMonth(y, m0) {
+  if (m0 === 1) return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0 ? 29 : 28;
+  return [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m0];
+}
+
+function formatYmd(y, m0, d) {
+  const yy = y < 0 ? `-${String(-y).padStart(4, '0')}` : String(y).padStart(4, '0');
+  return `${yy}-${String(m0 + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+/**
+ * Resolve a relative window value (`30d`, `12w`, `6m`, `1y`: N days, weeks, calendar
+ * months or calendar years before `today`) to a YYYY-MM-DD date. `today` is a
+ * YYYY-MM-DD string (the author-local date); the arithmetic is done on that calendar
+ * date in UTC, so no time zone can shift it. The unit is case-insensitive, surrounding
+ * whitespace is ignored and N is a whole number from 0 to 9999 (leading zeros allowed).
+ * Months and years keep the day of month, clamped to the target month's last day
+ * (2026-03-31 minus 1m = 2026-02-28; 2024-02-29 minus 1y = 2023-02-28).
+ * Returns null when `value` is not in the relative form. The result can be before 1970
+ * (or even before year 0); callers reject that.
+ */
+export function resolveRelativeDate(value, today) {
+  const m = RELATIVE_WINDOW.exec(String(value).trim());
+  if (!m) return null;
+  const n = Number(m[1]);
+  if (n > MAX_RELATIVE) return null;
+  const [y, mo, d] = today.split('-').map(Number);
+  const unit = m[2].toLowerCase();
+  if (unit === 'd' || unit === 'w') {
+    const t = new Date(Date.UTC(y, mo - 1, d) - n * (unit === 'w' ? 7 : 1) * DAY_MS);
+    return formatYmd(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate());
+  }
+  const total = y * 12 + (mo - 1) - n * (unit === 'y' ? 12 : 1);
+  const ny = Math.floor(total / 12);
+  const nm = total - ny * 12;
+  return formatYmd(ny, nm, Math.min(d, daysInMonth(ny, nm)));
+}
+
+/** --since / --until: an absolute YYYY-MM-DD or a relative window resolved against `today`. */
+function resolveDateOption(name, raw, today) {
+  const value = raw.trim();
+  const rel = resolveRelativeDate(value, today);
+  if (rel === null) {
+    const m = RELATIVE_WINDOW.exec(value);
+    if (m) throw new Error(`invalid --${name} "${value}": a relative window counts 0 to ${MAX_RELATIVE} units`);
+    return validateDate(name, value);
+  }
+  // Formatted dates compare in date order as strings ("-…" and "0…" sort before "1970").
+  if (rel < '1970-01-01') throw new Error(`invalid --${name} "${value}": dates before 1970 are not supported`);
+  return rel;
 }
 
 function validateYear(value) {
@@ -170,9 +228,12 @@ function normalizeArgv(argv) {
  * open (true), lang (a code from src/i18n LANGS, e.g. 'tr'; absent = English) and
  * theme (a non-default color theme from cards/themes.js, e.g. 'mono'; absent = default)
  * and exclude (the --exclude globs in order, trimmed; see compileGlob in src/glob.js).
+ * --since / --until also take a relative window (`30d`, `12w`, `6m`, `1y`; see
+ * resolveRelativeDate), resolved against `today` (YYYY-MM-DD, default: the machine's
+ * local date) before any other check, so since/until are always absolute YYYY-MM-DD.
  * Throws an Error with a user-facing message on invalid input.
  */
-export function parseCli(argv) {
+export function parseCli(argv, { today } = {}) {
   let parsed;
   try {
     parsed = parseArgs({ args: normalizeArgv(argv), options: OPTIONS, allowPositionals: true, strict: true });
@@ -197,8 +258,10 @@ export function parseCli(argv) {
   compileExcludes(exclude); // throws a user-facing error for a pattern that matches nothing
 
   // Surrounding whitespace is ignored, as for --year (e.g. a quoted " 2025-01-01").
-  let since = values.since === undefined ? undefined : validateDate('since', values.since.trim());
-  let until = values.until === undefined ? undefined : validateDate('until', values.until.trim());
+  // Relative windows (30d, 6m, ...) resolve to absolute dates here, before every other check.
+  const ref = today ?? localToday();
+  let since = values.since === undefined ? undefined : resolveDateOption('since', values.since, ref);
+  let until = values.until === undefined ? undefined : resolveDateOption('until', values.until, ref);
   let year;
   if (values.year !== undefined) {
     if (since || until) throw new Error('--year cannot be combined with --since or --until');
@@ -880,7 +943,9 @@ function filterText({ since, until, year, author }) {
 export async function run(argv, { stdout = process.stdout, stderr = process.stderr, env = process.env, today, renderPng: rasterize, readHistory: readFn, openFile = openInBrowser } = {}) {
   let opts;
   try {
-    opts = parseCli(argv);
+    // One "today" for both the relative windows and the stats, even across midnight.
+    today = today ?? localToday();
+    opts = parseCli(argv, { today });
   } catch (err) {
     stderr.write(`gitwrapped: ${err.message}\n`);
     stderr.write(`Run "gitwrapped --help" for usage.\n`);

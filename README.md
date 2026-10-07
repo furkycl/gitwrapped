@@ -118,8 +118,8 @@ gitwrapped [path...] [options]
 | Argument / option     | What it does                                                                           |
 |-----------------------|----------------------------------------------------------------------------------------|
 | `path`                | Path to the git repository (default: `.`; an empty path also means `.`). Give several paths for one Wrapped of all of them (see [Several repos at once](#several-repos-at-once)) |
-| `--since YYYY-MM-DD`  | Only include commits made on or after this day (the author's local calendar day)       |
-| `--until YYYY-MM-DD`  | Only include commits made on or before this day, inclusive (the author's local calendar day) |
+| `--since YYYY-MM-DD`  | Only include commits made on or after this day (the author's local calendar day). Also a relative window: `30d`, `12w`, `6m` or `1y` before today (see [Relative windows](#relative-windows)) |
+| `--until YYYY-MM-DD`  | Only include commits made on or before this day, inclusive (the author's local calendar day). Also relative: `30d`, `12w`, `6m`, `1y` |
 | `--year YYYY`         | One calendar year, the classic Wrapped: same as `--since YYYY-01-01 --until YYYY-12-31` (can't be combined with them), plus a comparison with the year before (see [Year over year](#year-over-year)) |
 | `--author <email>`    | Only include commits by this author email (exact, case-insensitive match against the email after `.mailmap` is applied) |
 | `--exclude <glob>`    | Leave matching files out of lines added/removed, files touched, hot files, top folders, languages, the biggest commit, the commit size mix and files born / buried (and the per-repo, per-contributor and year-over-year lines). Repeatable. Commits still count: a commit that only touched excluded files still counts toward commits, active days, streaks and habits (see [Excluding files](#excluding-files)) |
@@ -149,6 +149,9 @@ npx @furkycl/gitwrapped --year 2025
 
 # A custom window: the first quarter
 npx @furkycl/gitwrapped --since 2026-01-01 --until 2026-03-31
+
+# The last 90 days
+npx @furkycl/gitwrapped --since 90d
 
 # Generate and open the story in your browser right away
 npx @furkycl/gitwrapped --open
@@ -181,6 +184,24 @@ npx @furkycl/gitwrapped --no-png
 # CI or logs: no color, first line is machine-friendly
 NO_COLOR=1 npx @furkycl/gitwrapped --no-png | head -1
 ```
+
+## Relative windows
+
+`--since` and `--until` also take a window relative to today: `<N>d` (days), `<N>w`
+(weeks), `<N>m` (calendar months) or `<N>y` (calendar years), N from 0 to 9999, case
+doesn't matter. `--since 90d` means "from the day 90 days before today".
+
+- "Today" is your machine's local date, and the result is a plain calendar day, read
+  like any `YYYY-MM-DD` (the author's local day): the result depends only on your
+  machine's local date, not on the time of day or DST. N goes from 0 to 9999.
+- Months and years keep the day of month and clamp it to the target month's last day:
+  on 2026-03-31, `1m` is 2026-02-28; on 2024-02-29, `1y` is 2023-02-28.
+- `--until` works too (`--since 1y --until 3m`: from a year ago to three months ago),
+  and you can mix forms (`--since 2026-01-01 --until 30d`).
+- The resolved dates are what you see everywhere: the cards, the recap, notes such as
+  "no commits match --since 2026-09-07", and `filters` in `stats.json`. A window that
+  resolves before 1970 is an error, and like `--since` / `--until`, a relative window
+  can't be combined with `--year`.
 
 ## Excluding files
 

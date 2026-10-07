@@ -19,6 +19,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   12 / 3" row when there's spare room (after the pairing row; nothing else shrinks for it).
   English and Turkish.
 
+- Time zones: the distinct UTC offsets of the commits' author dates (every commit counts,
+  merges included, as for the power hour; `Z` and `-00:00` are `+00:00`) and the most
+  common one. `stats.json` gets `stats.timezones` (`{count, top: {offset, commits, share}
+  | null, offsets: [{offset, commits}]}`, most commits first, ties west to east). With two
+  or more offsets the recap gets a "Time zones  3 time zones · mostly UTC+03:00 (62% of
+  commits)" line, `wrapped.md` a "Time zones" item, and the power-hour card always
+  shows them: "Committed from 3 time zones, mostly UTC+03:00." at the end of its subtitle
+  or a "3 time zones · mostly UTC+03:00" row (both charts kept, the big number at most one
+  step smaller), else the sentence in place of the hour's quip, then of the quip and the
+  busiest-weekday sentence; "mostly" is left out when two offsets tie. With one offset
+  everything is exactly as before. English and Turkish.
+
 ## [1.6.0] - 2026-10-07
 
 ### Added

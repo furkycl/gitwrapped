@@ -1,7 +1,7 @@
 // The story-card set: turns computeStats() output into Wrapped-style SVG cards.
 // Pure and deterministic. Every card copes with empty stats (0 commits, null peaks,
 // no hot files, null messages) and never prints "null", "undefined" or "NaN".
-import { CALLOUT_NOTE, calendarWindow, formatNumber, graphemes, layoutCard as layoutOf, measureText, renderCardWithLayout, truncateMiddle } from './svg.js';
+import { CALLOUT_NOTE, calendarWindow, escapeXml, formatNumber, graphemes, layoutCard as layoutOf, measureText, renderCardWithLayout, truncateMiddle } from './svg.js';
 
 export { formatNumber };
 import { renderShareSvg } from './share.js';
@@ -11,6 +11,7 @@ import { busiestOf, daysUpTo, shownLongest, shownLongestBreak } from '../stats/d
 import { monthIndex, monthsFromDays } from '../stats/months.js';
 import { hasTeamCard, shareLabel, TOP_CONTRIBUTORS } from '../stats/contributors.js';
 import { shownCoAuthors } from '../stats/coauthors.js';
+import { shownTimezones, utcLabel } from '../stats/timezones.js';
 import { shownReleases } from '../stats/releases.js';
 import { scrubEmails } from '../privacy.js';
 import { personalityReason } from '../stats/personality.js';
@@ -547,18 +548,69 @@ function peakHour(s, { L }) {
   if (!label) {
     return { eyebrow: P.eyebrow, big: P.noneBig, title: P.noneTitle, subtitle: P.noneSubtitle, chart: habitCharts(h, L) };
   }
-  const parts = [];
-  if (h.peakHourTied) parts.push(`${P.tied(label, h.peakHourCount)} ${hourQuip(h.peakHour, L)}`);
-  else parts.push(`${P.landed(h.peakHourCount, label)} ${hourQuip(h.peakHour, L)}`);
+  const lead = h.peakHourTied ? P.tied(label, h.peakHourCount) : P.landed(h.peakHourCount, label);
+  const parts = [`${lead} ${hourQuip(h.peakHour, L)}`];
   const day = peakDayText(h, L);
-  if (day) parts.push(h.peakWeekdayTied ? P.dayTied(day) : P.dayBusiest(day));
-  return {
+  const busiest = day ? (h.peakWeekdayTied ? P.dayTied(day) : P.dayBusiest(day)) : null;
+  if (busiest) parts.push(busiest);
+  const spec = {
     eyebrow: P.eyebrow,
     big: label,
     title: h.peakHourTied ? P.titleTied : P.title,
     subtitle: parts.join(' '),
     chart: habitCharts(h, L),
   };
+  // Commits from two or more time zones (stats.timezones): one more sentence or one row,
+  // always shown (see withTimezones); without it the card is exactly as before.
+  const tz = shownTimezones(s.timezones);
+  return tz ? withTimezones(spec, tz, { lead, busiest }, L) : spec;
+}
+
+/** The text a layout's subtitle block draws, its lines joined with spaces (XML-escaped). */
+const subtitleText = (layout) => {
+  const svg = layout.blocks.find((b) => b.kind === 'subtitle')?.svg ?? '';
+  return [...svg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((m) => m[1]).join(' ').replace(/\s+/g, ' ').trim();
+};
+
+/**
+ * The power-hour card `spec` with its time zones (a shownTimezones() value), always: in
+ * the first of these that fits, where fitting means the same charts are drawn, nothing
+ * shrinks more than allowed and an added sentence shows whole (the subtitle drops whole
+ * trailing sentences that do not fit, see wrapAtSentence in svg.js):
+ * 1. "Committed from 3 time zones, mostly UTC+03:00." at the end of the subtitle, else a
+ *    "3 time zones · mostly UTC+03:00" row below it, with nothing shrinking;
+ * 2. the same with the big word one step (15%) smaller, when nothing had shrunk (as for the
+ *    messages card's emoji row);
+ * 3. the sentence in place of the hour's quip, then in place of the quip and the weekday
+ *    sentence, each with nothing shrinking, then one step smaller as in 2;
+ * 4. as a last resort, the quip and weekday sentence replaced by the sentence, else the
+ *    row, with whatever shrinking (or charts left out) the layout needs to fit it.
+ * "mostly" is left out when two offsets tie for the most commits.
+ */
+function withTimezones(spec, tz, { lead, busiest }, L) {
+  const top = tz.top ? utcLabel(tz.top) : null;
+  const sentence = L.peak.timezones(tz.count, top);
+  const shownSentence = escapeXml(sentence).replace(/\s+/g, ' ');
+  const base = layoutOf({ ...spec, lang: L.code });
+  const shows = (candidate, l) => candidate.subtitle === spec.subtitle || subtitleText(l).includes(shownSentence);
+  const fits = (candidate, more) => {
+    const l = layoutOf({ ...candidate, lang: L.code });
+    return l.drawnCharts.length === base.drawnCharts.length && l.drawnCharts.every((x, i) => x === base.drawnCharts[i])
+      && l.shrinkSteps <= base.shrinkSteps + more && shows(candidate, l);
+  };
+  const withSubtitle = (text) => ({ ...spec, subtitle: text ? `${text} ${sentence}` : sentence });
+  const lines = Array.isArray(spec.lines) ? spec.lines : [];
+  const row = { label: L.recap.timezonesValue(tz.count), value: top ? L.recap.mostly(top) : '' };
+  const withRow = { ...spec, lines: [...lines.slice(0, MAX_ROWS - 1), row] };
+  const appended = withSubtitle(spec.subtitle);
+  const noQuip = withSubtitle([lead, busiest].filter(Boolean).join(' '));
+  const leadOnly = withSubtitle(lead);
+  const steps = base.shrinkSteps === 0 ? [0, 1] : [0];
+  for (const more of steps) for (const c of [appended, withRow]) if (fits(c, more)) return c;
+  for (const c of [noQuip, leadOnly]) for (const more of steps) if (fits(c, more)) return c;
+  // Last resort: the layout shrinks (or leaves out charts) as it needs to.
+  if (shows(leadOnly, layoutOf({ ...leadOnly, lang: L.code }))) return leadOnly;
+  return withRow;
 }
 
 /**

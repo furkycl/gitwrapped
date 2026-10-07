@@ -145,6 +145,7 @@ export default {
     // A weekday name is lower-case inside a Turkish sentence (pazartesi); dayTied starts
     // the sentence with it, so it stays capitalized there.
     dayBusiest: (day) => `En yoğun günün ${String(day).replace(/^İ/, 'i').toLocaleLowerCase('tr-TR')}.`,
+    timezones: (n, top) => `${num(n)} saat diliminden commit attın${top ? `, çoğunu ${top} diliminden` : ''}.`,
     titleTied: 'altın saatlerinden biri',
     title: 'en çok commit attığın saat',
   },
@@ -405,6 +406,9 @@ export default {
     atWindowEnd: 'dönem sonunda',
     breakLabel: 'Mola',
     busiestDay: 'En yoğun gün',
+    timezones: 'Saat dilimleri',
+    timezonesValue: (n) => `${num(n)} saat dilimi`,
+    mostly: (offset) => `en çok ${offset}`,
     hottestFile: 'Gözde dosya',
     fileLifecycle: 'Dosyalar',
     fileLifecycleValue: (added, deleted) => `${num(added)} doğdu · ${num(deleted)} gömüldü`,

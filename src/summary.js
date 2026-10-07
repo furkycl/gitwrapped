@@ -17,6 +17,7 @@ import { conventionalText, emojiShareText, revertShareText, sizeShareText } from
 import { shownEmoji } from './stats/emoji.js';
 import { shownReverts } from './stats/reverts.js';
 import { shownFileLifecycle } from './stats/files.js';
+import { shownTimezones, utcLabel } from './stats/timezones.js';
 
 const EN = getStrings(DEFAULT_LANG);
 
@@ -175,6 +176,10 @@ function shortText(s, maxWidth = 48) {
  * A "Busiest day" line shows the calendar day with the most commits and its commit count
  * (stats.busiestDay, ties → the earliest day; future-dated days left out with `today`, see
  * stats/daily.js shownBusiestDay) when there is one.
+ * A "Time zones" line shows how many UTC offsets the commits' author dates have and the
+ * most common one with its share of commits ("3 time zones · mostly UTC+03:00 (62% of
+ * commits)"; "mostly" left out on a tie, see stats/timezones.js shownTimezones) when there
+ * are two or more.
  * A "Break" line shows the longest break between two active days (stats.streaks.longestBreak,
  * future-dated days left out with `today` as on the streak card) when there is one.
  * A "First commit" line shows the first commit in the window (stats.firstCommit: subject,
@@ -258,6 +263,14 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     if (busiest) {
       const [y, mo, d] = busiest.day.split('-').map(Number);
       lines.push(`  ${label(R.busiestDay)}${c('cyan', L.date(d, mo, y))} ${c('dim', `(${plural(busiest.commits, 'commit', L)})`)}`);
+    }
+
+    // Commits from two or more time zones (UTC offsets, stats.timezones): how many, and
+    // the most common one with its share (left out when two offsets tie for it).
+    const tz = shownTimezones(stats?.timezones);
+    if (tz) {
+      const top = tz.top ? ` ${c('dim', `· ${R.mostly(utcLabel(tz.top))} (${R.ofCommits(shareLabel(tz.share, tz.commits, L.pct))})`)}` : '';
+      lines.push(`  ${label(R.timezones)}${c('cyan', R.timezonesValue(tz.count))}${top}`);
     }
 
     const s = stats?.streaks ?? {};

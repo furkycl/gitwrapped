@@ -101,7 +101,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 
 ## M13 — 1.7 (proposed by loop turn 054 per the M8 owner note "do not finish the loop"; owner may prune)
 - [x] Busiest day: the single day with the most commits in the window (author-local day, count, ties → earliest) called out on the activity card, stats.json `stats.busiestDay`, recap and wrapped.md; en/tr; tests
-- [ ] Files born and buried: files added vs deleted in the window (from `--name-status`/`--diff-filter=AD` in the same log read or one extra call, same ignore rules as hot files, renames not counted) as a row on the totals card when there's room, stats.json `stats.fileLifecycle {added, deleted}`, recap and wrapped.md; en/tr; tests
+- [x] Files born and buried: files added vs deleted in the window (from `--name-status`/`--diff-filter=AD` in the same log read or one extra call, same ignore rules as hot files, renames not counted) as a row on the totals card when there's room, stats.json `stats.fileLifecycle {added, deleted}`, recap and wrapped.md; en/tr; tests
 - [ ] Time zones: distinct author UTC offsets in the window and the most common one, "Committed from N time zones" on the power-hour card when N ≥ 2, stats.json `stats.timezones`, recap and wrapped.md; en/tr; tests
 - 1.7.0 release prep (split as before):
   - [ ] Cold audit of the 1.7 work (diff 1.6.0 release commit..main) + fix every real bug found, with tests

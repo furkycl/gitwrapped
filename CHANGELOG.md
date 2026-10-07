@@ -45,6 +45,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   are folded into one row to make room, and if it still doesn't fit (or the mix isn't
   shown) the card is exactly as before. English and Turkish.
 
+### Fixed
+
+- No email address shows up in any output anymore: email-shaped text (`name@host`) in
+  the longest / shortest message and the biggest commit's subject, in hot-file paths
+  (`keys/ada@example.com.pub`) and in the repo labels of a multi-repo run is now
+  replaced with "…" in `stats.json`, on the cards, the share image, `wrapped.html`
+  (including its screen-reader descriptions and tooltips) and in the recap, as it
+  already was in `wrapped.md`. The favorite word and the message lengths are counted
+  from the scrubbed subjects.
+- Versions and `@2x` asset names are no longer mistaken for email addresses: text after
+  an `@` that starts with a digit is kept (`lodash@4.17.21`, `@babel/core@7.2`,
+  `logo@2x.png`), in `wrapped.md` too.
+
 ## [1.4.0] - 2026-10-06
 
 ### Added

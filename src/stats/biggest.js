@@ -1,3 +1,4 @@
+import { scrubEmails } from '../privacy.js';
 import { isIgnoredPath, repoRelativePath } from './files.js';
 import { isMergeCommit } from './messages.js';
 import { localParts } from './time.js';
@@ -12,7 +13,8 @@ const count = (n) => (typeof n === 'number' && Number.isFinite(n) && n > 0 ? n :
  * multi-repo run checked relative to each repo's root, see repoRelativePath) add nothing.
  * Files removed by --exclude are already gone from the commits (see excludeFiles).
  * Returns `{hash, subject, date, linesAdded, linesRemoved, lines, files}` or null:
- * - subject: the trimmed subject line (null when missing / empty);
+ * - subject: the trimmed subject line with anything shaped like an email address
+ *   (`name@host`) replaced by "…" (see scrubEmails); null when missing / empty;
  * - date: the author-local day 'YYYY-MM-DD' (null when the date is unparseable);
  * - linesAdded / linesRemoved / lines: counted lines (lines = added + removed);
  * - files: how many distinct counted paths the commit touches.
@@ -46,7 +48,8 @@ export function computeBiggestCommit(commits) {
     // Strictly more lines wins; on a tie the earlier instant wins, and on the same instant
     // the later one in input order (git log lists newest first, so the older commit).
     if (best && (lines < best.lines || (lines === best.lines && ms > best.ms))) continue;
-    const subject = typeof c.subject === 'string' && c.subject.trim() ? c.subject.trim() : null;
+    const raw = typeof c.subject === 'string' ? scrubEmails(c.subject).trim() : '';
+    const subject = raw || null;
     best = { hash: typeof c.hash === 'string' ? c.hash : null, subject, date: t ? t.dayKey : null, linesAdded, linesRemoved, lines, files: paths.size, ms };
   }
   if (!best) return null;

@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { readFileSync, statSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
 import { promisify } from 'node:util';
+import { scrubEmails } from './privacy.js';
 import { localParts } from './stats/time.js';
 
 const execFileAsync = promisify(execFile);
@@ -541,8 +542,8 @@ const INVISIBLE = /[\p{Cc}\p{Cf}\u2028\u2029\p{Cs}]/gu;
 
 /**
  * Unique labels for several repos of a multi-repo run, in the given order: each name
- * without invisible characters (see INVISIBLE) and surrounding whitespace (nothing left →
- * "repo"), and a name already used gets the first free "-2", "-3",
+ * without invisible characters (see INVISIBLE) and surrounding whitespace, with anything
+ * shaped like an email address replaced by "…" (see scrubEmails; nothing left → "repo"), and a name already used gets the first free "-2", "-3",
  * ... suffix: ['app', 'app', 'web'] → ['app', 'app-2', 'web']. Labels are compared
  * case-insensitively, so 'App' and 'app' never become the same path prefix on a
  * case-insensitive file system.
@@ -550,7 +551,8 @@ const INVISIBLE = /[\p{Cc}\p{Cf}\u2028\u2029\p{Cs}]/gu;
 export function repoLabels(names) {
   const used = new Set();
   return (names ?? []).map((n) => {
-    const clean = typeof n === 'string' ? n.replace(INVISIBLE, '').trim() : '';
+    // Email-shaped text is cut (see scrubEmails), so no output shows an address in a label.
+    const clean = typeof n === 'string' ? scrubEmails(n.replace(INVISIBLE, '')).trim() : '';
     const base = clean || 'repo';
     let label = base;
     for (let i = 2; used.has(label.toLowerCase()); i++) label = `${base}-${i}`;

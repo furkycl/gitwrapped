@@ -1,3 +1,4 @@
+import { scrubEmails } from '../privacy.js';
 import { localParts } from './time.js';
 
 /** Words ignored by topWord: English filler, conventional-commit types, and the words
@@ -35,7 +36,9 @@ const isCountedWord = (word) => word.split('-').some((part) => COUNTED_WORD.test
 const codePoints = (s) => [...s].length;
 
 /**
- * Commit-message stats over each commit's subject line (trimmed). Merge commits (more than
+ * Commit-message stats over each commit's subject line (trimmed), with anything shaped
+ * like an email address (`name@host`) replaced by "…" first (see scrubEmails), so every
+ * field below is computed from, and shows, the scrubbed subject. Merge commits (more than
  * one entry in `parents`; for commits without a `parents` array, subjects starting "Merge
  * branch / branches / pull request / remote-tracking branch / tag / commit" or "Merge
  * '...' into") are skipped by every field.
@@ -62,7 +65,9 @@ export function computeMessages(commits) {
   const entries = [];
   commits.forEach((c, index) => {
     if (isMergeCommit(c)) return;
-    const subject = typeof c?.subject === 'string' ? c.subject.trim() : '';
+    // Email-shaped text is cut first (see scrubEmails), so no field (the shown subjects,
+    // their lengths, the top word) is ever built from an address.
+    const subject = typeof c?.subject === 'string' ? scrubEmails(c.subject).trim() : '';
     if (!subject) return;
     const t = localParts(c.date);
     entries.push({ subject, hash: c.hash ?? null, length: codePoints(subject), ms: t ? t.ms : Infinity, index });

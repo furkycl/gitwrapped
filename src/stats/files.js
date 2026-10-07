@@ -1,3 +1,5 @@
+import { scrubEmails } from '../privacy.js';
+
 /** Lockfiles, matched by exact (case-sensitive) basename. */
 const LOCKFILES = new Set([
   'package-lock.json',
@@ -103,6 +105,9 @@ export function repoRelativePath(c, path) {
  * Invalid input policy: files without a string path are skipped; a missing or
  * non-finite line count adds 0; `limit` must be a non-negative integer (else TypeError).
  * Empty input → [].
+ * - `path` is shown with anything shaped like an email address (`name@host`) replaced
+ *   by "…" (see scrubEmails; "keys/ada@example.com.pub" → "keys/…"); files are still
+ *   counted and sorted by their real paths.
  * Ties: cards should check `result[0].commits === result[1]?.commits` before calling the
  * top file "the one you can't stop touching".
  */
@@ -136,7 +141,8 @@ export function computeHotFiles(commits, { limit = 5 } = {}) {
         b.linesAdded + b.linesRemoved - (a.linesAdded + a.linesRemoved) ||
         (a.path < b.path ? -1 : a.path > b.path ? 1 : 0),
     )
-    .slice(0, limit);
+    .slice(0, limit)
+    .map((e) => ({ ...e, path: scrubEmails(e.path) }));
 }
 
 /**

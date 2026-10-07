@@ -5,7 +5,7 @@
 // part only (authorName), and email-shaped text in any repo-derived text (subjects,
 // paths, repo and contributor names) is cut out by escapeMarkdown.
 
-import { authorName, displayRepoName, folderLabel, formatDateRange, formatDay, conventionalText, emojiShareText, pctText, revertShareText, repoRows, shownDayRange, sizeShareText } from './cards/index.js';
+import { authorName, displayRepoName, folderLabel, formatDateRange, formatDay, conventionalText, emojiShareText, mergeShareText, pctText, revertShareText, repoRows, shownDayRange, sizeShareText } from './cards/index.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
 import { shownEmoji } from './stats/emoji.js';
@@ -20,6 +20,7 @@ import { shownBiggestLines } from './stats/biggest.js';
 import { contributorName, hasTeamCard, shareLabel } from './stats/contributors.js';
 import { shownCoAuthors } from './stats/coauthors.js';
 import { shownReleases } from './stats/releases.js';
+import { shownMerges } from './stats/merges.js';
 import { scrubEmails } from './privacy.js';
 import { languageBarRows, languageHeadline } from './stats/languages.js';
 import { yearOverYear } from './stats/yoy.js';
@@ -170,6 +171,9 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
       const latest = rel.latest ? `, ${escapeMarkdown(M.latestRelease(rel.latest.name), 120)}${day ? ` (${escapeMarkdown(day)})` : ''}` : '';
       numbers.push(item(escapeMarkdown(M.releases), `${escapeMarkdown(plural(rel.count, 'release', L))}${latest}`));
     }
+    // Merged pull requests and merge commits (stats.merges), as on the totals card and the recap.
+    const merges = shownMerges(stats?.merges);
+    if (merges) numbers.push(item(escapeMarkdown(M.merges), escapeMarkdown(M.mergesValue(merges.pullRequests, merges.commits, mergeShareText(merges, L)))));
     section(M.numbers, numbers);
 
     // --- habits -----------------------------------------------------------------------

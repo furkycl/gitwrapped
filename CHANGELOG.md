@@ -18,6 +18,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with either. A result before 1970 is an error, and the "expected format" error now
   mentions the relative form. `--help` and the README describe it.
 
+- Merges: the merge commits (more than one parent) in the window, their share of all
+  commits, and how many pull requests were merged, read from subjects: GitHub's
+  `Merge pull request #N from …` and a trailing `(#N)` squash / rebase suffix (Bitbucket's
+  `(pull request #N)` too), deduped by number (per repo with several repos). `stats.json`
+  gets `stats.merges` (`{commits, share, pullRequests}`), the recap a
+  "Merges  12 pull requests merged · 8 merge commits (6% of commits)" line, `wrapped.md` a
+  "Merges" item, and the totals card a "Merged PRs / merges  12 / 8" row ("Merged PRs" or
+  "Merge commits  8 · 6%" when there is only one of the two) when there's spare room, after
+  the files born / buried row; nothing else shrinks for it and the card is unchanged
+  otherwise. When the totals card has no room (common in team repos and with `--year`),
+  the outro gets a "Merges" panel instead ("You merged 12 pull requests", "8 merge commits ·
+  6% of commits"), never both, after the releases panel and on the same terms (the subtitle
+  gives way first; when both panels don't fit, releases win; byte-identical otherwise).
+  A PR number may have at most nine digits after leading zeros; a `Merge pull request`
+  subject with an out-of-range number falls back to its trailing `(#N)`.
+  English and Turkish ("Merge'ler", "Birleşen PR / merge", "12 pull request birleştirdin").
+
 ## [1.8.0] - 2026-10-07
 
 ### Added

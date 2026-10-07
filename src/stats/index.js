@@ -4,6 +4,7 @@ import { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONT
 import { computeFirstCommit, SHORT_HASH } from './first.js';
 import { computeCoAuthors, shownCoAuthors, TOP_CO_AUTHORS } from './coauthors.js';
 import { computeReleases, shownReleases } from './releases.js';
+import { computeMerges, pullRequestOf, shownMerges } from './merges.js';
 import { busiestOf, computeDaily, daysUpTo, longestGap, longestRun, shownBusiestDay, shownLongest, shownLongestBreak } from './daily.js';
 import { computeFileLifecycle, computeHotFiles, isIgnoredPath, repoRelativePath, shownFileLifecycle } from './files.js';
 import { computeFolders, folderOf, ROOT_FOLDER, shownFolders, TOP_FOLDERS } from './folders.js';
@@ -34,6 +35,7 @@ export { CADENCE_MIN_DAYS, computeCadence, medianGap, shownCadence };
 export { computeWeekend, shownWeekend, WEEKEND_DAYS, weekendCounts, weekendPercent, weekendPercentLabel };
 export { computeTimezones, formatOffset, offsetMinutes, shownTimezones, utcLabel };
 export { computeReleases, shownReleases };
+export { computeMerges, pullRequestOf, shownMerges };
 export { computeBiggestCommit, shownBiggestLines, computeMessages, computePersonality, isMergeCommit, ARCHETYPES, localToday };
 export { computeMonths, monthsFromDays };
 export { COMMIT_SIZE_BUCKETS, COMMIT_SIZE_IDS, commitSizeOf, computeCommitSizes, shownCommitSizes, sizeShares };
@@ -82,6 +84,9 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * their author, and who those co-authors are, by name only (see coauthors.js).
  * `releases` is how many of the commits tags point at (one release per tagged commit) and
  * how many tags, with the first and latest release (`{name, date}`, see releases.js).
+ * `merges` is how many of the commits are merge commits (more than one parent), their
+ * share of all commits, and how many distinct pull requests the subjects name
+ * ("Merge pull request #N" or a trailing "(#N)", per repo with several), see merges.js.
  * `months` is commits per author-local calendar month, zero-filled from the first to the
  * last active month, with the peak month (see months.js).
  * `contributors` ranks who made the commits (see contributors.js). It is computed from
@@ -124,6 +129,7 @@ export function computeStats(commits = [], { today, todayComplete, team, author,
     firstCommit: computeFirstCommit(commits),
     coAuthors: computeCoAuthors(commits),
     releases: computeReleases(commits),
+    merges: computeMerges(commits),
   };
   const nonMergeCommits = (commits ?? []).filter((c) => !isMergeCommit(c)).length;
   stats.personality = computePersonality(stats, { nonMergeCommits, today: today ?? localToday() });

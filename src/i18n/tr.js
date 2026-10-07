@@ -30,6 +30,15 @@ const UNITS = {
   release: ['sürüm', 'sürüm'],
 };
 
+/**
+ * "12 pull request birleşti" ve "8 merge commit (commit'lerin %6 kadarı)": the parts there
+ * are (a count of 0 is left out), joined with `sep`; `share` is already formatted.
+ */
+const mergesText = (prs, merges, share, sep) => [
+  prs > 0 ? `${num(prs)} pull request birleşti` : '',
+  merges > 0 ? `${num(merges)} merge commit (commit'lerin ${share} kadarı)` : '',
+].filter(Boolean).join(sep);
+
 const MONTHS = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 
 export default {
@@ -111,6 +120,8 @@ export default {
     sizeTitle: (name, range, commits, pct) => `${name} (${range}): ${plural(commits, UNITS.commit)} (${pct})`,
     fileLifecycle: 'Doğan / gömülen',
     fileLifecycleValue: (added, deleted) => `${num(added)} / ${num(deleted)}`,
+    mergesLabel: (prs, merges) => (prs > 0 ? (merges > 0 ? 'Birleşen PR / merge' : 'Birleşen PR') : "Merge commit'leri"),
+    mergesValue: (prs, merges, share) => (prs > 0 ? (merges > 0 ? `${num(prs)} / ${num(merges)}` : num(prs)) : `${num(merges)} · ${share}`),
   },
 
   // "<yıl> yılına göre" needs no suffix on the number itself.
@@ -356,6 +367,9 @@ export default {
     releases: 'Sürümler',
     shipped: (n) => `${plural(n, UNITS.release)} yayınladın`,
     latest: (name) => `Son sürüm: ${name}`,
+    merges: "Merge'ler",
+    mergedValue: (prs, merges) => (prs > 0 ? `${num(prs)} pull request birleştirdin` : `${num(merges)} merge commit`),
+    mergedNote: (prs, merges, share) => (merges > 0 ? `${prs > 0 ? `${num(merges)} merge commit · ` : ''}commit'lerin ${share} kadarı` : null),
   },
 
   share: {
@@ -438,6 +452,8 @@ export default {
     topCoAuthor: 'en sık ortak:',
     releases: 'Sürümler',
     latest: 'son:',
+    merges: "Merge'ler",
+    mergesValue: (prs, merges, share) => mergesText(prs, merges, share, ' · '),
     firstCommit: 'İlk commit',
     biggest: 'En büyük',
     sizes: 'Boyutlar',
@@ -491,6 +507,8 @@ export default {
     topCoAuthor: (name) => `en sık ortak: ${name}`,
     releases: 'Sürümler',
     latestRelease: (name) => `son sürüm: ${name}`,
+    merges: "Merge'ler",
+    mergesValue: (prs, merges, share) => mergesText(prs, merges, share, ', '),
     cards: 'Hikâye kartları',
     cardNames: {
       intro: 'Giriş',

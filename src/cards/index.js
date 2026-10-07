@@ -24,6 +24,7 @@ import { foldCommitTypes, shownCommitTypes } from '../stats/types.js';
 import { shownEmoji } from '../stats/emoji.js';
 import { shownReverts } from '../stats/reverts.js';
 import { shownFileLifecycle } from '../stats/files.js';
+import { shownMerges } from '../stats/merges.js';
 import { shownFolders } from '../stats/folders.js';
 import { sizeShares } from '../stats/sizes.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from '../i18n/index.js';
@@ -418,7 +419,28 @@ function totals(s, { L, repos }) {
   // displaces the pairing row or anything else (it is always in the recap, wrapped.md and
   // stats.json).
   const lifecycle = lifecycleRow(s, L);
-  return lifecycle ? withSpareRow(withPaired, lifecycle, L) : withPaired;
+  const withLifecycle = lifecycle ? withSpareRow(withPaired, lifecycle, L) : withPaired;
+  // Merged pull requests and merge commits (stats.merges) last, on the same terms.
+  const merges = mergesRow(s, L);
+  return merges ? withSpareRow(withLifecycle, merges, L) : withLifecycle;
+}
+
+/**
+ * A merge-commit share (shownMerges output) as shown: a whole percent of all commits, "<1%"
+ * when it rounds to 0, never "100%" short of every commit (see shareLabel). Used by the
+ * totals card, the recap and wrapped.md, so they agree.
+ */
+export const mergeShareText = (m, L = EN) => shareLabel(m?.pct, m?.commits, L.pct);
+
+/**
+ * The totals card's merges row (stats.merges, see shownMerges): "Merged PRs / merges" and
+ * "12 / 8", "Merged PRs" and "12" without merge commits, or "Merge commits" and "8 · 6%"
+ * without pull requests; null with neither.
+ */
+function mergesRow(s, L) {
+  const m = shownMerges(s.merges);
+  if (!m) return null;
+  return { label: L.totals.mergesLabel(m.pullRequests, m.commits), value: L.totals.mergesValue(m.pullRequests, m.commits, mergeShareText(m, L)) };
 }
 
 /**
@@ -1461,24 +1483,59 @@ function outro(s, ctx) {
     chart: tiles,
   };
   const released = commits > 0 ? releasesCallout(s, L) : null;
-  return released ? withReleases(spec, tiles, released, yoySentence, L) ?? spec : spec;
+  // Merged pull requests and merge commits (stats.merges), only when the totals card had
+  // no room for its row (never on both cards).
+  const merged = commits > 0 && !mergesOnTotals(s, ctx) ? mergesCallout(s, L) : null;
+  // Both panels when they fit, else the releases panel alone (as before merges existed),
+  // else the merges panel alone; with neither, the card is exactly as without them.
+  const tries = [released && merged ? [released, merged] : null, released ? [released] : null, merged ? [merged] : null].filter(Boolean);
+  for (const panels of tries) {
+    const next = withPanels(spec, tiles, panels, yoySentence, L);
+    if (next) return next;
+  }
+  return spec;
 }
 
 /**
- * The outro with the releases panel after its tiles, or null when it fits nowhere (then
- * the card is exactly as without it). The panel is `optional`, so it is only drawn when
- * nothing else shrinks for it; to make room, the subtitle gives way first: as it is, then
- * without the static "Made with gitwrapped…" line (keeping --year's comparison sentence),
- * then with no subtitle at all (the comparison is still on the totals card and the recap).
+ * The outro with `panels` (the releases and / or merges callouts) after its tiles, or null
+ * when they do not all fit (then the card is exactly as without them). The panels are
+ * `optional`, so they are only drawn when nothing else shrinks for them; to make room, the
+ * subtitle gives way first: as it is, then without the static "Made with gitwrapped…" line
+ * (keeping --year's comparison sentence), then with no subtitle at all (the comparison is
+ * still on the totals card and the recap).
  */
-function withReleases(spec, tiles, panel, yoySentence, L) {
+function withPanels(spec, tiles, panels, yoySentence, L) {
   const { subtitle, ...rest } = spec;
   const subtitles = [subtitle, ...(yoySentence ? [yoySentence] : []), null];
   for (const sub of subtitles) {
-    const next = { ...rest, ...(sub ? { subtitle: sub } : {}), chart: [tiles, panel] };
-    if (draws(next, 1, L)) return next;
+    const next = { ...rest, ...(sub ? { subtitle: sub } : {}), chart: [tiles, ...panels] };
+    if (panels.every((_, i) => draws(next, i + 1, L))) return next;
   }
   return null;
+}
+
+/**
+ * Whether the totals card shows the merges row (see mergesRow; it is only added in spare
+ * room), so the outro shows the merges panel exactly when the totals card does not.
+ */
+export function mergesOnTotals(s, ctx) {
+  const row = mergesRow(s ?? {}, ctx.L);
+  if (!row) return false;
+  const lines = totals(s ?? {}, ctx).lines;
+  return Array.isArray(lines) && lines.some((r) => r?.label === row.label && r?.value === row.value);
+}
+
+/**
+ * The outro's optional merges panel (stats.merges, see shownMerges): "Merges", "You merged
+ * 12 pull requests" (or "8 merge commits" without pull requests) and "8 merge commits ·
+ * 6% of commits" (or "6% of commits"); null with nothing to show.
+ */
+function mergesCallout(s, L) {
+  const m = shownMerges(s.merges);
+  if (!m) return null;
+  const O = L.outro;
+  const share = mergeShareText(m, L);
+  return { kind: 'callout', optional: true, title: O.merges, value: O.mergedValue(m.pullRequests, m.commits), note: O.mergedNote(m.pullRequests, m.commits, share) };
 }
 
 /**

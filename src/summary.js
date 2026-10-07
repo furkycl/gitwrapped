@@ -13,7 +13,8 @@ import { epochDay } from './stats/time.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
-import { conventionalText, emojiShareText, folderLabel, revertShareText, sizeShareText } from './cards/index.js';
+import { conventionalText, emojiShareText, folderLabel, mergeShareText, revertShareText, sizeShareText } from './cards/index.js';
+import { shownMerges } from './stats/merges.js';
 import { shownFolders } from './stats/folders.js';
 import { shownEmoji } from './stats/emoji.js';
 import { shownReverts } from './stats/reverts.js';
@@ -217,6 +218,9 @@ function shortText(s, maxWidth = 48) {
  * stats/coauthors.js shownCoAuthors) when at least one commit was paired.
  * A "Releases" line shows how many tags point at the commits and the latest one, with its
  * day (stats.releases, see stats/releases.js shownReleases) when there is at least one.
+ * A "Merges" line shows how many pull requests were merged and how many merge commits
+ * there are, with their share of all commits (stats.merges, see stats/merges.js
+ * shownMerges) when there is at least one of either.
  * The first line is always `gitwrapped: N commits → <html>` (no color), so it is easy
  * to grep. Every text value is stripped of control characters (stripControl), so repo
  * data cannot inject terminal escapes. Returns the whole recap, newline-terminated.
@@ -395,6 +399,10 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
       const when = day ? ` ${c('dim', `(${L.date(day[2], day[1], day[0])})`)}` : '';
       lines.push(`  ${label(R.releases)}${plural(rel.count, 'release', L)}${name ? ` · ${R.latest} ${c('cyan', name)}${when}` : ''}`);
     }
+
+    // Merged pull requests and merge commits (stats.merges), as on the totals card.
+    const merges = shownMerges(stats?.merges);
+    if (merges) lines.push(`  ${label(R.merges)}${c('cyan', R.mergesValue(merges.pullRequests, merges.commits, mergeShareText(merges, L)))}`);
 
     // The biggest commit by lines changed (stats.biggestCommit), as on the messages card.
     const big = stats?.biggestCommit;

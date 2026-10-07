@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-07
+
 ### Added
+
+- First commit: the intro card gets an "It all began with" panel with the first commit
+  in the window (its quoted subject, day and short hash; with several repos, its repo),
+  the recap a "First commit" line and `wrapped.md` a "First commit" item, and
+  `stats.json` gets `stats.firstCommit` (`{date, subject, hash}` plus `repo` with several
+  repos, or `null`). It is the earliest non-merge commit by author date that passes the
+  filters; email-shaped text in its subject is replaced with "…". A long subject is cut
+  with "…", and when the intro has no room the panel is left out and the card is exactly
+  as before. English and Turkish.
 
 - Co-authors: commits with `Co-authored-by:` trailers count as paired. The team card
   gets a "Pair programming" panel ("12 commits paired", "Top co-author: Grace Hopper").
@@ -21,22 +32,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   history read only) and are shown by name only, never an email; a co-author who is the
   commit's own author, and merge commits, don't count. English and Turkish.
 
-- First commit: the intro card gets an "It all began with" panel with the first commit
-  in the window (its quoted subject, day and short hash; with several repos, its repo),
-  the recap a "First commit" line and `wrapped.md` a "First commit" item, and
-  `stats.json` gets `stats.firstCommit` (`{date, subject, hash}` plus `repo` with several
-  repos, or `null`). It is the earliest non-merge commit by author date that passes the
-  filters; email-shaped text in its subject is replaced with "…". A long subject is cut
-  with "…", and when the intro has no room the panel is left out and the card is exactly
-  as before. English and Turkish.
-
 - Commit type mix: when at least 20% of the commits follow Conventional Commits
   (`type(scope)!: description`, case-insensitive), the messages card shows the share of
   feat / fix / docs / refactor / test / chore / other commits as a thin stacked bar (the
   top three types, any others folded into "the rest", with the share of conventional
   commits in its caption; a lone type is set against the commits without a prefix, and
-  a single type on every commit draws no bar), the recap gets a "Types" line and `wrapped.md` a "Commit types"
-  section, and `stats.json` gets `stats.commitTypes` (`{total, conventional, share,
+  a single type on every commit draws no bar), the recap gets a "Types" line and
+  `wrapped.md` a "Commit types" section, and `stats.json` gets `stats.commitTypes` (`{total, conventional, share,
   counts, shares, top, shown}`; shares are whole percents of the conventional commits
   that add up to 100). Only known types count (`perf`, `ci`, `build`, `style`, `revert`,
   `release` and `deps` go to "other"; `feature`, `bugfix` / `hotfix`, `doc` and `tests`
@@ -341,7 +343,8 @@ First public release on npm as `@furkycl/gitwrapped`.
 - On macOS, color emoji are left out of PNG exports, because resvg drew Apple Color Emoji
   far from their text. SVG cards and `wrapped.html` keep them.
 
-[Unreleased]: https://github.com/furkycl/gitwrapped/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/furkycl/gitwrapped/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/furkycl/gitwrapped/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/furkycl/gitwrapped/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/furkycl/gitwrapped/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/furkycl/gitwrapped/compare/v1.1.0...v1.2.0

@@ -392,8 +392,8 @@ the power hour), `0`..`1` with 3 decimals, at most `0.999` unless every dated co
 weekend one (`{"commits": 0, "share": 0}` without commits). Like the power hour it counts
 every dated commit in the window, merge commits and future-dated ones included, so it is
 the same count the Weekend Warrior personality scores;
-the recap, `wrapped.md` and the activity card quote the same whole percent as Weekend Warrior's reason (never "100%" short of every commit, "<1%" for a share that
-rounds to 0), and only when there is at least one weekend commit.
+the recap, `wrapped.md` and the activity card quote the same whole percent as Weekend
+Warrior's reason (never "100%" short of every commit, "<1%" for a share that rounds to 0), and only when there is at least one weekend commit.
 
 `stats.fileLifecycle` is how many files were born and buried in the window, as
 `{"added": n, "deleted": n}`: the files the commits added and deleted (both `0` when none).

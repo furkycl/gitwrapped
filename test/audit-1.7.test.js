@@ -112,10 +112,10 @@ describe('totals card: the files born / buried label is never cut', () => {
 });
 
 describe('CHANGELOG', () => {
-  test('[Unreleased] mentions the busiest day and "Busiest weekday"', () => {
+  test('[1.7.0] mentions the busiest day and "Busiest weekday"', () => {
     const text = readFileSync(fileURLToPath(new URL('../CHANGELOG.md', import.meta.url)), 'utf8');
-    const m = /^## \[Unreleased\]\s*$([\s\S]*?)(?=^## \[)/m.exec(text);
-    assert.ok(m, 'an [Unreleased] section');
+    const m = /^## \[1\.7\.0\][^\n]*$([\s\S]*?)(?=^## \[)/m.exec(text);
+    assert.ok(m, 'a [1.7.0] section');
     assert.match(m[1], /busiest day/i);
     assert.match(m[1], /Busiest weekday/);
   });

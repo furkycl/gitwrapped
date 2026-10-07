@@ -125,6 +125,9 @@ export default {
     sizes: { tiny: 'Tiny', small: 'Small', medium: 'Medium', large: 'Large' },
     sizeRanges: { tiny: 'under 10 lines', small: '10–99 lines', medium: '100–500 lines', large: 'over 500 lines' },
     sizeTitle: (name, range, commits, pct) => `${name} (${range}): ${plural(commits, UNITS.commit)} (${pct})`,
+    /** Files added / deleted in the window (stats.fileLifecycle), as one row: "12 / 3". */
+    fileLifecycle: 'Files born / buried',
+    fileLifecycleValue: (added, deleted) => `${num(added)} / ${num(deleted)}`,
   },
 
   /**
@@ -456,6 +459,9 @@ export default {
     /** The busiest-day line: label, "Oct 4, 2026", then "(12 commits)". */
     busiestDay: 'Busiest day',
     hottestFile: 'Hottest file',
+    /** The files born / buried line (stats.fileLifecycle): label, then "12 born · 3 buried". */
+    fileLifecycle: 'Files',
+    fileLifecycleValue: (added, deleted) => `${num(added)} born · ${num(deleted)} buried`,
     topLanguage: 'Top language',
     /** "(74% of lines, tied with 1 more)". */
     languageDetail: (share, basis, tiedMore) => `${share} ${basis === 'files' ? 'of files' : 'of lines'}${tiedMore > 0 ? `, tied with ${tiedMore} more` : ''}`,
@@ -512,6 +518,9 @@ export default {
     busiestWeekday: 'Busiest weekday',
     /** The calendar day with the most commits: "Oct 4, 2026 (12 commits)". */
     busiestDay: 'Busiest day',
+    /** Files added / deleted in the window (stats.fileLifecycle): "12 files added, 3 deleted". */
+    fileLifecycle: 'Files born / buried',
+    fileLifecycleValue: (added, deleted) => `${plural(added, UNITS.file)} added, ${num(deleted)} deleted`,
     tied: 'tied',
     streaks: 'Streaks',
     longestStreak: 'Longest streak',

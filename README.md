@@ -23,7 +23,7 @@ Ten 1080x1920 story cards, plus a monthly timeline when your commits span two or
 calendar months and a team card in a repo with more than one contributor (up to twelve):
 
 1. **Intro**: the repo name, the date range in plain English ("Oct 4 – Oct 5, 2026") and how many commits there are to unwrap, plus whose story it is when you pass `--author` (the part of the email before the `@` only: "Starring ada."), and where it all began: an "It all began with" panel with the first commit in the window, its quoted subject on one line ("“Initial commit”") and its day and short hash below ("Jan 3, 2025 · 1a2b3c4"; with several repos, its repo too). Merge commits are skipped. The subject is shortened to fit its line (first a smaller font, then cut with "…"), a long repo label is cut with "…" so the day and hash always show, and when the card has no room for the panel it is left out (it is still in the recap, `wrapped.md` and `stats.json`).
-2. **Totals**: commits, a lines added vs. removed bar, active days and files touched (and contributors, when there is more than one), plus your commit size mix: the share of tiny (under 10 lines), small (10–99), medium (100–500) and large (over 500 lines changed) commits as one stacked bar. The bar only uses spare room: when the card is short of space (with `--year`'s three extra rows, say) it is left out, and nothing else on the card shrinks for it (the mix is still in the recap and `stats.json`). Sizes count the same files as hot files (lockfiles, build output and the rest are left out, and so is anything you `--exclude`) and skip merge commits. When some of your commits were paired (a `Co-authored-by:` trailer, see the team card) and the team card is not there to show it (or has no room for it, or you passed `--author`), a "Paired (top: Ada)" row with their count is added, again only when it fits without anything else shrinking.
+2. **Totals**: commits, a lines added vs. removed bar, active days and files touched (and contributors, when there is more than one), plus your commit size mix: the share of tiny (under 10 lines), small (10–99), medium (100–500) and large (over 500 lines changed) commits as one stacked bar. The bar only uses spare room: when the card is short of space (with `--year`'s three extra rows, say) it is left out, and nothing else on the card shrinks for it (the mix is still in the recap and `stats.json`). Sizes count the same files as hot files (lockfiles, build output and the rest are left out, and so is anything you `--exclude`) and skip merge commits. When some of your commits were paired (a `Co-authored-by:` trailer, see the team card) and the team card is not there to show it (or has no room for it, or you passed `--author`), a "Paired (top: Ada)" row with their count is added, again only when it fits without anything else shrinking. After it, when files were added or deleted in the window, a "Files born / buried 12 / 3" row follows on the same terms (spare room only; it never takes the place of the pairing row or anything else, and it is always in the recap, `wrapped.md` and `stats.json`).
 3. **Power hour**: the hour of the day you commit the most, with a 24-hour bar chart and a Monday-to-Sunday weekday chart (hover a bar in `wrapped.html` for its count).
 4. **Streak**: your longest run of consecutive days with a commit, with a longest vs. current bar comparison and your longest break (the most days without a commit between two active days) when you took one.
 5. **Activity**: a GitHub-style calendar of commits per day (weeks as rows, Monday to Sunday, brighter the busier the day), with your number of active days and your busiest day. Hover a day in `wrapped.html` for its count. It covers up to the last 53 weeks of your history, and so does its busiest day: on a history longer than about a year it is the busiest day of the weeks on the grid, while the recap, `wrapped.md` and `stats.json` give the busiest day of the whole window. For a repo that went quiet more than a month ago it says "12 months to Apr 2021" instead of "Your last 12 months".
@@ -55,7 +55,8 @@ You also get:
   previews and social posts.
 - **Terminal recap**: commits, active days, lines, power hour, busiest day of the
   whole window (e.g. `Busiest day  Oct 2, 2026 (14 commits)`), streak, longest break,
-  hottest file, top language, first commit, team (in a repo with more than one contributor: the top contributor, or
+  hottest file, files born / buried (files added and deleted, e.g. `Files  12 born · 3 buried`),
+  top language, first commit, team (in a repo with more than one contributor: the top contributor, or
   with `--author` your rank, e.g. `Team  7 contributors · you're #2 (31% of commits)`),
   pairing (when commits have `Co-authored-by:` trailers, e.g.
   `Paired  12 commits (31% of non-merge commits) · top co-author: Grace Hopper`),
@@ -115,7 +116,7 @@ gitwrapped [path...] [options]
 | `--until YYYY-MM-DD`  | Only include commits made on or before this day, inclusive (the author's local calendar day) |
 | `--year YYYY`         | One calendar year, the classic Wrapped: same as `--since YYYY-01-01 --until YYYY-12-31` (can't be combined with them), plus a comparison with the year before (see [Year over year](#year-over-year)) |
 | `--author <email>`    | Only include commits by this author email (exact, case-insensitive match against the email after `.mailmap` is applied) |
-| `--exclude <glob>`    | Leave matching files out of lines added/removed, files touched, hot files, languages, the biggest commit and the commit size mix (and the per-repo, per-contributor and year-over-year lines). Repeatable. Commits still count: a commit that only touched excluded files still counts toward commits, active days, streaks and habits (see [Excluding files](#excluding-files)) |
+| `--exclude <glob>`    | Leave matching files out of lines added/removed, files touched, hot files, languages, the biggest commit, the commit size mix and files born / buried (and the per-repo, per-contributor and year-over-year lines). Repeatable. Commits still count: a commit that only touched excluded files still counts toward commits, active days, streaks and habits (see [Excluding files](#excluding-files)) |
 | `--out <dir>`         | Output directory (default: `gitwrapped-out`, created if needed)                        |
 | `--lang <code>`       | Language of the cards, share image, viewer and terminal recap: `en` (English, default) or `tr` (Türkçe). Also `--lang=tr`; an unknown code is an error. `stats.json` and file names stay the same in every language |
 | `--theme <name>`      | Color theme of the cards, share image, PNGs and viewer: `default` (the colorful gradients), `mono` (grayscale) or `neon` (near-black with neon glows). Also `--theme=mono`; an unknown name is an error. Only colors change: the layout, `stats.json` and file names are the same in every theme |
@@ -179,7 +180,7 @@ NO_COLOR=1 npx @furkycl/gitwrapped --no-png | head -1
 
 `--exclude <glob>` (repeatable) drops matching files before any stat is computed: lines
 added / removed, files touched, hot files, languages, the biggest commit, the commit size
-mix, the per-repo breakdown, the team card's lines and the year-over-year lines changed all leave them out. Commits are never
+mix, files born / buried, the per-repo breakdown, the team card's lines and the year-over-year lines changed all leave them out. Commits are never
 dropped: a commit that only touched excluded files still counts toward commits, active
 days, streaks, time habits and the team card's commit counts. Matching is
 gitignore-like and case-sensitive:
@@ -297,7 +298,7 @@ but it does contain commit subjects and hashes, tag names and repo-relative file
 | `asOf`          | `YYYY-MM-DD` the current streak is counted up to: today, or the end of a past `--until` / `--year` window |
 | `filters`       | `{since, until, author, maxCommits, exclude}` as used (`--year` shows as since/until); dates and author are `null` when not set, `maxCommits` is the cap in effect, `exclude` the `--exclude` patterns in order (`[]` when none) |
 | `truncated`     | `true` when `--max-commits` cut the history short                             |
-| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `busiestDay`, `months`, `hotFiles`, `languages`, `contributors`, `messages`, `biggestCommit`, `commitSizes`, `commitTypes`, `emoji`, `reverts`, `firstCommit`, `coAuthors`, `releases`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
+| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `busiestDay`, `months`, `hotFiles`, `fileLifecycle`, `languages`, `contributors`, `messages`, `biggestCommit`, `commitSizes`, `commitTypes`, `emoji`, `reverts`, `firstCommit`, `coAuthors`, `releases`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
 
 ```json
 {
@@ -310,6 +311,7 @@ but it does contain commit subjects and hashes, tag names and repo-relative file
   "stats": {
     "totals": { "commits": 412, "activeDays": 131, "linesAdded": 30211, "...": "..." },
     "busiestDay": { "day": "2025-03-04", "commits": 14 },
+    "fileLifecycle": { "added": 57, "deleted": 12 },
     "streaks": {
       "longest": { "length": 9, "start": "2025-03-02", "end": "2025-03-10" },
       "current": { "length": 0, "start": null, "end": null },
@@ -345,6 +347,19 @@ including ones dated in the future (the activity card, the recap and `wrapped.md
 those days out, see below). The recap and `wrapped.md` show this day; on a history longer
 than about a year the activity card shows the busiest day of the last 53 weeks on its grid
 instead, so the two can differ.
+
+`stats.fileLifecycle` is how many files were born and buried in the window, as
+`{"added": n, "deleted": n}`: the files the commits added and deleted (both `0` when none).
+It is read with one extra `git log --name-status --diff-filter=AD -M` call over the commits
+read (so the window, `--author` and `--max-commits` apply), with rename detection on, so a
+renamed or moved file is neither added nor deleted (a rename edited beyond git's
+similarity threshold, or one in a commit too big for git's `diff.renameLimit`, still counts
+as one delete and one add; if that extra git call fails, both counts fall back to `0`). Each add or delete counts
+once per commit, so a file added, deleted and added again is 2 added and 1 deleted. The
+same files as hot files count (lockfiles, build output, vendored code, minified files and
+snapshots are left out, and so is anything you `--exclude`); merge commits are skipped (git
+gives them no diff, as for the line counts), and so are a shallow clone's boundary
+commits. With several repos it is the sum over all of them.
 
 `stats.months` is commits per author-local calendar month: `months` is
 `[{"month": "YYYY-MM", "commits": n}]`, oldest first, contiguous from the first to the last
@@ -545,8 +560,8 @@ README, a PR description or release notes:
 
 - a title with the repo name and the date window (or first – last active day), and with
   `--author` the name part of that address ("Starring ada.");
-- the headline numbers (commits, active days, lines added / removed, files touched; with
-  `--year` the change since the year before), the commit size mix, the first commit and,
+- the headline numbers (commits, active days, lines added / removed, files touched, files
+  born / buried when any were added or deleted; with `--year` the change since the year before), the commit size mix, the first commit and,
   when commits have `Co-authored-by:` trailers, how many were paired and the top co-author,
   and, when tags point at your commits, how many releases you shipped and the latest one;
 - the power hour, busiest weekday and busiest day (the date with the most commits), the

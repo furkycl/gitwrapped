@@ -20,6 +20,7 @@ import { shownCommitSizes } from '../stats/sizes.js';
 import { foldCommitTypes, shownCommitTypes } from '../stats/types.js';
 import { shownEmoji } from '../stats/emoji.js';
 import { shownReverts } from '../stats/reverts.js';
+import { shownFileLifecycle } from '../stats/files.js';
 import { sizeShares } from '../stats/sizes.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from '../i18n/index.js';
 import { DEFAULT_COLOR_THEME, isColorTheme } from './themes.js';
@@ -408,7 +409,22 @@ function totals(s, { L, repos }) {
   // Commits with a co-author (stats.coAuthors) as one more row, when the team card does not
   // show them (see pairingOnTeam) and the row fits in spare room only.
   const row = pairingOnTeam(s, L) ? null : pairedRow(s, L);
-  return row ? withSpareRow(spec, row, L) : spec;
+  const withPaired = row ? withSpareRow(spec, row, L) : spec;
+  // Files born / buried (stats.fileLifecycle) after it, again in spare room only: it never
+  // displaces the pairing row or anything else (it is always in the recap, wrapped.md and
+  // stats.json).
+  const lifecycle = lifecycleRow(s, L);
+  return lifecycle ? withSpareRow(withPaired, lifecycle, L) : withPaired;
+}
+
+/**
+ * The totals card's files born / buried row (stats.fileLifecycle, see shownFileLifecycle):
+ * "Files born / buried" and "12 / 3"; null when no file was added or deleted.
+ */
+function lifecycleRow(s, L) {
+  const lc = shownFileLifecycle(s.fileLifecycle);
+  if (!lc) return null;
+  return { label: L.totals.fileLifecycle, value: L.totals.fileLifecycleValue(lc.added, lc.deleted) };
 }
 
 /**

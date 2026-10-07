@@ -5,7 +5,7 @@ import { computeFirstCommit, SHORT_HASH } from './first.js';
 import { computeCoAuthors, shownCoAuthors, TOP_CO_AUTHORS } from './coauthors.js';
 import { computeReleases, shownReleases } from './releases.js';
 import { busiestOf, computeDaily, daysUpTo, longestGap, longestRun, shownBusiestDay, shownLongest, shownLongestBreak } from './daily.js';
-import { computeHotFiles, isIgnoredPath, repoRelativePath } from './files.js';
+import { computeFileLifecycle, computeHotFiles, isIgnoredPath, repoRelativePath, shownFileLifecycle } from './files.js';
 import { computeTimeHabits } from './habits.js';
 import { computeLanguages, languageBarRows, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER as OTHER_LANGUAGE, percentShares } from './languages.js';
 import { computeMessages, isMergeCommit } from './messages.js';
@@ -20,7 +20,7 @@ import { computeYearOverYear, yearOverYear } from './yoy.js';
 import { computeReverts, isRevertCommit, isRevertSubject, shownReverts } from './reverts.js';
 import { computeEmoji, EMOJI_MIN_SHARE, emojiIn, emojiKey, GITMOJI, isEmoji, shownEmoji, TOP_EMOJI } from './emoji.js';
 
-export { computeTotals, computeTimeHabits, computeStreaks, computeDaily, busiestOf, daysUpTo, longestGap, longestRun, shownBusiestDay, shownLongest, shownLongestBreak, computeHotFiles, isIgnoredPath, repoRelativePath, computeRepos, computeYearOverYear, yearOverYear };
+export { computeTotals, computeTimeHabits, computeStreaks, computeDaily, busiestOf, daysUpTo, longestGap, longestRun, shownBusiestDay, shownLongest, shownLongestBreak, computeFileLifecycle, shownFileLifecycle, computeHotFiles, isIgnoredPath, repoRelativePath, computeRepos, computeYearOverYear, yearOverYear };
 export { computeLanguages, languageBarRows, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER_LANGUAGE, percentShares };
 export { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONTRIBUTORS };
 export { computeFirstCommit, SHORT_HASH };
@@ -44,6 +44,8 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * `busiestDay` is the single author-local day with the most commits as `{day: 'YYYY-MM-DD',
  * commits}` (ties → the earliest day), or null without commits: a copy of daily.busiest
  * (the recap and wrapped.md leave out future-dated days, see daily.js shownBusiestDay);
+ * `fileLifecycle` is how many files the commits added and deleted, `{added, deleted}`
+ * (renames are neither; ignored paths left out as for hot files, see files.js);
  * `languages` is lines / files per language (see languages.js). `biggestCommit` is the
  * non-merge commit with the most lines changed, ignored paths left out as for hot files
  * (see biggest.js), or null. `commitSizes` is how many non-merge commits are tiny (< 10
@@ -86,6 +88,7 @@ export function computeStats(commits = [], { today, todayComplete, team, author,
     busiestDay: daily.busiest ? { ...daily.busiest } : null,
     months: computeMonths(commits),
     hotFiles: computeHotFiles(commits),
+    fileLifecycle: computeFileLifecycle(commits),
     languages: computeLanguages(commits),
     contributors: computeContributors(team ?? commits, { author, truncated: teamTruncated }),
     messages: computeMessages(commits),

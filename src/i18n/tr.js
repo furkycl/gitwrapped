@@ -279,6 +279,8 @@ export default {
     typeTitle: (name, commits, pct) => `${name}: ${plural(commits, UNITS.commit)} (${pct})`,
     counterCommits: '“fix” / “wip” / “oops”',
     counterValues: (fix, wip, oops) => `${fix} / ${wip} / ${oops}`,
+    emojiTitle: 'Emoji',
+    emojiShare: (pct) => `commit'lerin ${pct} kadarı`,
   },
 
   personality: {
@@ -420,6 +422,7 @@ export default {
     sizeNames: { tiny: 'minik', small: 'küçük', medium: 'orta', large: 'büyük' },
     types: 'Türler',
     conventional: (pct) => `commit'lerin ${pct} kadarı conventional`,
+    emoji: 'Emoji',
     you: 'Kişiliğin',
     cardsIn: (count, dir) => `${count}: ${dir}`,
     shareImage: 'paylaşım görseli:',
@@ -452,6 +455,7 @@ export default {
     share: 'Pay',
     repo: 'Repo',
     commitTypes: 'Commit türleri',
+    emoji: 'Emoji',
     paired: 'Birlikte yazılan',
     topCoAuthor: (name) => `en sık ortak: ${name}`,
     releases: 'Sürümler',

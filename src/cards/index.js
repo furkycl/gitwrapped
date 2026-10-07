@@ -18,6 +18,7 @@ import { yearOverYear } from '../stats/yoy.js';
 import { shownBiggestLines } from '../stats/biggest.js';
 import { shownCommitSizes } from '../stats/sizes.js';
 import { foldCommitTypes, shownCommitTypes } from '../stats/types.js';
+import { shownEmoji } from '../stats/emoji.js';
 import { sizeShares } from '../stats/sizes.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from '../i18n/index.js';
 import { DEFAULT_COLOR_THEME, isColorTheme } from './themes.js';
@@ -917,10 +918,65 @@ function withTypeMix(spec, types, folded, L) {
   return spec;
 }
 
+/**
+ * The share of commits with an emoji in a shownEmoji() stat, as text: a whole percent,
+ * capped at 99% while some commit has none (shown from 5%, so never "<1%"). Card, recap
+ * and wrapped.md all use this.
+ */
+export const emojiShareText = (e, L = EN) => conventionalText({ conventional: e?.commits, total: e?.total }, L);
+
+/**
+ * The messages card's emoji row (stats.emoji, see shownEmoji): "Emoji ✨ 🐛 📝" (the top
+ * three emoji) with the share of commits that have one ("12%") as its value; null when the
+ * stat is not shown (under 5% of the commits). The share is the value, so a PNG that drops
+ * color emoji (macOS, see src/png.js) still reads "Emoji · 12%".
+ */
+function emojiRow(s, L) {
+  const e = shownEmoji(s.emoji);
+  if (!e) return null;
+  const M = L.messages;
+  return { label: [M.emojiTitle, ...e.top.map((t) => t.emoji)].join(' '), value: emojiShareText(e, L) };
+}
+
+/**
+ * The messages card (with the type mix when it fits, see withTypeMix) with the emoji row
+ * (see emojiRow) as its last row, in the first of these that fits:
+ * 1. after the rows as they are;
+ * 2. with the "fix" / "wip" / "oops" rows folded into one;
+ * 3. either of those with the big word one step (15%) smaller;
+ * 4. in place of the folded counter row (the type mix and the biggest commit keep their
+ *    room; the counts stay in stats.json), as is, else with that one step.
+ * "Fits" means every chart the card drew is still drawn and nothing shrinks more than it
+ * did (the one step of 3 / 4 only when nothing shrank). Without rows (no subjects), `spec`
+ * unchanged; so is a card without the row, which is exactly what it was before.
+ */
+function withEmoji(spec, row, folded, L) {
+  if (!Array.isArray(spec.lines) || !Array.isArray(folded) || folded.length === 0) return spec;
+  const layout = (candidate) => layoutOf({ ...candidate, lang: L.code });
+  const base = layout(spec);
+  const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+  const fits = (candidate, extra) => {
+    const l = layout(candidate);
+    return same(l.drawnCharts, base.drawnCharts) && l.shrinkSteps <= base.shrinkSteps + extra;
+  };
+  const appended = { ...spec, lines: [...spec.lines, row] };
+  const compact = spec.lines !== folded ? { ...spec, lines: [...folded, row] } : null;
+  const replaced = { ...spec, lines: [...folded.slice(0, -1), row] };
+  const steps = base.shrinkSteps === 0 ? [0, 1] : [0];
+  for (const extra of steps) {
+    if (fits(appended, extra)) return appended;
+    if (compact && fits(compact, extra)) return compact;
+  }
+  for (const extra of steps) if (fits(replaced, extra)) return replaced;
+  return spec;
+}
+
 function messages(s, { L }) {
   const spec = messagesCard(s, L);
   const types = typeStack(s, L);
-  return types ? withTypeMix(spec.card, types, spec.folded, L) : spec.card;
+  const card = types ? withTypeMix(spec.card, types, spec.folded, L) : spec.card;
+  const row = emojiRow(s, L);
+  return row ? withEmoji(card, row, spec.folded, L) : card;
 }
 
 /** The messages card without the type mix (`card`), and its rows with the three counters folded into one (`folded`, null without rows). */

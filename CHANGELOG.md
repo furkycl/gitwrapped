@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Commit emoji: the share of commits with an emoji in the subject, Unicode (✨, a ZWJ
+  sequence, skin tone, flag or keycap counts as one) or a [gitmoji](https://gitmoji.dev)
+  shortcode (`:sparkles:` counts as ✨; unknown `:words:`, times like `10:30:00` and
+  paths like `std::thread::spawn` don't), and the top three emoji. When at least 5% of the
+  commits have one, the messages card gets an "Emoji ✨ 🐛 📝 · 12%" row (after the other
+  rows when there's room, else with the fix / wip / oops rows folded into one, else in
+  place of that folded row; the type mix and the biggest commit keep their room, and
+  without emoji the card is exactly as before), the recap an "Emoji" line and
+  `wrapped.md` an "Emoji" section, and `stats.json` gets `stats.emoji` (`{total, commits, share, distinct, top:
+  [{emoji, count}], shown}`; an emoji counts once per commit, ties go to code point
+  order). Merge commits are skipped. English and Turkish.
 - Releases: the commits in the window that tags point at (lightweight or annotated,
   peeled to their commit), one release per tagged commit however many tags it has
   (floating `v1` / `v1.2`, `latest`, a tag on a tag). The outro card gets a "Releases"

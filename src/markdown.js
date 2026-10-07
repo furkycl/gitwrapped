@@ -5,9 +5,10 @@
 // part only (authorName), and email-shaped text in any repo-derived text (subjects,
 // paths, repo and contributor names) is cut out by escapeMarkdown.
 
-import { authorName, displayRepoName, formatDateRange, formatDay, conventionalText, pctText, repoRows, shownDayRange, sizeShareText } from './cards/index.js';
+import { authorName, displayRepoName, formatDateRange, formatDay, conventionalText, emojiShareText, pctText, repoRows, shownDayRange, sizeShareText } from './cards/index.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
+import { shownEmoji } from './stats/emoji.js';
 import { shownLongest, shownLongestBreak } from './stats/daily.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { contributorName, hasTeamCard, shareLabel } from './stats/contributors.js';
@@ -260,6 +261,16 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
       section(M.commitTypes, [
         escapeMarkdown(`${types.rows.map((r) => `${sizeShareText(r, types.rows, L)} ${names[r.id]}`).join(' · ')} (${L.recap.conventional(conventionalText(types, L))})`),
       ]);
+    }
+
+    // --- emoji (as on the messages card and the recap; only when shown) ----------------
+    const emoji = shownEmoji(stats?.emoji);
+    if (emoji) {
+      // The emoji are single validated clusters: only a keycap's "#" / "*" needs escaping
+      // (a word joiner, as escapeMarkdown adds after "#", would break the keycap).
+      const top = emoji.top.map((t) => `${t.emoji.replace(/[#*]/g, '\\$&')} ${num(t.count, L)}`).join(' · ');
+      const share = escapeMarkdown(L.messages.emojiShare(emojiShareText(emoji, L)));
+      section(M.emoji, [top ? `${share}: ${top}` : share]);
     }
 
     // --- personality ------------------------------------------------------------------

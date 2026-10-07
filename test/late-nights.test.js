@@ -321,7 +321,7 @@ describe('end to end (real binary, fixture repo)', () => {
   });
   after(() => {
     fx?.cleanup();
-    if (tmp) rmSync(tmp, { recursive: true, force: true });
+    if (tmp) rmSync(tmp, { recursive: true, force: true, maxRetries: 5 });
   });
   const run = (name, args) => {
     const out = join(tmp, name);

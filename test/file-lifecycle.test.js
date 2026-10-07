@@ -121,11 +121,11 @@ describe('excludeFiles and mergeHistories carry born / buried', () => {
 describe('cards, recap and wrapped.md', () => {
   const base = () => computeStats([commit(1), commit(2)], { today: TODAY });
 
-  test('totals card: a "Files born / buried" row when there is room, en and tr', () => {
+  test('totals card: a "Born / buried" row when there is room, en and tr', () => {
     const stats = { ...base(), fileLifecycle: { added: 1234, deleted: 3 } };
-    assert.deepEqual(totalsSpec(stats).lines.at(-1), { label: 'Files born / buried', value: '1,234 / 3' });
-    assert.deepEqual(totalsSpec(stats, 'tr').lines.at(-1), { label: 'Doğan / gömülen dosya', value: '1.234 / 3' });
-    assert.match(totalsSvg(stats), /Files born \/ buried/);
+    assert.deepEqual(totalsSpec(stats).lines.at(-1), { label: 'Born / buried', value: '1,234 / 3' });
+    assert.deepEqual(totalsSpec(stats, 'tr').lines.at(-1), { label: 'Doğan / gömülen', value: '1.234 / 3' });
+    assert.match(totalsSvg(stats), />Born \/ buried</);
   });
 
   test('totals card: unchanged (byte-identical) without added or deleted files', () => {
@@ -431,7 +431,7 @@ describe('git (real repos): odd paths, author, cap, CLI', () => {
     assert.deepEqual(JSON.parse(readFileSync(join(out, 'stats.json'), 'utf8')).stats.fileLifecycle, { added: 9, deleted: 4 });
     assert.match(r.stdout, /Files\s+9 born · 4 buried/);
     assert.match(readFileSync(join(out, 'wrapped.md'), 'utf8'), /Files born \/ buried:\*\* 9 files added, 4 deleted/);
-    assert.match(readFileSync(join(out, 'cards', '02-totals.svg'), 'utf8'), /Files born \/ buried/);
+    assert.match(readFileSync(join(out, 'cards', '02-totals.svg'), 'utf8'), />Born \/ buried</);
 
     const out2 = join(root, 'cli2');
     const a = run(['--json', '--author', 'ada@example.com', '--exclude', 'ünïcödé/', '--lang', 'tr', '--out', out2]);

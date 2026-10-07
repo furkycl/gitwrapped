@@ -13,6 +13,7 @@ import { shownReverts } from './stats/reverts.js';
 import { shownFileLifecycle } from './stats/files.js';
 import { shownFolders } from './stats/folders.js';
 import { shownTimezones, utcLabel } from './stats/timezones.js';
+import { shownWeekend, weekendPercentLabel } from './stats/weekend.js';
 import { shownBusiestDay, shownLongest, shownLongestBreak } from './stats/daily.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { contributorName, hasTeamCard, shareLabel } from './stats/contributors.js';
@@ -192,6 +193,9 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
       const top = tz.top ? ` (${L.recap.mostly(utcLabel(tz.top))}, ${L.recap.ofCommits(shareLabel(tz.share, tz.commits, L.pct))})` : '';
       habits.push(item(L.recap.timezones, `${L.recap.timezonesValue(tz.count)}${top}`));
     }
+    // Commits on an author-local Saturday or Sunday (stats.weekend), as in the recap.
+    const weekend = shownWeekend(stats);
+    if (weekend) habits.push(item(M.weekend, `${plural(weekend.commits, 'commit', L)} (${L.recap.ofCommits(weekendPercentLabel(weekend.percent, L.pct))})`));
     section(M.habits, habits);
 
     // --- streaks ----------------------------------------------------------------------

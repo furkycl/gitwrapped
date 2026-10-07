@@ -1,7 +1,7 @@
 // The story-card set: turns computeStats() output into Wrapped-style SVG cards.
 // Pure and deterministic. Every card copes with empty stats (0 commits, null peaks,
 // no hot files, null messages) and never prints "null", "undefined" or "NaN".
-import { CALLOUT_NOTE, calendarWindow, escapeXml, formatNumber, graphemes, layoutCard as layoutOf, measureText, renderCardWithLayout, truncateMiddle } from './svg.js';
+import { CALENDAR_MIN_CELL, CALLOUT_NOTE, calendarWindow, escapeXml, formatNumber, graphemes, layoutCard as layoutOf, measureText, renderCardWithLayout, truncateMiddle } from './svg.js';
 
 export { formatNumber };
 import { renderShareSvg } from './share.js';
@@ -12,6 +12,7 @@ import { monthIndex, monthsFromDays } from '../stats/months.js';
 import { hasTeamCard, shareLabel, TOP_CONTRIBUTORS } from '../stats/contributors.js';
 import { shownCoAuthors } from '../stats/coauthors.js';
 import { shownTimezones, utcLabel } from '../stats/timezones.js';
+import { shownWeekend, weekendPercentLabel } from '../stats/weekend.js';
 import { shownReleases } from '../stats/releases.js';
 import { scrubEmails } from '../privacy.js';
 import { personalityReason } from '../stats/personality.js';
@@ -761,13 +762,43 @@ function activity(s, ctx = { L: EN }) {
   const parts = [];
   if (busiest) parts.push(A.busiest(formatDay(busiest.day, L.code), busiest.commits));
   if (weeks > 0) parts.push(A.weeks(weeks));
-  return {
+  const spec = {
     eyebrow,
     big: L.num(days.length),
     title: A.title(days.length),
     subtitle: parts.join(' '),
     chart: { kind: 'calendar', days },
   };
+  // Commits on a weekend (stats.weekend) as a row, only when the grid shows every commit
+  // (not clipped to 53 weeks, no future-dated day left off) and there is room for it
+  // with the calendar's cells kept at their normal minimum size or larger.
+  const weekend = win.clipped || dropped ? null : weekendRow(s, L);
+  return weekend ? withCalendarRow(spec, weekend, L) : spec;
+}
+
+/**
+ * The activity card's weekend row (see stats/weekend.js shownWeekend): "Weekends" and
+ * "12 commits · 8%", the percent Weekend Warrior quotes; null without a weekend commit.
+ */
+function weekendRow(s, L) {
+  const w = shownWeekend(s);
+  if (!w) return null;
+  return { label: L.recap.weekend, value: `${plural(w.commits, 'commit', L)} · ${weekendPercentLabel(w.percent, L.pct)}` };
+}
+
+/**
+ * The activity card `spec` with `row` added after its rows when it fits: room for another
+ * row, the same charts drawn, no more shrink steps than before, and the calendar's cells
+ * still at least their normal minimum size (CALENDAR_MIN_CELL): the calendar may give up
+ * spare height, so its cells can get smaller, but never below that. Else `spec` unchanged.
+ */
+function withCalendarRow(spec, row, L) {
+  const lines = Array.isArray(spec.lines) ? spec.lines : [];
+  if (lines.length >= MAX_ROWS) return spec;
+  const next = { ...spec, lines: [...lines, row] };
+  if (!fitsLike(next, spec, 0, L)) return spec;
+  const cells = layoutOf({ ...next, lang: L.code }).blocks.filter((b) => b.kind === 'calendar').map((b) => b.cell);
+  return cells.length > 0 && cells.every((c) => Number.isFinite(c) && c >= CALENDAR_MIN_CELL) ? next : spec;
 }
 
 /**

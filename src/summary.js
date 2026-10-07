@@ -19,6 +19,7 @@ import { shownEmoji } from './stats/emoji.js';
 import { shownReverts } from './stats/reverts.js';
 import { shownFileLifecycle } from './stats/files.js';
 import { shownTimezones, utcLabel } from './stats/timezones.js';
+import { shownWeekend, weekendPercentLabel } from './stats/weekend.js';
 
 const EN = getStrings(DEFAULT_LANG);
 
@@ -186,6 +187,9 @@ function shortText(s, maxWidth = 48) {
  * most common one with its share of commits ("3 time zones · mostly UTC+03:00 (62% of
  * commits)"; "mostly" left out on a tie, see stats/timezones.js shownTimezones) when there
  * are two or more.
+ * A "Weekends" line shows how many commits landed on an author-local Saturday or Sunday
+ * and their share ("12 commits (8% of commits)", the percent Weekend Warrior quotes, see
+ * stats/weekend.js shownWeekend) when there is at least one.
  * A "Break" line shows the longest break between two active days (stats.streaks.longestBreak,
  * future-dated days left out with `today` as on the streak card) when there is one.
  * A "First commit" line shows the first commit in the window (stats.firstCommit: subject,
@@ -277,6 +281,13 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     if (tz) {
       const top = tz.top ? ` ${c('dim', `· ${R.mostly(utcLabel(tz.top))} (${R.ofCommits(shareLabel(tz.share, tz.commits, L.pct))})`)}` : '';
       lines.push(`  ${label(R.timezones)}${c('cyan', R.timezonesValue(tz.count))}${top}`);
+    }
+
+    // Commits on an author-local Saturday or Sunday (stats.weekend), the same count and
+    // percent as Weekend Warrior's reason; only when there is at least one.
+    const weekend = shownWeekend(stats);
+    if (weekend) {
+      lines.push(`  ${label(R.weekend)}${c('cyan', plural(weekend.commits, 'commit', L))} ${c('dim', `(${R.ofCommits(weekendPercentLabel(weekend.percent, L.pct))})`)}`);
     }
 
     const s = stats?.streaks ?? {};

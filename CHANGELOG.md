@@ -21,6 +21,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   smaller), and the card is unchanged when it doesn't fit. Shown only with two or more
   folders (`(root)` / `(kök)` in Turkish).
 
+- Weekend share: how many commits landed on an author-local Saturday or Sunday, from the
+  power hour's weekday counts (every commit, merges included), so it always agrees with
+  the Weekend Warrior personality. `stats.json` gets `stats.weekend` (`{commits, share}`,
+  share 0..1 with 3 decimals), the recap a "Weekends  12 commits (8% of commits)" line and
+  `wrapped.md` a "Weekend commits" item (both with at least one weekend commit), and the
+  activity card a "Weekends  12 commits · 8%" row when its grid covers every commit and
+  there is room (the calendar's cells may get smaller, but never below their normal
+  minimum size; otherwise the card is unchanged). English and
+  Turkish ("Hafta sonu", "%8").
+
+### Changed
+
+- Weekend Warrior's reason never says "100%" unless every commit landed on a weekend
+  (99% at most otherwise), matching the new weekend line.
+
 ## [1.7.0] - 2026-10-07
 
 ### Added

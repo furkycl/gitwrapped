@@ -96,5 +96,13 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] Commit emoji: share of subjects with an emoji (incl. `:gitmoji:` shortcodes) and the top 3 emoji on the messages card when ≥5% of commits use one, stats.json `stats.emoji`, recap and wrapped.md; en/tr; tests
 - [x] Reverts: commits that revert another (`Revert "…"` subject or `This reverts commit <hash>` body), count + share, folded into the messages card and the Fixaholic roast, stats.json `stats.reverts`, recap and wrapped.md; en/tr; tests
 - 1.6.0 release prep (split as before):
-  - [ ] Cold audit of the 1.6 work (diff 1.5.0 release commit..main) + fix every real bug found, with tests
-  - [ ] CHANGELOG 1.6.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync
+  - [x] Cold audit of the 1.6 work (diff 1.5.0 release commit..main) + fix every real bug found, with tests
+  - [x] CHANGELOG 1.6.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync
+
+## M13 — 1.7 (proposed by loop turn 054 per the M8 owner note "do not finish the loop"; owner may prune)
+- [ ] Busiest day: the single day with the most commits in the window (author-local day, count, ties → earliest) called out on the activity card, stats.json `stats.busiestDay`, recap and wrapped.md; en/tr; tests
+- [ ] Files born and buried: files added vs deleted in the window (from `--name-status`/`--diff-filter=AD` in the same log read or one extra call, same ignore rules as hot files, renames not counted) as a row on the totals card when there's room, stats.json `stats.fileLifecycle {added, deleted}`, recap and wrapped.md; en/tr; tests
+- [ ] Time zones: distinct author UTC offsets in the window and the most common one, "Committed from N time zones" on the power-hour card when N ≥ 2, stats.json `stats.timezones`, recap and wrapped.md; en/tr; tests
+- 1.7.0 release prep (split as before):
+  - [ ] Cold audit of the 1.7 work (diff 1.6.0 release commit..main) + fix every real bug found, with tests
+  - [ ] CHANGELOG 1.7.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync

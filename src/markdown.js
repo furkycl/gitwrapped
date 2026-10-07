@@ -5,12 +5,13 @@
 // part only (authorName), and email-shaped text in any repo-derived text (subjects,
 // paths, repo and contributor names) is cut out by escapeMarkdown.
 
-import { authorName, displayRepoName, formatDateRange, formatDay, conventionalText, emojiShareText, pctText, revertShareText, repoRows, shownDayRange, sizeShareText } from './cards/index.js';
+import { authorName, displayRepoName, folderLabel, formatDateRange, formatDay, conventionalText, emojiShareText, pctText, revertShareText, repoRows, shownDayRange, sizeShareText } from './cards/index.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
 import { shownEmoji } from './stats/emoji.js';
 import { shownReverts } from './stats/reverts.js';
 import { shownFileLifecycle } from './stats/files.js';
+import { shownFolders } from './stats/folders.js';
 import { shownTimezones, utcLabel } from './stats/timezones.js';
 import { shownBusiestDay, shownLongest, shownLongestBreak } from './stats/daily.js';
 import { shownBiggestLines } from './stats/biggest.js';
@@ -102,6 +103,8 @@ const item = (label, value) => `- **${label}:** ${value}`;
  * - lang: an src/i18n code (default English)
  * - cards: [{id, file}] the card SVGs in order, `file` relative to the Markdown file
  *   (e.g. "cards/01-intro.svg"); linked as images at the end
+ * A "Top folders" table (stats.folders: folder, lines added / removed, commits) follows the
+ * hot files when there are two or more folders.
  * Sections without data are left out (no habits / streak / hot files / languages section
  * for an empty history, no team section unless the contributors card is built, ...).
  */
@@ -216,6 +219,16 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
         `| # | ${M.file} | ${M.commits} | ${M.lines} |`,
         '|--:|:--|--:|--:|',
         ...hot.map((f, i) => `| ${i + 1} | ${escapeMarkdown(f.path)} | ${num(f.commits, L)} | ${signed(f.linesAdded, '+', L)} / ${signed(f.linesRemoved, '−', L)} |`),
+      ]);
+    }
+
+    // --- top folders (stats.folders, two or more) -------------------------------------
+    const folders = shownFolders(stats?.folders);
+    if (folders) {
+      section(M.topFolders, [
+        `| # | ${M.folder} | ${M.lines} | ${M.commits} |`,
+        '|--:|:--|--:|--:|',
+        ...folders.slice(0, MD_TOP).map((f, i) => `| ${i + 1} | ${escapeMarkdown(folderLabel(f, L))} | ${signed(f.added, '+', L)} / ${signed(f.deleted, '−', L)} | ${num(f.commits, L)} |`),
       ]);
     }
 

@@ -168,15 +168,17 @@ describe('cards', () => {
           const L = lang === 'tr' ? tr : en;
           for (const id of ['totals', 'hot-files']) {
             const { spec } = specs.find((s) => s.id === id);
+            // The hot-files card may also list the top folders, last, when they fit (see test/folders.test.js).
+            const folders = id === 'hot-files' && spec.chart.length === 3 && spec.chart[2].title === L.hotFiles.foldersTitle ? 1 : 0;
             // The totals card also has the commit size mix, last (dropped first when short of space).
-            assert.ok(Array.isArray(spec.chart) && spec.chart.length === (id === 'totals' ? 3 : 2), `${id} has its charts`);
+            assert.ok(Array.isArray(spec.chart) && spec.chart.length === (id === 'totals' ? 3 : 2 + folders), `${id} has its charts`);
             if (id === 'totals') assert.equal(spec.chart[2].kind, 'stack');
             const repoChart = spec.chart[1];
             assert.equal(repoChart.items.length, Math.min(n, 4));
             if (n > 4) assert.equal(repoChart.items.at(-1).label, L.repos.moreBar(n - 3));
             const { blocks } = layoutCard(spec);
             // Both charts survive the layout (none dropped).
-            assert.equal(blocks.filter((b) => b.kind === 'hbars' || b.kind === 'split').length, 2, `${id}: a chart was dropped`);
+            assert.equal(blocks.filter((b) => b.kind === 'hbars' || b.kind === 'split').length, 2 + folders, `${id}: a chart was dropped`);
             for (const b of blocks) {
               assert.ok(b.top >= CONTENT_TOP && b.bottom <= CONTENT_BOTTOM, `${id}: ${b.kind} outside content area`);
             }

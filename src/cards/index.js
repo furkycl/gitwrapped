@@ -22,6 +22,7 @@ import { foldCommitTypes, shownCommitTypes } from '../stats/types.js';
 import { shownEmoji } from '../stats/emoji.js';
 import { shownReverts } from '../stats/reverts.js';
 import { shownFileLifecycle } from '../stats/files.js';
+import { shownFolders } from '../stats/folders.js';
 import { sizeShares } from '../stats/sizes.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from '../i18n/index.js';
 import { DEFAULT_COLOR_THEME, isColorTheme } from './themes.js';
@@ -785,13 +786,81 @@ function hotFiles(s, { L, repos }) {
   }
   const [top] = files;
   const tied = files.length > 1 && num(files[1].commits) === num(top.commits);
-  return {
+  const spec = {
     eyebrow: H.eyebrow,
     big: basename(top.path),
     title: tied ? H.titleTied : H.title,
     subtitle: H.subtitle(top.commits, signedLines(top.linesAdded, '+', L), signedLines(top.linesRemoved, '−', L)),
     chart: hotFileCharts(files, repos, L),
   };
+  // The most-changed top-level folders (stats.folders, two or more) as a small list after
+  // the other charts, in spare room only (see withFolders); without it the card is exactly
+  // as before.
+  const folders = shownFolders(s.folders);
+  return folders ? withFolders(spec, folders, L) : spec;
+}
+
+/** How many folders the hot-files card lists at most (stats.folders keeps five). */
+const CARD_FOLDERS = 3;
+
+/** A shownFolders() entry's name as shown: "src/", or the language's "(root)". */
+const folderName = (f, L) => (f.root ? L.hotFiles.rootFolder : `${clip(text(f.name) ?? '')}/`);
+
+/**
+ * A shownFolders() entry as the recap and wrapped.md name it: "src/", the language's
+ * "(root)", and in a multi-repo run with the repo label first ("api/src/", "api/(root)").
+ */
+export const folderLabel = (f, L = EN) => `${f.repo ? `${f.repo}/` : ''}${folderName(f, L)}`;
+
+/**
+ * The top-folders list for the hot-files card: one bar per folder by lines changed, the
+ * folder's name in bold and, in a multi-repo run, its repo label dimmed after it (as the
+ * hot files show their folder). withFolders only adds it where it fits.
+ */
+function folderBars(folders, L) {
+  const H = L.hotFiles;
+  return {
+    kind: 'hbars',
+    title: H.foldersTitle,
+    items: folders.map((f) => {
+      const name = folderName(f, L);
+      const full = folderLabel(f, L);
+      return {
+        label: name,
+        ...(f.repo ? { sub: f.repo } : {}),
+        value: H.folderValue(f.lines),
+        amount: f.lines,
+        truncate: 'middle',
+        title: H.folderBarTitle(full, f.lines, signedLines(f.added, '+', L), signedLines(f.deleted, '−', L), f.commits),
+      };
+    }),
+  };
+}
+
+/**
+ * The hot-files card `spec` with the top folders (a shownFolders() value) as a small bar
+ * list after its charts, in the first of these that fits: the first CARD_FOLDERS folders,
+ * then the first two, with nothing shrinking; then the same with the big word one step
+ * (15%) smaller, when nothing had shrunk (as for the messages card's emoji row). Fitting
+ * means every chart the card drew is still drawn, at full size (the hot-files list keeps
+ * all its files, as does the per-repo chart; only the spare space between their bars can
+ * get tighter), and the list itself is drawn. Else `spec` unchanged, so a card without
+ * room for it is exactly what it was (the folders are still in the recap, wrapped.md and
+ * stats.json).
+ */
+function withFolders(spec, folders, L) {
+  const charts = Array.isArray(spec.chart) ? spec.chart : spec.chart ? [spec.chart] : [];
+  const base = layoutOf({ ...spec, lang: L.code });
+  const drawn = [...base.drawnCharts, charts.length];
+  const steps = base.shrinkSteps === 0 ? [0, 1] : [0];
+  for (const more of steps) {
+    for (const n of [CARD_FOLDERS, 2]) {
+      const candidate = { ...spec, chart: [...charts, folderBars(folders.slice(0, n), L)] };
+      const l = layoutOf({ ...candidate, lang: L.code });
+      if (l.shrinkSteps <= base.shrinkSteps + more && l.drawnCharts.length === drawn.length && l.drawnCharts.every((x, i) => x === drawn[i])) return candidate;
+    }
+  }
+  return spec;
 }
 
 /**

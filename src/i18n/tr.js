@@ -210,6 +210,10 @@ export default {
     subtitle: (commits, added, removed) => `${plural(commits, UNITS.commit)}, ${added} / ${removed} satır.`,
     chartTitle: 'En çok dokunulan dosyalar',
     barTitle: (path, commits, added, removed) => `${path}: ${plural(commits, UNITS.commit)}, ${added} / ${removed} satır`,
+    foldersTitle: 'En çok değişen klasörler',
+    rootFolder: '(kök)',
+    folderValue: (lines) => plural(lines, UNITS.line),
+    folderBarTitle: (path, lines, added, removed, commits) => `${path}: ${plural(commits, UNITS.commit)} içinde ${plural(lines, UNITS.line)} değişti (${added} / ${removed})`,
   },
 
   languages: {
@@ -412,6 +416,8 @@ export default {
     hottestFile: 'Gözde dosya',
     fileLifecycle: 'Dosyalar',
     fileLifecycleValue: (added, deleted) => `${num(added)} doğdu · ${num(deleted)} gömüldü`,
+    topFolders: 'Gözde klasörler',
+    folderLines: (lines) => plural(lines, UNITS.line),
     topLanguage: 'Favori dil',
     languageDetail: (share, basis, tiedMore) => `${basis === 'files' ? 'dosyaların' : 'satırların'} ${share} kadarı${tiedMore > 0 ? `, ${num(tiedMore)} dil ile berabere` : ''}`,
     team: 'Ekip',
@@ -464,6 +470,8 @@ export default {
     longestBreak: 'En uzun mola',
     hotFiles: 'Gözde dosyalar',
     file: 'Dosya',
+    topFolders: 'Gözde klasörler',
+    folder: 'Klasör',
     languages: 'Diller',
     language: 'Dil',
     contributor: 'Katkıcı',

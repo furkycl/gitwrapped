@@ -240,6 +240,12 @@ export default {
     subtitle: (commits, added, removed) => `${plural(commits, UNITS.commit)}, ${added} / ${removed} lines.`,
     chartTitle: 'Most-touched files',
     barTitle: (path, commits, added, removed) => `${path}: ${plural(commits, UNITS.commit)}, ${added} / ${removed} lines`,
+    /** The top-folders list (stats.folders), in spare room only: caption, then one bar per folder. */
+    foldersTitle: 'Top folders',
+    /** The name shown for the files at a repo's root (stats.folders' "(root)"). */
+    rootFolder: '(root)',
+    folderValue: (lines) => plural(lines, UNITS.line),
+    folderBarTitle: (path, lines, added, removed, commits) => `${path}: ${plural(lines, UNITS.line)} changed (${added} / ${removed}) in ${plural(commits, UNITS.commit)}`,
   },
 
   languages: {
@@ -471,6 +477,9 @@ export default {
     /** The files born / buried line (stats.fileLifecycle): label, then "12 born · 3 buried". */
     fileLifecycle: 'Files',
     fileLifecycleValue: (added, deleted) => `${num(added)} born · ${num(deleted)} buried`,
+    /** The top-folders line (stats.folders): label, then "src/ (1,234 lines) · test/ (567 lines) · (root) (89 lines)". */
+    topFolders: 'Top folders',
+    folderLines: (lines) => plural(lines, UNITS.line),
     topLanguage: 'Top language',
     /** "(74% of lines, tied with 1 more)". */
     languageDetail: (share, basis, tiedMore) => `${share} ${basis === 'files' ? 'of files' : 'of lines'}${tiedMore > 0 ? `, tied with ${tiedMore} more` : ''}`,
@@ -538,6 +547,9 @@ export default {
     longestBreak: 'Longest break',
     hotFiles: 'Hot files',
     file: 'File',
+    /** The top-folders table (stats.folders). */
+    topFolders: 'Top folders',
+    folder: 'Folder',
     languages: 'Languages',
     language: 'Language',
     contributor: 'Contributor',

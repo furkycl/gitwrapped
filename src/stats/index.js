@@ -6,6 +6,7 @@ import { computeCoAuthors, shownCoAuthors, TOP_CO_AUTHORS } from './coauthors.js
 import { computeReleases, shownReleases } from './releases.js';
 import { busiestOf, computeDaily, daysUpTo, longestGap, longestRun, shownBusiestDay, shownLongest, shownLongestBreak } from './daily.js';
 import { computeFileLifecycle, computeHotFiles, isIgnoredPath, repoRelativePath, shownFileLifecycle } from './files.js';
+import { computeFolders, folderOf, ROOT_FOLDER, shownFolders, TOP_FOLDERS } from './folders.js';
 import { computeTimeHabits } from './habits.js';
 import { computeTimezones, formatOffset, offsetMinutes, shownTimezones, utcLabel } from './timezones.js';
 import { computeLanguages, languageBarRows, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER as OTHER_LANGUAGE, percentShares } from './languages.js';
@@ -26,6 +27,7 @@ export { computeLanguages, languageBarRows, languageHeadline, languageOf, langua
 export { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONTRIBUTORS };
 export { computeFirstCommit, SHORT_HASH };
 export { computeCoAuthors, shownCoAuthors, TOP_CO_AUTHORS };
+export { computeFolders, folderOf, ROOT_FOLDER, shownFolders, TOP_FOLDERS };
 export { computeTimezones, formatOffset, offsetMinutes, shownTimezones, utcLabel };
 export { computeReleases, shownReleases };
 export { computeBiggestCommit, shownBiggestLines, computeMessages, computePersonality, isMergeCommit, ARCHETYPES, localToday };
@@ -48,6 +50,9 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * `busiestDay` is the single author-local day with the most commits as `{day: 'YYYY-MM-DD',
  * commits}` (ties → the earliest day), or null without commits: a copy of daily.busiest
  * (the recap and wrapped.md leave out future-dated days, see daily.js shownBusiestDay);
+ * `folders` is the most-changed top-level folders by lines changed, `[{path, lines, added,
+ * deleted, commits}]` (top 5; files at a repo root are "(root)", multi-repo paths keep the
+ * repo label; the same files as hot files, see folders.js);
  * `fileLifecycle` is how many files the commits added and deleted, `{added, deleted}`
  * (renames are neither; ignored paths left out as for hot files, see files.js);
  * `languages` is lines / files per language (see languages.js). `biggestCommit` is the
@@ -93,6 +98,7 @@ export function computeStats(commits = [], { today, todayComplete, team, author,
     busiestDay: daily.busiest ? { ...daily.busiest } : null,
     months: computeMonths(commits),
     hotFiles: computeHotFiles(commits),
+    folders: computeFolders(commits),
     fileLifecycle: computeFileLifecycle(commits),
     languages: computeLanguages(commits),
     contributors: computeContributors(team ?? commits, { author, truncated: teamTruncated }),

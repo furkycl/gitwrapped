@@ -13,7 +13,8 @@ import { epochDay } from './stats/time.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
-import { conventionalText, emojiShareText, revertShareText, sizeShareText } from './cards/index.js';
+import { conventionalText, emojiShareText, folderLabel, revertShareText, sizeShareText } from './cards/index.js';
+import { shownFolders } from './stats/folders.js';
 import { shownEmoji } from './stats/emoji.js';
 import { shownReverts } from './stats/reverts.js';
 import { shownFileLifecycle } from './stats/files.js';
@@ -96,6 +97,8 @@ function plural(n, unit, L = EN) {
 
 /** How many repos the recap lists one per line before "…and N more". */
 const RECAP_REPOS = 5;
+/** Folders on the recap's "Top folders" line. */
+const RECAP_FOLDERS = 3;
 
 /** Keep the end of a long path: "…/deep/dir/file.js". */
 function shortPath(p, max = 48) {
@@ -171,6 +174,9 @@ function shortText(s, maxWidth = 48) {
  * per repo (commits and lines; the first five, then "…and N more").
  * A --year run with a comparison (stats.yearOverYear) gets a "vs <previous year>" line
  * with the change in commits, lines changed and active days.
+ * A "Top folders" line shows the three most-changed top-level folders by lines changed
+ * ("src/ (1,234 lines) · test/ (567 lines) · (root) (89 lines)"; stats.folders, see
+ * stats/folders.js shownFolders) when there are two or more.
  * A "Files" line shows how many files were added and deleted (stats.fileLifecycle, see
  * stats/files.js shownFileLifecycle) when there is at least one.
  * A "Busiest day" line shows the calendar day with the most commits and its commit count
@@ -296,6 +302,14 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     const hot = stats?.hotFiles?.[0];
     if (typeof hot?.path === 'string' && hot.path) {
       lines.push(`  ${label(R.hottestFile)}${c('cyan', shortPath(scrubEmails(hot.path)))} ${c('dim', `(${plural(hot.commits, 'commit', L)})`)}`);
+    }
+
+    // The most-changed top-level folders by lines changed (stats.folders): the first three,
+    // only when there are two or more.
+    const folders = shownFolders(stats?.folders);
+    if (folders) {
+      const list = folders.slice(0, RECAP_FOLDERS).map((f) => `${c('cyan', shortPath(folderLabel(f, L), 32))} ${c('dim', `(${R.folderLines(f.lines)})`)}`);
+      lines.push(`  ${label(R.topFolders)}${list.join(c('dim', ' · '))}`);
     }
 
     // Files added and deleted in the window (stats.fileLifecycle); only when there are any.

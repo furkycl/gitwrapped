@@ -34,7 +34,8 @@ const PNG_V2 = Buffer.concat([PNG_V1, Buffer.from([0x00, 0xff, 0x00, 0xfe])]);
 const f = (path, added, removed, binary = false) => ({ path, added, removed, binary });
 
 // Oldest first. `files` is the expected `git log --numstat --no-renames` result, in git's
-// path order. Dates use explicit offsets so the history is the same in every timezone.
+// path order; `born` / `buried` the paths it adds / deletes (renames excluded, see
+// readLifecycle in src/git.js), only when there are any. Dates use explicit offsets so the history is the same in every timezone.
 const STEPS = [
   {
     subject: 'feat: initial commit',
@@ -42,6 +43,7 @@ const STEPS = [
     date: '2024-03-04T10:00:00+01:00', // Monday morning
     write: { 'README.md': lines('# fixture', '', 'hello'), 'package-lock.json': LOCK_V1, 'src/app.js': APP_V1 },
     files: [f('README.md', 3, 0), f('package-lock.json', 4, 0), f('src/app.js', 5, 0)],
+    born: ['README.md', 'package-lock.json', 'src/app.js'],
   },
   {
     subject: 'fix: handle empty input',
@@ -56,6 +58,7 @@ const STEPS = [
     date: '2024-03-06T23:45:00+01:00', // late night
     write: { 'notes/my notes.txt': lines('todo', 'more todo'), 'logo.png': PNG_V1 },
     files: [f('logo.png', 0, 0, true), f('notes/my notes.txt', 2, 0)],
+    born: ['logo.png', 'notes/my notes.txt'],
   },
   {
     subject: 'chore: bump lockfile',
@@ -70,6 +73,7 @@ const STEPS = [
     date: '2024-03-10T02:15:00-08:00', // Sunday, 2am local
     remove: ['README.md'],
     files: [f('README.md', 0, 3)],
+    buried: ['README.md'],
   },
   {
     subject: 'chore: empty commit',
@@ -85,7 +89,8 @@ const STEPS = [
     files: [f('logo.png', 0, 0, true), f('src/app.js', 1, 1)],
   },
   {
-    // A rename shows up as delete + add because readCommits passes --no-renames.
+    // A rename shows up as delete + add because readCommits passes --no-renames; it is
+    // neither born nor buried (readLifecycle detects renames).
     subject: 'refactor: move app to main',
     by: 'bob',
     date: '2024-03-13T12:00:00+00:00',
@@ -156,6 +161,8 @@ export function makeFixtureRepo({ dir } = {}) {
         filesChanged: files.length,
         linesAdded: files.reduce((n, x) => n + x.added, 0),
         linesRemoved: files.reduce((n, x) => n + x.removed, 0),
+        ...(step.born ? { born: [...step.born] } : {}),
+        ...(step.buried ? { buried: [...step.buried] } : {}),
       });
     }
     return { dir, cleanup, commits: commits.reverse() };

@@ -109,6 +109,8 @@ export default {
     sizes: { tiny: 'Minik', small: 'Küçük', medium: 'Orta', large: 'Büyük' },
     sizeRanges: { tiny: '10 satırdan az', small: '10–99 satır', medium: '100–500 satır', large: '500 satırdan fazla' },
     sizeTitle: (name, range, commits, pct) => `${name} (${range}): ${plural(commits, UNITS.commit)} (${pct})`,
+    fileLifecycle: 'Doğan / gömülen dosya',
+    fileLifecycleValue: (added, deleted) => `${num(added)} / ${num(deleted)}`,
   },
 
   // "<yıl> yılına göre" needs no suffix on the number itself.
@@ -404,6 +406,8 @@ export default {
     breakLabel: 'Mola',
     busiestDay: 'En yoğun gün',
     hottestFile: 'Gözde dosya',
+    fileLifecycle: 'Dosyalar',
+    fileLifecycleValue: (added, deleted) => `${num(added)} doğdu · ${num(deleted)} gömüldü`,
     topLanguage: 'Favori dil',
     languageDetail: (share, basis, tiedMore) => `${basis === 'files' ? 'dosyaların' : 'satırların'} ${share} kadarı${tiedMore > 0 ? `, ${num(tiedMore)} dil ile berabere` : ''}`,
     team: 'Ekip',
@@ -446,6 +450,8 @@ export default {
     habits: 'Ne zaman commit atıyorsun',
     busiestWeekday: 'En yoğun hafta günü',
     busiestDay: 'En yoğun gün',
+    fileLifecycle: 'Doğan / gömülen dosyalar',
+    fileLifecycleValue: (added, deleted) => `${num(added)} dosya eklendi, ${num(deleted)} silindi`,
     tied: 'berabere',
     streaks: 'Seriler',
     longestStreak: 'En uzun seri',

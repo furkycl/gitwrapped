@@ -10,6 +10,7 @@ import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
 import { shownEmoji } from './stats/emoji.js';
 import { shownReverts } from './stats/reverts.js';
+import { shownFileLifecycle } from './stats/files.js';
 import { shownBusiestDay, shownLongest, shownLongestBreak } from './stats/daily.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { contributorName, hasTeamCard, shareLabel } from './stats/contributors.js';
@@ -131,6 +132,9 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
       item(M.lines, `${signed(t.linesAdded, '+', L)} / ${signed(t.linesRemoved, '−', L)}`),
       item(L.totals.filesTouched, num(t.filesTouched, L)),
     ];
+    // Files added and deleted in the window (stats.fileLifecycle), as in the recap; only with any.
+    const lifecycle = shownFileLifecycle(stats?.fileLifecycle);
+    if (lifecycle) numbers.push(item(escapeMarkdown(M.fileLifecycle), escapeMarkdown(M.fileLifecycleValue(lifecycle.added, lifecycle.deleted))));
     const yoy = yearOverYear(stats);
     if (yoy) numbers.push(item(escapeMarkdown(L.recap.vsYear(yoy.previousYear)), escapeMarkdown(L.yoy.changes(yoy.commits, yoy.lines, yoy.activeDays))));
     // The commit size mix, as on the totals card and the recap; only when there is one.

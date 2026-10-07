@@ -366,6 +366,9 @@ async function shallowBoundary(repoPath) {
  * skips that git call for a read whose releases are not used.
  * A commit whose message says "This reverts commit <hash>" gets `revertOf`, those hashes
  * (see readReverts); `reverts: false` skips that git call for a read whose reverts are not used.
+ * A commit that adds or deletes files gets `born` / `buried`, those paths (see
+ * readLifecycle); `lifecycle: false` skips that git call for a read whose file lifecycle
+ * is not used.
  * `commits` is [] for a repo without commits. When HEAD has no commits (a new repo, or an
  * orphan branch) the result also has `unborn: true` and `otherRefs` (see hasOtherRefs):
  * only HEAD's history is read, so other branches' commits are not seen. Throws a TypeError for an invalid
@@ -373,7 +376,7 @@ async function shallowBoundary(repoPath) {
  * a file ("not a directory: <path>"), a folder that is not a repo ("not a git repository:
  * <path>"), git's safe.directory ownership check, a missing git, or oversized output.
  */
-export async function readHistory(repoPath, { since, until, author, limit = DEFAULT_LIMIT, maxBuffer = MAX_BUFFER, coAuthors = true, tags = true, reverts = true } = {}) {
+export async function readHistory(repoPath, { since, until, author, limit = DEFAULT_LIMIT, maxBuffer = MAX_BUFFER, coAuthors = true, tags = true, reverts = true, lifecycle = true } = {}) {
   if (limit !== Infinity && (!Number.isSafeInteger(limit) || limit < 1)) {
     throw new TypeError(`limit must be a positive integer or Infinity, got ${limit}`);
   }
@@ -414,11 +417,15 @@ export async function readHistory(repoPath, { since, until, author, limit = DEFA
   if (coAuthors) await mailmapCoAuthors(repoPath, commits);
   if (tags) await readTags(repoPath, commits);
   if (reverts) await readReverts(repoPath, commits);
+  if (lifecycle) await readLifecycle(repoPath, commits);
   const boundary = await shallowBoundary(repoPath);
   if (boundary) {
     for (const c of commits) {
       if (!boundary.has(c.hash)) continue;
       Object.assign(c, { files: [], filesChanged: 0, linesAdded: 0, linesRemoved: 0 });
+      // Diffed against an empty tree: its whole tree would count as born.
+      delete c.born;
+      delete c.buried;
     }
   }
   return { commits, truncated, limit, shallow: Boolean(boundary) };
@@ -544,6 +551,90 @@ export async function readReverts(repoPath, commits) {
   for (const c of commits) {
     const targets = typeof c?.hash === 'string' ? found.get(c.hash.toLowerCase()) : undefined;
     if (targets) c.revertOf = targets;
+  }
+  return commits;
+}
+
+/** A commit hash as `--format=%H` prints it (SHA-1 or SHA-256, lowercase). */
+const FULL_HASH = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
+
+/** A `--name-status` status token: a letter, plus a score for renames / copies ("R087"). */
+const NAME_STATUS = /^([A-Z])(\d*)$/;
+
+/**
+ * `git log -z --name-status --format=%H` output → Map of commit hash → `{born, buried}`:
+ * the paths its diff adds (status A) and deletes (status D), in git's order; commits with
+ * neither are left out. Observed byte layout, one NUL-terminated token per item:
+ *
+ *   <hash>\0                                 commit with no matching file changes
+ *   <hash>\0\n<status>\0<path>\0...           "\n" before the first entry
+ *
+ * A rename or copy (R / C, with a score) carries two paths and is skipped, as is every
+ * other status. Paths are raw (may hold any byte but NUL), so a token is only read as a
+ * header where a status could start, and a status is one uppercase letter (plus digits)
+ * while a hash is 40 or 64 lowercase hex digits: they never look alike. Pure function.
+ */
+export function parseLifecycleLog(stdout) {
+  const found = new Map();
+  const tokens = String(stdout ?? '').split('\0');
+  let current = null;
+  for (let i = 0; i < tokens.length; i++) {
+    const tok = tokens[i].replace(/^[\r\n]+/, '');
+    if (FULL_HASH.test(tok)) {
+      current = { born: [], buried: [] };
+      found.set(tok, current);
+      continue;
+    }
+    const m = NAME_STATUS.exec(tok);
+    if (!m || !current) continue;
+    const paths = m[1] === 'R' || m[1] === 'C' ? 2 : 1;
+    const path = tokens[i + 1];
+    i += paths;
+    if (typeof path !== 'string' || path === '') continue;
+    if (m[1] === 'A') current.born.push(path);
+    else if (m[1] === 'D') current.buried.push(path);
+  }
+  for (const [hash, v] of found) if (v.born.length === 0 && v.buried.length === 0) found.delete(hash);
+  return found;
+}
+
+/**
+ * Give every commit that adds files `born` (those paths) and every commit that deletes
+ * files `buried` (those paths), as git prints them; other commits are left without the
+ * fields. The numstat read passes --no-renames (a rename is a delete plus an add there),
+ * so this is one extra `git log -z --no-walk=unsorted --stdin --name-status` call over
+ * exactly the given commits (hashes on stdin, as readReverts: the window, --author and the
+ * cap apply as to everything else) with rename detection forced on (`-M`, whatever
+ * diff.renames says) and `--diff-filter=AD`, so a rename (or a copy, when detected) is
+ * neither born nor buried: only the A and D entries come back. A rename edited past git's
+ * similarity threshold is still an add plus a delete. Same diff settings as the numstat
+ * read: merge commits get no diff (no -m), the root commit does (--root), submodule bumps
+ * are skipped, diff.relative is off. Best effort: when git fails, no commit gets the
+ * fields (stats.fileLifecycle is then 0 / 0). Returns `commits`.
+ */
+export async function readLifecycle(repoPath, commits) {
+  if (!Array.isArray(commits) || commits.length === 0) return commits;
+  const hashes = commits.map((c) => c?.hash).filter((h) => typeof h === 'string' && /^[0-9a-f]+$/i.test(h));
+  if (hashes.length === 0) return commits;
+  let found;
+  try {
+    const run = execFileAsync(
+      'git',
+      ['-C', repoPath, '-c', 'diff.relative=false', 'log', '-z', '--no-walk=unsorted', '--stdin', '--no-color', '--no-show-signature', '--format=%H', '--name-status', '-M', '--diff-filter=AD', '--root', '-O/dev/null', '--ignore-submodules=all'],
+      { encoding: 'utf8', env: gitEnv(), maxBuffer: MAX_BUFFER },
+    );
+    run.child.stdin.on('error', () => {}); // git exiting early (EPIPE) surfaces below
+    run.child.stdin.end(`${hashes.join('\n')}\n`);
+    found = parseLifecycleLog((await run).stdout);
+  } catch {
+    return commits;
+  }
+  if (found.size === 0) return commits;
+  for (const c of commits) {
+    const hit = typeof c?.hash === 'string' ? found.get(c.hash.toLowerCase()) : undefined;
+    if (!hit) continue;
+    if (hit.born.length > 0) c.born = hit.born;
+    if (hit.buried.length > 0) c.buried = hit.buried;
   }
   return commits;
 }
@@ -695,7 +786,8 @@ export function repoLabels(names) {
  * Merge the histories of several repos (`histories`: `[{label, commits, truncated}]`, each
  * `commits` as readHistory gives them) into one, newest first, capped at `limit` commits.
  * Every commit is copied with `repo: <label>` and its file paths prefixed with
- * `<label>/` ("src/x.js" in repo "api" → "api/src/x.js"); the inputs are not changed.
+ * `<label>/` ("src/x.js" in repo "api" → "api/src/x.js"; its `born` / `buried` paths
+ * too); the inputs are not changed.
  * Order: by author-date instant, newest first; equal instants (and unparseable dates,
  * which sort last) keep their input order: repo by repo, each in git's order.
  * A commit whose hash was already seen in an earlier repo (a fork or a second clone that
@@ -719,6 +811,8 @@ export function mergeHistories(histories, { limit = DEFAULT_LIMIT } = {}) {
         continue;
       }
       const copy = { ...c, repo: label, files: (c.files ?? []).map((f) => ({ ...f, path: `${label}/${f.path}` })) };
+      // Added / deleted paths (see readLifecycle) get the same prefix.
+      for (const key of ['born', 'buried']) if (Array.isArray(c[key])) copy[key] = c[key].map((p) => `${label}/${p}`);
       if (c.hash) seen.set(c.hash, copy);
       merged.push(copy);
     }

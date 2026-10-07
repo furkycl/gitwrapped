@@ -16,6 +16,7 @@ import { shownCommitTypes } from './stats/types.js';
 import { conventionalText, emojiShareText, revertShareText, sizeShareText } from './cards/index.js';
 import { shownEmoji } from './stats/emoji.js';
 import { shownReverts } from './stats/reverts.js';
+import { shownFileLifecycle } from './stats/files.js';
 
 const EN = getStrings(DEFAULT_LANG);
 
@@ -169,6 +170,8 @@ function shortText(s, maxWidth = 48) {
  * per repo (commits and lines; the first five, then "…and N more").
  * A --year run with a comparison (stats.yearOverYear) gets a "vs <previous year>" line
  * with the change in commits, lines changed and active days.
+ * A "Files" line shows how many files were added and deleted (stats.fileLifecycle, see
+ * stats/files.js shownFileLifecycle) when there is at least one.
  * A "Busiest day" line shows the calendar day with the most commits and its commit count
  * (stats.busiestDay, ties → the earliest day; future-dated days left out with `today`, see
  * stats/daily.js shownBusiestDay) when there is one.
@@ -281,6 +284,10 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     if (typeof hot?.path === 'string' && hot.path) {
       lines.push(`  ${label(R.hottestFile)}${c('cyan', shortPath(scrubEmails(hot.path)))} ${c('dim', `(${plural(hot.commits, 'commit', L)})`)}`);
     }
+
+    // Files added and deleted in the window (stats.fileLifecycle); only when there are any.
+    const lifecycle = shownFileLifecycle(stats?.fileLifecycle);
+    if (lifecycle) lines.push(`  ${label(R.fileLifecycle)}${c('cyan', R.fileLifecycleValue(lifecycle.added, lifecycle.deleted))}`);
 
     const topLang = languageHeadline(stats?.languages);
     if (topLang) {

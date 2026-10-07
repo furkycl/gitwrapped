@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Files born and buried: how many files were added and deleted in the window, read with
+  one extra `git log --name-status --diff-filter=AD -M` call over the commits read (rename
+  detection on, so a renamed or moved file is neither; merge commits get no diff, as for
+  the line counts). Ignored paths (lockfiles, build output, …) and `--exclude`d files are
+  left out as for hot files; several repos are summed. `stats.json` gets
+  `stats.fileLifecycle` (`{added, deleted}`), the recap a "Files  12 born · 3 buried" line,
+  `wrapped.md` a "Files born / buried" item, and the totals card a "Files born / buried
+  12 / 3" row when there's spare room (after the pairing row; nothing else shrinks for it).
+  English and Turkish.
+
 ## [1.6.0] - 2026-10-07
 
 ### Added

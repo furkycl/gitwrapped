@@ -157,20 +157,67 @@ export function computeHotFiles(commits, { limit = 5 } = {}) {
  * missing or non-finite count adds 0); other commits are kept as they are (same object).
  * Commits are never dropped, even when every file is excluded: commit counts, active
  * days, streaks and time habits do not change. The input is not modified.
+ * The commit's `born` / `buried` paths (when present) drop the same files.
  * `isExcluded` null / undefined → `commits` itself.
  */
 export function excludeFiles(commits, isExcluded) {
   if (!isExcluded || !Array.isArray(commits)) return commits;
   return commits.map((c) => {
-    if (!c || !Array.isArray(c.files) || c.files.length === 0) return c;
-    const keep = c.files.filter((f) => !(f && typeof f.path === 'string' && (isExcluded(repoRelativePath(c, f.path)) || (c.repo && isExcluded(f.path, { labelled: true })))));
-    if (keep.length === c.files.length) return c;
+    if (!c) return c;
+    const dropped = (path) => typeof path === 'string' && (isExcluded(repoRelativePath(c, path)) || (c.repo && isExcluded(path, { labelled: true })));
+    // Files born / buried (see readLifecycle in src/git.js) follow the same rule.
+    const lifecycle = {};
+    for (const key of ['born', 'buried']) {
+      if (!Array.isArray(c[key])) continue;
+      const kept = c[key].filter((p) => !dropped(p));
+      if (kept.length !== c[key].length) lifecycle[key] = kept;
+    }
+    const changed = Object.keys(lifecycle).length > 0;
+    if (!Array.isArray(c.files) || c.files.length === 0) return changed ? { ...c, ...lifecycle } : c;
+    const keep = c.files.filter((f) => !(f && dropped(f.path)));
+    if (keep.length === c.files.length) return changed ? { ...c, ...lifecycle } : c;
     let linesAdded = 0;
     let linesRemoved = 0;
     for (const f of keep) {
       linesAdded += count(f?.added);
       linesRemoved += count(f?.removed);
     }
-    return { ...c, files: keep, filesChanged: keep.length, linesAdded, linesRemoved };
+    return { ...c, ...lifecycle, files: keep, filesChanged: keep.length, linesAdded, linesRemoved };
   });
+}
+
+/**
+ * Files born and buried in the window: `{added, deleted}`, how many files the commits
+ * added and deleted (the `born` / `buried` paths of readLifecycle in src/git.js; a rename
+ * is neither). Each add or delete counts once per commit, so a file added, deleted and
+ * added again counts as 2 added and 1 deleted. Ignored paths are skipped as for hot files
+ * (see isIgnoredPath; relative to each repo's root in a multi-repo run, see
+ * repoRelativePath), and --exclude has already dropped its files (see excludeFiles).
+ * Merge commits never count (git gives them no diff, as for the line counts). Commits
+ * without the fields (lifecycle not read) add nothing. Never throws; `{added: 0,
+ * deleted: 0}` for none.
+ */
+export function computeFileLifecycle(commits) {
+  let added = 0;
+  let deleted = 0;
+  for (const c of Array.isArray(commits) ? commits : []) {
+    if (!c || (Array.isArray(c.parents) && c.parents.length > 1)) continue;
+    const counted = (paths) => (Array.isArray(paths) ? paths.filter((p) => typeof p === 'string' && !isIgnoredPath(repoRelativePath(c, p))).length : 0);
+    added += counted(c.born);
+    deleted += counted(c.buried);
+  }
+  return { added, deleted };
+}
+
+/**
+ * stats.fileLifecycle as the cards, recap and wrapped.md show it: `{added, deleted}` (each a
+ * non-negative integer, else 0), or null when no file was added or deleted (or the value is
+ * missing / malformed), so nothing is shown.
+ */
+export function shownFileLifecycle(lifecycle) {
+  if (!lifecycle || typeof lifecycle !== 'object') return null;
+  const whole = (n) => (Number.isSafeInteger(n) && n > 0 ? n : 0);
+  const added = whole(lifecycle.added);
+  const deleted = whole(lifecycle.deleted);
+  return added + deleted > 0 ? { added, deleted } : null;
 }

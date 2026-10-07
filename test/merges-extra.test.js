@@ -29,7 +29,9 @@ function cleanEnv(extra = {}) {
   for (const k of ['FORCE_COLOR', 'NO_COLOR', 'GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_CEILING_DIRECTORIES', 'GIT_COMMON_DIR', 'GIT_CONFIG_PARAMETERS', 'GIT_CONFIG_COUNT']) delete env[k];
   return { ...env, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: process.platform === 'win32' ? 'NUL' : '/dev/null', ...extra };
 }
-const git = (cwd, args, env = {}) => execFileSync('git', args, { cwd, encoding: 'utf8', env: cleanEnv(env), stdio: ['ignore', 'pipe', 'pipe'] });
+// Timeouts: a stalled child process fails the test with a message instead of hanging the run.
+const CHILD_TIMEOUT = 60_000;
+const git = (cwd, args, env = {}) => execFileSync('git', args, { cwd, encoding: 'utf8', env: cleanEnv(env), stdio: ['ignore', 'pipe', 'pipe'], timeout: CHILD_TIMEOUT });
 const ADA = { GIT_AUTHOR_NAME: 'Ada', GIT_AUTHOR_EMAIL: 'ada@example.com', GIT_COMMITTER_NAME: 'Ada', GIT_COMMITTER_EMAIL: 'ada@example.com' };
 const BOB = { GIT_AUTHOR_NAME: 'Bob', GIT_AUTHOR_EMAIL: 'bob@example.com', GIT_COMMITTER_NAME: 'Bob', GIT_COMMITTER_EMAIL: 'bob@example.com' };
 const at = (day) => {
@@ -37,7 +39,11 @@ const at = (day) => {
   return { GIT_AUTHOR_DATE: d, GIT_COMMITTER_DATE: d };
 };
 const WINDOW = ['--since', '2024-01-01', '--until', '2024-12-31'];
-const bin = (args, env = {}) => spawnSync(process.execPath, [BIN, ...args, ...WINDOW, '--no-color', '--no-png'], { cwd: ROOT, encoding: 'utf8', env: cleanEnv({ TZ: 'UTC', ...env }) });
+const bin = (args, env = {}) => {
+  const r = spawnSync(process.execPath, [BIN, ...args, ...WINDOW, '--no-color', '--no-png'], { cwd: ROOT, encoding: 'utf8', env: cleanEnv({ TZ: 'UTC', ...env }), stdio: ['ignore', 'pipe', 'pipe'], timeout: CHILD_TIMEOUT });
+  assert.equal(r.error, undefined, `gitwrapped ${args.join(' ')}: ${r.error}`);
+  return r;
+};
 const statsOf = (out) => JSON.parse(readFileSync(join(out, 'stats.json'), 'utf8')).stats;
 const mdOf = (out) => readFileSync(join(out, 'wrapped.md'), 'utf8');
 const cardOf = (out, id) => {
@@ -145,15 +151,18 @@ describe('end to end: real merges', () => {
     assert.ok(mi > 0 && (bi < 0 || mi < bi), r.stdout);
   });
 
-  test('totals card: the row, when shown, matches stats.merges; else the card has no merges text', () => {
+  test('cards: the merges show on the totals card or the outro, never both', () => {
     const out = join(tmp, 'o-en-card');
     assert.equal(bin([app, '--out', out]).status, 0);
     const svg = cardOf(out, 'totals');
+    const outro = cardOf(out, 'outro');
     // The fixture's totals card is full (born / buried, size mix, ...), so the row may not fit.
     if (/Merged PRs/.test(svg)) {
       assert.match(svg, />Merged PRs \/ merges<\/text><text [^>]*>3 \/ 2<\/text>/);
+      assert.doesNotMatch(outro, /You merged|merge commits/);
     } else {
       assert.doesNotMatch(svg, /Merge commits|Merged PRs/);
+      assert.match(outro, /You merged 3 pull requests/);
     }
   });
 
@@ -184,7 +193,8 @@ describe('end to end: real merges', () => {
 
   test('--since / --until: a window without merges or PRs has zeros and no line', () => {
     const out = join(tmp, 'o-early');
-    const r = spawnSync(process.execPath, [BIN, app, '--out', out, '--json', '--md', '--since', '2024-03-01', '--until', '2024-03-13', '--no-color', '--no-png'], { cwd: ROOT, encoding: 'utf8', env: cleanEnv({ TZ: 'UTC' }) });
+    const r = spawnSync(process.execPath, [BIN, app, '--out', out, '--json', '--md', '--since', '2024-03-01', '--until', '2024-03-13', '--no-color', '--no-png'], { cwd: ROOT, encoding: 'utf8', env: cleanEnv({ TZ: 'UTC' }), stdio: ['ignore', 'pipe', 'pipe'], timeout: CHILD_TIMEOUT });
+    assert.equal(r.error, undefined, String(r.error));
     assert.equal(r.status, 0, r.stderr);
     assert.deepEqual(statsOf(out).merges, { commits: 0, share: 0, pullRequests: 0 });
     assert.doesNotMatch(r.stdout, /Merges/);

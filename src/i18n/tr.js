@@ -173,6 +173,9 @@ export default {
     breakTitle: 'En uzun mola',
     breakValue: (days) => `${num(days)} gün`,
     breakNote: (from, to) => `${from} ile ${to} arası`,
+    cadencePerDay: (n) => `Aktif gün başına ${dec(n)} commit`,
+    cadenceRow: (n) => `Aktif günde ${dec(n)} commit`,
+    cadenceEvery: (days) => (dec(days) === '1' ? 'her gün' : `${dec(days)} günde bir`),
   },
 
   activity: {
@@ -409,6 +412,7 @@ export default {
     current: 'şu an',
     atWindowEnd: 'dönem sonunda',
     breakLabel: 'Mola',
+    cadence: 'Ritim',
     busiestDay: 'En yoğun gün',
     timezones: 'Saat dilimleri',
     timezonesValue: (n) => `${num(n)} saat dilimi`,
@@ -470,6 +474,7 @@ export default {
     currentStreak: 'Şu anki seri',
     windowEndStreak: 'Dönem sonundaki seri',
     longestBreak: 'En uzun mola',
+    cadence: 'Ritim',
     hotFiles: 'Gözde dosyalar',
     file: 'Dosya',
     topFolders: 'Gözde klasörler',

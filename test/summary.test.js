@@ -76,8 +76,10 @@ describe('formatSummary', () => {
     assert.match(out, /Sizes {8}\S/);
     // The fixture hashes are dates (not letters / digits), so no short hash is shown.
     assert.match(out, /First commit "initial commit" \(Mar 9, 2024\)\n/);
-    // 21 with the First commit, Busiest day, Top folders and Weekends lines.
-    assert.ok(lines.length >= 8 && lines.length <= 21, `compact: ${lines.length} lines`);
+    // Mar 9, 11, 12, 13: gaps 2, 1, 1 → median 1.
+    assert.match(out, /Cadence {6}1 commit per active day · every day\n/);
+    // 22 with the First commit, Busiest day, Top folders, Weekends and Cadence lines.
+    assert.ok(lines.length >= 8 && lines.length <= 22, `compact: ${lines.length} lines`);
   });
 
   test('color: true adds ANSI escapes but keeps the first line plain', () => {

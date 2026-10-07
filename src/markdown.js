@@ -14,6 +14,7 @@ import { shownFileLifecycle } from './stats/files.js';
 import { shownFolders } from './stats/folders.js';
 import { shownTimezones, utcLabel } from './stats/timezones.js';
 import { shownWeekend, weekendPercentLabel } from './stats/weekend.js';
+import { shownCadence } from './stats/cadence.js';
 import { shownBusiestDay, shownLongest, shownLongestBreak } from './stats/daily.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { contributorName, hasTeamCard, shareLabel } from './stats/contributors.js';
@@ -214,6 +215,9 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
       const to = formatDay(pause.to, lang);
       streaks.push(item(M.longestBreak, `${plural(pause.days, 'day', L)}${from && to ? ` (${escapeMarkdown(`${from} – ${to}`)})` : ''}`));
     }
+    // Commits per active day and the median gap between active days, as in the recap.
+    const cadence = shownCadence(stats, today);
+    if (cadence) streaks.push(item(M.cadence, escapeMarkdown(`${L.streak.cadencePerDay(cadence.perActiveDay)} · ${L.streak.cadenceEvery(cadence.medianGapDays)}`)));
     section(M.streaks, streaks);
 
     // --- hot files --------------------------------------------------------------------

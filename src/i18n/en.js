@@ -5,6 +5,7 @@
 import { formatDelta, formatInteger } from './format.js';
 
 const num = (n) => formatInteger(n, ',');
+const dec = (n) => (Math.round((typeof n === 'number' && Number.isFinite(n) ? n : 0) * 10) / 10).toLocaleString('en-US', { maximumFractionDigits: 1 });
 const plural = (n, [one, many]) => `${num(n)} ${n === 1 ? one : many}`;
 const delta = (n) => formatDelta(n, ',');
 /** A signed change with its unit: "+42 commits", "−1 line", "±0 active days". */
@@ -39,7 +40,7 @@ export default {
   /** Integer with thousands separators: 12345 → "12,345". */
   num,
   /** An average with at most one decimal: 1234.5 → "1,234.5". */
-  dec: (n) => (Math.round((typeof n === 'number' && Number.isFinite(n) ? n : 0) * 10) / 10).toLocaleString('en-US', { maximumFractionDigits: 1 }),
+  dec,
   /** A signed change: 42 → "+42", -3 → "−3", 0 → "±0". */
   delta,
   /** A whole percent: 74 → "74%". */
@@ -197,6 +198,12 @@ export default {
     breakTitle: 'Longest break',
     breakValue: (days) => `${plural(days, UNITS.day)} off`,
     breakNote: (from, to) => `Between ${from} and ${to}`,
+    /** The cadence (stats/cadence.js shownCadence): "2.4 commits per active day" (1 decimal). */
+    cadencePerDay: (n) => `${dec(n)} ${dec(n) === '1' ? 'commit' : 'commits'} per active day`,
+    /** The cadence row's label on the card (shorter, to leave room for the gap): "2.4 per active day". */
+    cadenceRow: (n) => `${dec(n)} per active day`,
+    /** The median gap between active days: "every day", "every 3 days", "every 2.5 days". */
+    cadenceEvery: (days) => (dec(days) === '1' ? 'every day' : `every ${dec(days)} days`),
   },
 
   activity: {
@@ -467,6 +474,8 @@ export default {
     atWindowEnd: 'at window end',
     /** The longest-break line: label, then "longest 12 days (Mar 3, 2025 – Mar 16, 2025)". */
     breakLabel: 'Break',
+    /** The cadence line: label, then "2.4 commits per active day · every 3 days". */
+    cadence: 'Cadence',
     /** The busiest-day line: label, "Oct 4, 2026", then "(12 commits)". */
     busiestDay: 'Busiest day',
     /** The time-zones line: label, "3 time zones", then "· mostly UTC+03:00 (62% of commits)". */
@@ -549,6 +558,8 @@ export default {
     currentStreak: 'Current streak',
     windowEndStreak: 'Streak at window end',
     longestBreak: 'Longest break',
+    /** Commits per active day and the median gap between active days (stats.cadence). */
+    cadence: 'Cadence',
     hotFiles: 'Hot files',
     file: 'File',
     /** The top-folders table (stats.folders). */

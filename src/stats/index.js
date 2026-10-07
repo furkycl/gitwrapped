@@ -8,6 +8,7 @@ import { busiestOf, computeDaily, daysUpTo, longestGap, longestRun, shownBusiest
 import { computeFileLifecycle, computeHotFiles, isIgnoredPath, repoRelativePath, shownFileLifecycle } from './files.js';
 import { computeFolders, folderOf, ROOT_FOLDER, shownFolders, TOP_FOLDERS } from './folders.js';
 import { computeTimeHabits } from './habits.js';
+import { CADENCE_MIN_DAYS, computeCadence, medianGap, shownCadence } from './cadence.js';
 import { computeWeekend, shownWeekend, WEEKEND_DAYS, weekendCounts, weekendPercent, weekendPercentLabel } from './weekend.js';
 import { computeTimezones, formatOffset, offsetMinutes, shownTimezones, utcLabel } from './timezones.js';
 import { computeLanguages, languageBarRows, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER as OTHER_LANGUAGE, percentShares } from './languages.js';
@@ -29,6 +30,7 @@ export { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONT
 export { computeFirstCommit, SHORT_HASH };
 export { computeCoAuthors, shownCoAuthors, TOP_CO_AUTHORS };
 export { computeFolders, folderOf, ROOT_FOLDER, shownFolders, TOP_FOLDERS };
+export { CADENCE_MIN_DAYS, computeCadence, medianGap, shownCadence };
 export { computeWeekend, shownWeekend, WEEKEND_DAYS, weekendCounts, weekendPercent, weekendPercentLabel };
 export { computeTimezones, formatOffset, offsetMinutes, shownTimezones, utcLabel };
 export { computeReleases, shownReleases };
@@ -51,7 +53,10 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * every commit counted as for `habits` (see timezones.js). `weekend` is how many of
  * those commits landed on an author-local Saturday or Sunday and their share,
  * `{commits, share}` (from habits.byWeekday, as Weekend Warrior counts them, see
- * weekend.js). `daily` is commits per author-local day (see daily.js);
+ * weekend.js). `cadence` is `{perActiveDay, medianGapDays}`: commits per active day (1
+ * decimal) and the median calendar-day gap between consecutive active days (null with
+ * fewer than two), over the same author-local days as totals.activeDays (see cadence.js).
+ * `daily` is commits per author-local day (see daily.js);
  * `busiestDay` is the single author-local day with the most commits as `{day: 'YYYY-MM-DD',
  * commits}` (ties → the earliest day), or null without commits: a copy of daily.busiest
  * (the recap and wrapped.md leave out future-dated days, see daily.js shownBusiestDay);
@@ -101,6 +106,7 @@ export function computeStats(commits = [], { today, todayComplete, team, author,
     timezones: computeTimezones(commits),
     weekend: computeWeekend(habits),
     streaks: computeStreaks(commits, { today, todayComplete }),
+    cadence: computeCadence(daily.days),
     daily,
     busiestDay: daily.busiest ? { ...daily.busiest } : null,
     months: computeMonths(commits),

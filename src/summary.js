@@ -21,6 +21,7 @@ import { shownReverts } from './stats/reverts.js';
 import { shownFileLifecycle } from './stats/files.js';
 import { shownTimezones, utcLabel } from './stats/timezones.js';
 import { shownWeekend, weekendPercentLabel } from './stats/weekend.js';
+import { shownLateNights } from './stats/latenights.js';
 import { shownCadence } from './stats/cadence.js';
 
 const EN = getStrings(DEFAULT_LANG);
@@ -192,6 +193,10 @@ function shortText(s, maxWidth = 48) {
  * A "Weekends" line shows how many commits landed on an author-local Saturday or Sunday
  * and their share ("12 commits (8% of commits)", the percent Weekend Warrior quotes, see
  * stats/weekend.js shownWeekend) when there is at least one.
+ * A "Late nights" line shows how many commits landed between 00:00 and 04:59 author-local
+ * and their share, then the latest-ever commit time ("12 commits (4% of commits) · latest
+ * 4:12 AM on Mar 3, 2024", see stats/latenights.js shownLateNights) when there is at least
+ * one.
  * A "Break" line shows the longest break between two active days (stats.streaks.longestBreak,
  * future-dated days left out with `today` as on the streak card) when there is one.
  * A "Cadence" line shows commits per active day and the median gap between active days
@@ -296,6 +301,15 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     const weekend = shownWeekend(stats);
     if (weekend) {
       lines.push(`  ${label(R.weekend)}${c('cyan', plural(weekend.commits, 'commit', L))} ${c('dim', `(${R.ofCommits(weekendPercentLabel(weekend.percent, L.pct))})`)}`);
+    }
+
+    // Commits between 00:00 and 04:59 author-local (stats.lateNights; counts from habits as
+    // Night Owl's) and the latest-ever commit time; only when there is at least one.
+    const late = shownLateNights(stats);
+    if (late) {
+      const [y, mo, d] = late.latest ? late.latest.date.split('-').map(Number) : [];
+      const latest = late.latest ? ` · ${R.latestAt(L.clock(late.latest.hour, late.latest.minute), L.date(d, mo, y))}` : '';
+      lines.push(`  ${label(R.lateNights)}${c('cyan', plural(late.commits, 'commit', L))} ${c('dim', `(${R.ofCommits(weekendPercentLabel(late.percent, L.pct))})${latest}`)}`);
     }
 
     const s = stats?.streaks ?? {};

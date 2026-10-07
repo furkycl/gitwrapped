@@ -12,6 +12,7 @@ import { monthIndex, monthsFromDays } from '../stats/months.js';
 import { hasTeamCard, shareLabel, TOP_CONTRIBUTORS } from '../stats/contributors.js';
 import { shownCoAuthors } from '../stats/coauthors.js';
 import { shownTimezones, utcLabel } from '../stats/timezones.js';
+import { shownLateNights } from '../stats/latenights.js';
 import { shownWeekend, weekendPercentLabel } from '../stats/weekend.js';
 import { shownCadence } from '../stats/cadence.js';
 import { shownReleases } from '../stats/releases.js';
@@ -588,7 +589,40 @@ function peakHour(s, { L }) {
   // Commits from two or more time zones (stats.timezones): one more sentence or one row,
   // always shown (see withTimezones); without it the card is exactly as before.
   const tz = shownTimezones(s.timezones);
-  return tz ? withTimezones(spec, tz, { lead, busiest }, L) : spec;
+  const withTz = tz ? withTimezones(spec, tz, { lead, busiest }, L) : spec;
+  // Commits between 00:00 and 04:59 (stats.lateNights) as a row, with the same allowance as
+  // the time-zones row (the big word at most one step smaller, shared with it), then the
+  // latest-ever commit time as another row in spare room only (see withRoomyRow); without
+  // late-night commits, or without room, the card is exactly as before.
+  const late = shownLateNights(s);
+  if (!late) return withTz;
+  const row = { label: P.lateNights, value: `${plural(late.commits, 'commit', L)} · ${weekendPercentLabel(late.percent, L.pct)}` };
+  // One shrink step in all: when the card had not shrunk (before any time-zones row), the
+  // late-nights row may take one; a step the time-zones row already took is shared, and a
+  // card that had shrunk before gets no more.
+  const before = layoutOf({ ...spec, lang: L.code }).shrinkSteps;
+  const allowed = Math.max(layoutOf({ ...withTz, lang: L.code }).shrinkSteps, before === 0 ? 1 : before);
+  const withLate = withRoomyRow(withTz, row, L, allowed);
+  const on = late.latest && withLate !== withTz ? formatDay(late.latest.date, L.code) : null;
+  if (!on) return withLate;
+  return withRoomyRow(withLate, { label: P.latestLabel, value: P.latestValue(L.clock(late.latest.hour, late.latest.minute), on) }, L);
+}
+
+/**
+ * `spec` with `row` as its last row when that fits: the same charts drawn (and at most 6
+ * rows) with at most `maxSteps` shrink steps (default: no more than `spec` itself takes,
+ * so the big word, title and subtitle keep their size and lines; flexible charts may give
+ * back the extra height they had, down to their natural one, as for the time-zones row),
+ * else `spec` itself (so the card is byte-identical).
+ */
+function withRoomyRow(spec, row, L, maxSteps) {
+  const lines = Array.isArray(spec.lines) ? spec.lines : [];
+  if (lines.length >= MAX_ROWS) return spec;
+  const next = { ...spec, lines: [...lines, row] };
+  const base = layoutOf({ ...spec, lang: L.code });
+  const l = layoutOf({ ...next, lang: L.code });
+  const same = l.drawnCharts.length === base.drawnCharts.length && l.drawnCharts.every((x, i) => x === base.drawnCharts[i]);
+  return same && l.shrinkSteps <= Math.max(base.shrinkSteps, maxSteps ?? 0) ? next : spec;
 }
 
 /** The text a layout's subtitle block draws, its lines joined with spaces (XML-escaped). */

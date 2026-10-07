@@ -146,7 +146,9 @@ describe('run: a relative window', () => {
     assert.equal(json.filters.since, '2026-04-05');
     assert.equal(json.filters.until, '2026-09-21');
     assert.match(stdout.data, /Wrapped · Apr 5 – Sep 21, 2026/);
-    assert.doesNotMatch(stdout.data, /6m|2w/);
+    // The raw window never shows; the random temp dir names in the paths (e.g. "gw-relwin-out-THa6mX")
+    // may contain "6m" / "2w" inside a word, so only a standalone token counts.
+    assert.doesNotMatch(stdout.data, /(?<![\w-])(?:6m|2w)(?![\w-])/);
   });
 
   test('an empty relative window names the resolved dates in the note', async () => {

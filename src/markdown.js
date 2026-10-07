@@ -12,6 +12,7 @@ import { shownLongest, shownLongestBreak } from './stats/daily.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { contributorName, hasTeamCard, shareLabel } from './stats/contributors.js';
 import { shownCoAuthors } from './stats/coauthors.js';
+import { shownReleases } from './stats/releases.js';
 import { scrubEmails } from './privacy.js';
 import { languageBarRows, languageHeadline } from './stats/languages.js';
 import { yearOverYear } from './stats/yoy.js';
@@ -148,6 +149,13 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
       const share = `${plural(paired.paired, 'commit', L)} (${L.recap.ofNonMerge(shareLabel(paired.share, paired.paired, L.pct))})`;
       const top = paired.top ? escapeMarkdown(M.topCoAuthor(paired.top), 120) : '';
       numbers.push(item(escapeMarkdown(M.paired), `${escapeMarkdown(share)}${top ? `, ${top}` : ''}`));
+    }
+    // Tags on the commits (stats.releases), as on the outro card and the recap.
+    const rel = shownReleases(stats?.releases);
+    if (rel) {
+      const day = rel.latest ? formatDay(rel.latest.date, lang) : '';
+      const latest = rel.latest ? `, ${escapeMarkdown(M.latestRelease(rel.latest.name), 120)}${day ? ` (${escapeMarkdown(day)})` : ''}` : '';
+      numbers.push(item(escapeMarkdown(M.releases), `${escapeMarkdown(plural(rel.count, 'release', L))}${latest}`));
     }
     section(M.numbers, numbers);
 

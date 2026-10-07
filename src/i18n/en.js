@@ -26,6 +26,7 @@ const UNITS = {
   png: ['PNG', 'PNGs'],
   fix: ['fix', 'fixes'],
   repo: ['repo', 'repos'],
+  release: ['release', 'releases'],
 };
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -379,6 +380,13 @@ export default {
     noneYet: 'None yet',
     tbd: 'TBD',
     hottestFile: 'Hottest file',
+    /**
+     * The optional releases panel (stats.releases: tags on the commits): caption, "You
+     * shipped 3 releases", then "Latest: v1.5.0 · Oct 6, 2026".
+     */
+    releases: 'Releases',
+    shipped: (n) => `You shipped ${plural(n, UNITS.release)}`,
+    latest: (name) => `Latest: ${name}`,
   },
 
   share: {
@@ -456,6 +464,9 @@ export default {
     paired: 'Paired',
     ofNonMerge: (share) => `${share} of non-merge commits`,
     topCoAuthor: 'top co-author:',
+    /** The releases line: label, "3 releases", then "· latest: v1.5.0 (Oct 6, 2026)". */
+    releases: 'Releases',
+    latest: 'latest:',
     /** The first-commit line: label, then the quoted subject and "(Mar 3, 2025 · 1a2b3c4)". */
     firstCommit: 'First commit',
     biggest: 'Biggest',
@@ -504,6 +515,9 @@ export default {
     /** The pairing item (stats.coAuthors): "12 commits (31% of non-merge commits), top co-author: Ada". */
     paired: 'Paired',
     topCoAuthor: (name) => `top co-author: ${name}`,
+    /** The releases item (stats.releases): "3 releases, latest: v1.5.0 (Oct 6, 2026)". */
+    releases: 'Releases',
+    latestRelease: (name) => `latest: ${name}`,
     cards: 'Story cards',
     /** Alt text of each card image, by card id (src/cards CARD_IDS). */
     cardNames: {

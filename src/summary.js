@@ -5,6 +5,7 @@ import { shownLongest, shownLongestBreak } from './stats/daily.js';
 import { languageHeadline } from './stats/languages.js';
 import { hasTeamCard, shareLabel } from './stats/contributors.js';
 import { shownCoAuthors } from './stats/coauthors.js';
+import { shownReleases } from './stats/releases.js';
 import { scrubEmails } from './privacy.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from './i18n/index.js';
 import { yearOverYear } from './stats/yoy.js';
@@ -182,6 +183,8 @@ function shortText(s, maxWidth = 48) {
  * A "Paired" line shows how many commits had a Co-authored-by co-author, their share of
  * the non-merge commits and the top co-author's name (stats.coAuthors, see
  * stats/coauthors.js shownCoAuthors) when at least one commit was paired.
+ * A "Releases" line shows how many tags point at the commits and the latest one, with its
+ * day (stats.releases, see stats/releases.js shownReleases) when there is at least one.
  * The first line is always `gitwrapped: N commits → <html>` (no color), so it is easy
  * to grep. Every text value is stripped of control characters (stripControl), so repo
  * data cannot inject terminal escapes. Returns the whole recap, newline-terminated.
@@ -307,6 +310,15 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
       const day = typeof first.date === 'string' && epochDay(first.date) !== null ? first.date.split('-').map(Number) : null;
       const detail = [day ? L.date(day[2], day[1], day[0]) : '', shortText(scrubEmails(first.hash ?? ''), 12), shortText(first.repo, 24)].filter(Boolean).join(' · ');
       lines.push(`  ${label(R.firstCommit)}${c('cyan', subject)}${detail ? ` ${c('dim', `(${detail})`)}` : ''}`);
+    }
+
+    // Tags on the commits (stats.releases), as on the outro card.
+    const rel = shownReleases(stats?.releases);
+    if (rel) {
+      const name = rel.latest ? shortText(rel.latest.name, 40) : '';
+      const day = rel.latest && typeof rel.latest.date === 'string' && epochDay(rel.latest.date) !== null ? rel.latest.date.split('-').map(Number) : null;
+      const when = day ? ` ${c('dim', `(${L.date(day[2], day[1], day[0])})`)}` : '';
+      lines.push(`  ${label(R.releases)}${plural(rel.count, 'release', L)}${name ? ` · ${R.latest} ${c('cyan', name)}${when}` : ''}`);
     }
 
     // The biggest commit by lines changed (stats.biggestCommit), as on the messages card.

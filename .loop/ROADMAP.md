@@ -112,5 +112,5 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] Weekend share: share of commits on Saturday/Sunday (author-local) as a line on the power-hour or activity card when it fits, stats.json `stats.weekend {commits, share}`, recap and wrapped.md; consistent with the Weekend Warrior fact; en/tr; tests
 - [x] Cadence: average commits per active day and median gap (days) between active days on the streak card when there's room, stats.json `stats.cadence {perActiveDay, medianGapDays}`, recap and wrapped.md; en/tr; tests
 - 1.8.0 release prep (split as before):
-  - [ ] Cold audit of the 1.8 work (diff 1.7.0 release commit..main) + fix every real bug found, with tests
+  - [x] Cold audit of the 1.8 work (diff 1.7.0 release commit..main) + fix every real bug found, with tests
   - [ ] CHANGELOG 1.8.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync

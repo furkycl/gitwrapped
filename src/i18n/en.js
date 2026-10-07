@@ -30,6 +30,15 @@ const UNITS = {
   release: ['release', 'releases'],
 };
 
+/**
+ * "12 pull requests merged" and "8 merge commits (6% of commits)", the parts there are
+ * (a count of 0 is left out), joined with `sep`; `share` is already formatted.
+ */
+const mergesText = (prs, merges, share, sep) => [
+  prs > 0 ? `${plural(prs, ['pull request', 'pull requests'])} merged` : '',
+  merges > 0 ? `${plural(merges, ['merge commit', 'merge commits'])} (${share} of commits)` : '',
+].filter(Boolean).join(sep);
+
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export default {
@@ -129,6 +138,13 @@ export default {
     /** Files added / deleted in the window (stats.fileLifecycle), as one row: "12 / 3". */
     fileLifecycle: 'Born / buried',
     fileLifecycleValue: (added, deleted) => `${num(added)} / ${num(deleted)}`,
+    /**
+     * The merges row (stats.merges): with both, "Merged PRs / merges" and "12 / 8"; only
+     * pull requests (a squash-merge repo), "Merged PRs" and "12"; only merge commits,
+     * "Merge commits" and "8 · 6%" (`share` already formatted).
+     */
+    mergesLabel: (prs, merges) => (prs > 0 ? (merges > 0 ? 'Merged PRs / merges' : 'Merged PRs') : 'Merge commits'),
+    mergesValue: (prs, merges, share) => (prs > 0 ? (merges > 0 ? `${num(prs)} / ${num(merges)}` : num(prs)) : `${num(merges)} · ${share}`),
   },
 
   /**
@@ -414,6 +430,15 @@ export default {
     releases: 'Releases',
     shipped: (n) => `You shipped ${plural(n, UNITS.release)}`,
     latest: (name) => `Latest: ${name}`,
+    /**
+     * The optional merges panel (stats.merges), when the totals card has no room for its
+     * row: caption, "You merged 12 pull requests" (or "8 merge commits" without pull
+     * requests), then "8 merge commits · 6% of commits" (or "6% of commits"; none without
+     * merge commits). `share` is already formatted.
+     */
+    merges: 'Merges',
+    mergedValue: (prs, merges) => (prs > 0 ? `You merged ${plural(prs, ['pull request', 'pull requests'])}` : plural(merges, ['merge commit', 'merge commits'])),
+    mergedNote: (prs, merges, share) => (merges > 0 ? `${prs > 0 ? `${plural(merges, ['merge commit', 'merge commits'])} · ` : ''}${share} of commits` : null),
   },
 
   share: {
@@ -510,6 +535,9 @@ export default {
     /** The releases line: label, "3 releases", then "· latest: v1.5.0 (Oct 6, 2026)". */
     releases: 'Releases',
     latest: 'latest:',
+    /** The merges line (stats.merges): label, then "12 pull requests merged · 8 merge commits (6% of commits)". */
+    merges: 'Merges',
+    mergesValue: (prs, merges, share) => mergesText(prs, merges, share, ' · '),
     /** The first-commit line: label, then the quoted subject and "(Mar 3, 2025 · 1a2b3c4)". */
     firstCommit: 'First commit',
     biggest: 'Biggest',
@@ -582,6 +610,9 @@ export default {
     /** The releases item (stats.releases): "3 releases, latest: v1.5.0 (Oct 6, 2026)". */
     releases: 'Releases',
     latestRelease: (name) => `latest: ${name}`,
+    /** The merges item (stats.merges): "12 pull requests merged, 8 merge commits (6% of commits)". */
+    merges: 'Merges',
+    mergesValue: (prs, merges, share) => mergesText(prs, merges, share, ', '),
     cards: 'Story cards',
     /** Alt text of each card image, by card id (src/cards CARD_IDS). */
     cardNames: {

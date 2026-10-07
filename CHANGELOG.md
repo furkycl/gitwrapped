@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Releases: the commits in the window that tags point at (lightweight or annotated,
+  peeled to their commit), one release per tagged commit however many tags it has
+  (floating `v1` / `v1.2`, `latest`, a tag on a tag). The outro card gets a "Releases"
+  panel ("You shipped 3 releases", "Latest: v1.5.0 · Oct 6, 2026"; a long tag name is cut
+  in the middle so its version and the day show); to make room the subtitle gives way
+  (the "Made with gitwrapped" line, then `--year`'s comparison), nothing else shrinks, and
+  without tags the card is exactly as before. The recap gets a "Releases" line,
+  `wrapped.md` a "Releases" item, and `stats.json` gets `stats.releases` (`{count, tags,
+  first, latest}`, each of `first` / `latest` `{name, date}` or `null`; the name is the
+  commit's most specific tag, `v1.2.3` over `v1.2` and `v1.2.3-rc.1`, `v1.10.0` over
+  `v1.9.0`). Only tags on the analyzed commits count, so the window, `--author` and
+  `--max-commits` apply; with several repos the counts are summed, tag names get their
+  repo label in front ("api/v1.2.0"), and a commit two repos share keeps both repos'
+  tags. One `git show-ref --tags -d` call per repo; a failing call means no releases,
+  never a failed run. Email-shaped text in tag names is replaced with "…". English and
+  Turkish.
+
 ## [1.5.0] - 2026-10-07
 
 ### Added

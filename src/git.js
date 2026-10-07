@@ -362,14 +362,16 @@ async function shallowBoundary(repoPath) {
  * Each commit's `coAuthors` (its Co-authored-by trailers) go through the repo's .mailmap
  * like its author does (see mailmapCoAuthors); `coAuthors: false` skips that git call for
  * a read whose co-authors are not used (they are then left as written).
- * `commits` is []for a repo without commits. When HEAD has no commits (a new repo, or an
+ * A commit that tags point at gets `tags`, their names (see readTags); `tags: false`
+ * skips that git call for a read whose releases are not used.
+ * `commits` is [] for a repo without commits. When HEAD has no commits (a new repo, or an
  * orphan branch) the result also has `unborn: true` and `otherRefs` (see hasOtherRefs):
  * only HEAD's history is read, so other branches' commits are not seen. Throws a TypeError for an invalid
  * `limit`, and a user-facing Error for: a missing path ("path does not exist: <path>"),
  * a file ("not a directory: <path>"), a folder that is not a repo ("not a git repository:
  * <path>"), git's safe.directory ownership check, a missing git, or oversized output.
  */
-export async function readHistory(repoPath, { since, until, author, limit = DEFAULT_LIMIT, maxBuffer = MAX_BUFFER, coAuthors = true } = {}) {
+export async function readHistory(repoPath, { since, until, author, limit = DEFAULT_LIMIT, maxBuffer = MAX_BUFFER, coAuthors = true, tags = true } = {}) {
   if (limit !== Infinity && (!Number.isSafeInteger(limit) || limit < 1)) {
     throw new TypeError(`limit must be a positive integer or Infinity, got ${limit}`);
   }
@@ -408,6 +410,7 @@ export async function readHistory(repoPath, { since, until, author, limit = DEFA
   const truncated = commits.length > limit;
   if (truncated) commits = commits.slice(0, limit);
   if (coAuthors) await mailmapCoAuthors(repoPath, commits);
+  if (tags) await readTags(repoPath, commits);
   const boundary = await shallowBoundary(repoPath);
   if (boundary) {
     for (const c of commits) {
@@ -416,6 +419,54 @@ export async function readHistory(repoPath, { since, until, author, limit = DEFA
     }
   }
   return { commits, truncated, limit, shallow: Boolean(boundary) };
+}
+
+/**
+ * `git show-ref --tags -d` output → Map of tag name → the commit (or other object) it
+ * points at, peeled: an annotated tag's "<hash> refs/tags/<name>^{}" line (the object it
+ * finally points at, through tags of tags too) wins over its own "<hash> refs/tags/<name>";
+ * a lightweight tag has only the latter. Ref names never contain whitespace, so each line
+ * is "<hash> <ref>". Pure function.
+ */
+export function parseTagRefs(stdout) {
+  const peeled = new Map();
+  for (const line of String(stdout ?? '').split('\n')) {
+    const m = /^([0-9a-f]+) refs\/tags\/(\S+?)(\^\{\})?\r?$/i.exec(line);
+    if (!m) continue;
+    const [, hash, name, deref] = m;
+    if (deref || !peeled.has(name)) peeled.set(name, hash.toLowerCase());
+  }
+  return peeled;
+}
+
+/**
+ * Give every commit that tags point at (lightweight or annotated, peeled to the commit)
+ * `tags`: their names, sorted; commits without a tag are left without the field. One
+ * `git show-ref --tags -d` call. Only the given commits are matched, so the window,
+ * --author and the cap apply to releases as to everything else. Best effort: when git
+ * fails (or the repo has no tags, where show-ref exits 1), no commit gets tags. Returns
+ * `commits`.
+ */
+export async function readTags(repoPath, commits) {
+  if (!Array.isArray(commits) || commits.length === 0) return commits;
+  let refs;
+  try {
+    const { stdout } = await execFileAsync('git', ['-C', repoPath, 'show-ref', '--tags', '-d'], { encoding: 'utf8', env: gitEnv(), maxBuffer: MAX_BUFFER });
+    refs = parseTagRefs(stdout);
+  } catch {
+    return commits;
+  }
+  const byHash = new Map();
+  for (const [name, hash] of refs) {
+    if (!byHash.has(hash)) byHash.set(hash, []);
+    byHash.get(hash).push(name);
+  }
+  if (byHash.size === 0) return commits;
+  for (const c of commits) {
+    const names = typeof c?.hash === 'string' ? byHash.get(c.hash.toLowerCase()) : undefined;
+    if (names) c.tags = [...names].sort();
+  }
+  return commits;
 }
 
 /** A co-author as a `git check-mailmap` contact line: "Name <email>", nothing that would break it. */
@@ -569,19 +620,28 @@ export function repoLabels(names) {
  * Order: by author-date instant, newest first; equal instants (and unparseable dates,
  * which sort last) keep their input order: repo by repo, each in git's order.
  * A commit whose hash was already seen in an earlier repo (a fork or a second clone that
- * shares history) is counted once, under the first repo. `truncated` is true when any
+ * shares history) is counted once, under the first repo; the tags the later repo has on it
+ * (see readTags) are added to the kept copy's `tags` as `{name, repo}` (that repo's label),
+ * so a release tagged only in the later repo still counts, under its own repo's name
+ * (see computeReleases). `truncated` is true when any
  * input was truncated or the merged history has more than `limit` commits; with each
  * repo read with the same `limit`, the result is the `limit` most recent commits of all
  * repos together. Returns `{commits, truncated}`.
  */
 export function mergeHistories(histories, { limit = DEFAULT_LIMIT } = {}) {
-  const seen = new Set();
+  const seen = new Map();
   const merged = [];
   for (const { label, commits } of histories ?? []) {
     for (const c of commits ?? []) {
-      if (c.hash && seen.has(c.hash)) continue;
-      if (c.hash) seen.add(c.hash);
-      merged.push({ ...c, repo: label, files: (c.files ?? []).map((f) => ({ ...f, path: `${label}/${f.path}` })) });
+      const kept = c.hash ? seen.get(c.hash) : undefined;
+      if (kept) {
+        // A shared commit: keep the first repo's copy, with this repo's tags added to it.
+        if (Array.isArray(c.tags) && c.tags.length > 0) kept.tags = [...(kept.tags ?? []), ...c.tags.map((name) => ({ name, repo: label }))];
+        continue;
+      }
+      const copy = { ...c, repo: label, files: (c.files ?? []).map((f) => ({ ...f, path: `${label}/${f.path}` })) };
+      if (c.hash) seen.set(c.hash, copy);
+      merged.push(copy);
     }
   }
   const time = (c) => {

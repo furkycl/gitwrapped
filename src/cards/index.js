@@ -1,7 +1,7 @@
 // The story-card set: turns computeStats() output into Wrapped-style SVG cards.
 // Pure and deterministic. Every card copes with empty stats (0 commits, null peaks,
 // no hot files, null messages) and never prints "null", "undefined" or "NaN".
-import { CALLOUT_NOTE, calendarWindow, formatNumber, graphemes, layoutCard as layoutOf, measureText, renderCardWithLayout } from './svg.js';
+import { CALLOUT_NOTE, calendarWindow, formatNumber, graphemes, layoutCard as layoutOf, measureText, renderCardWithLayout, truncateMiddle } from './svg.js';
 
 export { formatNumber };
 import { renderShareSvg } from './share.js';
@@ -11,6 +11,7 @@ import { daysUpTo, shownLongest, shownLongestBreak } from '../stats/daily.js';
 import { monthIndex, monthsFromDays } from '../stats/months.js';
 import { hasTeamCard, shareLabel, TOP_CONTRIBUTORS } from '../stats/contributors.js';
 import { shownCoAuthors } from '../stats/coauthors.js';
+import { shownReleases } from '../stats/releases.js';
 import { scrubEmails } from '../privacy.js';
 import { personalityReason } from '../stats/personality.js';
 import { yearOverYear } from '../stats/yoy.js';
@@ -304,16 +305,7 @@ function featuring(rows, L) {
  */
 function withRepo(head, repo) {
   if (!repo) return head;
-  const join = (r) => (head ? `${head} · ${r}` : r);
-  const fits = (t) => measureText(t, CALLOUT_NOTE.size) <= CALLOUT_NOTE.maxWidth;
-  if (fits(join(repo))) return join(repo);
-  const gs = graphemes(repo);
-  while (gs.length > 1) {
-    gs.pop();
-    const stub = gs.join('').trimEnd();
-    if (stub && fits(join(`${stub}…`))) return join(`${stub}…`);
-  }
-  return head;
+  return fitNoteSlot((r) => (head ? `${head} · ${r}` : r), repo) ?? head;
 }
 
 function beganCallout(s, L) {
@@ -1146,17 +1138,81 @@ function outro(s, ctx) {
   // --year: one sentence on the change since the previous year, first (when the subtitle
   // runs out of lines, trailing sentences are dropped).
   const yoy = commits > 0 ? yearOverYear(s) : null;
-  return {
+  const tiles = {
+    kind: 'tiles',
+    items: summaryTiles(s, ctx),
+    wide: top ? { label: O.hottestFile, value: top.path, note: plural(top.commits, 'commit', L), truncate: 'start' } : null,
+  };
+  const yoySentence = yoy ? L.yoy.summary(yoy.previousYear, yoy.commits, yoy.lines, yoy.activeDays) : null;
+  const spec = {
     eyebrow: O.eyebrow,
     big: O.big,
     title: commits > 0 ? O.inOneCard(ctx.repoName) : L.empty,
-    subtitle: yoy ? `${L.yoy.summary(yoy.previousYear, yoy.commits, yoy.lines, yoy.activeDays)} ${O.subtitle}` : O.subtitle,
-    chart: {
-      kind: 'tiles',
-      items: summaryTiles(s, ctx),
-      wide: top ? { label: O.hottestFile, value: top.path, note: plural(top.commits, 'commit', L), truncate: 'start' } : null,
-    },
+    subtitle: yoySentence ? `${yoySentence} ${O.subtitle}` : O.subtitle,
+    chart: tiles,
   };
+  const released = commits > 0 ? releasesCallout(s, L) : null;
+  return released ? withReleases(spec, tiles, released, yoySentence, L) ?? spec : spec;
+}
+
+/**
+ * The outro with the releases panel after its tiles, or null when it fits nowhere (then
+ * the card is exactly as without it). The panel is `optional`, so it is only drawn when
+ * nothing else shrinks for it; to make room, the subtitle gives way first: as it is, then
+ * without the static "Made with gitwrapped…" line (keeping --year's comparison sentence),
+ * then with no subtitle at all (the comparison is still on the totals card and the recap).
+ */
+function withReleases(spec, tiles, panel, yoySentence, L) {
+  const { subtitle, ...rest } = spec;
+  const subtitles = [subtitle, ...(yoySentence ? [yoySentence] : []), null];
+  for (const sub of subtitles) {
+    const next = { ...rest, ...(sub ? { subtitle: sub } : {}), chart: [tiles, panel] };
+    if (draws(next, 1, L)) return next;
+  }
+  return null;
+}
+
+/**
+ * A callout note `make(value)` on one line (CALLOUT_NOTE): as it is when it fits; else
+ * with `value` cut so that the rest of the note always shows whole: in the middle
+ * (`middle`, head + "…" + tail, so a tag keeps its repo prefix and its version at the end)
+ * or at the end ("…", keeping at least one character). Null when even that does not fit.
+ */
+function fitNoteSlot(make, value, { middle = false } = {}) {
+  const size = CALLOUT_NOTE.size;
+  const fits = (t) => measureText(t, size) <= CALLOUT_NOTE.maxWidth;
+  if (fits(make(value))) return make(value);
+  if (middle) {
+    for (let room = CALLOUT_NOTE.maxWidth - measureText(make(''), size); room > 0; room -= 4) {
+      const cut = truncateMiddle(value, { maxWidth: room, fontSize: size });
+      if (graphemes(cut).length > 1 && fits(make(cut))) return make(cut);
+    }
+    return null;
+  }
+  const gs = graphemes(value);
+  while (gs.length > 1) {
+    gs.pop();
+    const stub = gs.join('').trimEnd();
+    if (stub && fits(make(`${stub}…`))) return make(`${stub}…`);
+  }
+  return null;
+}
+
+/**
+ * The outro's optional releases panel (stats.releases, see shownReleases): "Releases",
+ * "You shipped 3 releases" and "Latest: v1.5.0 · Oct 6, 2026" (a long tag name cut in the
+ * middle with "…", so its version and the day always show); null when no tag points at
+ * the commits.
+ */
+function releasesCallout(s, L) {
+  const r = shownReleases(s.releases);
+  if (!r) return null;
+  const O = L.outro;
+  const name = r.latest ? clip(text(plain(r.latest.name))) : null;
+  const day = r.latest ? formatDay(r.latest.date, L.code) : '';
+  const make = (n) => [O.latest(n), day].filter(Boolean).join(' · ');
+  const note = name ? fitNoteSlot(make, name, { middle: true }) ?? make('…') : null;
+  return { kind: 'callout', optional: true, title: O.releases, value: O.shipped(r.count), note };
 }
 
 /** 'YYYY-MM' → {year, month (1-12)}. */

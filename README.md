@@ -33,7 +33,7 @@ calendar months and a team card in a repo with more than one contributor (up to 
 9. **The team** (only when the history has two or more contributors): how many people committed and the top five by commits as bars ("Ada Lovelace leads the pack with 54% of the commits"). With `--author` it ranks you against everyone in the same window: "#2 of 7 contributors", your share of the commits and lines, and a "you" marker on your bar (a sixth bar when you're outside the top five). Contributors are counted per email after `.mailmap`, and only their git author names are shown, never an email. A single-author repo skips this card, and so does an `--author` with no commits in the window (there's no "you" to rank); the cards after it then move up a number. When commits carry `Co-authored-by:` trailers (pair programming, GitHub's co-authored commits, AI assistants), a "Pair programming" panel follows the bars: "12 commits paired" and the top co-author by name ("Top co-author: Grace Hopper"). A commit counts as paired when it lists at least one co-author other than its own author; merge commits are skipped. Co-authors go through `.mailmap` like authors and are shown by name only, never an email. The panel only uses spare room: when it doesn't fit, the card is exactly as without it and the totals card gets a row instead (when that fits); either way the pairing is in the recap, `wrapped.md` and `stats.json`. With `--author` the pairing counts only your commits (a commit where you are only a co-author does not count), so it goes on the totals card, not on the team card, which is everyone's.
 10. **Message hall of fame**: your favorite word, your longest and shortest messages, and how many "fix", "wip" and "oops" commits you made, plus your biggest commit: the one with the most lines changed, with its day, lines added / removed and subject. It counts the same files as hot files (lockfiles, build output and the rest are left out, and so is anything you `--exclude`) and skips merge commits; a tie goes to the earliest commit. When at least 20% of your commits follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat: ...`, `fix(api)!: ...`), the card also shows your commit type mix as a thin stacked bar: the top three types and any others folded into "the rest", each with its share of those commits, and the share of commits that follow the convention in its caption. When you only ever use one type, the bar sets it against the commits without a prefix ("no prefix"), as shares of all commits; with a single type on every commit there is nothing to compare and no bar. The bar only uses spare room; when there isn't enough, the fix / wip / oops counts are folded into one row ("“fix” / “wip” / “oops”: 5 / 0 / 2") to make room, and when it still doesn't fit, the card is left as it was (the mix is still in the recap, `wrapped.md` and `stats.json`).
 11. **Personality**: Night Owl, Early Bird, Friday Deployer, Fixaholic, Weekend Warrior or Steady Shipper, with a one-line roast and bars for your top habit scores.
-12. **Outro**: a summary card to post: commits, power hour, best streak and personality tiles, plus your hottest file.
+12. **Outro**: a summary card to post: commits, power hour, best streak and personality tiles, plus your hottest file. When tags point at commits in the window (your releases: one per tagged commit, see `stats.releases` below), a "Releases" panel follows: "You shipped 3 releases" and the latest one with its day ("Latest: v1.5.0 · Oct 6, 2026"; a long tag name is cut in the middle with "…", so its start, its version at the end and the day always show). To make room for it the subtitle gives way, and nothing else shrinks: first the "Made with gitwrapped" line goes, then, with `--year`, the comparison with the year before (it is still on the totals card and in the recap). Without tags the card is exactly as before.
 
 You also get:
 
@@ -58,6 +58,8 @@ You also get:
   with `--author` your rank, e.g. `Team  7 contributors · you're #2 (31% of commits)`),
   pairing (when commits have `Co-authored-by:` trailers, e.g.
   `Paired  12 commits (31% of non-merge commits) · top co-author: Grace Hopper`),
+  releases (when tags point at commits in the window, e.g.
+  `Releases  3 releases · latest: v1.5.0 (Oct 6, 2026)`),
   top word, biggest commit, commit size mix, commit type mix (when you use Conventional
   Commits, e.g. `Types  60% feat · 30% fix · 10% other (85% of commits conventional)`) and
   personality, printed right after the run.
@@ -209,7 +211,7 @@ With `--year`, gitwrapped also reads the year before with the same filters (`--a
 - the totals card adds three rows: commits, lines changed (added + removed) and active
   days vs the previous year, as signed changes (`+42`, `−1,203`, `±0`);
 - the outro card opens with one line, e.g. "vs 2024: +42 commits, −1,203 lines
-  changed, +5 active days.";
+  changed, +5 active days." (unless the card needs that room for its releases panel);
 - the terminal recap gets a `vs 2024` line, and `stats.json` a `yearOverYear` object
   (see [JSON output](#json-output)).
 
@@ -279,7 +281,7 @@ live in `src/cards/themes.js`.
 With `--json`, gitwrapped also writes `<out>/stats.json`: 2-space indented, with a fixed
 key order and no generation timestamp, so the same history, options and `asOf` day give
 the same file. It contains no paths from your machine (`repo` is just the folder name),
-but it does contain commit subjects and hashes and repo-relative file paths (see
+but it does contain commit subjects and hashes, tag names and repo-relative file paths (see
 [Privacy](#privacy)).
 
 | Key             | What it holds                                                                 |
@@ -291,7 +293,7 @@ but it does contain commit subjects and hashes and repo-relative file paths (see
 | `asOf`          | `YYYY-MM-DD` the current streak is counted up to: today, or the end of a past `--until` / `--year` window |
 | `filters`       | `{since, until, author, maxCommits, exclude}` as used (`--year` shows as since/until); dates and author are `null` when not set, `maxCommits` is the cap in effect, `exclude` the `--exclude` patterns in order (`[]` when none) |
 | `truncated`     | `true` when `--max-commits` cut the history short                             |
-| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `months`, `hotFiles`, `languages`, `contributors`, `messages`, `biggestCommit`, `commitSizes`, `commitTypes`, `firstCommit`, `coAuthors`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
+| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `months`, `hotFiles`, `languages`, `contributors`, `messages`, `biggestCommit`, `commitSizes`, `commitTypes`, `firstCommit`, `coAuthors`, `releases`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
 
 ```json
 {
@@ -446,6 +448,26 @@ it covers the commits read with your filters: with `--author`, only your commits
 where you are only a co-author does not count). With no co-authors it is
 `{"paired": 0, "commits": N, "share": 0, "total": 0, "top": []}`.
 
+`stats.releases` counts your releases: the commits read with your filters that tags point
+at, lightweight or annotated (peeled to the commit they tag, through tags of tags too):
+`{"count", "tags", "first": {"name", "date"}, "latest": {"name", "date"}}`. `count` is
+the number of tagged commits, one release per commit however many tags it has (floating
+`v1` / `v1.2` next to `v1.2.3`, aliases such as `latest` or `stable`, a tag on a tag);
+a tag on a merge commit counts too. `tags` is the number of tags on those commits.
+`first` and `latest` are the earliest and most recent of those commits by author date
+(ties by name), `date` that commit's author-local day `YYYY-MM-DD`, and `name` its most
+specific tag: a name with a version number beats one without, more version parts beat
+fewer (`v1.2.3` over `v1.2`), a plain version beats one with a suffix (`v1.2.3` over
+`v1.2.3-rc.1`), and then the highest wins, comparing numbers as numbers (`v1.10.0` over
+`v1.9.0`). Since only tags on the analyzed commits count, `--since` / `--until` /
+`--year`, `--author` and `--max-commits` apply to releases too: a tag on someone else's
+commit, or outside the window, is left out. With several repos the counts are summed and
+names get the repo label in front (`"api/v1.2.0"`, like file paths), with a `repo` key on
+`first` and `latest`; a commit two repos share (a fork) is one release, with both repos'
+tags (named after the first repo's tag when both tag it). Email-shaped text in a tag name
+is replaced with "…". With no tags it is
+`{"count": 0, "tags": 0, "first": null, "latest": null}`.
+
 With several repos, `stats.repos` is the per-repo breakdown, most commits first:
 `[{"name": "api", "commits": 120, "linesAdded": 9100, "linesRemoved": 2300,
 "filesTouched": 64, "share": 61.2}, ...]` (counted like `totals`; `share` is the percent
@@ -474,7 +496,8 @@ README, a PR description or release notes:
   `--author` the name part of that address ("Starring ada.");
 - the headline numbers (commits, active days, lines added / removed, files touched; with
   `--year` the change since the year before), the commit size mix, the first commit and,
-  when commits have `Co-authored-by:` trailers, how many were paired and the top co-author;
+  when commits have `Co-authored-by:` trailers, how many were paired and the top co-author,
+  and, when tags point at your commits, how many releases you shipped and the latest one;
 - the power hour and busiest weekday, the longest streak, the current one (when a streak is
   running) and the longest break;
 - tables of the top five hot files and languages, and, in a repo with more than one
@@ -510,8 +533,9 @@ npx @furkycl/gitwrapped --year 2025 --md --no-png
   a strict Content-Security-Policy (`default-src 'none'`, with hashed inline style and
   script), so the browser won't load anything from the network either.
 - **What the output contains.** Cards, `wrapped.html` and (with `--json`) `stats.json`
-  show commit subjects and repo-relative file paths. Anything shaped like an email address
-  (`name@host`) in commit subjects, file paths and the repo labels of a multi-repo run
+  show commit subjects, repo-relative file paths and tag names (the latest release, and in
+  `stats.json` the first one too). Anything shaped like an email address
+  (`name@host`) in commit subjects, file paths, tag names and the repo labels of a multi-repo run
   is replaced with "…" in every output (cards, share image, `wrapped.html`, `stats.json`,
   the recap and `wrapped.md`). Text after an `@` that starts
   with a digit is not an address and is kept: versions like `lodash@4.17.21` and `@2x`
@@ -538,6 +562,8 @@ npx @furkycl/gitwrapped --year 2025 --md --no-png
    hashes-and-dates pass picks the commits in the window first. When any commit has a
    co-author, one `git check-mailmap --stdin` call per repo maps them through `.mailmap`
    (not for the extra reads of `--author` and `--year`, whose co-authors are not used).
+   One `git show-ref --tags -d` call per repo lists the tags (peeled to their commits) for
+   the releases, again for the main read only; when it fails, there are just no releases.
 2. **Stats.** Totals, time habits, streaks, commits per day, hot files, languages, contributors, message stats and a rule-based
    personality are computed in plain JavaScript. Hours, weekdays and days use each
    commit's **author-local time**, so a 23:00 commit counts as 23:00 for the person

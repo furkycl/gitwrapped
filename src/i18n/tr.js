@@ -27,6 +27,7 @@ const UNITS = {
   png: ['PNG', 'PNG'],
   fix: ['fix', 'fix'],
   repo: ['repo', 'repo'],
+  release: ['sürüm', 'sürüm'],
 };
 
 const MONTHS = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
@@ -338,6 +339,9 @@ export default {
     noneYet: 'Henüz yok',
     tbd: 'Yakında',
     hottestFile: 'En gözde dosya',
+    releases: 'Sürümler',
+    shipped: (n) => `${plural(n, UNITS.release)} yayınladın`,
+    latest: (name) => `Son sürüm: ${name}`,
   },
 
   share: {
@@ -408,6 +412,8 @@ export default {
     paired: 'Birlikte yazılan',
     ofNonMerge: (share) => `merge dışı commit'lerin ${share} kadarı`,
     topCoAuthor: 'en sık ortak:',
+    releases: 'Sürümler',
+    latest: 'son:',
     firstCommit: 'İlk commit',
     biggest: 'En büyük',
     sizes: 'Boyutlar',
@@ -448,6 +454,8 @@ export default {
     commitTypes: 'Commit türleri',
     paired: 'Birlikte yazılan',
     topCoAuthor: (name) => `en sık ortak: ${name}`,
+    releases: 'Sürümler',
+    latestRelease: (name) => `son sürüm: ${name}`,
     cards: 'Hikâye kartları',
     cardNames: {
       intro: 'Giriş',

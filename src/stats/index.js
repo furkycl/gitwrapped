@@ -3,6 +3,7 @@ import { computeBiggestCommit, shownBiggestLines } from './biggest.js';
 import { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONTRIBUTORS } from './contributors.js';
 import { computeFirstCommit, SHORT_HASH } from './first.js';
 import { computeCoAuthors, shownCoAuthors, TOP_CO_AUTHORS } from './coauthors.js';
+import { computeReleases, shownReleases } from './releases.js';
 import { computeDaily, daysUpTo, longestGap, longestRun, shownLongest, shownLongestBreak } from './daily.js';
 import { computeHotFiles, isIgnoredPath, repoRelativePath } from './files.js';
 import { computeTimeHabits } from './habits.js';
@@ -22,6 +23,7 @@ export { computeLanguages, languageBarRows, languageHeadline, languageOf, langua
 export { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONTRIBUTORS };
 export { computeFirstCommit, SHORT_HASH };
 export { computeCoAuthors, shownCoAuthors, TOP_CO_AUTHORS };
+export { computeReleases, shownReleases };
 export { computeBiggestCommit, shownBiggestLines, computeMessages, computePersonality, isMergeCommit, ARCHETYPES, localToday };
 export { computeMonths, monthsFromDays };
 export { COMMIT_SIZE_BUCKETS, COMMIT_SIZE_IDS, commitSizeOf, computeCommitSizes, shownCommitSizes, sizeShares };
@@ -46,6 +48,8 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * plus `repo` in a multi-repo run; emails scrubbed from the subject, see first.js), or null.
  * `coAuthors` is how many non-merge commits have a Co-authored-by co-author other than
  * their author, and who those co-authors are, by name only (see coauthors.js).
+ * `releases` is how many of the commits tags point at (one release per tagged commit) and
+ * how many tags, with the first and latest release (`{name, date}`, see releases.js).
  * `months` is commits per author-local calendar month, zero-filled from the first to the
  * last active month, with the peak month (see months.js).
  * `contributors` ranks who made the commits (see contributors.js). It is computed from
@@ -77,6 +81,7 @@ export function computeStats(commits = [], { today, todayComplete, team, author,
     commitTypes: computeCommitTypes(commits),
     firstCommit: computeFirstCommit(commits),
     coAuthors: computeCoAuthors(commits),
+    releases: computeReleases(commits),
   };
   const nonMergeCommits = (commits ?? []).filter((c) => !isMergeCommit(c)).length;
   stats.personality = computePersonality(stats, { nonMergeCommits, today: today ?? localToday() });

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Relative windows: `--since` / `--until` also take `30d`, `12w`, `6m` or `1y` (N days,
+  weeks, calendar months or calendar years before today's local date; N from 0 to 9999,
+  any case). Months and years clamp to the target month's last day (2026-03-31 minus
+  `1m` is 2026-02-28). The value is resolved to a `YYYY-MM-DD` day before anything else,
+  so the cards, recap, notes and `stats.json` `filters` show the resolved dates, the
+  "--since is after --until" check compares them, and `--year` still can't be combined
+  with either. A result before 1970 is an error, and the "expected format" error now
+  mentions the relative form. `--help` and the README describe it.
+
 ## [1.8.0] - 2026-10-07
 
 ### Added

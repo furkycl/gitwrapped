@@ -49,7 +49,7 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * (feat / fix / docs / refactor / test / chore / other) of non-merge commits with a
  * subject, and whether it is shown (see types.js). `emoji` is how many of those commits
  * have an emoji (Unicode or a gitmoji `:shortcode:`) in the subject, and the top three
- * (see emoji.js). `reverts` is how many non-merge commits revert another (a `Revert "…"`
+ * (see emoji.js). `reverts` is how many non-merge commits revert another (a `Revert "…"` or `revert: …`
  * subject or a "This reverts commit <hash>" line, see reverts.js), their share, and how
  * many distinct commits they name; the Fixaholic reason mentions them.
  * `firstCommit` is the earliest non-merge commit by author date (`{date, subject, hash}`,

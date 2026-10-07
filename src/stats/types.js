@@ -35,16 +35,34 @@ const TYPE_BUCKET = new Map([
 const CONVENTIONAL = /^([a-z]+)(?:\([^()]*\))?!?:\s+\S/i;
 
 /**
+ * Emoji in front of the type, as gitmoji users write them (`✨ feat: x`,
+ * `:sparkles: feat: x`, `🐛🚑️ fix: y`, `1️⃣ feat: x`), each followed by optional blanks:
+ * Unicode emoji as stats/emoji.js counts them (a pictograph with emoji presentation or
+ * followed by U+FE0F, so a bare text-style © or ™ is not one; keycaps; flags; skin tones;
+ * ZWJ sequences) and `:shortcode:`s. Only the start of the subject is stripped, so the
+ * rest of the convention is checked as before.
+ */
+const LEADING_EMOJI = /^(?:(?:[0-9#*]\uFE0F?\u20E3|\p{Emoji_Presentation}|\p{Extended_Pictographic}\uFE0F|\p{Regional_Indicator}|\p{Emoji_Modifier}|\u200D\p{Extended_Pictographic}\uFE0F?|\uFE0F|:[a-z0-9_+-]+:)\s*)+/u;
+
+/**
+ * `subject` (trimmed) without the emoji in front of it (see LEADING_EMOJI): "✨ feat: x"
+ * → "feat: x". '' for anything but a string. Shared with stats/reverts.js, so a
+ * conventional revert counts the same with or without a gitmoji.
+ */
+export const stripLeadingEmoji = (subject) => (typeof subject === 'string' ? subject.trim().replace(LEADING_EMOJI, '') : '');
+
+/**
  * The conventional-commit bucket of a subject line ('feat', 'fix', 'docs', 'refactor',
  * 'test', 'chore' or 'other'), or null when it does not follow the convention: the
  * (trimmed) subject has to start with a known type word (see TYPE_BUCKET, compared
  * case-insensitively), an optional "(scope)", an optional "!" (breaking change), then ":"
  * and a space followed by a description. "feat(ui)!: dark mode" → 'feat',
- * "PERF: faster" → 'other', "Fix typo" → null, "feat:" → null.
+ * "PERF: faster" → 'other', "Fix typo" → null, "feat:" → null. Emoji in front of the type
+ * are skipped (see LEADING_EMOJI): "✨ feat: x" and ":sparkles: feat: x" → 'feat'.
  */
 export function commitTypeOf(subject) {
   if (typeof subject !== 'string') return null;
-  const m = CONVENTIONAL.exec(subject.trim());
+  const m = CONVENTIONAL.exec(stripLeadingEmoji(subject));
   return m ? (TYPE_BUCKET.get(m[1].toLowerCase()) ?? null) : null;
 }
 

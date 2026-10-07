@@ -332,6 +332,10 @@ describe('git (real repos): odd paths, author, cap, CLI', () => {
   const on = (day, who) => ({ ...who, GIT_AUTHOR_DATE: `2025-04-0${day}T10:00:00+00:00`, GIT_COMMITTER_DATE: `2025-04-0${day}T10:00:00+00:00` });
   let root;
   let repo;
+  // Tabs and backslashes are not valid in Windows file names: plain stand-ins there.
+  const WIN = process.platform === 'win32';
+  const TAB = WIN ? 'tab_here.txt' : 'tab\there.txt';
+  const BS = WIN ? 'back_slash.txt' : 'back\\slash.txt';
   const longText = (seed) => Array.from({ length: 40 }, (_, i) => `${seed} line ${i} ${seed.repeat(3)}`).join('\n') + '\n';
 
   before(() => {
@@ -344,15 +348,15 @@ describe('git (real repos): odd paths, author, cap, CLI', () => {
     // 04-01 Ada: six files born, with spaces, unicode, a tab, a backslash.
     write(repo, 'my file.txt', 'a\n');
     write(repo, 'ünïcödé/naïve.md', longText('n'));
-    write(repo, 'tab\there.txt', 't\n');
-    write(repo, 'back\\slash.txt', 'b\n');
+    write(repo, TAB, 't\n');
+    write(repo, BS, 'b\n');
     write(repo, 'dir with space/x.js', 'x\n');
     write(repo, 'Readme.md', '# readme\n');
     git(repo, ['add', '-A']);
     git(repo, ['commit', '-q', '-m', 'feat: odd paths'], on(1, ADA));
     // 04-02 Bob: temp.js born, the backslash file buried.
     write(repo, 'temp.js', 'tmp\n');
-    git(repo, ['rm', '-q', 'back\\slash.txt']);
+    git(repo, ['rm', '-q', BS]);
     git(repo, ['add', '-A']);
     git(repo, ['commit', '-q', '-m', 'feat: temp'], on(2, BOB));
     // 04-03 Ada: temp.js and "my file.txt" buried.
@@ -377,8 +381,8 @@ describe('git (real repos): odd paths, author, cap, CLI', () => {
   test('-z read keeps spaces, unicode, tabs and backslashes verbatim', async () => {
     const commits = await readCommits(repo);
     const by = new Map(commits.map((c) => [c.subject, c]));
-    assert.deepEqual([...by.get('feat: odd paths').born].sort(), ['Readme.md', 'back\\slash.txt', 'dir with space/x.js', 'my file.txt', 'tab\there.txt', 'ünïcödé/naïve.md'].sort());
-    assert.deepEqual(by.get('feat: temp').buried, ['back\\slash.txt']);
+    assert.deepEqual([...by.get('feat: odd paths').born].sort(), ['Readme.md', BS, 'dir with space/x.js', 'my file.txt', TAB, 'ünïcödé/naïve.md'].sort());
+    assert.deepEqual(by.get('feat: temp').buried, [BS]);
     assert.deepEqual([...by.get('chore: drop temp').buried].sort(), ['my file.txt', 'temp.js']);
     assert.deepEqual(by.get('docs: rewrite').born, ['ünïcödé/renamed.md']);
     assert.deepEqual(by.get('docs: rewrite').buried, ['ünïcödé/naïve.md']);

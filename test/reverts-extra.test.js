@@ -241,12 +241,12 @@ describe('end to end: real git reverts', () => {
     const s = statsOf(out);
     assert.equal(s.reverts.count, 1);
     assert.equal(s.personality.archetype.id, 'fixaholic');
-    assert.equal(s.personality.archetype.reason, '75% of your commit messages are fixes, including 1 revert.');
-    assert.match(textOf(cardOf(out, 'personality')), /fixes, including 1 revert\./);
+    assert.equal(s.personality.archetype.reason, '75% of your commit messages are fixes; 1 commit reverts another.');
+    assert.match(textOf(cardOf(out, 'personality')), /fixes; 1 commit reverts another\./);
     const outTr = join(tmp, 'o-fix-tr');
     const t = bin([dir, '--out', outTr, '--lang', 'tr']);
     assert.equal(t.status, 0, t.stderr);
-    assert.match(textOf(cardOf(outTr, 'personality')), /düzeltme; 1 tanesi revert\./);
+    assert.match(textOf(cardOf(outTr, 'personality')), /düzeltme; 1 commit başka bir commit(?:'|&apos;)i geri alıyor\./);
   });
 
   test('emoji row and reverts row together on a real card', () => {

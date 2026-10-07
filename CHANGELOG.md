@@ -10,16 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Reverts: commits that revert another, by a `Revert "…"` subject (case-sensitive, as git
-  writes it; a revert of a revert is one revert) or a line starting `This reverts commit
+  writes it; a revert of a revert is one revert), a Conventional Commits `revert: …` /
+  `revert(scope): …` subject (also after a gitmoji, `⏪ revert: …`), or a line starting `This reverts commit
   <hash>` in the message (read with one
   extra `git log --no-walk --stdin --grep` call over the commits read, so the main log
   format stays subject-only; skipped for the `--author` team read and the `--year`
   previous-year read). The messages card gets a "Reverts 3 · 2%" row (count and share of
   non-merge commits; after the emoji row, folding the fix / wip / oops rows if needed,
   never in their place, and left out when it doesn't fit), the Fixaholic reason names
-  them ("…are fixes, including 3 reverts."), the recap a
+  them ("…are fixes; 3 commits revert another."), the recap a
   "Reverts" line and `wrapped.md` a "Reverts" section, and `stats.json` gets
-  `stats.reverts` (`{total, count, share, reverted}`). Merge commits are skipped. Without
+  `stats.reverts` (`{total, count, share, reverted}`; an abbreviated and a full hash of
+  one reverted commit, or two abbreviations where one is a prefix of the other, count once). Merge commits are skipped. Without
   reverts every card, the recap and `wrapped.md` are exactly as before. English and Turkish.
 - Commit emoji: the share of commits with an emoji in the subject, Unicode (✨, a ZWJ
   sequence, skin tone, flag or keycap counts as one) or a [gitmoji](https://gitmoji.dev)
@@ -48,6 +50,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tags. One `git show-ref --tags -d` call per repo; a failing call means no releases,
   never a failed run. Email-shaped text in tag names is replaced with "…". English and
   Turkish.
+
+### Fixed
+
+- Commit types: a gitmoji in front of the conventional prefix (`✨ feat: x`,
+  `:sparkles: feat: x`, `1️⃣ feat: x`) no longer makes the commit unconventional.
 
 ## [1.5.0] - 2026-10-07
 

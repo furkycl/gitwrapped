@@ -41,7 +41,8 @@ describe('detection', () => {
     assert.equal(isRevertSubject('Revert “x”'), true);
     assert.equal(isRevertSubject('revert "x" handling in parser'), false);
     assert.equal(isRevertSubject('Reverted the parser'), false);
-    assert.equal(isRevertSubject('revert: drop cache'), false);
+    assert.equal(isRevertSubject('revert: drop cache'), true); // a Conventional Commits revert (audit 1.6)
+    assert.equal(isRevertSubject('revert:drop cache'), false);
     assert.equal(isRevertSubject('fix: Revert "x" in docs'), false);
     assert.equal(isRevertSubject(null), false);
   });
@@ -170,10 +171,10 @@ describe('Fixaholic reason', () => {
     assert.equal(plain.archetype.id, 'fixaholic');
     assert.equal(plain.archetype.reason, '80% of your commit messages are fixes.');
     const one = computePersonality({ ...base, reverts: { count: 1, total: 10 } });
-    assert.equal(one.archetype.reason, '80% of your commit messages are fixes, including 1 revert.');
+    assert.equal(one.archetype.reason, '80% of your commit messages are fixes; 1 commit reverts another.');
     const three = computePersonality({ ...base, reverts: { count: 3, total: 10 } });
-    assert.equal(three.archetype.reason, '80% of your commit messages are fixes, including 3 reverts.');
-    assert.equal(tr.personality.reasons.fixaholic(80, 3), 'Commit mesajlarının %80 kadarı birer düzeltme; 3 tanesi revert.');
+    assert.equal(three.archetype.reason, '80% of your commit messages are fixes; 3 commits revert another.');
+    assert.equal(tr.personality.reasons.fixaholic(80, 3), "Commit mesajlarının %80 kadarı birer düzeltme; 3 commit başka bir commit'i geri alıyor.");
     assert.equal(tr.personality.reasons.fixaholic(80, 0), 'Commit mesajlarının %80 kadarı birer düzeltme.');
   });
 
@@ -181,9 +182,9 @@ describe('Fixaholic reason', () => {
     const commits = Array.from({ length: 10 }, (_, i) => commit(i < 7 ? `fix: bug ${i}` : `Revert "fix: bug ${i}"`, i));
     const stats = computeStats(commits, { today: TODAY });
     assert.equal(stats.personality.archetype.id, 'fixaholic');
-    assert.match(stats.personality.archetype.reason, /including 3 reverts\.$/);
+    assert.match(stats.personality.archetype.reason, /; 3 commits revert another\.$/);
     const spec = buildCardSpecs(stats, { repoName: 'demo', today: TODAY, lang: 'tr' }).find((c) => c.id === 'personality').spec;
-    assert.match(spec.subtitle, /; 3 tanesi revert\.$/);
+    assert.match(spec.subtitle, /; 3 commit başka bir commit'i geri alıyor\.$/);
   });
 });
 
@@ -248,7 +249,8 @@ describe('git (real repos)', () => {
     assert.deepEqual(by.get(hashes.bodyOnly).revertOf, [hashes.two.slice(0, 10)]);
     assert.equal(commits.filter((c) => 'revertOf' in c).length, 3);
     const stats = computeStats(commits, { today: TODAY });
-    assert.deepEqual(stats.reverts, { total: 6, count: 3, share: 0.5, reverted: 3 });
+    // reverted: two (full and abbreviated: one commit) and revert = 2 distinct commits.
+    assert.deepEqual(stats.reverts, { total: 6, count: 3, share: 0.5, reverted: 2 });
   });
 
   test('reverts: false skips the read; a failing git gives no field, never an error', async () => {
@@ -269,7 +271,7 @@ describe('git (real repos)', () => {
     const out = join(root, 'o1');
     const r = await generate({ path: repo, out, png: false, json: true, md: true }, { today: TODAY });
     const doc = JSON.parse(readFileSync(r.statsJson, 'utf8'));
-    assert.deepEqual(doc.stats.reverts, { total: 6, count: 3, share: 0.5, reverted: 3 });
+    assert.deepEqual(doc.stats.reverts, { total: 6, count: 3, share: 0.5, reverted: 2 });
     assert.match(readFileSync(r.markdown, 'utf8'), /## Reverts\n\n3 commits \\\(50% of non-merge commits\\\)/);
     assert.match(formatSummary(r.stats, { repoName: 'app', today: TODAY }), /Reverts\s+3 commits/);
   });

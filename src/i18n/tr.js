@@ -300,7 +300,7 @@ export default {
       'night-owl': (pct) => `Commit'lerinin %${pct} kadarı 22:00 ile 04:00 arasında geliyor.`,
       'early-bird': (pct) => `Commit'lerinin %${pct} kadarı 05:00 ile 09:00 arasında geliyor.`,
       'friday-deployer': (pct) => `Commit'lerinin %${pct} kadarı cuma günü geliyor.`,
-      fixaholic: (pct, reverts) => `Commit mesajlarının %${pct} kadarı birer düzeltme${reverts > 0 ? `; ${num(reverts)} tanesi revert` : ''}.`,
+      fixaholic: (pct, reverts) => `Commit mesajlarının %${pct} kadarı birer düzeltme${reverts > 0 ? `; ${num(reverts)} commit başka bir commit'i geri alıyor` : ''}.`,
       'weekend-warrior': (pct) => `Commit'lerinin %${pct} kadarı cumartesi ya da pazar geliyor.`,
       'steady-shipper': (activeDays, span, longest) => `${num(span)} günün ${num(activeDays)} gününde commit attın; en uzun serin ${num(longest)} gün.`,
     },

@@ -338,7 +338,7 @@ export default {
       'night-owl': (pct) => `${pct}% of your commits land between 10 PM and 4 AM.`,
       'early-bird': (pct) => `${pct}% of your commits land between 5 AM and 9 AM.`,
       'friday-deployer': (pct) => `${pct}% of your commits land on a Friday.`,
-      fixaholic: (pct, reverts) => `${pct}% of your commit messages are fixes${reverts > 0 ? `, including ${reverts === 1 ? '1 revert' : `${num(reverts)} reverts`}` : ''}.`,
+      fixaholic: (pct, reverts) => `${pct}% of your commit messages are fixes${reverts > 0 ? `; ${reverts === 1 ? '1 commit reverts another' : `${num(reverts)} commits revert another`}` : ''}.`,
       'weekend-warrior': (pct) => `${pct}% of your commits land on a Saturday or Sunday.`,
       'steady-shipper': (activeDays, span, longest) => `You committed on ${activeDays} of ${span} ${span === 1 ? 'day' : 'days'}, with a longest streak of ${longest} ${longest === 1 ? 'day' : 'days'}.`,
     },

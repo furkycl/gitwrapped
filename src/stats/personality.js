@@ -2,6 +2,7 @@ import { daysUpTo, longestRun } from './daily.js';
 import { epochDay } from './time.js';
 import { getStrings } from '../i18n/index.js';
 import { shownReverts } from './reverts.js';
+import { WEEKEND_DAYS, weekendPercent } from './weekend.js';
 
 const EN = getStrings('en');
 const IDS = ['night-owl', 'early-bird', 'friday-deployer', 'fixaholic', 'weekend-warrior', 'steady-shipper'];
@@ -64,7 +65,8 @@ export function computePersonality(stats, opts) {
   const night = share(sumAt(byHour, NIGHT_HOURS));
   const morning = share(sumAt(byHour, MORNING_HOURS));
   const friday = share(sumAt(byWeekday, [5]));
-  const weekend = share(sumAt(byWeekday, [0, 6]));
+  // The same commits as stats.weekend (see weekend.js), so its line and this fact agree.
+  const weekend = share(sumAt(byWeekday, WEEKEND_DAYS));
   // Fix share is of non-merge commits: merges never carry the author's own message.
   const nonMerge = typeof nonMergeCommits === 'number' ? Math.min(num(nonMergeCommits), commits) : commits;
   const fixes = Math.min(num(stats.messages?.counts?.fix), nonMerge);
@@ -136,7 +138,8 @@ function reasonText(id, facts, L) {
     case 'early-bird': return r[id](pct(facts.morning));
     case 'friday-deployer': return r[id](pct(facts.friday));
     case 'fixaholic': return r[id](pct(facts.fixShare), facts.reverts ?? 0);
-    case 'weekend-warrior': return r[id](pct(facts.weekend));
+    // The weekend line's percent (weekend.js): never 100 short of every commit.
+    case 'weekend-warrior': return r[id](weekendPercent(facts.weekend));
     default: return r['steady-shipper'](facts.activeDays, facts.span, facts.longest);
   }
 }

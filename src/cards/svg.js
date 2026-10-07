@@ -905,11 +905,14 @@ function tilesBlock(spec, compact = false, L = EN) {
 
 // --- calendar heatmap ------------------------------------------------------------------
 
+/** The calendar's normal (non-compact) minimum cell size, in px. */
+export const CALENDAR_MIN_CELL = 26;
+
 const CAL = {
   minWeeks: 8,
   maxWeeks: 53,
   maxCell: 72,
-  minCell: 26,
+  minCell: CALENDAR_MIN_CELL,
   minCellCompact: 12,
   gapRatio: 0.18,
   radiusRatio: 0.22,
@@ -1030,13 +1033,16 @@ function calendarBlock(spec, compact = false, L = EN) {
   const minCell = compact ? CAL.minCellCompact : CAL.minCell;
   const minHeight = Math.min(...panelOptions.map((p) => heightFor(p, Math.min(minCell, widthCell(p)))));
   const maxHeight = Math.max(...panelOptions.map((p) => heightFor(p, widthCell(p))));
+  /** The cell size drawn in a block of `height` (as render draws it). */
+  const cellFor = (height) => Math.floor(choose(height).cell * 10) / 10;
   return {
     kind: 'calendar',
     height: minHeight,
     maxHeight: Math.max(minHeight, maxHeight),
+    cellFor,
     render: (y, height) => {
-      const { panels, cell: rawCell } = choose(height);
-      const cell = Math.floor(rawCell * 10) / 10;
+      const { panels } = choose(height);
+      const cell = cellFor(height);
       const gap = Math.floor(cell * CAL.gapRatio * 10) / 10;
       const pitch = cell + gap;
       const rx = round(cell * CAL.radiusRatio);
@@ -1260,7 +1266,8 @@ export function layoutCard({ eyebrow, title, big, subtitle, titleSize, bigMin, l
   const blocks = [];
   const place = (list, group, y) => {
     for (const b of list) {
-      blocks.push({ kind: b.kind, group, top: round(y), bottom: round(y + b.h), svg: b.render(y, b.h) });
+      // A calendar also says the cell size it drew (see calendarBlock).
+      blocks.push({ kind: b.kind, group, top: round(y), bottom: round(y + b.h), svg: b.render(y, b.h), ...(b.cellFor ? { cell: b.cellFor(b.h) } : {}) });
       y += b.h + GAP;
     }
   };

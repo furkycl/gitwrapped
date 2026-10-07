@@ -473,6 +473,8 @@ export default {
     timezones: 'Time zones',
     timezonesValue: (n) => plural(n, ['time zone', 'time zones']),
     mostly: (offset) => `mostly ${offset}`,
+    /** The weekend line (stats.weekend): label, "12 commits", then "(8% of commits)". */
+    weekend: 'Weekends',
     hottestFile: 'Hottest file',
     /** The files born / buried line (stats.fileLifecycle): label, then "12 born · 3 buried". */
     fileLifecycle: 'Files',
@@ -536,6 +538,8 @@ export default {
     busiestWeekday: 'Busiest weekday',
     /** The calendar day with the most commits: "Oct 4, 2026 (12 commits)". */
     busiestDay: 'Busiest day',
+    /** Commits on an author-local Saturday or Sunday (stats.weekend): "12 commits (8% of commits)". */
+    weekend: 'Weekend commits',
     /** Files added / deleted in the window (stats.fileLifecycle): "12 files added, 3 deleted". */
     fileLifecycle: 'Files born / buried',
     fileLifecycleValue: (added, deleted) => `${plural(added, UNITS.file)} added, ${num(deleted)} deleted`,

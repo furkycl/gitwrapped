@@ -8,6 +8,7 @@ import { busiestOf, computeDaily, daysUpTo, longestGap, longestRun, shownBusiest
 import { computeFileLifecycle, computeHotFiles, isIgnoredPath, repoRelativePath, shownFileLifecycle } from './files.js';
 import { computeFolders, folderOf, ROOT_FOLDER, shownFolders, TOP_FOLDERS } from './folders.js';
 import { computeTimeHabits } from './habits.js';
+import { computeWeekend, shownWeekend, WEEKEND_DAYS, weekendCounts, weekendPercent, weekendPercentLabel } from './weekend.js';
 import { computeTimezones, formatOffset, offsetMinutes, shownTimezones, utcLabel } from './timezones.js';
 import { computeLanguages, languageBarRows, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER as OTHER_LANGUAGE, percentShares } from './languages.js';
 import { computeMessages, isMergeCommit } from './messages.js';
@@ -28,6 +29,7 @@ export { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONT
 export { computeFirstCommit, SHORT_HASH };
 export { computeCoAuthors, shownCoAuthors, TOP_CO_AUTHORS };
 export { computeFolders, folderOf, ROOT_FOLDER, shownFolders, TOP_FOLDERS };
+export { computeWeekend, shownWeekend, WEEKEND_DAYS, weekendCounts, weekendPercent, weekendPercentLabel };
 export { computeTimezones, formatOffset, offsetMinutes, shownTimezones, utcLabel };
 export { computeReleases, shownReleases };
 export { computeBiggestCommit, shownBiggestLines, computeMessages, computePersonality, isMergeCommit, ARCHETYPES, localToday };
@@ -46,7 +48,10 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * of non-merge commits, and its Steady Shipper span ignores future-dated days (after
  * `today` + 1, see daily.js daysUpTo). `timezones` is the commits' distinct author UTC
  * offsets, `{count, top: {offset, commits, share} | null, offsets: [{offset, commits}]}`,
- * every commit counted as for `habits` (see timezones.js). `daily` is commits per author-local day (see daily.js);
+ * every commit counted as for `habits` (see timezones.js). `weekend` is how many of
+ * those commits landed on an author-local Saturday or Sunday and their share,
+ * `{commits, share}` (from habits.byWeekday, as Weekend Warrior counts them, see
+ * weekend.js). `daily` is commits per author-local day (see daily.js);
  * `busiestDay` is the single author-local day with the most commits as `{day: 'YYYY-MM-DD',
  * commits}` (ties → the earliest day), or null without commits: a copy of daily.busiest
  * (the recap and wrapped.md leave out future-dated days, see daily.js shownBusiestDay);
@@ -89,10 +94,12 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  */
 export function computeStats(commits = [], { today, todayComplete, team, author, teamTruncated = false, repos, previousYear } = {}) {
   const daily = computeDaily(commits);
+  const habits = computeTimeHabits(commits);
   const stats = {
     totals: computeTotals(commits),
-    habits: computeTimeHabits(commits),
+    habits,
     timezones: computeTimezones(commits),
+    weekend: computeWeekend(habits),
     streaks: computeStreaks(commits, { today, todayComplete }),
     daily,
     busiestDay: daily.busiest ? { ...daily.busiest } : null,

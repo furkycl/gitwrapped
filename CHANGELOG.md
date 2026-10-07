@@ -7,29 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-10-07
+
 ### Added
-
-- Top folders: the most-changed top-level directories by lines changed (added + removed),
-  over the same files as hot files (lockfiles, build output, … left out, `--exclude`
-  applies). Files at a repo's root are grouped as "(root)"; with several repos each folder
-  keeps its repo label (`api/src`, `api/(root)`). `stats.json` gets `stats.folders` (top 5,
-  `[{path, lines, added, deleted, commits}]`, most lines first, ties by path), the recap a
-  "Top folders  src/ (1,234 lines) · test/ (567 lines) · (root) (89 lines)" line,
-  `wrapped.md` a "Top folders" table, and the hot-files card a small "Top folders" bar
-  list (three, else two) under its charts, in spare room only: the hot-files list and the
-  per-repo chart keep every bar at full size (at most the big file name gets one step
-  smaller), and the card is unchanged when it doesn't fit. Shown only with two or more
-  folders (`(root)` / `(kök)` in Turkish).
-
-- Weekend share: how many commits landed on an author-local Saturday or Sunday, from the
-  power hour's weekday counts (every commit, merges included), so it always agrees with
-  the Weekend Warrior personality. `stats.json` gets `stats.weekend` (`{commits, share}`,
-  share 0..1 with 3 decimals), the recap a "Weekends  12 commits (8% of commits)" line and
-  `wrapped.md` a "Weekend commits" item (both with at least one weekend commit), and the
-  activity card a "Weekends  12 commits · 8%" row when its grid covers every commit and
-  there is room (the calendar's cells may get smaller, but never below their normal
-  minimum size; otherwise the card is unchanged). English and
-  Turkish ("Hafta sonu", "%8").
 
 - Cadence: how many commits you make on a day you commit and how far apart your active
   days usually are. `stats.json` gets `stats.cadence` (`{perActiveDay, medianGapDays}`:
@@ -43,6 +23,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   spare spacing; the row shown whole; otherwise the card is unchanged). Days after
   tomorrow are left out of the shown cadence, as for the longest streak and break.
   English and Turkish ("Ritim", "Aktif gün başına 2,4 commit · 3 günde bir").
+
+- Weekend share: how many commits landed on an author-local Saturday or Sunday, from the
+  power hour's weekday counts (every commit, merges included), so it always agrees with
+  the Weekend Warrior personality. `stats.json` gets `stats.weekend` (`{commits, share}`,
+  share 0..1 with 3 decimals, over the commits that carry a date), the recap a
+  "Weekends  12 commits (8% of commits)" line and `wrapped.md` a "Weekend commits" item (both with at least one weekend commit), and the
+  activity card a "Weekends  12 commits · 8%" row when its grid covers every commit and
+  there is room (the calendar's cells may get smaller, but never below their normal
+  minimum size; otherwise the card is unchanged). English and Turkish ("Hafta sonu",
+  "%8").
+
+- Top folders: the most-changed top-level directories by lines changed (added + removed),
+  over the same files as hot files (lockfiles, build output, … left out, `--exclude`
+  applies). Files at a repo's root are grouped as "(root)"; with several repos each folder
+  keeps its repo label (`api/src`, `api/(root)`). `stats.json` gets `stats.folders` (top 5,
+  `[{path, lines, added, deleted, commits}]`, most lines first, ties by path), the recap a
+  "Top folders  src/ (1,234 lines) · test/ (567 lines) · (root) (89 lines)" line,
+  `wrapped.md` a "Top folders" table, and the hot-files card a small "Top folders" bar
+  list (three, else two) under its charts, in spare room only: the hot-files list and the
+  per-repo chart keep every bar at full size (at most the big file name gets one step
+  smaller), and the card is unchanged when it doesn't fit. Shown only with two or more
+  folders (`(root)` / `(kök)` in Turkish).
 
 ### Changed
 
@@ -478,7 +480,8 @@ First public release on npm as `@furkycl/gitwrapped`.
 - On macOS, color emoji are left out of PNG exports, because resvg drew Apple Color Emoji
   far from their text. SVG cards and `wrapped.html` keep them.
 
-[Unreleased]: https://github.com/furkycl/gitwrapped/compare/v1.7.0...HEAD
+[Unreleased]: https://github.com/furkycl/gitwrapped/compare/v1.8.0...HEAD
+[1.8.0]: https://github.com/furkycl/gitwrapped/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/furkycl/gitwrapped/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/furkycl/gitwrapped/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/furkycl/gitwrapped/compare/v1.4.0...v1.5.0

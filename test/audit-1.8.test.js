@@ -153,3 +153,15 @@ describe('recap and wrapped.md agree on the weekend percent and the cadence', ()
     });
   }
 });
+
+describe('CHANGELOG', () => {
+  test('[1.8.0] names cadence, weekend share and top folders', () => {
+    const text = readFileSync(fileURLToPath(new URL('../CHANGELOG.md', import.meta.url)), 'utf8');
+    const m = /^## \[1\.8\.0\][^\n]*$([\s\S]*?)(?=^## \[)/m.exec(text);
+    assert.ok(m, 'a [1.8.0] section');
+    assert.match(m[1], /Cadence/);
+    assert.match(m[1], /Weekend share/);
+    assert.match(m[1], /Top folders/);
+    assert.match(m[1], /stats\.weekend[\s\S]*?carry a date/);
+  });
+});

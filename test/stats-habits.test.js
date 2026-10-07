@@ -110,7 +110,7 @@ describe('computeTimeHabits', () => {
 });
 
 describe('computeStats', () => {
-  test('combines totals, habits, streaks, daily, months, hot files, languages, contributors, messages, biggest commit, commit sizes, commit types, emoji, reverts, first commit, co-authors, releases and personality', () => {
+  test('combines totals, habits, streaks, daily, busiest day, months, hot files, languages, contributors, messages, biggest commit, commit sizes, commit types, emoji, reverts, first commit, co-authors, releases and personality', () => {
     const commits = [at('2024-06-15T09:00:00Z')];
     const today = '2024-06-16';
     const parts = {
@@ -118,6 +118,7 @@ describe('computeStats', () => {
       habits: computeTimeHabits(commits),
       streaks: computeStreaks(commits, { today }),
       daily: computeDaily(commits),
+      busiestDay: computeDaily(commits).busiest,
       months: computeMonths(commits),
       hotFiles: computeHotFiles(commits),
       languages: computeLanguages(commits),

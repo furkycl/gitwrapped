@@ -4,7 +4,7 @@ import { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONT
 import { computeFirstCommit, SHORT_HASH } from './first.js';
 import { computeCoAuthors, shownCoAuthors, TOP_CO_AUTHORS } from './coauthors.js';
 import { computeReleases, shownReleases } from './releases.js';
-import { computeDaily, daysUpTo, longestGap, longestRun, shownLongest, shownLongestBreak } from './daily.js';
+import { busiestOf, computeDaily, daysUpTo, longestGap, longestRun, shownBusiestDay, shownLongest, shownLongestBreak } from './daily.js';
 import { computeHotFiles, isIgnoredPath, repoRelativePath } from './files.js';
 import { computeTimeHabits } from './habits.js';
 import { computeLanguages, languageBarRows, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER as OTHER_LANGUAGE, percentShares } from './languages.js';
@@ -20,7 +20,7 @@ import { computeYearOverYear, yearOverYear } from './yoy.js';
 import { computeReverts, isRevertCommit, isRevertSubject, shownReverts } from './reverts.js';
 import { computeEmoji, EMOJI_MIN_SHARE, emojiIn, emojiKey, GITMOJI, isEmoji, shownEmoji, TOP_EMOJI } from './emoji.js';
 
-export { computeTotals, computeTimeHabits, computeStreaks, computeDaily, daysUpTo, longestGap, longestRun, shownLongest, shownLongestBreak, computeHotFiles, isIgnoredPath, repoRelativePath, computeRepos, computeYearOverYear, yearOverYear };
+export { computeTotals, computeTimeHabits, computeStreaks, computeDaily, busiestOf, daysUpTo, longestGap, longestRun, shownBusiestDay, shownLongest, shownLongestBreak, computeHotFiles, isIgnoredPath, repoRelativePath, computeRepos, computeYearOverYear, yearOverYear };
 export { computeLanguages, languageBarRows, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER_LANGUAGE, percentShares };
 export { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONTRIBUTORS };
 export { computeFirstCommit, SHORT_HASH };
@@ -41,6 +41,9 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * `personality` is derived from the other parts (see personality.js); its fix share is
  * of non-merge commits, and its Steady Shipper span ignores future-dated days (after
  * `today` + 1, see daily.js daysUpTo). `daily` is commits per author-local day (see daily.js);
+ * `busiestDay` is the single author-local day with the most commits as `{day: 'YYYY-MM-DD',
+ * commits}` (ties → the earliest day), or null without commits: a copy of daily.busiest
+ * (the recap and wrapped.md leave out future-dated days, see daily.js shownBusiestDay);
  * `languages` is lines / files per language (see languages.js). `biggestCommit` is the
  * non-merge commit with the most lines changed, ignored paths left out as for hot files
  * (see biggest.js), or null. `commitSizes` is how many non-merge commits are tiny (< 10
@@ -74,11 +77,13 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * Later milestones add keys.
  */
 export function computeStats(commits = [], { today, todayComplete, team, author, teamTruncated = false, repos, previousYear } = {}) {
+  const daily = computeDaily(commits);
   const stats = {
     totals: computeTotals(commits),
     habits: computeTimeHabits(commits),
     streaks: computeStreaks(commits, { today, todayComplete }),
-    daily: computeDaily(commits),
+    daily,
+    busiestDay: daily.busiest ? { ...daily.busiest } : null,
     months: computeMonths(commits),
     hotFiles: computeHotFiles(commits),
     languages: computeLanguages(commits),

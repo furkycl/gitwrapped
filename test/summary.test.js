@@ -62,6 +62,8 @@ describe('formatSummary', () => {
     assert.match(out, /★ demo Wrapped/);
     assert.match(out, /4 commits · 4 active days · \+1,209 \/ −3 lines/);
     assert.match(out, /Power hour {3}11 PM \(2 commits\)/);
+    // Every day has 1 commit: ties go to the earliest day.
+    assert.match(out, /Busiest day {2}Mar 9, 2024 \(1 commit\)\n/);
     assert.match(out, /Streak {7}longest 3 days · current 3 days/);
     assert.match(out, /Break {8}longest 1 day \(Mar 9, 2024 – Mar 11, 2024\)\n/);
     assert.match(out, /Hottest file src\/a\.js \(3 commits\)/);
@@ -74,8 +76,8 @@ describe('formatSummary', () => {
     assert.match(out, /Sizes {8}\S/);
     // The fixture hashes are dates (not letters / digits), so no short hash is shown.
     assert.match(out, /First commit "initial commit" \(Mar 9, 2024\)\n/);
-    // 18 with the First commit line.
-    assert.ok(lines.length >= 8 && lines.length <= 18, `compact: ${lines.length} lines`);
+    // 19 with the First commit and Busiest day lines.
+    assert.ok(lines.length >= 8 && lines.length <= 19, `compact: ${lines.length} lines`);
   });
 
   test('color: true adds ANSI escapes but keeps the first line plain', () => {

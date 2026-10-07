@@ -7,7 +7,7 @@ export { formatNumber };
 import { renderShareSvg } from './share.js';
 import { dayKeyFromEpoch as dayKeyOf, epochDay, mondayOf, WEEKDAY_NAMES } from '../stats/time.js';
 import { languageBarRows, languageHeadline, OTHER as OTHER_LANGUAGE } from '../stats/languages.js';
-import { daysUpTo, shownLongest, shownLongestBreak } from '../stats/daily.js';
+import { busiestOf, daysUpTo, shownLongest, shownLongestBreak } from '../stats/daily.js';
 import { monthIndex, monthsFromDays } from '../stats/months.js';
 import { hasTeamCard, shareLabel, TOP_CONTRIBUTORS } from '../stats/contributors.js';
 import { shownCoAuthors } from '../stats/coauthors.js';
@@ -626,13 +626,8 @@ function streakNow(cur, end, L) {
 
 /** Busiest day (ties → earliest) and distinct Monday-first weeks of `days` ([{day, commits}]). */
 function dailySummary(days) {
-  let busiest = null;
-  const weeks = new Set();
-  for (const x of [...days].sort((a, b) => epochDay(a.day) - epochDay(b.day))) {
-    if (!busiest || x.commits > busiest.commits) busiest = x;
-    weeks.add(mondayOf(epochDay(x.day)));
-  }
-  return { busiest, activeWeeks: weeks.size };
+  const weeks = new Set(days.map((x) => mondayOf(epochDay(x.day))));
+  return { busiest: busiestOf(days), activeWeeks: weeks.size };
 }
 
 /** Days a window must end before "today" to count as a dormant repo's final months. */

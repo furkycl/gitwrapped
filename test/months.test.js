@@ -73,9 +73,10 @@ describe('computeMonths', () => {
     assert.deepEqual(monthsFromDays([{ day: '2026-05-03', commits: 2 }, { day: '2026-05-09', commits: 1 }]).months, [{ month: '2026-05', commits: 3 }]);
   });
 
-  test('stats.months sits right after stats.daily', () => {
+  test('stats.months follows stats.daily (and its busiestDay)', () => {
     const keys = Object.keys(statsOf(spread({ '2026-01': 1 })));
-    assert.equal(keys.indexOf('months'), keys.indexOf('daily') + 1);
+    assert.equal(keys.indexOf('busiestDay'), keys.indexOf('daily') + 1);
+    assert.equal(keys.indexOf('months'), keys.indexOf('busiestDay') + 1);
   });
 });
 

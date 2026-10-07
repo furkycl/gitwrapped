@@ -117,7 +117,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 
 ## M15 — 1.9 (proposed by loop turn 064 per the M8 owner note "do not finish the loop"; owner may prune)
 - [x] Relative windows: `--since`/`--until` also accept `30d`, `12w`, `6m`, `1y` (relative to today, author-local), mutually exclusive with `--year` as today; cards/recap show the resolved dates; `--help`/README; tests
-- [ ] Merges: merge commits in the window — count, share, and pull requests merged (`Merge pull request #N` / `(#N)` squash subjects, deduped) on the totals or outro card when there's room, stats.json `stats.merges {commits, share, pullRequests}`, recap and wrapped.md; en/tr; tests
+- [x] Merges: merge commits in the window — count, share, and pull requests merged (`Merge pull request #N` / `(#N)` squash subjects, deduped) on the totals or outro card when there's room, stats.json `stats.merges {commits, share, pullRequests}`, recap and wrapped.md; en/tr; tests
 - [ ] Late nights: share of commits between 00:00 and 04:59 author-local and the latest-ever commit time (day + HH:MM, no emails) on the power-hour card when there's room, consistent with the Night Owl fact, stats.json `stats.lateNights {commits, share, latest}`, recap and wrapped.md; en/tr; tests
 - 1.9.0 release prep (split as before):
   - [ ] Cold audit of the 1.9 work (diff 1.8.0 release commit..main) + fix every real bug found, with tests

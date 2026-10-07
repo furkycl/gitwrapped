@@ -109,7 +109,7 @@ describe('generate / run with --json', () => {
     // maxCommits is the cap in effect (the default here).
     assert.deepEqual(doc.filters, { since: null, until: null, author: null, maxCommits: 50000, exclude: [] });
     assert.equal(doc.truncated, false);
-    assert.deepEqual(Object.keys(doc.stats), ['totals', 'habits', 'streaks', 'daily', 'months', 'hotFiles', 'languages', 'contributors', 'messages', 'biggestCommit', 'commitSizes', 'commitTypes', 'firstCommit', 'coAuthors', 'releases', 'personality']);
+    assert.deepEqual(Object.keys(doc.stats), ['totals', 'habits', 'streaks', 'daily', 'months', 'hotFiles', 'languages', 'contributors', 'messages', 'biggestCommit', 'commitSizes', 'commitTypes', 'emoji', 'firstCommit', 'coAuthors', 'releases', 'personality']);
     // Contributors by name only: no author email anywhere in the file (no --author given).
     assert.equal(doc.stats.contributors.total, 2);
     assert.doesNotMatch(text, /@example\.com/);

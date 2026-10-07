@@ -314,6 +314,9 @@ export default {
      */
     counterCommits: '“fix” / “wip” / “oops”',
     counterValues: (fix, wip, oops) => `${fix} / ${wip} / ${oops}`,
+    /** The emoji panel (stats.emoji): caption, then the share of commits with an emoji ("12% of commits"); the top emoji are its note. */
+    emojiTitle: 'Emoji',
+    emojiShare: (pct) => `${pct} of commits`,
   },
 
   personality: {
@@ -476,6 +479,8 @@ export default {
     /** The commit type line: label, "45% feat · 30% fix · 25% other", then "(62% of commits conventional)". */
     types: 'Types',
     conventional: (pct) => `${pct} of commits conventional`,
+    /** The emoji line: label, "12% of commits", then "· ✨ 40 · 🐛 22 · 📝 9" (commits per emoji). */
+    emoji: 'Emoji',
     you: 'You are',
     cardsIn: (count, dir) => `${count} in ${dir}`,
     shareImage: 'share image:',
@@ -512,6 +517,8 @@ export default {
     repo: 'Repo',
     /** The conventional-commit mix section. */
     commitTypes: 'Commit types',
+    /** The emoji section (stats.emoji): "12% of commits: ✨ 40 · 🐛 22 · 📝 9" (commits per emoji). */
+    emoji: 'Emoji',
     /** The pairing item (stats.coAuthors): "12 commits (31% of non-merge commits), top co-author: Ada". */
     paired: 'Paired',
     topCoAuthor: (name) => `top co-author: ${name}`,

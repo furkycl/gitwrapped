@@ -1189,7 +1189,11 @@ function fitFooter(text) {
  * Every block lies within [CONTENT_TOP, CONTENT_BOTTOM] and no two blocks overlap.
  * `drawnCharts` lists the indices (into `chart`, a single spec being index 0) of the charts
  * actually drawn, in order: charts left out for lack of room, and specs that draw nothing
- * (an unknown kind, too few segments, ...), are not in it.
+ * (an unknown kind, too few segments, ...), are not in it. `fitsAsIs` is true when
+ * everything fit at full size: no optional chart was left out and nothing was shrunk,
+ * compacted or dropped to make room. `shrinkSteps` counts the steps taken after any
+ * optional charts were left out (0 when it fit; the first steps shrink the big word, by
+ * 15% each, before charts compact or text loses lines).
  */
 export function layoutCard({ eyebrow, title, big, subtitle, titleSize, bigMin, lines, chart, number, footer, lang } = {}) {
   const L = getStrings(lang);
@@ -1214,6 +1218,8 @@ export function layoutCard({ eyebrow, title, big, subtitle, titleSize, bigMin, l
   // (the text-only layout always fits). A `bigMin` floor holds the big word until the
   // charts are gone.
   let l = build();
+  // Whether everything fit as it is: no optional chart left out, nothing shrunk or dropped.
+  const fitsAsIs = l.total <= available;
   // Optional charts (`optional: true`) are purely additive: they are left out, last first,
   // unless they fit as they are, before anything else shrinks.
   while (l.total > available && charts.some((b) => b.optional)) {
@@ -1221,7 +1227,9 @@ export function layoutCard({ eyebrow, title, big, subtitle, titleSize, bigMin, l
     charts = charts.filter((_, j) => j !== i);
     l = build();
   }
+  let shrinkSteps = 0;
   while (l.total > available) {
+    shrinkSteps += 1;
     if (opts.bigMax > bigFloor) opts.bigMax = Math.max(bigFloor, Math.floor(opts.bigMax * 0.85));
     else if (!compact && charts.length > 0) {
       compact = true;
@@ -1280,6 +1288,8 @@ export function layoutCard({ eyebrow, title, big, subtitle, titleSize, bigMin, l
       : null,
     footer: fitFooter(s1(footer)),
     drawnCharts: body.filter((b) => b !== rows).map((b) => b.index),
+    fitsAsIs,
+    shrinkSteps,
   };
 }
 

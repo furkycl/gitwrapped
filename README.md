@@ -31,7 +31,7 @@ calendar months and a team card in a repo with more than one contributor (up to 
 7. **Hot files**: the five files you edit most as a bar list. Lockfiles, build output (`dist/`, `build/`, ...), dependency folders, vendored code (a root `vendor/` or `third_party/`), minified files and test snapshots (`*.snap`, `__snapshots__/`) are ignored.
 8. **Languages**: your top programming language and its share of the lines you changed ("72% · Mostly TypeScript", or "Led by" under half, with ties named), with bars for your top five languages plus "Other". Data formats (JSON, YAML, ...) and prose (Markdown, ...) show in the bars, but they only lead the card when there's no code at all. Languages come from file extensions and well-known names like `Dockerfile` and `Makefile` (86 built in); lockfiles, build output, vendored code, test snapshots and binary files are left out, as for hot files.
 9. **The team** (only when the history has two or more contributors): how many people committed and the top five by commits as bars ("Ada Lovelace leads the pack with 54% of the commits"). With `--author` it ranks you against everyone in the same window: "#2 of 7 contributors", your share of the commits and lines, and a "you" marker on your bar (a sixth bar when you're outside the top five). Contributors are counted per email after `.mailmap`, and only their git author names are shown, never an email. A single-author repo skips this card, and so does an `--author` with no commits in the window (there's no "you" to rank); the cards after it then move up a number. When commits carry `Co-authored-by:` trailers (pair programming, GitHub's co-authored commits, AI assistants), a "Pair programming" panel follows the bars: "12 commits paired" and the top co-author by name ("Top co-author: Grace Hopper"). A commit counts as paired when it lists at least one co-author other than its own author; merge commits are skipped. Co-authors go through `.mailmap` like authors and are shown by name only, never an email. The panel only uses spare room: when it doesn't fit, the card is exactly as without it and the totals card gets a row instead (when that fits); either way the pairing is in the recap, `wrapped.md` and `stats.json`. With `--author` the pairing counts only your commits (a commit where you are only a co-author does not count), so it goes on the totals card, not on the team card, which is everyone's.
-10. **Message hall of fame**: your favorite word, your longest and shortest messages, and how many "fix", "wip" and "oops" commits you made, plus your biggest commit: the one with the most lines changed, with its day, lines added / removed and subject. It counts the same files as hot files (lockfiles, build output and the rest are left out, and so is anything you `--exclude`) and skips merge commits; a tie goes to the earliest commit. When at least 20% of your commits follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat: ...`, `fix(api)!: ...`), the card also shows your commit type mix as a thin stacked bar: the top three types and any others folded into "the rest", each with its share of those commits, and the share of commits that follow the convention in its caption. When you only ever use one type, the bar sets it against the commits without a prefix ("no prefix"), as shares of all commits; with a single type on every commit there is nothing to compare and no bar. The bar only uses spare room; when there isn't enough, the fix / wip / oops counts are folded into one row ("“fix” / “wip” / “oops”: 5 / 0 / 2") to make room, and when it still doesn't fit, the card is left as it was (the mix is still in the recap, `wrapped.md` and `stats.json`).
+10. **Message hall of fame**: your favorite word, your longest and shortest messages, and how many "fix", "wip" and "oops" commits you made, plus your biggest commit: the one with the most lines changed, with its day, lines added / removed and subject. It counts the same files as hot files (lockfiles, build output and the rest are left out, and so is anything you `--exclude`) and skips merge commits; a tie goes to the earliest commit. When at least 20% of your commits follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat: ...`, `fix(api)!: ...`), the card also shows your commit type mix as a thin stacked bar: the top three types and any others folded into "the rest", each with its share of those commits, and the share of commits that follow the convention in its caption. When you only ever use one type, the bar sets it against the commits without a prefix ("no prefix"), as shares of all commits; with a single type on every commit there is nothing to compare and no bar. The bar only uses spare room; when there isn't enough, the fix / wip / oops counts are folded into one row ("“fix” / “wip” / “oops”: 5 / 0 / 2") to make room, and when it still doesn't fit, the card is left as it was (the mix is still in the recap, `wrapped.md` and `stats.json`). When at least 5% of your commits have an emoji in the subject (a Unicode emoji like ✨ or a [gitmoji](https://gitmoji.dev) shortcode like `:sparkles:`), the card also gets an emoji row: your top three emoji and the share of commits with one ("Emoji ✨ 🐛 📝 · 12%"). It never costs the type mix or the biggest commit their room: it goes after the other rows when there's spare room, else the fix / wip / oops counts are folded into one row to make room (the big word may also get one step smaller), and when even that doesn't fit, it takes the place of the fix / wip / oops row (those counts stay in `stats.json`).
 11. **Personality**: Night Owl, Early Bird, Friday Deployer, Fixaholic, Weekend Warrior or Steady Shipper, with a one-line roast and bars for your top habit scores.
 12. **Outro**: a summary card to post: commits, power hour, best streak and personality tiles, plus your hottest file. When tags point at commits in the window (your releases: one per tagged commit, see `stats.releases` below), a "Releases" panel follows: "You shipped 3 releases" and the latest one with its day ("Latest: v1.5.0 · Oct 6, 2026"; a long tag name is cut in the middle with "…", so its start, its version at the end and the day always show). To make room for it the subtitle gives way, and nothing else shrinks: first the "Made with gitwrapped" line goes, then, with `--year`, the comparison with the year before (it is still on the totals card and in the recap). Without tags the card is exactly as before.
 
@@ -61,8 +61,9 @@ You also get:
   releases (when tags point at commits in the window, e.g.
   `Releases  3 releases · latest: v1.5.0 (Oct 6, 2026)`),
   top word, biggest commit, commit size mix, commit type mix (when you use Conventional
-  Commits, e.g. `Types  60% feat · 30% fix · 10% other (85% of commits conventional)`) and
-  personality, printed right after the run.
+  Commits, e.g. `Types  60% feat · 30% fix · 10% other (85% of commits conventional)`),
+  emoji (when at least 5% of the commits have one, e.g.
+  `Emoji  12% of commits · ✨ 40 · 🐛 22 · 📝 9`) and personality, printed right after the run.
 - **JSON** (optional, `--json`): every computed stat in `stats.json`, for your own
   dashboards and scripts.
 - **Markdown** (optional, `--md`): a `wrapped.md` summary to paste into a README or a PR
@@ -293,7 +294,7 @@ but it does contain commit subjects and hashes, tag names and repo-relative file
 | `asOf`          | `YYYY-MM-DD` the current streak is counted up to: today, or the end of a past `--until` / `--year` window |
 | `filters`       | `{since, until, author, maxCommits, exclude}` as used (`--year` shows as since/until); dates and author are `null` when not set, `maxCommits` is the cap in effect, `exclude` the `--exclude` patterns in order (`[]` when none) |
 | `truncated`     | `true` when `--max-commits` cut the history short                             |
-| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `months`, `hotFiles`, `languages`, `contributors`, `messages`, `biggestCommit`, `commitSizes`, `commitTypes`, `firstCommit`, `coAuthors`, `releases`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
+| `stats`         | Every computed stat: `totals`, `habits`, `streaks`, `daily`, `months`, `hotFiles`, `languages`, `contributors`, `messages`, `biggestCommit`, `commitSizes`, `commitTypes`, `emoji`, `firstCommit`, `coAuthors`, `releases`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
 
 ```json
 {
@@ -392,6 +393,29 @@ in the order above; `null` without any), and `shown` is `true` when at least 20%
 commits are conventional: only then do the messages card, the recap and `wrapped.md`
 show the mix. Like the size mix, they show a type under 1% as "<1%" and cap one at 99%
 while another has commits.
+
+`stats.emoji` is how you use emoji in commit subjects:
+`{"total", "commits", "share", "distinct", "top": [{"emoji", "count"}], "shown"}`.
+`total` is the number of non-merge commits with a subject (as for `commitTypes`), and
+`commits` how many of them have at least one emoji in the subject. An emoji is a Unicode
+emoji (a ZWJ sequence like 👩‍💻, a skin tone like 👍🏽, a flag like 🇹🇷 or a keycap like 1️⃣
+counts as one; text-style symbols like ©, ™, → or ♻, and pictographs such as 🅰 that are text by default, count only
+with U+FE0F) or a
+[gitmoji](https://gitmoji.dev) shortcode like `:sparkles:` or `:bug:` (the gitmoji list
+and a few common aliases such as `:+1:` and `:heart:`; any other `:word:` is not an
+emoji). A shortcode that is part of other text doesn't count either: right after a letter
+or digit (`10:100:00`), right after a lone `:` (`std::thread::spawn`, `crate::lock::Mutex`;
+`:recycle::fire:` is still two), right before `:` and a letter or digit (`:lock::Mutex`)
+or inside brackets (`arr[:100:]`). A shortcode is the same emoji as its Unicode form, and an emoji with or
+without U+FE0F is one emoji, so `:sparkles:`, ✨ and ✨️ all count as ✨. `share` is
+`commits / total` (3 decimals), `distinct` how many different emoji were used, and `top`
+the three emoji used by the most commits, most first, with `count` the number of commits
+whose subject has it (an emoji repeated in one subject counts once); ties go to the lower
+emoji in code point order, and `emoji` is its fully qualified form (with U+FE0F when any
+use had it). Without any emoji, `commits`, `share` and `distinct` are `0` and `top` is
+`[]`. `shown` is `true` when at least 5% of the commits have an emoji: only then do the
+messages card, the recap and `wrapped.md` show it, as a whole percent capped at 99% while
+some commit has none.
 
 `stats.languages` lists every language found, most lines first, with `"Other"` (file
 types gitwrapped doesn't know) always last. `type` is `"programming"`, `"data"` (JSON,
@@ -503,7 +527,9 @@ README, a PR description or release notes:
 - tables of the top five hot files and languages, and, in a repo with more than one
   contributor, the top five contributors by name (with `--author`, you marked as "(you)");
 - with several repos, a per-repo table; the biggest commit; the commit type mix (when at
-  least 20% of the commits follow Conventional Commits); your commit personality;
+  least 20% of the commits follow Conventional Commits); your emoji (the share of commits
+  with one and the top three, when at least 5% of the commits have one); your commit
+  personality;
 - every story card as an image, linked by its relative path (`cards/01-intro.svg`, ...).
   Those images only show where the `cards/` folder sits next to `wrapped.md` (the output
   folder itself, or a README / docs page you commit together with `cards/`). Pasted into

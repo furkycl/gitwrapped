@@ -108,7 +108,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
   - [x] CHANGELOG 1.7.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync
 
 ## M14 — 1.8 (proposed by loop turn 059 per the M8 owner note "do not finish the loop"; owner may prune)
-- [ ] Top folders: the most-changed top-level directories by lines changed (same ignore rules / `--exclude` as hot files, root files grouped as "(root)", multi-repo repo-prefixed) as a row or small list on the hot-files card when there's room, stats.json `stats.folders`, recap and wrapped.md; en/tr; tests
+- [x] Top folders: the most-changed top-level directories by lines changed (same ignore rules / `--exclude` as hot files, root files grouped as "(root)", multi-repo repo-prefixed) as a row or small list on the hot-files card when there's room, stats.json `stats.folders`, recap and wrapped.md; en/tr; tests
 - [ ] Weekend share: share of commits on Saturday/Sunday (author-local) as a line on the power-hour or activity card when it fits, stats.json `stats.weekend {commits, share}`, recap and wrapped.md; consistent with the Weekend Warrior fact; en/tr; tests
 - [ ] Cadence: average commits per active day and median gap (days) between active days on the streak card when there's room, stats.json `stats.cadence {perActiveDay, medianGapDays}`, recap and wrapped.md; en/tr; tests
 - 1.8.0 release prep (split as before):

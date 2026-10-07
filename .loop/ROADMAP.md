@@ -120,5 +120,5 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] Merges: merge commits in the window — count, share, and pull requests merged (`Merge pull request #N` / `(#N)` squash subjects, deduped) on the totals or outro card when there's room, stats.json `stats.merges {commits, share, pullRequests}`, recap and wrapped.md; en/tr; tests
 - [x] Late nights: share of commits between 00:00 and 04:59 author-local and the latest-ever commit time (day + HH:MM, no emails) on the power-hour card when there's room, consistent with the Night Owl fact, stats.json `stats.lateNights {commits, share, latest}`, recap and wrapped.md; en/tr; tests
 - 1.9.0 release prep (split as before):
-  - [ ] Cold audit of the 1.9 work (diff 1.8.0 release commit..main) + fix every real bug found, with tests
+  - [x] Cold audit of the 1.9 work (diff 1.8.0 release commit..main) + fix every real bug found, with tests
   - [ ] CHANGELOG 1.9.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync

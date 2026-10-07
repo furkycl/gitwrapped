@@ -7,22 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-10-07
+
 ### Added
 
-- Reverts: commits that revert another, by a `Revert "…"` subject (case-sensitive, as git
-  writes it; a revert of a revert is one revert), a Conventional Commits `revert: …` /
-  `revert(scope): …` subject (also after a gitmoji, `⏪ revert: …`), or a line starting `This reverts commit
-  <hash>` in the message (read with one
-  extra `git log --no-walk --stdin --grep` call over the commits read, so the main log
-  format stays subject-only; skipped for the `--author` team read and the `--year`
-  previous-year read). The messages card gets a "Reverts 3 · 2%" row (count and share of
-  non-merge commits; after the emoji row, folding the fix / wip / oops rows if needed,
-  never in their place, and left out when it doesn't fit), the Fixaholic reason names
-  them ("…are fixes; 3 commits revert another."), the recap a
-  "Reverts" line and `wrapped.md` a "Reverts" section, and `stats.json` gets
-  `stats.reverts` (`{total, count, share, reverted}`; an abbreviated and a full hash of
-  one reverted commit, or two abbreviations where one is a prefix of the other, count once). Merge commits are skipped. Without
-  reverts every card, the recap and `wrapped.md` are exactly as before. English and Turkish.
 - Commit emoji: the share of commits with an emoji in the subject, Unicode (✨, a ZWJ
   sequence, skin tone, flag or keycap counts as one) or a [gitmoji](https://gitmoji.dev)
   shortcode (`:sparkles:` counts as ✨; unknown `:words:`, times like `10:30:00` and
@@ -31,9 +19,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rows when there's room, else with the fix / wip / oops rows folded into one, else in
   place of that folded row; the type mix and the biggest commit keep their room, and
   without emoji the card is exactly as before), the recap an "Emoji" line and
-  `wrapped.md` an "Emoji" section, and `stats.json` gets `stats.emoji` (`{total, commits, share, distinct, top:
-  [{emoji, count}], shown}`; an emoji counts once per commit, ties go to code point
-  order). Merge commits are skipped. English and Turkish.
+  `wrapped.md` an "Emoji" section, and `stats.json` gets `stats.emoji` (`{total, commits,
+  share, distinct, top: [{emoji, count}], shown}`; an emoji counts once per commit, ties
+  go to code point order). Merge commits are skipped. English and Turkish.
+
+- Reverts: commits that revert another, by a `Revert "…"` subject (case-sensitive, as git
+  writes it; a revert of a revert is one revert), a Conventional Commits `revert: …` /
+  `revert(scope): …` subject (also after a gitmoji, `⏪ revert: …`), or a line starting
+  `This reverts commit <hash>` in the message (read with one extra
+  `git log --no-walk --stdin --grep` call over the commits read, so the main log format
+  stays subject-only; skipped for the `--author` team read and the `--year` previous-year
+  read). The messages card gets a "Reverts 3 · 2%" row (count and share of non-merge
+  commits; after the emoji row, folding the fix / wip / oops rows if needed, never in
+  their place, and left out when it doesn't fit), the Fixaholic reason names them ("…are
+  fixes; 3 commits revert another."), the recap a "Reverts" line and `wrapped.md` a
+  "Reverts" section, and `stats.json` gets `stats.reverts` (`{total, count, share,
+  reverted}`; an abbreviated and a full hash of one reverted commit, or two abbreviations
+  where one is a prefix of the other, count once). Merge commits are skipped. Without
+  reverts every card, the recap and `wrapped.md` are exactly as before. English and Turkish.
+
 - Releases: the commits in the window that tags point at (lightweight or annotated,
   peeled to their commit), one release per tagged commit however many tags it has
   (floating `v1` / `v1.2`, `latest`, a tag on a tag). The outro card gets a "Releases"
@@ -392,7 +396,8 @@ First public release on npm as `@furkycl/gitwrapped`.
 - On macOS, color emoji are left out of PNG exports, because resvg drew Apple Color Emoji
   far from their text. SVG cards and `wrapped.html` keep them.
 
-[Unreleased]: https://github.com/furkycl/gitwrapped/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/furkycl/gitwrapped/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/furkycl/gitwrapped/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/furkycl/gitwrapped/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/furkycl/gitwrapped/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/furkycl/gitwrapped/compare/v1.2.0...v1.3.0

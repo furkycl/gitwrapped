@@ -281,6 +281,8 @@ export default {
     counterValues: (fix, wip, oops) => `${fix} / ${wip} / ${oops}`,
     emojiTitle: 'Emoji',
     emojiShare: (pct) => `commit'lerin ${pct} kadarı`,
+    revertsTitle: "Revert'ler",
+    revertsValue: (count, pct) => `${num(count)} · ${pct}`,
   },
 
   personality: {
@@ -298,7 +300,7 @@ export default {
       'night-owl': (pct) => `Commit'lerinin %${pct} kadarı 22:00 ile 04:00 arasında geliyor.`,
       'early-bird': (pct) => `Commit'lerinin %${pct} kadarı 05:00 ile 09:00 arasında geliyor.`,
       'friday-deployer': (pct) => `Commit'lerinin %${pct} kadarı cuma günü geliyor.`,
-      fixaholic: (pct) => `Commit mesajlarının %${pct} kadarı birer düzeltme.`,
+      fixaholic: (pct, reverts) => `Commit mesajlarının %${pct} kadarı birer düzeltme${reverts > 0 ? `; ${num(reverts)} tanesi revert` : ''}.`,
       'weekend-warrior': (pct) => `Commit'lerinin %${pct} kadarı cumartesi ya da pazar geliyor.`,
       'steady-shipper': (activeDays, span, longest) => `${num(span)} günün ${num(activeDays)} gününde commit attın; en uzun serin ${num(longest)} gün.`,
     },
@@ -423,6 +425,7 @@ export default {
     types: 'Türler',
     conventional: (pct) => `commit'lerin ${pct} kadarı conventional`,
     emoji: 'Emoji',
+    reverts: "Revert'ler",
     you: 'Kişiliğin',
     cardsIn: (count, dir) => `${count}: ${dir}`,
     shareImage: 'paylaşım görseli:',
@@ -456,6 +459,7 @@ export default {
     repo: 'Repo',
     commitTypes: 'Commit türleri',
     emoji: 'Emoji',
+    reverts: "Revert'ler",
     paired: 'Birlikte yazılan',
     topCoAuthor: (name) => `en sık ortak: ${name}`,
     releases: 'Sürümler',

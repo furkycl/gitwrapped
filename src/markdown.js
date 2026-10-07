@@ -5,10 +5,11 @@
 // part only (authorName), and email-shaped text in any repo-derived text (subjects,
 // paths, repo and contributor names) is cut out by escapeMarkdown.
 
-import { authorName, displayRepoName, formatDateRange, formatDay, conventionalText, emojiShareText, pctText, repoRows, shownDayRange, sizeShareText } from './cards/index.js';
+import { authorName, displayRepoName, formatDateRange, formatDay, conventionalText, emojiShareText, pctText, revertShareText, repoRows, shownDayRange, sizeShareText } from './cards/index.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
 import { shownEmoji } from './stats/emoji.js';
+import { shownReverts } from './stats/reverts.js';
 import { shownLongest, shownLongestBreak } from './stats/daily.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { contributorName, hasTeamCard, shareLabel } from './stats/contributors.js';
@@ -272,6 +273,10 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
       const share = escapeMarkdown(L.messages.emojiShare(emojiShareText(emoji, L)));
       section(M.emoji, [top ? `${share}: ${top}` : share]);
     }
+
+    // --- reverts (as on the messages card and the recap; only with any) -----------------
+    const reverts = shownReverts(stats?.reverts);
+    if (reverts) section(M.reverts, [escapeMarkdown(`${plural(reverts.count, 'commit', L)} (${L.recap.ofNonMerge(revertShareText(reverts, L))})`)]);
 
     // --- personality ------------------------------------------------------------------
     const a = stats?.personality?.archetype;

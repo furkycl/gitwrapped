@@ -17,6 +17,7 @@ import { COMMIT_SIZE_BUCKETS, COMMIT_SIZE_IDS, commitSizeOf, computeCommitSizes,
 import { computeTotals } from './totals.js';
 import { COMMIT_TYPE_IDS, COMMIT_TYPES_MIN_SHARE, commitTypeOf, computeCommitTypes, foldCommitTypes, shownCommitTypes } from './types.js';
 import { computeYearOverYear, yearOverYear } from './yoy.js';
+import { computeReverts, isRevertCommit, isRevertSubject, shownReverts } from './reverts.js';
 import { computeEmoji, EMOJI_MIN_SHARE, emojiIn, emojiKey, GITMOJI, isEmoji, shownEmoji, TOP_EMOJI } from './emoji.js';
 
 export { computeTotals, computeTimeHabits, computeStreaks, computeDaily, daysUpTo, longestGap, longestRun, shownLongest, shownLongestBreak, computeHotFiles, isIgnoredPath, repoRelativePath, computeRepos, computeYearOverYear, yearOverYear };
@@ -29,6 +30,7 @@ export { computeBiggestCommit, shownBiggestLines, computeMessages, computePerson
 export { computeMonths, monthsFromDays };
 export { COMMIT_SIZE_BUCKETS, COMMIT_SIZE_IDS, commitSizeOf, computeCommitSizes, shownCommitSizes, sizeShares };
 export { COMMIT_TYPE_IDS, COMMIT_TYPES_MIN_SHARE, commitTypeOf, computeCommitTypes, foldCommitTypes, shownCommitTypes };
+export { computeReverts, isRevertCommit, isRevertSubject, shownReverts };
 export { computeEmoji, EMOJI_MIN_SHARE, emojiIn, emojiKey, GITMOJI, isEmoji, shownEmoji, TOP_EMOJI };
 export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAMES } from './time.js';
 
@@ -47,7 +49,9 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * (feat / fix / docs / refactor / test / chore / other) of non-merge commits with a
  * subject, and whether it is shown (see types.js). `emoji` is how many of those commits
  * have an emoji (Unicode or a gitmoji `:shortcode:`) in the subject, and the top three
- * (see emoji.js).
+ * (see emoji.js). `reverts` is how many non-merge commits revert another (a `Revert "…"`
+ * subject or a "This reverts commit <hash>" line, see reverts.js), their share, and how
+ * many distinct commits they name; the Fixaholic reason mentions them.
  * `firstCommit` is the earliest non-merge commit by author date (`{date, subject, hash}`,
  * plus `repo` in a multi-repo run; emails scrubbed from the subject, see first.js), or null.
  * `coAuthors` is how many non-merge commits have a Co-authored-by co-author other than
@@ -84,6 +88,7 @@ export function computeStats(commits = [], { today, todayComplete, team, author,
     commitSizes: computeCommitSizes(commits),
     commitTypes: computeCommitTypes(commits),
     emoji: computeEmoji(commits),
+    reverts: computeReverts(commits),
     firstCommit: computeFirstCommit(commits),
     coAuthors: computeCoAuthors(commits),
     releases: computeReleases(commits),

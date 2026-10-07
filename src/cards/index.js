@@ -19,6 +19,7 @@ import { shownBiggestLines } from '../stats/biggest.js';
 import { shownCommitSizes } from '../stats/sizes.js';
 import { foldCommitTypes, shownCommitTypes } from '../stats/types.js';
 import { shownEmoji } from '../stats/emoji.js';
+import { shownReverts } from '../stats/reverts.js';
 import { sizeShares } from '../stats/sizes.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from '../i18n/index.js';
 import { DEFAULT_COLOR_THEME, isColorTheme } from './themes.js';
@@ -939,35 +940,83 @@ function emojiRow(s, L) {
 }
 
 /**
+ * The share of non-merge commits that are reverts in a shownReverts() stat, as text (see
+ * shareLabel): a whole percent; "<1%" when it rounds to 0% (under 0.5%), since a revert
+ * never reads "0%"; capped at 99% while some commit is not a revert. Card, recap and
+ * wrapped.md all use this.
+ */
+export const revertShareText = (r, L = EN) => shareLabel(r?.pct, r?.count, L.pct);
+
+/**
+ * The messages card's reverts row (stats.reverts, see shownReverts): "Reverts" with the
+ * count and its share of non-merge commits ("3 · 2%") as its value; null without reverts.
+ */
+function revertsRow(s, L) {
+  const r = shownReverts(s.reverts);
+  if (!r) return null;
+  const M = L.messages;
+  return { label: M.revertsTitle, value: M.revertsValue(r.count, revertShareText(r, L)) };
+}
+
+/**
+ * Whether `candidate` (a messages card spec) fits as well as `base` did: at most
+ * MAX_ROWS rows (the layout would silently drop more), every chart `base` drew still
+ * drawn, and nothing shrunk more than `base` did plus `more` steps.
+ */
+function fitsLike(candidate, base, more, L) {
+  if (!Array.isArray(candidate.lines) || candidate.lines.length > MAX_ROWS) return false;
+  const l = layoutOf({ ...candidate, lang: L.code });
+  const b = layoutOf({ ...base, lang: L.code });
+  return l.drawnCharts.length === b.drawnCharts.length && l.drawnCharts.every((x, i) => x === b.drawnCharts[i]) && l.shrinkSteps <= b.shrinkSteps + more;
+}
+
+/**
  * The messages card (with the type mix when it fits, see withTypeMix) with the emoji row
- * (see emojiRow) as its last row, in the first of these that fits:
+ * (see emojiRow) as its last row, in the first of these that fits (see fitsLike):
  * 1. after the rows as they are;
  * 2. with the "fix" / "wip" / "oops" rows folded into one;
  * 3. either of those with the big word one step (15%) smaller;
  * 4. in place of the folded counter row (the type mix and the biggest commit keep their
  *    room; the counts stay in stats.json), as is, else with that one step.
- * "Fits" means every chart the card drew is still drawn and nothing shrinks more than it
- * did (the one step of 3 / 4 only when nothing shrank). Without rows (no subjects), `spec`
- * unchanged; so is a card without the row, which is exactly what it was before.
+ * The one step of 3 / 4 is taken only when nothing shrank. Without rows (no subjects),
+ * `spec` unchanged; so is a card without the row, which is exactly what it was before.
  */
 function withEmoji(spec, row, folded, L) {
   if (!Array.isArray(spec.lines) || !Array.isArray(folded) || folded.length === 0) return spec;
-  const layout = (candidate) => layoutOf({ ...candidate, lang: L.code });
-  const base = layout(spec);
-  const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
-  const fits = (candidate, extra) => {
-    const l = layout(candidate);
-    return same(l.drawnCharts, base.drawnCharts) && l.shrinkSteps <= base.shrinkSteps + extra;
-  };
+  const base = layoutOf({ ...spec, lang: L.code });
+  const fits = (candidate, more) => fitsLike(candidate, spec, more, L);
   const appended = { ...spec, lines: [...spec.lines, row] };
   const compact = spec.lines !== folded ? { ...spec, lines: [...folded, row] } : null;
   const replaced = { ...spec, lines: [...folded.slice(0, -1), row] };
   const steps = base.shrinkSteps === 0 ? [0, 1] : [0];
-  for (const extra of steps) {
-    if (fits(appended, extra)) return appended;
-    if (compact && fits(compact, extra)) return compact;
+  for (const more of steps) {
+    if (fits(appended, more)) return appended;
+    if (compact && fits(compact, more)) return compact;
   }
-  for (const extra of steps) if (fits(replaced, extra)) return replaced;
+  for (const more of steps) if (fits(replaced, more)) return replaced;
+  return spec;
+}
+
+/**
+ * The messages card `spec` (as withEmoji left it) with the reverts row (see revertsRow)
+ * as its last row, in the first of these that fits (see fitsLike):
+ * 1. after the rows as they are;
+ * 2. with the "fix" / "wip" / "oops" rows folded into one, when they are not yet
+ *    (`unfolded`: the rows had the three counters; `emoji`: the emoji row, kept after them);
+ * 3. either of those with the big word one step (15%) smaller, when nothing shrank.
+ * It never takes the place of the counter row or of anything else: when it fits neither
+ * way, `spec` unchanged (the reverts are still in the recap, wrapped.md and stats.json).
+ */
+function withReverts(spec, row, { folded, unfolded, emoji }, L) {
+  if (!Array.isArray(spec.lines) || !Array.isArray(folded) || folded.length === 0) return spec;
+  const base = layoutOf({ ...spec, lang: L.code });
+  const appended = { ...spec, lines: [...spec.lines, row] };
+  const compact = unfolded ? { ...spec, lines: [...folded, ...(emoji && spec.lines.includes(emoji) ? [emoji] : []), row] } : null;
+  const steps = base.shrinkSteps === 0 ? [0, 1] : [0];
+  for (const more of steps) {
+    if (fitsLike(appended, spec, more, L)) return appended;
+    if (compact && fitsLike(compact, spec, more, L)) return compact;
+  }
   return spec;
 }
 
@@ -975,8 +1024,13 @@ function messages(s, { L }) {
   const spec = messagesCard(s, L);
   const types = typeStack(s, L);
   const card = types ? withTypeMix(spec.card, types, spec.folded, L) : spec.card;
-  const row = emojiRow(s, L);
-  return row ? withEmoji(card, row, spec.folded, L) : card;
+  const emoji = emojiRow(s, L);
+  const withRow = emoji ? withEmoji(card, emoji, spec.folded, L) : card;
+  const reverts = revertsRow(s, L);
+  if (!reverts) return withRow;
+  // The three counter rows are still there when neither the type mix nor the emoji row folded them.
+  const unfolded = Array.isArray(card.lines) && card.lines !== spec.folded && withRow.lines?.length === card.lines.length + (withRow === card ? 0 : 1) && withRow.lines.slice(0, card.lines.length).every((x, i) => x === card.lines[i]);
+  return withReverts(withRow, reverts, { folded: spec.folded, unfolded, emoji }, L);
 }
 
 /** The messages card without the type mix (`card`), and its rows with the three counters folded into one (`folded`, null without rows). */

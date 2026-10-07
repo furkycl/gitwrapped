@@ -333,7 +333,7 @@ export async function repoIdentity(repoPath) {
  * whose HEAD has no commits while other branches / tags exist (unborn / otherRefs are
  * true when there is one).
  */
-async function readRepos(paths, { since, until, author, limit, labels, coAuthors, tags }, readFn = readHistory) {
+async function readRepos(paths, { since, until, author, limit, labels, coAuthors, tags, reverts }, readFn = readHistory) {
   let names = labels;
   if (!names) {
     const seen = new Map();
@@ -350,7 +350,7 @@ async function readRepos(paths, { since, until, author, limit, labels, coAuthors
     names = repoLabels(found);
   }
   const reads = [];
-  for (const p of paths) reads.push(await readFn(p, { since, until, author, limit, ...(coAuthors === false ? { coAuthors } : {}), ...(tags === false ? { tags } : {}) }));
+  for (const p of paths) reads.push(await readFn(p, { since, until, author, limit, ...(coAuthors === false ? { coAuthors } : {}), ...(tags === false ? { tags } : {}), ...(reverts === false ? { reverts } : {}) }));
   const merged = mergeHistories(reads.map((r, i) => ({ label: names[i], commits: r.commits, truncated: r.truncated })), { limit });
   const unbornRepos = names.filter((_, i) => reads[i].unborn && reads[i].otherRefs);
   return {
@@ -553,7 +553,7 @@ async function teamSpan(team, mine, { read, until, limit, labels }) {
   const oldest = oldestCommit(mine);
   const from = oldest ? localParts(oldest.c.date)?.dayKey : null;
   if (!from) return { commits: team.commits, from: null, capped: true };
-  const span = await read({ since: from, until, limit, labels, coAuthors: false, tags: false });
+  const span = await read({ since: from, until, limit, labels, coAuthors: false, tags: false, reverts: false });
   if (!span.truncated) {
     const commits = span.commits.filter((c) => !(instant(c) !== null && instant(c) < oldest.t));
     return { commits, from, capped: false };
@@ -638,9 +638,9 @@ export async function generate({ path, paths, since, until, year, author, exclud
   // --author filters in git, so the team behind the contributors card ("you vs the
   // team") needs a second read of the same window and cap without the author filter.
   // Not when the author has no commits here: there is no "you" to rank, so no card.
-  // (Co-authors and releases are counted from the main read only: no .mailmap or tag
-  // call for this one.)
-  const team = author && commits.length > 0 ? await read({ since, until, limit: maxCommits, labels, coAuthors: false, tags: false }) : null;
+  // (Co-authors, releases and reverts are counted from the main read only: no .mailmap,
+  // tag or revert call for this one.)
+  const team = author && commits.length > 0 ? await read({ since, until, limit: maxCommits, labels, coAuthors: false, tags: false, reverts: false }) : null;
   // --year: the previous calendar year, read with the same filters and cap, for the
   // year-over-year comparison (stats.yearOverYear). Only when the window is exactly that
   // year, and not when it has no commits: there is nothing to compare (see stats/yoy.js).
@@ -651,7 +651,7 @@ export async function generate({ path, paths, since, until, year, author, exclud
   let previousYearError = null;
   if (prevYear && commits.length > 0) {
     try {
-      previous = await read({ since: `${prevYear}-01-01`, until: `${prevYear}-12-31`, author, limit: maxCommits, labels, coAuthors: false, tags: false });
+      previous = await read({ since: `${prevYear}-01-01`, until: `${prevYear}-12-31`, author, limit: maxCommits, labels, coAuthors: false, tags: false, reverts: false });
     } catch (err) {
       previousYearError = String(err?.message ?? err).split('\n')[0] || 'unknown error';
     }

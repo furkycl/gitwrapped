@@ -13,8 +13,9 @@ import { epochDay } from './stats/time.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
-import { conventionalText, emojiShareText, sizeShareText } from './cards/index.js';
+import { conventionalText, emojiShareText, revertShareText, sizeShareText } from './cards/index.js';
 import { shownEmoji } from './stats/emoji.js';
+import { shownReverts } from './stats/reverts.js';
 
 const EN = getStrings(DEFAULT_LANG);
 
@@ -182,6 +183,8 @@ function shortText(s, maxWidth = 48) {
  * An "Emoji" line shows the share of commits with an emoji in the subject and the top
  * three emoji with their commit counts (stats.emoji, see stats/emoji.js shownEmoji) when
  * at least 5% of the commits have one.
+ * A "Reverts" line shows how many non-merge commits revert another and their share
+ * (stats.reverts, see stats/reverts.js shownReverts) when there is at least one.
  * A "Team" line (top contributor, or the --author's rank) appears exactly when the
  * contributors card is built (see hasTeamCard in stats/contributors.js).
  * A "Paired" line shows how many commits had a Co-authored-by co-author, their share of
@@ -355,6 +358,10 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
       const top = emoji.top.map((t) => `${t.emoji} ${c('cyan', L.num(t.count))}`).join(c('dim', ' · '));
       lines.push(`  ${label(R.emoji)}${L.messages.emojiShare(c('cyan', emojiShareText(emoji, L)))}${top ? ` ${c('dim', '·')} ${top}` : ''}`);
     }
+
+    // Commits that revert another (stats.reverts), as on the messages card; only with any.
+    const reverts = shownReverts(stats?.reverts);
+    if (reverts) lines.push(`  ${label(R.reverts)}${plural(reverts.count, 'commit', L)} ${c('dim', `(${R.ofNonMerge(revertShareText(reverts, L))})`)}`);
 
     const a = stats?.personality?.archetype;
     if (a?.name) {

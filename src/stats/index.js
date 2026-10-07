@@ -7,6 +7,7 @@ import { computeReleases, shownReleases } from './releases.js';
 import { busiestOf, computeDaily, daysUpTo, longestGap, longestRun, shownBusiestDay, shownLongest, shownLongestBreak } from './daily.js';
 import { computeFileLifecycle, computeHotFiles, isIgnoredPath, repoRelativePath, shownFileLifecycle } from './files.js';
 import { computeTimeHabits } from './habits.js';
+import { computeTimezones, formatOffset, offsetMinutes, shownTimezones, utcLabel } from './timezones.js';
 import { computeLanguages, languageBarRows, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER as OTHER_LANGUAGE, percentShares } from './languages.js';
 import { computeMessages, isMergeCommit } from './messages.js';
 import { computeMonths, monthsFromDays } from './months.js';
@@ -25,6 +26,7 @@ export { computeLanguages, languageBarRows, languageHeadline, languageOf, langua
 export { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONTRIBUTORS };
 export { computeFirstCommit, SHORT_HASH };
 export { computeCoAuthors, shownCoAuthors, TOP_CO_AUTHORS };
+export { computeTimezones, formatOffset, offsetMinutes, shownTimezones, utcLabel };
 export { computeReleases, shownReleases };
 export { computeBiggestCommit, shownBiggestLines, computeMessages, computePersonality, isMergeCommit, ARCHETYPES, localToday };
 export { computeMonths, monthsFromDays };
@@ -40,7 +42,9 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * machine's local date (the only non-deterministic input).
  * `personality` is derived from the other parts (see personality.js); its fix share is
  * of non-merge commits, and its Steady Shipper span ignores future-dated days (after
- * `today` + 1, see daily.js daysUpTo). `daily` is commits per author-local day (see daily.js);
+ * `today` + 1, see daily.js daysUpTo). `timezones` is the commits' distinct author UTC
+ * offsets, `{count, top: {offset, commits, share} | null, offsets: [{offset, commits}]}`,
+ * every commit counted as for `habits` (see timezones.js). `daily` is commits per author-local day (see daily.js);
  * `busiestDay` is the single author-local day with the most commits as `{day: 'YYYY-MM-DD',
  * commits}` (ties → the earliest day), or null without commits: a copy of daily.busiest
  * (the recap and wrapped.md leave out future-dated days, see daily.js shownBusiestDay);
@@ -83,6 +87,7 @@ export function computeStats(commits = [], { today, todayComplete, team, author,
   const stats = {
     totals: computeTotals(commits),
     habits: computeTimeHabits(commits),
+    timezones: computeTimezones(commits),
     streaks: computeStreaks(commits, { today, todayComplete }),
     daily,
     busiestDay: daily.busiest ? { ...daily.busiest } : null,

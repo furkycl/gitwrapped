@@ -11,6 +11,7 @@ import { shownCommitTypes } from './stats/types.js';
 import { shownEmoji } from './stats/emoji.js';
 import { shownReverts } from './stats/reverts.js';
 import { shownFileLifecycle } from './stats/files.js';
+import { shownTimezones, utcLabel } from './stats/timezones.js';
 import { shownBusiestDay, shownLongest, shownLongestBreak } from './stats/daily.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { contributorName, hasTeamCard, shareLabel } from './stats/contributors.js';
@@ -182,6 +183,12 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
     const busiest = shownBusiestDay(stats, today);
     const busiestOn = busiest ? formatDay(busiest.day, lang) : null;
     if (busiestOn) habits.push(item(M.busiestDay, `${escapeMarkdown(busiestOn)} (${plural(busiest.commits, 'commit', L)})`));
+    // Commits from two or more time zones (stats.timezones), as in the recap.
+    const tz = shownTimezones(stats?.timezones);
+    if (tz) {
+      const top = tz.top ? ` (${L.recap.mostly(utcLabel(tz.top))}, ${L.recap.ofCommits(shareLabel(tz.share, tz.commits, L.pct))})` : '';
+      habits.push(item(L.recap.timezones, `${L.recap.timezonesValue(tz.count)}${top}`));
+    }
     section(M.habits, habits);
 
     // --- streaks ----------------------------------------------------------------------

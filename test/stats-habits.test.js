@@ -1,6 +1,6 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeBiggestCommit, computeCoAuthors, computeCommitSizes, computeFirstCommit, computeCommitTypes, computeContributors, computeEmoji, computeReverts, computeDaily, computeFileLifecycle, computeHotFiles, computeLanguages, computeMessages, computeMonths, computePersonality, computeReleases, computeStats, computeStreaks, computeTimeHabits, computeTotals, hourLabel } from '../src/stats/index.js';
+import { computeBiggestCommit, computeCoAuthors, computeCommitSizes, computeFirstCommit, computeCommitTypes, computeContributors, computeEmoji, computeReverts, computeDaily, computeFileLifecycle, computeHotFiles, computeLanguages, computeMessages, computeMonths, computePersonality, computeReleases, computeStats, computeStreaks, computeTimeHabits, computeTimezones, computeTotals, hourLabel } from '../src/stats/index.js';
 import { readCommits } from '../src/git.js';
 import { makeFixtureRepo } from '../scripts/make-fixture-repo.js';
 
@@ -110,12 +110,13 @@ describe('computeTimeHabits', () => {
 });
 
 describe('computeStats', () => {
-  test('combines totals, habits, streaks, daily, busiest day, months, hot files, files born / buried, languages, contributors, messages, biggest commit, commit sizes, commit types, emoji, reverts, first commit, co-authors, releases and personality', () => {
+  test('combines totals, habits, time zones, streaks, daily, busiest day, months, hot files, files born / buried, languages, contributors, messages, biggest commit, commit sizes, commit types, emoji, reverts, first commit, co-authors, releases and personality', () => {
     const commits = [at('2024-06-15T09:00:00Z')];
     const today = '2024-06-16';
     const parts = {
       totals: computeTotals(commits),
       habits: computeTimeHabits(commits),
+      timezones: computeTimezones(commits),
       streaks: computeStreaks(commits, { today }),
       daily: computeDaily(commits),
       busiestDay: computeDaily(commits).busiest,

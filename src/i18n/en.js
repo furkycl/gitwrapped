@@ -165,6 +165,11 @@ export default {
     ],
     dayTied: (day) => `${day} is tied for your busiest day.`,
     dayBusiest: (day) => `${day} is your busiest day.`,
+    /**
+     * The time-zone sentence (two or more UTC offsets, see stats/timezones.js): `top` is
+     * the most common offset ("UTC+03:00"), or null when two offsets tie for it.
+     */
+    timezones: (n, top) => `Committed from ${num(n)} time zones${top ? `, mostly ${top}` : ''}.`,
     titleTied: 'is one of your power hours',
     title: 'is when you commit the most',
   },
@@ -458,6 +463,10 @@ export default {
     breakLabel: 'Break',
     /** The busiest-day line: label, "Oct 4, 2026", then "(12 commits)". */
     busiestDay: 'Busiest day',
+    /** The time-zones line: label, "3 time zones", then "· mostly UTC+03:00 (62% of commits)". */
+    timezones: 'Time zones',
+    timezonesValue: (n) => plural(n, ['time zone', 'time zones']),
+    mostly: (offset) => `mostly ${offset}`,
     hottestFile: 'Hottest file',
     /** The files born / buried line (stats.fileLifecycle): label, then "12 born · 3 buried". */
     fileLifecycle: 'Files',

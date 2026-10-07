@@ -387,12 +387,12 @@ when there are two or more.
 
 `stats.weekend` is how many commits landed on a Saturday or Sunday, in each author's own
 local time (the weekday of the commit's author date in its own offset), as
-`{"commits": n, "share": x}`: `share` is of the commits, `0`..`1` with 3 decimals, at
-most `0.999` unless every commit is a weekend one (`{"commits": 0, "share": 0}` without
-commits). Like the power hour it counts every commit in the window, merge commits and
-future-dated ones included, so it is the same count the Weekend Warrior personality
-scores; the recap, `wrapped.md` and the activity card quote the same whole percent as
-Weekend Warrior's reason (never "100%" short of every commit, "<1%" for a share that
+`{"commits": n, "share": x}`: `share` is of the commits that carry a date (the same base as
+the power hour), `0`..`1` with 3 decimals, at most `0.999` unless every dated commit is a
+weekend one (`{"commits": 0, "share": 0}` without commits). Like the power hour it counts
+every dated commit in the window, merge commits and future-dated ones included, so it is
+the same count the Weekend Warrior personality scores;
+the recap, `wrapped.md` and the activity card quote the same whole percent as Weekend Warrior's reason (never "100%" short of every commit, "<1%" for a share that
 rounds to 0), and only when there is at least one weekend commit.
 
 `stats.fileLifecycle` is how many files were born and buried in the window, as

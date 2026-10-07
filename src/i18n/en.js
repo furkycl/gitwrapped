@@ -317,6 +317,9 @@ export default {
     /** The emoji panel (stats.emoji): caption, then the share of commits with an emoji ("12% of commits"); the top emoji are its note. */
     emojiTitle: 'Emoji',
     emojiShare: (pct) => `${pct} of commits`,
+    /** The reverts row (stats.reverts): caption, then the count and its share of non-merge commits ("3 · 2%"). */
+    revertsTitle: 'Reverts',
+    revertsValue: (count, pct) => `${num(count)} · ${pct}`,
   },
 
   personality: {
@@ -335,7 +338,7 @@ export default {
       'night-owl': (pct) => `${pct}% of your commits land between 10 PM and 4 AM.`,
       'early-bird': (pct) => `${pct}% of your commits land between 5 AM and 9 AM.`,
       'friday-deployer': (pct) => `${pct}% of your commits land on a Friday.`,
-      fixaholic: (pct) => `${pct}% of your commit messages are fixes.`,
+      fixaholic: (pct, reverts) => `${pct}% of your commit messages are fixes${reverts > 0 ? `, including ${reverts === 1 ? '1 revert' : `${num(reverts)} reverts`}` : ''}.`,
       'weekend-warrior': (pct) => `${pct}% of your commits land on a Saturday or Sunday.`,
       'steady-shipper': (activeDays, span, longest) => `You committed on ${activeDays} of ${span} ${span === 1 ? 'day' : 'days'}, with a longest streak of ${longest} ${longest === 1 ? 'day' : 'days'}.`,
     },
@@ -481,6 +484,8 @@ export default {
     conventional: (pct) => `${pct} of commits conventional`,
     /** The emoji line: label, "12% of commits", then "· ✨ 40 · 🐛 22 · 📝 9" (commits per emoji). */
     emoji: 'Emoji',
+    /** The reverts line: label, "3 commits", then "(2% of non-merge commits)". */
+    reverts: 'Reverts',
     you: 'You are',
     cardsIn: (count, dir) => `${count} in ${dir}`,
     shareImage: 'share image:',
@@ -519,6 +524,8 @@ export default {
     commitTypes: 'Commit types',
     /** The emoji section (stats.emoji): "12% of commits: ✨ 40 · 🐛 22 · 📝 9" (commits per emoji). */
     emoji: 'Emoji',
+    /** The reverts item (stats.reverts): "3 commits (2% of non-merge commits)". */
+    reverts: 'Reverts',
     /** The pairing item (stats.coAuthors): "12 commits (31% of non-merge commits), top co-author: Ada". */
     paired: 'Paired',
     topCoAuthor: (name) => `top co-author: ${name}`,

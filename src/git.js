@@ -364,6 +364,8 @@ async function shallowBoundary(repoPath) {
  * a read whose co-authors are not used (they are then left as written).
  * A commit that tags point at gets `tags`, their names (see readTags); `tags: false`
  * skips that git call for a read whose releases are not used.
+ * A commit whose message says "This reverts commit <hash>" gets `revertOf`, those hashes
+ * (see readReverts); `reverts: false` skips that git call for a read whose reverts are not used.
  * `commits` is [] for a repo without commits. When HEAD has no commits (a new repo, or an
  * orphan branch) the result also has `unborn: true` and `otherRefs` (see hasOtherRefs):
  * only HEAD's history is read, so other branches' commits are not seen. Throws a TypeError for an invalid
@@ -371,7 +373,7 @@ async function shallowBoundary(repoPath) {
  * a file ("not a directory: <path>"), a folder that is not a repo ("not a git repository:
  * <path>"), git's safe.directory ownership check, a missing git, or oversized output.
  */
-export async function readHistory(repoPath, { since, until, author, limit = DEFAULT_LIMIT, maxBuffer = MAX_BUFFER, coAuthors = true, tags = true } = {}) {
+export async function readHistory(repoPath, { since, until, author, limit = DEFAULT_LIMIT, maxBuffer = MAX_BUFFER, coAuthors = true, tags = true, reverts = true } = {}) {
   if (limit !== Infinity && (!Number.isSafeInteger(limit) || limit < 1)) {
     throw new TypeError(`limit must be a positive integer or Infinity, got ${limit}`);
   }
@@ -411,6 +413,7 @@ export async function readHistory(repoPath, { since, until, author, limit = DEFA
   if (truncated) commits = commits.slice(0, limit);
   if (coAuthors) await mailmapCoAuthors(repoPath, commits);
   if (tags) await readTags(repoPath, commits);
+  if (reverts) await readReverts(repoPath, commits);
   const boundary = await shallowBoundary(repoPath);
   if (boundary) {
     for (const c of commits) {
@@ -465,6 +468,82 @@ export async function readTags(repoPath, commits) {
   for (const c of commits) {
     const names = typeof c?.hash === 'string' ? byHash.get(c.hash.toLowerCase()) : undefined;
     if (names) c.tags = [...names].sort();
+  }
+  return commits;
+}
+
+/**
+ * The line `git revert` writes into a revert's message: "This reverts commit <hash>" at
+ * the start of a line (leading blanks allowed; abbreviated hashes too, as people paste
+ * them; up to 64 hex digits for SHA-256 repos). Mid-line mentions ("see This reverts
+ * commit …") do not count.
+ */
+const REVERTS_LINE = /^[ \t]*This reverts commit ([0-9a-f]{7,64})(?![0-9a-z])/gim;
+
+/**
+ * The commits a message says it reverts: the hashes of its "This reverts commit <hash>"
+ * lines (see REVERTS_LINE), lowercased, distinct, in order. [] for none. Pure function.
+ */
+export function revertTargets(message) {
+  if (typeof message !== 'string' || !message) return [];
+  return [...new Set([...message.matchAll(REVERTS_LINE)].map((m) => m[1].toLowerCase()))];
+}
+
+/**
+ * `git log -z --format=%H%x1f%B` output → Map of commit hash → the hashes its message
+ * says it reverts (see revertTargets); commits without such a line are left out. Each
+ * record is NUL-terminated (git never allows NUL in a message) and the hash is hex, so
+ * the first \x1f ends it whatever the message holds. Pure function.
+ */
+export function parseRevertLog(stdout) {
+  const found = new Map();
+  for (const rec of String(stdout ?? '').split('\0')) {
+    const us = rec.indexOf(US);
+    if (us < 0) continue;
+    const hash = rec.slice(0, us).replace(/^[\r\n]+/, '').toLowerCase();
+    if (!/^[0-9a-f]+$/.test(hash)) continue;
+    const targets = revertTargets(rec.slice(us + 1));
+    if (targets.length > 0) found.set(hash, targets);
+  }
+  return found;
+}
+
+/**
+ * Give every commit whose message (subject or body) has a line starting "This reverts
+ * commit <hash>" (see REVERTS_LINE; what `git revert` writes, for a "Revert" and a
+ * "Reapply" alike) `revertOf`: those hashes (see revertTargets); other commits are left without the field. LOG_FORMAT
+ * carries only the subject and the Co-authored-by trailers (a raw body could hold
+ * anything), so the bodies are read by one extra `git log -z --no-walk=unsorted --stdin`
+ * call over exactly the given commits (hashes on stdin: no command-line length limit, and
+ * the window, --author and the cap apply as to everything else) that git itself filters
+ * with `--grep` (extended regexp anchored at a line start, as git matches --grep per line;
+ * case-insensitive like REVERTS_LINE; set on the command line so grep.patternType cannot
+ * change it): only the revert commits' messages come back, and the line is checked again
+ * here. Every option used works on any git this tool supports. Best effort: when git
+ * fails, no commit gets `revertOf` (a `Revert "…"` subject still counts, see
+ * stats/reverts.js). Returns `commits`.
+ */
+export async function readReverts(repoPath, commits) {
+  if (!Array.isArray(commits) || commits.length === 0) return commits;
+  const hashes = commits.map((c) => c?.hash).filter((h) => typeof h === 'string' && /^[0-9a-f]+$/i.test(h));
+  if (hashes.length === 0) return commits;
+  let found;
+  try {
+    const run = execFileAsync(
+      'git',
+      ['-C', repoPath, 'log', '-z', '--no-walk=unsorted', '--stdin', '--no-color', '--no-show-signature', '--encoding=UTF-8', '--extended-regexp', '--regexp-ignore-case', '--grep=^[[:blank:]]*This reverts commit [0-9a-f]{7}', '--format=%H%x1f%B'],
+      { encoding: 'utf8', env: gitEnv(), maxBuffer: MAX_BUFFER },
+    );
+    run.child.stdin.on('error', () => {}); // git exiting early (EPIPE) surfaces below
+    run.child.stdin.end(`${hashes.join('\n')}\n`);
+    found = parseRevertLog((await run).stdout);
+  } catch {
+    return commits;
+  }
+  if (found.size === 0) return commits;
+  for (const c of commits) {
+    const targets = typeof c?.hash === 'string' ? found.get(c.hash.toLowerCase()) : undefined;
+    if (targets) c.revertOf = targets;
   }
   return commits;
 }

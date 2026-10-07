@@ -1,6 +1,7 @@
 import { daysUpTo, longestRun } from './daily.js';
 import { epochDay } from './time.js';
 import { getStrings } from '../i18n/index.js';
+import { shownReverts } from './reverts.js';
 
 const EN = getStrings('en');
 const IDS = ['night-owl', 'early-bird', 'friday-deployer', 'fixaholic', 'weekend-warrior', 'steady-shipper'];
@@ -46,7 +47,7 @@ const sumAt = (arr, idx) => idx.reduce((s, i) => s + num(arr[i]), 0);
  *   activeDays, the span nor the longest streak (see daily.js daysUpTo / longestRun).
  * - archetype: the top score, unless fewer than 3 commits are dated or the top score is
  *   below 0.25, in which case steady-shipper. `reason` is a short sentence quoting the
- *   real number behind it; with fewer than 3 dated commits it is "Not enough commits yet."
+ *   real number behind it (Fixaholic's also names the reverts, stats.reverts, when any); with fewer than 3 dated commits it is "Not enough commits yet."
  * Invalid input policy: never throws; missing / malformed parts count as empty, so
  * `computePersonality()` → steady-shipper, "Not enough commits yet.", all scores 0.
  */
@@ -68,6 +69,8 @@ export function computePersonality(stats, opts) {
   const nonMerge = typeof nonMergeCommits === 'number' ? Math.min(num(nonMergeCommits), commits) : commits;
   const fixes = Math.min(num(stats.messages?.counts?.fix), nonMerge);
   const fixShare = nonMerge > 0 ? fixes / nonMerge : 0;
+  // Reverts (stats.reverts) are not scored; the Fixaholic reason mentions them.
+  const reverts = shownReverts(stats.reverts)?.count ?? 0;
 
   let activeDays = num(totals.activeDays);
   // The span runs from the earliest to the latest active day, whatever order the two
@@ -102,7 +105,7 @@ export function computePersonality(stats, opts) {
     'weekend-warrior': above(weekend, 0.15, 0.35),
     'steady-shipper': steady,
   };
-  const facts = { night, morning, friday, fixShare, weekend, activeDays, span, longest };
+  const facts = { night, morning, friday, fixShare, reverts, weekend, activeDays, span, longest };
   // Array#sort is stable, so equal scores keep ARCHETYPES order.
   const scores = ARCHETYPES.map(({ id, name }) => ({ id, name, score: round2(clamp01(raw[id])) }))
     .sort((a, b) => b.score - a.score);
@@ -132,7 +135,7 @@ function reasonText(id, facts, L) {
     case 'night-owl': return r[id](pct(facts.night));
     case 'early-bird': return r[id](pct(facts.morning));
     case 'friday-deployer': return r[id](pct(facts.friday));
-    case 'fixaholic': return r[id](pct(facts.fixShare));
+    case 'fixaholic': return r[id](pct(facts.fixShare), facts.reverts ?? 0);
     case 'weekend-warrior': return r[id](pct(facts.weekend));
     default: return r['steady-shipper'](facts.activeDays, facts.span, facts.longest);
   }

@@ -491,6 +491,33 @@ function headBlocks({ big, title, subtitle, titleSize }, { bigMax, titleLines, s
 
 // --- body blocks: rows + charts --------------------------------------------------------
 
+/** The widest a row's value is drawn uncut (rowsBlock ends a longer one with "…"). */
+const ROW_VALUE_MAX_WIDTH = WRAP_WIDTH * 0.55;
+
+/** Whether rowsBlock draws `value` (a row's value) whole, without cutting it. */
+export function rowValueFits(value) {
+  const v = String(value ?? '');
+  return v === '' || wrapText(v, { maxWidth: ROW_VALUE_MAX_WIDTH, fontSize: LIST.size, maxLines: 1 })[0] === v;
+}
+
+/** A row (`{label, value, truncate}`, see normalizeRow) as rowsBlock draws it: its label and value text, either possibly cut. */
+function drawnRow(row) {
+  const value = row.value ? wrapText(row.value, { maxWidth: ROW_VALUE_MAX_WIDTH, fontSize: LIST.size, maxLines: 1 })[0] : '';
+  const valueWidth = value ? measureText(value, LIST.size) + 32 : 0;
+  const maxWidth = Math.max(LIST.size * 3, WRAP_WIDTH - valueWidth);
+  const label = row.truncate === 'start'
+    ? truncateStart(row.label, { maxWidth, fontSize: LIST.size })
+    : (wrapText(row.label, { maxWidth, fontSize: LIST.size, maxLines: 1 })[0] ?? '');
+  return { label, value };
+}
+
+/** Whether rowsBlock draws `row` (`{label, value}`) whole: neither its label nor its value cut. */
+export function rowFits(row) {
+  const r = normalizeRow(row);
+  const drawn = drawnRow(r);
+  return drawn.label === r.label && (drawn.value ?? '') === r.value;
+}
+
 function rowsBlock(lines) {
   const rows = (Array.isArray(lines) ? lines : []).map(normalizeRow).filter((r) => r.label || r.value).slice(0, LIST.maxRows);
   if (rows.length === 0) return null;
@@ -502,12 +529,7 @@ function rowsBlock(lines) {
       const parts = [`<rect x="${PAD_X - 32}" y="${round(y)}" width="${CONTENT_WIDTH + 64}" height="${round(height)}" rx="40" fill="#ffffff" fill-opacity="0.14"/>`];
       rows.forEach((row, i) => {
         const baseline = y + LIST.pad + LIST.size * 0.9 + i * LIST.rowHeight;
-        const value = row.value ? wrapText(row.value, { maxWidth: WRAP_WIDTH * 0.55, fontSize: LIST.size, maxLines: 1 })[0] : '';
-        const valueWidth = value ? measureText(value, LIST.size) + 32 : 0;
-        const maxWidth = Math.max(LIST.size * 3, WRAP_WIDTH - valueWidth);
-        const label = row.truncate === 'start'
-          ? truncateStart(row.label, { maxWidth, fontSize: LIST.size })
-          : (wrapText(row.label, { maxWidth, fontSize: LIST.size, maxLines: 1 })[0] ?? '');
+        const { label, value } = drawnRow(row);
         parts.push(textEl(PAD_X, baseline, label, { size: LIST.size, weight: 700 }));
         if (value) parts.push(textEl(PAD_X + CONTENT_WIDTH, baseline, value, { size: LIST.size, weight: 800, opacity: 0.85, anchor: 'end' }));
       });

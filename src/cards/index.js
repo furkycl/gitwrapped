@@ -712,9 +712,17 @@ function activity(s, ctx = { L: EN }) {
   };
 }
 
+/**
+ * stats.hotFiles with a non-empty string path, email-shaped text in each path cut again
+ * (stats already does, see stats/files.js), so no input can show an address.
+ */
+const shownHotFiles = (s) => (Array.isArray(s?.hotFiles) ? s.hotFiles : [])
+  .filter((f) => typeof f?.path === 'string' && text(scrubEmails(f.path)))
+  .map((f) => ({ ...f, path: scrubEmails(f.path) }));
+
 function hotFiles(s, { L, repos }) {
   const H = L.hotFiles;
-  const files = (Array.isArray(s.hotFiles) ? s.hotFiles : []).filter((f) => text(f?.path));
+  const files = shownHotFiles(s);
   if (files.length === 0) {
     return { eyebrow: H.eyebrow, big: H.noneBig, title: H.noneTitle, subtitle: H.noneSubtitle, ...(repos ? { chart: repoFileBars(repos, L) } : {}) };
   }
@@ -831,7 +839,8 @@ function biggestCallout(s, L) {
   const shown = shownBiggestLines(b);
   if (!shown) return null;
   // Control / bidi characters dropped first, so a subject made only of them reads as none.
-  const subject = clip(text(typeof b.subject === 'string' ? plain(b.subject) : null));
+  // Email-shaped text is cut again here (stats already does), so no input can show one.
+  const subject = clip(text(typeof b.subject === 'string' ? plain(scrubEmails(b.subject)) : null));
   return {
     kind: 'callout',
     title: M.biggestTitle(formatDay(b.date, L.code)),
@@ -926,8 +935,10 @@ function messages(s, { L }) {
 function messagesCard(s, L) {
   const M = L.messages;
   const m = s.messages ?? {};
-  const longest = clip(text(m.longest?.subject));
-  const shortest = clip(text(m.shortest?.subject));
+  // Email-shaped text is cut again here (stats already does), so no input can show one.
+  const subject = (e) => (typeof e?.subject === 'string' ? scrubEmails(e.subject) : null);
+  const longest = clip(text(subject(m.longest)));
+  const shortest = clip(text(subject(m.shortest)));
   const biggest = biggestCallout(s, L);
   if (!longest || !shortest) {
     return { card: { eyebrow: M.eyebrow, big: '…', title: M.noneTitle, subtitle: L.empty, ...(biggest ? { chart: biggest } : {}) }, folded: null };
@@ -1131,7 +1142,7 @@ function outro(s, ctx) {
   const { L } = ctx;
   const O = L.outro;
   const commits = num(s.totals?.commits);
-  const top = (Array.isArray(s.hotFiles) ? s.hotFiles : []).find((f) => text(f?.path));
+  const [top] = shownHotFiles(s);
   // --year: one sentence on the change since the previous year, first (when the subtitle
   // runs out of lines, trailing sentences are dropped).
   const yoy = commits > 0 ? yearOverYear(s) : null;
@@ -1360,7 +1371,7 @@ export function renderShareCard(stats, { repoName, since, until, author, today, 
   const ctx = { L, lang: L.code, repoName: displayRepoName(stats, { repoName, lang }), since: text(since), until: text(until), author: text(author), today: text(today) };
   const year = windowYear(ctx.since, ctx.until);
   const commits = num(stats.totals?.commits);
-  const top = (Array.isArray(stats.hotFiles) ? stats.hotFiles : []).find((f) => text(f?.path));
+  const [top] = shownHotFiles(stats);
   const [c, hour, streakTile, persona] = summaryTiles(stats, ctx);
   return renderShareSvg({
     theme: 'pulse',

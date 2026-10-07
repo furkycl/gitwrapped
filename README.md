@@ -342,7 +342,8 @@ dated in the future, and covers every month, not just the 24 the card shows.
 `{"hash", "subject", "date": "YYYY-MM-DD", "linesAdded", "linesRemoved", "lines", "files"}`
 (`date` is the author's local day, `lines` is added + removed and `files` the files it
 counted), or `null` when no commit changed a line. `hash`, `subject` and `date` can each
-be `null` (no hash, an empty subject, an unparseable date). Lines are counted over the
+be `null` (no hash, an empty subject, an unparseable date); in `subject` anything shaped
+like an email address is replaced with "…". Lines are counted over the
 same files as hot files, so lockfiles, build output, vendored code, minified files and
 snapshots don't make a commit big, and `--exclude`d files are left out too; merge commits
 are skipped, and a tie goes to the earliest commit. History is read with `--no-renames`,
@@ -509,14 +510,20 @@ npx @furkycl/gitwrapped --year 2025 --md --no-png
   a strict Content-Security-Policy (`default-src 'none'`, with hashed inline style and
   script), so the browser won't load anything from the network either.
 - **What the output contains.** Cards, `wrapped.html` and (with `--json`) `stats.json`
-  show commit subjects and repo-relative file paths; `stats.json` also lists commit
-  hashes (the longest and shortest message, the biggest commit; the first commit's short hash) and, when you pass `--author`, that email in
-  `filters.author`. In a repo with more than one contributor, the team card, the recap
-  and `stats.json` also show the git author names (after `.mailmap`) of the top five
-  contributors (and yours, with `--author`), never their emails (a name that is itself an address is cut to the part
-  before the `@`). The same goes for co-authors from `Co-authored-by:` trailers: the
-  cards, the recap, `wrapped.md` and `stats.json` show the top co-author's name (and
-  `stats.json` the top five), never an email. The cards, share image and `wrapped.html` show only the part of the
+  show commit subjects and repo-relative file paths. Anything shaped like an email address
+  (`name@host`) in commit subjects, file paths and the repo labels of a multi-repo run
+  is replaced with "…" in every output (cards, share image, `wrapped.html`, `stats.json`,
+  the recap and `wrapped.md`). Text after an `@` that starts
+  with a digit is not an address and is kept: versions like `lodash@4.17.21` and `@2x`
+  asset names like `logo@2x.png`. `stats.json` also lists commit hashes (the longest and
+  shortest message, the biggest commit; the first commit's short hash) and, when you pass
+  `--author`, that email in `filters.author`. In a repo with more than one contributor,
+  the team card, the recap and `stats.json` also show the git author names (after
+  `.mailmap`) of the top five contributors (and yours, with `--author`), never their
+  emails (a name that is itself an address is cut to the part before the `@`). The same
+  goes for co-authors from `Co-authored-by:` trailers: the cards, the recap, `wrapped.md`
+  and `stats.json` show the top co-author's name (and `stats.json` the top five), never
+  an email. The cards, share image and `wrapped.html` show only the part of the
   `--author` email before the first `@` ("ada" for `ada@example.com`), never an address
   or domain: for `Name <email>` just the name, for a regex alternation (`a@x.io|b@y.io`)
   the first alternative's local part, and for `@example.com` no author at all.

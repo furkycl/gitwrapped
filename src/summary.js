@@ -256,8 +256,8 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     }
 
     const hot = stats?.hotFiles?.[0];
-    if (hot?.path) {
-      lines.push(`  ${label(R.hottestFile)}${c('cyan', shortPath(hot.path))} ${c('dim', `(${plural(hot.commits, 'commit', L)})`)}`);
+    if (typeof hot?.path === 'string' && hot.path) {
+      lines.push(`  ${label(R.hottestFile)}${c('cyan', shortPath(scrubEmails(hot.path)))} ${c('dim', `(${plural(hot.commits, 'commit', L)})`)}`);
     }
 
     const topLang = languageHeadline(stats?.languages);
@@ -313,7 +313,7 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     const big = stats?.biggestCommit;
     const bigLines = shownBiggestLines(big);
     if (bigLines) {
-      const short = typeof big.subject === 'string' ? shortText(big.subject, 48) : '';
+      const short = typeof big.subject === 'string' ? shortText(scrubEmails(big.subject), 48) : '';
       const subject = short ? `"${short}"` : L.messages.noSubject;
       // A valid 'YYYY-MM-DD' only (epochDay rejects other shapes and impossible dates).
       const day = typeof big.date === 'string' && epochDay(big.date) !== null ? big.date.split('-').map(Number) : null;

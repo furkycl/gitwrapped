@@ -13,6 +13,7 @@ import { hasTeamCard, shareLabel, TOP_CONTRIBUTORS } from '../stats/contributors
 import { shownCoAuthors } from '../stats/coauthors.js';
 import { shownTimezones, utcLabel } from '../stats/timezones.js';
 import { shownWeekend, weekendPercentLabel } from '../stats/weekend.js';
+import { shownCadence } from '../stats/cadence.js';
 import { shownReleases } from '../stats/releases.js';
 import { scrubEmails } from '../privacy.js';
 import { personalityReason } from '../stats/personality.js';
@@ -654,7 +655,7 @@ function streak(s, ctx) {
     : (formatDay(longest.start, L.code) ?? text(longest.start));
   chart.items[0].title = range ? S.longestTitle(len, range) : '';
   const pause = breakCallout(s, ctx);
-  return {
+  const spec = {
     eyebrow: S.eyebrow,
     big: L.num(len),
     title: len === 1 ? S.titleOne : S.titleMany,
@@ -664,6 +665,41 @@ function streak(s, ctx) {
     ].filter(Boolean).join(' '),
     chart: pause ? [chart, pause] : chart,
   };
+  // Commits per active day and the usual gap between active days (stats/cadence.js), as
+  // one row, only when there is room for it (see withCadence).
+  const cadence = shownCadence(s, ctx.today);
+  return cadence ? withCadence(spec, cadence, L) : spec;
+}
+
+/** The rows a layout draws, as XML-escaped text (each row's label and value, in order). */
+const rowsText = (layout) => {
+  const svg = layout.blocks.find((b) => b.kind === 'rows')?.svg ?? '';
+  return [...svg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((m) => m[1]);
+};
+
+/**
+ * The streak card `spec` with a cadence row ("2.4 per active day" · "every 3 days", from
+ * a shownCadence() value) after its rows when it fits: room for another row, the
+ * same charts drawn (the break panel too), no more shrink steps than before (the big
+ * number, text and bars keep their size; the bar chart may give up some of its spare
+ * spacing between bars) and the row's label and value
+ * drawn whole. Else `spec` unchanged, so the card is exactly what it was before.
+ */
+function withCadence(spec, cadence, L) {
+  const S = L.streak;
+  const row = {
+    label: S.cadenceRow(cadence.perActiveDay),
+    value: S.cadenceEvery(cadence.medianGapDays),
+    // The card's text description reads the recap's wording ("2.4 commits per active day · every 3 days").
+    description: `${S.cadencePerDay(cadence.perActiveDay)} · ${S.cadenceEvery(cadence.medianGapDays)}`,
+  };
+  const lines = Array.isArray(spec.lines) ? spec.lines : [];
+  if (lines.length >= MAX_ROWS) return spec;
+  const next = { ...spec, lines: [...lines, row] };
+  if (!fitsLike(next, spec, 0, L)) return spec;
+  const drawn = rowsText(layoutOf({ ...next, lang: L.code }));
+  const whole = [row.label, row.value].map((t) => escapeXml(t));
+  return drawn.slice(-2).every((t, i) => t === whole[i]) && drawn.length === 2 * next.lines.length ? next : spec;
 }
 
 /**
@@ -1649,7 +1685,8 @@ export function cardDescription(spec = {}) {
     add([plain(spec.big), plain(spec.title)].filter(Boolean).join(' '));
   }
   add(spec.subtitle);
-  for (const l of Array.isArray(spec.lines) ? spec.lines : []) add(pair(l?.label, l?.value));
+  // A row may carry its own `description` (a sentence that reads better than "label: value").
+  for (const l of Array.isArray(spec.lines) ? spec.lines : []) add(plain(l?.description) || pair(l?.label, l?.value));
   const charts = Array.isArray(spec.chart) ? spec.chart : spec.chart ? [spec.chart] : [];
   for (const c of charts) {
     const items = [];

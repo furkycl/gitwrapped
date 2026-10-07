@@ -20,6 +20,7 @@ import { shownReverts } from './stats/reverts.js';
 import { shownFileLifecycle } from './stats/files.js';
 import { shownTimezones, utcLabel } from './stats/timezones.js';
 import { shownWeekend, weekendPercentLabel } from './stats/weekend.js';
+import { shownCadence } from './stats/cadence.js';
 
 const EN = getStrings(DEFAULT_LANG);
 
@@ -192,6 +193,9 @@ function shortText(s, maxWidth = 48) {
  * stats/weekend.js shownWeekend) when there is at least one.
  * A "Break" line shows the longest break between two active days (stats.streaks.longestBreak,
  * future-dated days left out with `today` as on the streak card) when there is one.
+ * A "Cadence" line shows commits per active day and the median gap between active days
+ * ("2.4 commits per active day · every 3 days", see stats/cadence.js shownCadence) with two
+ * or more active days.
  * A "First commit" line shows the first commit in the window (stats.firstCommit: subject,
  * day, short hash and, with several repos, its repo) when there is one.
  * A "Biggest" line shows the biggest commit (stats.biggestCommit: subject, lines added /
@@ -308,6 +312,13 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
       const to = day(pause.to);
       const when = from && to ? ` ${c('dim', `(${from} – ${to})`)}` : '';
       lines.push(`  ${label(R.breakLabel)}${R.longest} ${c('cyan', plural(pause.days, 'day', L))}${when}`);
+    }
+
+    // Commits per active day and the median gap between active days (stats.cadence, with
+    // `today` future-dated days left out, as on the streak card); two or more active days.
+    const cadence = shownCadence(stats, today);
+    if (cadence) {
+      lines.push(`  ${label(R.cadence)}${c('cyan', L.streak.cadencePerDay(cadence.perActiveDay))} ${c('dim', '·')} ${c('cyan', L.streak.cadenceEvery(cadence.medianGapDays))}`);
     }
 
     const hot = stats?.hotFiles?.[0];

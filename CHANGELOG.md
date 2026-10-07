@@ -31,6 +31,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   minimum size; otherwise the card is unchanged). English and
   Turkish ("Hafta sonu", "%8").
 
+- Cadence: how many commits you make on a day you commit and how far apart your active
+  days usually are. `stats.json` gets `stats.cadence` (`{perActiveDay, medianGapDays}`:
+  commits per active day with 1 decimal, over the same author-local days as
+  `totals.activeDays`, and the median calendar-day gap between consecutive active days,
+  which can end in .5; `null` with fewer than two active days). With two or more active
+  days the recap gets a "Cadence  2.4 commits per active day · every 3 days" line
+  ("every day" for a gap of 1), `wrapped.md` a "Cadence" item, and the streak card a
+  "2.4 per active day  every 3 days" row when there is room (same charts and break panel,
+  the big number, text and bars at their usual size, though the bar chart may give up some
+  spare spacing; the row shown whole; otherwise the card is unchanged). Days after
+  tomorrow are left out of the shown cadence, as for the longest streak and break.
+  English and Turkish ("Ritim", "Aktif gün başına 2,4 commit · 3 günde bir").
+
 ### Changed
 
 - Weekend Warrior's reason never says "100%" unless every commit landed on a weekend

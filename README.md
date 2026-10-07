@@ -25,7 +25,7 @@ calendar months and a team card in a repo with more than one contributor (up to 
 1. **Intro**: the repo name, the date range in plain English ("Oct 4 – Oct 5, 2026") and how many commits there are to unwrap, plus whose story it is when you pass `--author` (the part of the email before the `@` only: "Starring ada."), and where it all began: an "It all began with" panel with the first commit in the window, its quoted subject on one line ("“Initial commit”") and its day and short hash below ("Jan 3, 2025 · 1a2b3c4"; with several repos, its repo too). Merge commits are skipped. The subject is shortened to fit its line (first a smaller font, then cut with "…"), a long repo label is cut with "…" so the day and hash always show, and when the card has no room for the panel it is left out (it is still in the recap, `wrapped.md` and `stats.json`).
 2. **Totals**: commits, a lines added vs. removed bar, active days and files touched (and contributors, when there is more than one), plus your commit size mix: the share of tiny (under 10 lines), small (10–99), medium (100–500) and large (over 500 lines changed) commits as one stacked bar. The bar only uses spare room: when the card is short of space (with `--year`'s three extra rows, say) it is left out, and nothing else on the card shrinks for it (the mix is still in the recap and `stats.json`). Sizes count the same files as hot files (lockfiles, build output and the rest are left out, and so is anything you `--exclude`) and skip merge commits. When some of your commits were paired (a `Co-authored-by:` trailer, see the team card) and the team card is not there to show it (or has no room for it, or you passed `--author`), a "Paired (top: Ada)" row with their count is added, again only when it fits without anything else shrinking. After it, when files were added or deleted in the window, a "Born / buried 12 / 3" row follows on the same terms (spare room only; it never takes the place of the pairing row or anything else, and it is always in the recap, `wrapped.md` and `stats.json`).
 3. **Power hour**: the hour of the day you commit the most, with a 24-hour bar chart and a Monday-to-Sunday weekday chart (hover a bar in `wrapped.html` for its count). Hours are each commit's own local time. When your commits came from two or more time zones (UTC offsets), the card always says so, in the first of these that fits: "Committed from 3 time zones, mostly UTC+03:00." at the end of the subtitle, or a "3 time zones · mostly UTC+03:00" row (both charts kept, the big number at most one step smaller); else the sentence takes the place of the hour's quip, then of the quip and the busiest-weekday sentence (the hour's sentence always stays). "mostly" is left out when two offsets tie. With a single time zone the card is unchanged.
-4. **Streak**: your longest run of consecutive days with a commit, with a longest vs. current bar comparison and your longest break (the most days without a commit between two active days) when you took one.
+4. **Streak**: your longest run of consecutive days with a commit, with a longest vs. current bar comparison and your longest break (the most days without a commit between two active days) when you took one. With two or more active days, a "2.4 per active day  every 3 days" row adds your cadence (commits per active day and the median gap between your active days, "every day" when it is 1), only when there is room for it: the same charts and panels drawn, the big number, text and bars at their usual size (the bar chart may give up some spare spacing between its bars) and the row shown whole; otherwise the card is exactly as before (the cadence is always in the recap, `wrapped.md` and `stats.json`).
 5. **Activity**: a GitHub-style calendar of commits per day (weeks as rows, Monday to Sunday, brighter the busier the day), with your number of active days and your busiest day. Hover a day in `wrapped.html` for its count. It covers up to the last 53 weeks of your history, and so does its busiest day: on a history longer than about a year it is the busiest day of the weeks on the grid, while the recap, `wrapped.md` and `stats.json` give the busiest day of the whole window. For a repo that went quiet more than a month ago it says "12 months to Apr 2021" instead of "Your last 12 months". When you made at least one weekend commit and the grid shows your whole history (no more than 53 weeks, nothing dated in the future), a "Weekends  12 commits · 8%" row adds how many commits landed on a Saturday or Sunday (author-local), only when there is room for it: the calendar's cells may get smaller to make room, but never below their normal minimum size, and nothing else shrinks; otherwise the card is exactly as before.
 6. **Month by month** (only when your commits span two or more calendar months): commits per month as a bar chart, from your first active month to your last (months without commits show as empty bars), with the peak month among the months shown called out ("Mar 2026 was your peak month"; a tie goes to the earliest month, and when every active month has the same count it says so instead) and how many of those months had commits. It shows your most recent 24 months at most ("Your last 24 months", or "24 months to Apr 2019" for a repo that went quiet more than a month ago, like the activity card); `stats.json` keeps every month, and its `peak` is over all of them. Months are the author's own calendar months, like the activity calendar, and commits dated after tomorrow are left off. A history inside one calendar month skips this card, and the cards after it then move up a number.
 7. **Hot files**: the five files you edit most as a bar list. Lockfiles, build output (`dist/`, `build/`, ...), dependency folders, vendored code (a root `vendor/` or `third_party/`), minified files and test snapshots (`*.snap`, `__snapshots__/`) are ignored. When your changes span two or more top-level folders, a small "Top folders" list follows: the three (else two) folders with the most lines changed, files at the repo root shown as "(root)". It only uses spare room: the hot-files list (and, with several repos, the per-repo chart) keeps every bar at full size (the big file name may get one step smaller), and when it doesn't fit the card is exactly as before (the folders are still in the recap, `wrapped.md` and `stats.json`).
@@ -57,7 +57,8 @@ You also get:
   whole window (e.g. `Busiest day  Oct 2, 2026 (14 commits)`), time zones (with two or
   more UTC offsets, e.g. `Time zones  3 time zones · mostly UTC+03:00 (62% of commits)`),
   weekend commits (with at least one, e.g. `Weekends  12 commits (8% of commits)`),
-  streak, longest break,
+  streak, longest break, cadence (with two or more active days, e.g.
+  `Cadence  2.4 commits per active day · every 3 days`),
   hottest file, top folders (with two or more, e.g.
   `Top folders  src/ (1,234 lines) · test/ (567 lines) · (root) (89 lines)`),
   files born / buried (files added and deleted, e.g. `Files  12 born · 3 buried`),
@@ -304,7 +305,7 @@ but it does contain commit subjects and hashes, tag names and repo-relative file
 | `asOf`          | `YYYY-MM-DD` the current streak is counted up to: today, or the end of a past `--until` / `--year` window |
 | `filters`       | `{since, until, author, maxCommits, exclude}` as used (`--year` shows as since/until); dates and author are `null` when not set, `maxCommits` is the cap in effect, `exclude` the `--exclude` patterns in order (`[]` when none) |
 | `truncated`     | `true` when `--max-commits` cut the history short                             |
-| `stats`         | Every computed stat: `totals`, `habits`, `timezones`, `weekend`, `streaks`, `daily`, `busiestDay`, `months`, `hotFiles`, `folders`, `fileLifecycle`, `languages`, `contributors`, `messages`, `biggestCommit`, `commitSizes`, `commitTypes`, `emoji`, `reverts`, `firstCommit`, `coAuthors`, `releases`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
+| `stats`         | Every computed stat: `totals`, `habits`, `timezones`, `weekend`, `streaks`, `cadence`, `daily`, `busiestDay`, `months`, `hotFiles`, `folders`, `fileLifecycle`, `languages`, `contributors`, `messages`, `biggestCommit`, `commitSizes`, `commitTypes`, `emoji`, `reverts`, `firstCommit`, `coAuthors`, `releases`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
 
 ```json
 {
@@ -329,6 +330,7 @@ but it does contain commit subjects and hashes, tag names and repo-relative file
       "current": { "length": 0, "start": null, "end": null },
       "longestBreak": { "days": 23, "from": "2025-07-04", "to": "2025-07-28" }
     },
+    "cadence": { "perActiveDay": 3.1, "medianGapDays": 1.5 },
     "languages": {
       "totalLines": 41020, "totalFiles": 212, "basis": "lines",
       "languages": [{ "name": "TypeScript", "type": "programming", "lines": 29534, "files": 140, "share": 72 }, "..."]
@@ -351,6 +353,16 @@ but it does contain commit subjects and hashes, tag names and repo-relative file
 day after it, and `days` the idle days in between (so `2025-07-04` → `2025-07-28` is 23
 days). A tie goes to the earliest gap; with fewer than two active days or no gap it is
 `{"days": 0, "from": null, "to": null}`.
+
+`stats.cadence` is `{"perActiveDay": x, "medianGapDays": y}`: `perActiveDay` is the
+commits per active day (1 decimal), over the same author-local days as
+`totals.activeDays` and the commits on them (every commit with a parseable date, merge
+commits and future-dated ones included); `medianGapDays` is the median number of calendar
+days between consecutive active days (back-to-back days are 1 apart, Monday → Thursday 3;
+with an even number of gaps the mean of the middle two, so it can end in `.5`), `null`
+with fewer than two active days (`{"perActiveDay": 0, "medianGapDays": null}` without
+commits). The streak card, the recap and `wrapped.md` show it with two or more active
+days, leaving out days after tomorrow as for the longest streak and break.
 
 `stats.busiestDay` is the single author-local calendar day with the most commits in the
 window, as `{"day": "YYYY-MM-DD", "commits": n}` (a tie goes to the earliest day; `null`
@@ -614,7 +626,9 @@ README, a PR description or release notes:
 - the power hour, busiest weekday and busiest day (the date with the most commits), the
   time zones (with two or more UTC offsets: how many and the most common one), the
   weekend commits (with at least one: how many landed on a Saturday or Sunday and their
-  share), the longest streak, the current one (when a streak is running) and the longest break;
+  share), the longest streak, the current one (when a streak is running), the longest break
+  and the cadence (with two or more active days: commits per active day and the median gap
+  between active days);
 - tables of the top five hot files, top folders (with two or more) and languages, and, in a repo with more than one
   contributor, the top five contributors by name (with `--author`, you marked as "(you)");
 - with several repos, a per-repo table; the biggest commit; the commit type mix (when at
@@ -734,10 +748,10 @@ npx @furkycl/gitwrapped --year 2025 --md --no-png
   today can't end or extend your current streak, and the activity calendar stops at
   tomorrow, so one bad date doesn't hide your real last 12 months. Nor does it stretch
   the date range on the cards (intro, footers, share image), and days after tomorrow
-  never make the longest streak, longest break or busiest day shown on the cards, in the recap
+  never make the longest streak, longest break, cadence or busiest day shown on the cards, in the recap
   and in `wrapped.md`, or the Steady Shipper span and streak. Those commits still count in the
   totals, and `stats.json` keeps the raw values (`totals.lastDay`, `streaks.longest`,
-  `streaks.longestBreak`, `busiestDay`).
+  `streaks.longestBreak`, `cadence`, `busiestDay`).
 - **Output folder safety:** gitwrapped only deletes files (old card files, and with
   `--no-png` the PNGs of an earlier run) in a folder that already holds a `wrapped.html`
   from an earlier run, and only regular files with its own names. It won't write or

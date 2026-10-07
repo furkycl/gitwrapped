@@ -9,13 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Busiest day: the single calendar day (author-local, as for streaks) with the most
+  commits, ties → the earliest day. `stats.json` gets `stats.busiestDay` (`{day:
+  'YYYY-MM-DD', commits} | null`), the recap a "Busiest day  Mar 12, 2026 (9 commits)"
+  line and `wrapped.md` a "Busiest day" item; both leave out future-dated days. The
+  activity card is unchanged (its busiest day is that of its 53-week grid). English and
+  Turkish.
+
 - Files born and buried: how many files were added and deleted in the window, read with
   one extra `git log --name-status --diff-filter=AD -M` call over the commits read (rename
   detection on, so a renamed or moved file is neither; merge commits get no diff, as for
   the line counts). Ignored paths (lockfiles, build output, …) and `--exclude`d files are
   left out as for hot files; several repos are summed. `stats.json` gets
   `stats.fileLifecycle` (`{added, deleted}`), the recap a "Files  12 born · 3 buried" line,
-  `wrapped.md` a "Files born / buried" item, and the totals card a "Files born / buried
+  `wrapped.md` a "Files born / buried" item, and the totals card a "Born / buried
   12 / 3" row when there's spare room (after the pairing row; nothing else shrinks for it).
   English and Turkish.
 
@@ -30,6 +37,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   step smaller), else the sentence in place of the hour's quip, then of the quip and the
   busiest-weekday sentence; "mostly" is left out when two offsets tie. With one offset
   everything is exactly as before. English and Turkish.
+
+### Changed
+
+- `wrapped.md`: in Turkish, the busiest-weekday item is now "En yoğun hafta günü:
+  <weekday>" (formerly "En yoğun gün: <weekday>"), and "En yoğun gün" now holds the
+  busiest calendar date. In English the weekday item stays "Busiest weekday: <weekday>"
+  and the new "Busiest day" item holds the calendar date.
 
 ## [1.6.0] - 2026-10-07
 

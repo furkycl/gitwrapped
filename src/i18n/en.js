@@ -126,7 +126,7 @@ export default {
     sizeRanges: { tiny: 'under 10 lines', small: '10–99 lines', medium: '100–500 lines', large: 'over 500 lines' },
     sizeTitle: (name, range, commits, pct) => `${name} (${range}): ${plural(commits, UNITS.commit)} (${pct})`,
     /** Files added / deleted in the window (stats.fileLifecycle), as one row: "12 / 3". */
-    fileLifecycle: 'Files born / buried',
+    fileLifecycle: 'Born / buried',
     fileLifecycleValue: (added, deleted) => `${num(added)} / ${num(deleted)}`,
   },
 

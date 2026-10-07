@@ -109,7 +109,7 @@ export default {
     sizes: { tiny: 'Minik', small: 'Küçük', medium: 'Orta', large: 'Büyük' },
     sizeRanges: { tiny: '10 satırdan az', small: '10–99 satır', medium: '100–500 satır', large: '500 satırdan fazla' },
     sizeTitle: (name, range, commits, pct) => `${name} (${range}): ${plural(commits, UNITS.commit)} (${pct})`,
-    fileLifecycle: 'Doğan / gömülen dosya',
+    fileLifecycle: 'Doğan / gömülen',
     fileLifecycleValue: (added, deleted) => `${num(added)} / ${num(deleted)}`,
   },
 

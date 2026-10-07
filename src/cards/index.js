@@ -420,7 +420,7 @@ function totals(s, { L, repos }) {
 
 /**
  * The totals card's files born / buried row (stats.fileLifecycle, see shownFileLifecycle):
- * "Files born / buried" and "12 / 3"; null when no file was added or deleted.
+ * "Born / buried" and "12 / 3"; null when no file was added or deleted.
  */
 function lifecycleRow(s, L) {
   const lc = shownFileLifecycle(s.fileLifecycle);

@@ -29,7 +29,8 @@ export function offsetMinutes(offset) {
  *   "Z" and "-00:00" are "+00:00";
  * - count: how many distinct offsets;
  * - top: the first of them as `{offset, commits, share}` (share of the counted commits,
- *   0..1 rounded to 3 decimals), or null without commits.
+ *   0..1 rounded to 3 decimals, at most 0.999 short of every commit), or null without
+ *   commits.
  * Invalid input policy: never throws; non-object entries are skipped. Empty → zeros.
  */
 export function computeTimezones(commits) {
@@ -45,9 +46,11 @@ export function computeTimezones(commits) {
   const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0]);
   const offsets = sorted.map(([m, n]) => ({ offset: formatOffset(m), commits: n }));
   const first = offsets[0];
+  // Never a share of 1 short of every commit (1999 of 2000 is 0.999, not 1).
+  const share = first ? Math.min(Math.round((first.commits / total) * 1000) / 1000, first.commits < total ? 0.999 : 1) : 0;
   return {
     count: offsets.length,
-    top: first ? { offset: first.offset, commits: first.commits, share: Math.round((first.commits / total) * 1000) / 1000 } : null,
+    top: first ? { offset: first.offset, commits: first.commits, share } : null,
     offsets,
   };
 }
@@ -59,8 +62,8 @@ export const utcLabel = (offset) => `UTC${String(offset).replace(/^-/, '−')}`;
  * The time zones as shown on the power-hour card, the recap and wrapped.md:
  * `{count, top, share, commits}` when the commits came from two or more offsets, where
  * `top` is the most common offset ("+03:00") or null when another offset has as many
- * commits (no single "mostly"), and `share` its share as a percent (0..100, one
- * decimal); null for fewer than two offsets or a malformed stat. stats.json keeps the raw
+ * commits (no single "mostly"), and `share` its share as a percent (0..99.9, one
+ * decimal: there are always other offsets, so never 100); null for fewer than two offsets or a malformed stat. stats.json keeps the raw
  * value.
  */
 export function shownTimezones(tz) {
@@ -74,6 +77,7 @@ export function shownTimezones(tz) {
     count: list.length,
     top: tied ? null : sorted[0].offset,
     commits: sorted[0].commits,
-    share: Math.round((sorted[0].commits / total) * 1000) / 10,
+    // At most 99.9 short of every commit, so shareLabel never shows "100%" for it.
+    share: Math.min(Math.round((sorted[0].commits / total) * 1000) / 10, 99.9),
   };
 }

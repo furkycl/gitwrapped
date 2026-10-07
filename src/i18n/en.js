@@ -76,6 +76,8 @@ export default {
   hourTicks: { 0: '12a', 6: '6a', 12: '12p', 18: '6p', 23: '11p' },
   /** "Oct 4, 2026" (`year` as given). */
   date: (day, month, year) => `${MONTHS[month - 1]} ${day}, ${year}`,
+  /** "Oct 4" (no year: the power-hour card's "Latest night" row when the full date is too long). */
+  dayMonth: (day, month) => `${MONTHS[month - 1]} ${day}`,
   /** "Oct 4 – Oct 5, 2026". */
   sameYearRange: (d1, m1, d2, m2, year) => `${MONTHS[m1 - 1]} ${d1} – ${MONTHS[m2 - 1]} ${d2}, ${year}`,
   /** A window with only a start: "since Jan 3, 2025". */
@@ -448,6 +450,8 @@ export default {
     merges: 'Merges',
     mergedValue: (prs, merges) => (prs > 0 ? `You merged ${plural(prs, ['pull request', 'pull requests'])}` : plural(merges, ['merge commit', 'merge commits'])),
     mergedNote: (prs, merges, share) => (merges > 0 ? `${prs > 0 ? `${plural(merges, ['merge commit', 'merge commits'])} · ` : ''}${share} of commits` : null),
+    /** mergedNote when it does not fit on one line: "8 merge commits · 6%" (or "6%"). */
+    mergedNoteShort: (prs, merges, share) => (merges > 0 ? `${prs > 0 ? `${plural(merges, ['merge commit', 'merge commits'])} · ` : ''}${share}` : null),
   },
 
   share: {

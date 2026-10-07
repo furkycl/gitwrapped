@@ -1,7 +1,7 @@
 // The story-card set: turns computeStats() output into Wrapped-style SVG cards.
 // Pure and deterministic. Every card copes with empty stats (0 commits, null peaks,
 // no hot files, null messages) and never prints "null", "undefined" or "NaN".
-import { CALENDAR_MIN_CELL, CALLOUT_NOTE, calendarWindow, escapeXml, formatNumber, graphemes, layoutCard as layoutOf, measureText, renderCardWithLayout, truncateMiddle } from './svg.js';
+import { CALENDAR_MIN_CELL, CALLOUT_NOTE, calendarWindow, escapeXml, formatNumber, graphemes, layoutCard as layoutOf, measureText, renderCardWithLayout, rowFits, rowValueFits, truncateMiddle } from './svg.js';
 
 export { formatNumber };
 import { renderShareSvg } from './share.js';
@@ -423,7 +423,9 @@ function totals(s, { L, repos }) {
   const withLifecycle = lifecycle ? withSpareRow(withPaired, lifecycle, L) : withPaired;
   // Merged pull requests and merge commits (stats.merges) last, on the same terms.
   const merges = mergesRow(s, L);
-  return merges ? withSpareRow(withLifecycle, merges, L) : withLifecycle;
+  // Only when drawn whole (with 10,000+ pull requests and merges the label would be cut);
+  // else the outro shows the merges panel (see mergesOnTotals).
+  return merges && rowFits(merges) ? withSpareRow(withLifecycle, merges, L) : withLifecycle;
 }
 
 /**
@@ -596,16 +598,32 @@ function peakHour(s, { L }) {
   // late-night commits, or without room, the card is exactly as before.
   const late = shownLateNights(s);
   if (!late) return withTz;
-  const row = { label: P.lateNights, value: `${plural(late.commits, 'commit', L)} · ${weekendPercentLabel(late.percent, L.pct)}` };
+  // "12 commits · 4%", or "1,234 · 12%" when the full value would be cut short on the row
+  // (e.g. 1,000+ commits with a two-digit share), so the percent always shows.
+  const pct = weekendPercentLabel(late.percent, L.pct);
+  const full = `${plural(late.commits, 'commit', L)} · ${pct}`;
+  const row = { label: P.lateNights, value: rowValueFits(full) ? full : `${L.num(late.commits)} · ${pct}` };
   // One shrink step in all: when the card had not shrunk (before any time-zones row), the
   // late-nights row may take one; a step the time-zones row already took is shared, and a
   // card that had shrunk before gets no more.
   const before = layoutOf({ ...spec, lang: L.code }).shrinkSteps;
   const allowed = Math.max(layoutOf({ ...withTz, lang: L.code }).shrinkSteps, before === 0 ? 1 : before);
   const withLate = withRoomyRow(withTz, row, L, allowed);
-  const on = late.latest && withLate !== withTz ? formatDay(late.latest.date, L.code) : null;
-  if (!on) return withLate;
-  return withRoomyRow(withLate, { label: P.latestLabel, value: P.latestValue(L.clock(late.latest.hour, late.latest.minute), on) }, L);
+  const latest = withLate !== withTz ? latestNightValue(late.latest, L) : null;
+  return latest ? withRoomyRow(withLate, { label: P.latestLabel, value: latest }, L) : withLate;
+}
+
+/**
+ * The power-hour card's "Latest night" row value for `latest` (shownLateNights(...).latest,
+ * `{date, hour, minute}`): "4:12 AM · Mar 3, 2024" when a row draws it whole, else the
+ * year-less "4:12 AM · Mar 3" (an English date is always too long for a row), else null
+ * (no row). The recap and wrapped.md always show the full date.
+ */
+export function latestNightValue(latest, L = EN) {
+  const d = parseDay(latest?.date);
+  if (!d || !Number.isInteger(latest.hour) || !Number.isInteger(latest.minute)) return null;
+  const time = L.clock(latest.hour, latest.minute);
+  return [L.date(d.day, d.month, d.year), L.dayMonth(d.day, d.month)].map((day) => L.peak.latestValue(time, day)).find(rowValueFits) ?? null;
 }
 
 /**
@@ -1569,7 +1587,11 @@ function mergesCallout(s, L) {
   if (!m) return null;
   const O = L.outro;
   const share = mergeShareText(m, L);
-  return { kind: 'callout', optional: true, title: O.merges, value: O.mergedValue(m.pullRequests, m.commits), note: O.mergedNote(m.pullRequests, m.commits, share) };
+  // The note on one line, uncut: "8 merge commits · 6% of commits", else the shorter
+  // "8 merge commits · 6%" (Turkish's longer phrase is cut from 10 merge commits on).
+  const full = O.mergedNote(m.pullRequests, m.commits, share);
+  const note = full && measureText(full, CALLOUT_NOTE.size) > CALLOUT_NOTE.maxWidth ? O.mergedNoteShort(m.pullRequests, m.commits, share) : full;
+  return { kind: 'callout', optional: true, title: O.merges, value: O.mergedValue(m.pullRequests, m.commits), note };
 }
 
 /**

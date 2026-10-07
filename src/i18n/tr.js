@@ -69,6 +69,7 @@ export default {
   clock: (h, m) => `${pad2(h)}:${pad2(m)}`,
   hourTicks: { 0: '00', 6: '06', 12: '12', 18: '18', 23: '23' },
   date: (day, month, year) => `${day} ${MONTHS[month - 1]} ${year}`,
+  dayMonth: (day, month) => `${day} ${MONTHS[month - 1]}`,
   sameYearRange: (d1, m1, d2, m2, year) => `${d1} ${MONTHS[m1 - 1]} – ${d2} ${MONTHS[m2 - 1]} ${year}`,
   since: (date) => `${date} ve sonrası`,
   until: (date) => `${date} ve öncesi`,
@@ -374,6 +375,7 @@ export default {
     merges: "Merge'ler",
     mergedValue: (prs, merges) => (prs > 0 ? `${num(prs)} pull request birleştirdin` : `${num(merges)} merge commit`),
     mergedNote: (prs, merges, share) => (merges > 0 ? `${prs > 0 ? `${num(merges)} merge commit · ` : ''}commit'lerin ${share} kadarı` : null),
+    mergedNoteShort: (prs, merges, share) => (merges > 0 ? `${prs > 0 ? `${num(merges)} merge commit · ` : ''}${share}` : null),
   },
 
   share: {

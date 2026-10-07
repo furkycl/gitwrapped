@@ -25,11 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   gets `stats.merges` (`{commits, share, pullRequests}`), the recap a
   "Merges  12 pull requests merged · 8 merge commits (6% of commits)" line, `wrapped.md` a
   "Merges" item, and the totals card a "Merged PRs / merges  12 / 8" row ("Merged PRs" or
-  "Merge commits  8 · 6%" when there is only one of the two) when there's spare room, after
-  the files born / buried row; nothing else shrinks for it and the card is unchanged
-  otherwise. When the totals card has no room (common in team repos and with `--year`),
+  "Merge commits  8 · 6%" when there is only one of the two) when there's spare room and
+  the row is drawn whole (not with 10,000+ pull requests and merges), after the files born
+  / buried row; nothing else shrinks for it and the card is unchanged otherwise. When the
+  totals card has no room for it (common in team repos and with `--year`),
   the outro gets a "Merges" panel instead ("You merged 12 pull requests", "8 merge commits ·
-  6% of commits"), never both, after the releases panel and on the same terms (the subtitle
+  6% of commits", or "8 merge commits · 6%" when that line would be cut, as in Turkish),
+  never both, after the releases panel and on the same terms (the subtitle
   gives way first; when both panels don't fit, releases win; byte-identical otherwise).
   A PR number may have at most nine digits after leading zeros; a `Merge pull request`
   subject with an out-of-range number falls back to its trailing `(#N)`.
@@ -42,11 +44,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   time} | null}`, author-local day and `HH:MM`, no hash or email). With at least one
   late-night commit the recap gets a "Late nights  12 commits (4% of commits) · latest
   4:12 AM on Mar 3, 2024" line, `wrapped.md` a "Late-night commits" item, and the
-  power-hour card a "Late nights  12 commits · 4%" row when it fits with the big number at
-  most one step smaller (one step in all, shared with the time-zones row), then a "Latest
-  commit" row in spare room only; byte-identical otherwise (a night power hour's longer
-  subtitle usually leaves no room). Counted from
-  the same hours as the Night Owl personality (22:00–03:59), so the two never disagree.
+  power-hour card a "Late nights  12 commits · 4%" row ("1,234 · 12%" when the full value
+  would be cut, e.g. 1,000+ commits with a two-digit share, so the percent always shows)
+  when it fits with the big number at most one step smaller (one step in all, shared with
+  the time-zones row), then a "Latest night" row in spare room only (rare), with the date
+  without its year when the full one would be cut ("4:12 AM · Mar 3" in English, where the
+  full date never fits; "04:12 · 28 Oca" in Turkish only when needed); the recap and
+  `wrapped.md` always show the full date. Byte-identical otherwise (a night power hour's
+  longer subtitle usually leaves no room). `stats.lateNights` agrees with
+  `stats.habits.byHour` (the same author-local hours), which the Night Owl personality
+  also scores (its window is 22:00–03:59), so the two never disagree.
   English and Turkish ("Gece mesaisi", "en geç 3 Mar 2024 04:12").
 
 ## [1.8.0] - 2026-10-07

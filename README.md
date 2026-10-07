@@ -305,7 +305,7 @@ but it does contain commit subjects and hashes, tag names and repo-relative file
 ```json
 {
   "schemaVersion": 1,
-  "generator": { "name": "@furkycl/gitwrapped", "version": "1.6.0" },
+  "generator": { "name": "@furkycl/gitwrapped", "version": "1.7.0" },
   "repo": "my-app",
   "asOf": "2025-12-31",
   "filters": { "since": "2025-01-01", "until": "2025-12-31", "author": null, "maxCommits": 50000, "exclude": [] },
@@ -360,8 +360,9 @@ not where your machine is). `offsets` is `[{"offset": "+03:00", "commits": n}]`,
 distinct offset, most commits first (a tie goes to the lower offset, west to east);
 offsets are always `+HH:MM` / `-HH:MM` (`Z` and `-00:00` are `+00:00`; half-hour offsets
 such as `+05:30` are their own). `count` is how many there are and `top` is the first one
-as `{"offset", "commits", "share"}` (`share` of the commits, `0`..`1` with 3 decimals, at most `0.999` when there is more than one offset), or
-`null` without commits (`{"count": 0, "top": null, "offsets": []}`). Like the power hour
+as `{"offset", "commits", "share"}` (`share` of the commits, `0`..`1` with 3 decimals, at
+most `0.999` when there is more than one offset), or `null` without commits
+(`{"count": 0, "top": null, "offsets": []}`). Like the power hour
 it counts every commit in the window, merge commits included; with several repos it is
 over all of them. The power-hour card, the recap and `wrapped.md` only mention time zones
 when there are two or more.

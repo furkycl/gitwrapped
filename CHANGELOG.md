@@ -7,24 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+## [1.7.0] - 2026-10-07
 
-- Busiest day: the single calendar day (author-local, as for streaks) with the most
-  commits, ties → the earliest day. `stats.json` gets `stats.busiestDay` (`{day:
-  'YYYY-MM-DD', commits} | null`), the recap a "Busiest day  Mar 12, 2026 (9 commits)"
-  line and `wrapped.md` a "Busiest day" item; both leave out future-dated days. The
-  activity card is unchanged (its busiest day is that of its 53-week grid). English and
-  Turkish.
+### Added
 
 - Files born and buried: how many files were added and deleted in the window, read with
   one extra `git log --name-status --diff-filter=AD -M` call over the commits read (rename
   detection on, so a renamed or moved file is neither; merge commits get no diff, as for
   the line counts). Ignored paths (lockfiles, build output, …) and `--exclude`d files are
   left out as for hot files; several repos are summed. `stats.json` gets
-  `stats.fileLifecycle` (`{added, deleted}`), the recap a "Files  12 born · 3 buried" line,
-  `wrapped.md` a "Files born / buried" item, and the totals card a "Born / buried
-  12 / 3" row when there's spare room (after the pairing row; nothing else shrinks for it).
-  English and Turkish.
+  `stats.fileLifecycle` (`{added, deleted}`), the recap a "Files  12 born · 3 buried"
+  line, `wrapped.md` a "Files born / buried" item, and the totals card a
+  "Born / buried 12 / 3" row when there's spare room (after the pairing row; nothing else
+  shrinks for it). English and Turkish.
 
 - Time zones: the distinct UTC offsets of the commits' author dates (every commit counts,
   merges included, as for the power hour; `Z` and `-00:00` are `+00:00`) and the most
@@ -37,6 +32,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   step smaller), else the sentence in place of the hour's quip, then of the quip and the
   busiest-weekday sentence; "mostly" is left out when two offsets tie. With one offset
   everything is exactly as before. English and Turkish.
+
+- Busiest day: the single calendar day (author-local, as for streaks) with the most
+  commits, ties → the earliest day. `stats.json` gets `stats.busiestDay` (`{day:
+  'YYYY-MM-DD', commits} | null`), the recap a "Busiest day  Mar 12, 2026 (9 commits)"
+  line and `wrapped.md` a "Busiest day" item; both leave out future-dated days. The
+  activity card is unchanged (its busiest day is that of its 53-week grid). English and
+  Turkish.
 
 ### Changed
 
@@ -434,7 +436,8 @@ First public release on npm as `@furkycl/gitwrapped`.
 - On macOS, color emoji are left out of PNG exports, because resvg drew Apple Color Emoji
   far from their text. SVG cards and `wrapped.html` keep them.
 
-[Unreleased]: https://github.com/furkycl/gitwrapped/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/furkycl/gitwrapped/compare/v1.7.0...HEAD
+[1.7.0]: https://github.com/furkycl/gitwrapped/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/furkycl/gitwrapped/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/furkycl/gitwrapped/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/furkycl/gitwrapped/compare/v1.3.0...v1.4.0

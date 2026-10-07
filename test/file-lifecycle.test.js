@@ -82,10 +82,10 @@ describe('computeFileLifecycle / shownFileLifecycle', () => {
     assert.deepEqual(computeFileLifecycle(commits), { added: 1, deleted: 0 });
   });
 
-  test('computeStats puts fileLifecycle right after hotFiles', () => {
+  test('computeStats puts fileLifecycle right after hotFiles and folders', () => {
     const stats = computeStats([commit(1, { born: ['src/a.js'] })], { today: TODAY });
     const keys = Object.keys(stats);
-    assert.equal(keys[keys.indexOf('hotFiles') + 1], 'fileLifecycle');
+    assert.deepEqual(keys.slice(keys.indexOf('hotFiles') + 1, keys.indexOf('hotFiles') + 3), ['folders', 'fileLifecycle']);
     assert.deepEqual(stats.fileLifecycle, { added: 1, deleted: 0 });
   });
 

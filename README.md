@@ -28,7 +28,7 @@ calendar months and a team card in a repo with more than one contributor (up to 
 4. **Streak**: your longest run of consecutive days with a commit, with a longest vs. current bar comparison and your longest break (the most days without a commit between two active days) when you took one.
 5. **Activity**: a GitHub-style calendar of commits per day (weeks as rows, Monday to Sunday, brighter the busier the day), with your number of active days and your busiest day. Hover a day in `wrapped.html` for its count. It covers up to the last 53 weeks of your history, and so does its busiest day: on a history longer than about a year it is the busiest day of the weeks on the grid, while the recap, `wrapped.md` and `stats.json` give the busiest day of the whole window. For a repo that went quiet more than a month ago it says "12 months to Apr 2021" instead of "Your last 12 months".
 6. **Month by month** (only when your commits span two or more calendar months): commits per month as a bar chart, from your first active month to your last (months without commits show as empty bars), with the peak month among the months shown called out ("Mar 2026 was your peak month"; a tie goes to the earliest month, and when every active month has the same count it says so instead) and how many of those months had commits. It shows your most recent 24 months at most ("Your last 24 months", or "24 months to Apr 2019" for a repo that went quiet more than a month ago, like the activity card); `stats.json` keeps every month, and its `peak` is over all of them. Months are the author's own calendar months, like the activity calendar, and commits dated after tomorrow are left off. A history inside one calendar month skips this card, and the cards after it then move up a number.
-7. **Hot files**: the five files you edit most as a bar list. Lockfiles, build output (`dist/`, `build/`, ...), dependency folders, vendored code (a root `vendor/` or `third_party/`), minified files and test snapshots (`*.snap`, `__snapshots__/`) are ignored.
+7. **Hot files**: the five files you edit most as a bar list. Lockfiles, build output (`dist/`, `build/`, ...), dependency folders, vendored code (a root `vendor/` or `third_party/`), minified files and test snapshots (`*.snap`, `__snapshots__/`) are ignored. When your changes span two or more top-level folders, a small "Top folders" list follows: the three (else two) folders with the most lines changed, files at the repo root shown as "(root)". It only uses spare room: the hot-files list (and, with several repos, the per-repo chart) keeps every bar at full size (the big file name may get one step smaller), and when it doesn't fit the card is exactly as before (the folders are still in the recap, `wrapped.md` and `stats.json`).
 8. **Languages**: your top programming language and its share of the lines you changed ("72% · Mostly TypeScript", or "Led by" under half, with ties named), with bars for your top five languages plus "Other". Data formats (JSON, YAML, ...) and prose (Markdown, ...) show in the bars, but they only lead the card when there's no code at all. Languages come from file extensions and well-known names like `Dockerfile` and `Makefile` (86 built in); lockfiles, build output, vendored code, test snapshots and binary files are left out, as for hot files.
 9. **The team** (only when the history has two or more contributors): how many people committed and the top five by commits as bars ("Ada Lovelace leads the pack with 54% of the commits"). With `--author` it ranks you against everyone in the same window: "#2 of 7 contributors", your share of the commits and lines, and a "you" marker on your bar (a sixth bar when you're outside the top five). Contributors are counted per email after `.mailmap`, and only their git author names are shown, never an email. A single-author repo skips this card, and so does an `--author` with no commits in the window (there's no "you" to rank); the cards after it then move up a number. When commits carry `Co-authored-by:` trailers (pair programming, GitHub's co-authored commits, AI assistants), a "Pair programming" panel follows the bars: "12 commits paired" and the top co-author by name ("Top co-author: Grace Hopper"). A commit counts as paired when it lists at least one co-author other than its own author; merge commits are skipped. Co-authors go through `.mailmap` like authors and are shown by name only, never an email. The panel only uses spare room: when it doesn't fit, the card is exactly as without it and the totals card gets a row instead (when that fits); either way the pairing is in the recap, `wrapped.md` and `stats.json`. With `--author` the pairing counts only your commits (a commit where you are only a co-author does not count), so it goes on the totals card, not on the team card, which is everyone's.
 10. **Message hall of fame**: your favorite word, your longest and shortest messages, and how many "fix", "wip" and "oops" commits you made, plus your biggest commit: the one with the most lines changed, with its day, lines added / removed and subject. It counts the same files as hot files (lockfiles, build output and the rest are left out, and so is anything you `--exclude`) and skips merge commits; a tie goes to the earliest commit. When at least 20% of your commits follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat: ...`, `fix(api)!: ...`), the card also shows your commit type mix as a thin stacked bar: the top three types and any others folded into "the rest", each with its share of those commits, and the share of commits that follow the convention in its caption. When you only ever use one type, the bar sets it against the commits without a prefix ("no prefix"), as shares of all commits; with a single type on every commit there is nothing to compare and no bar. The bar only uses spare room; when there isn't enough, the fix / wip / oops counts are folded into one row ("“fix” / “wip” / “oops”: 5 / 0 / 2") to make room, and when it still doesn't fit, the card is left as it was (the mix is still in the recap, `wrapped.md` and `stats.json`). When at least 5% of your commits have an emoji in the subject (a Unicode emoji like ✨ or a [gitmoji](https://gitmoji.dev) shortcode like `:sparkles:`), the card also gets an emoji row: your top three emoji and the share of commits with one ("Emoji ✨ 🐛 📝 · 12%"). It never costs the type mix or the biggest commit their room: it goes after the other rows when there's spare room, else the fix / wip / oops counts are folded into one row to make room (the big word may also get one step smaller), and when even that doesn't fit, it takes the place of the fix / wip / oops row (those counts stay in `stats.json`). When some of your commits revert another (a `Revert "…"` subject or a conventional `revert: …` one, or a line starting "This reverts commit <hash>" in the message, as `git revert` writes), the card also gets a "Reverts" row with their count and share of your non-merge commits ("Reverts 3 · 2%"), as its last row (after the emoji row). It only uses spare room: it goes after the other rows, else the fix / wip / oops counts are folded into one row to make room (the big word may also get one step smaller); it never takes the place of the fix / wip / oops row, the type mix or the biggest commit, so when it doesn't fit it is left off the card (the reverts are still in the recap, `wrapped.md` and `stats.json`). Without reverts the card is exactly as before.
@@ -57,7 +57,9 @@ You also get:
   whole window (e.g. `Busiest day  Oct 2, 2026 (14 commits)`), time zones (with two or
   more UTC offsets, e.g. `Time zones  3 time zones · mostly UTC+03:00 (62% of commits)`),
   streak, longest break,
-  hottest file, files born / buried (files added and deleted, e.g. `Files  12 born · 3 buried`),
+  hottest file, top folders (with two or more, e.g.
+  `Top folders  src/ (1,234 lines) · test/ (567 lines) · (root) (89 lines)`),
+  files born / buried (files added and deleted, e.g. `Files  12 born · 3 buried`),
   top language, first commit, team (in a repo with more than one contributor: the top contributor, or
   with `--author` your rank, e.g. `Team  7 contributors · you're #2 (31% of commits)`),
   pairing (when commits have `Co-authored-by:` trailers, e.g.
@@ -118,7 +120,7 @@ gitwrapped [path...] [options]
 | `--until YYYY-MM-DD`  | Only include commits made on or before this day, inclusive (the author's local calendar day) |
 | `--year YYYY`         | One calendar year, the classic Wrapped: same as `--since YYYY-01-01 --until YYYY-12-31` (can't be combined with them), plus a comparison with the year before (see [Year over year](#year-over-year)) |
 | `--author <email>`    | Only include commits by this author email (exact, case-insensitive match against the email after `.mailmap` is applied) |
-| `--exclude <glob>`    | Leave matching files out of lines added/removed, files touched, hot files, languages, the biggest commit, the commit size mix and files born / buried (and the per-repo, per-contributor and year-over-year lines). Repeatable. Commits still count: a commit that only touched excluded files still counts toward commits, active days, streaks and habits (see [Excluding files](#excluding-files)) |
+| `--exclude <glob>`    | Leave matching files out of lines added/removed, files touched, hot files, top folders, languages, the biggest commit, the commit size mix and files born / buried (and the per-repo, per-contributor and year-over-year lines). Repeatable. Commits still count: a commit that only touched excluded files still counts toward commits, active days, streaks and habits (see [Excluding files](#excluding-files)) |
 | `--out <dir>`         | Output directory (default: `gitwrapped-out`, created if needed)                        |
 | `--lang <code>`       | Language of the cards, share image, viewer and terminal recap: `en` (English, default) or `tr` (Türkçe). Also `--lang=tr`; an unknown code is an error. `stats.json` and file names stay the same in every language |
 | `--theme <name>`      | Color theme of the cards, share image, PNGs and viewer: `default` (the colorful gradients), `mono` (grayscale) or `neon` (near-black with neon glows). Also `--theme=mono`; an unknown name is an error. Only colors change: the layout, `stats.json` and file names are the same in every theme |
@@ -181,7 +183,7 @@ NO_COLOR=1 npx @furkycl/gitwrapped --no-png | head -1
 ## Excluding files
 
 `--exclude <glob>` (repeatable) drops matching files before any stat is computed: lines
-added / removed, files touched, hot files, languages, the biggest commit, the commit size
+added / removed, files touched, hot files, top folders, languages, the biggest commit, the commit size
 mix, files born / buried, the per-repo breakdown, the team card's lines and the year-over-year lines changed all leave them out. Commits are never
 dropped: a commit that only touched excluded files still counts toward commits, active
 days, streaks, time habits and the team card's commit counts. Matching is
@@ -240,7 +242,8 @@ npx @furkycl/gitwrapped ~/code/api ~/code/web ~/code/docs
   with the same cap (cut in git's log order), then the commits are merged and cut again
   to the n most recent by author date.
 - File paths are prefixed with the repo's label (`api/src/server.js`), so hot files,
-  languages and "files touched" never mix up two repos' `src/index.js`. A repo's label is
+  top folders (`api/src`, `api/(root)`), languages and "files touched" never mix up two
+  repos' `src/index.js`. A repo's label is
   the folder name of its top level; two repos with the same folder name become `app` and
   `app-2`. Lockfiles and build output are still ignored at each repo's own root.
 - The cards call the run "3 repos" (intro, footer, outro, share image), the intro names
@@ -300,7 +303,7 @@ but it does contain commit subjects and hashes, tag names and repo-relative file
 | `asOf`          | `YYYY-MM-DD` the current streak is counted up to: today, or the end of a past `--until` / `--year` window |
 | `filters`       | `{since, until, author, maxCommits, exclude}` as used (`--year` shows as since/until); dates and author are `null` when not set, `maxCommits` is the cap in effect, `exclude` the `--exclude` patterns in order (`[]` when none) |
 | `truncated`     | `true` when `--max-commits` cut the history short                             |
-| `stats`         | Every computed stat: `totals`, `habits`, `timezones`, `streaks`, `daily`, `busiestDay`, `months`, `hotFiles`, `fileLifecycle`, `languages`, `contributors`, `messages`, `biggestCommit`, `commitSizes`, `commitTypes`, `emoji`, `reverts`, `firstCommit`, `coAuthors`, `releases`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
+| `stats`         | Every computed stat: `totals`, `habits`, `timezones`, `streaks`, `daily`, `busiestDay`, `months`, `hotFiles`, `folders`, `fileLifecycle`, `languages`, `contributors`, `messages`, `biggestCommit`, `commitSizes`, `commitTypes`, `emoji`, `reverts`, `firstCommit`, `coAuthors`, `releases`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
 
 ```json
 {
@@ -317,6 +320,7 @@ but it does contain commit subjects and hashes, tag names and repo-relative file
       "offsets": [{ "offset": "+03:00", "commits": 301 }, { "offset": "-05:00", "commits": 111 }]
     },
     "busiestDay": { "day": "2025-03-04", "commits": 14 },
+    "folders": [{ "path": "src", "lines": 18452, "added": 14210, "deleted": 4242, "commits": 301 }, "..."],
     "fileLifecycle": { "added": 57, "deleted": 12 },
     "streaks": {
       "longest": { "length": 9, "start": "2025-03-02", "end": "2025-03-10" },
@@ -379,6 +383,18 @@ same files as hot files count (lockfiles, build output, vendored code, minified 
 snapshots are left out, and so is anything you `--exclude`); merge commits are skipped (git
 gives them no diff, as for the line counts), and so are a shallow clone's boundary
 commits. With several repos it is the sum over all of them.
+
+`stats.folders` is the most-changed top-level folders by lines changed, the top five as
+`[{"path", "lines", "added", "deleted", "commits"}]`: `path` is the folder's name at the
+repo root (`"src"`), or `"(root)"` for the files at the repo root itself; with several
+repos it starts with the repo's label (`"api/src"`, `"api/(root)"`). `added` / `deleted`
+are the lines added and deleted in its files, `lines` their sum, and `commits` how many
+commits touched at least one of its files. The same files as hot files count (lockfiles,
+build output, vendored code, minified files and snapshots are left out, and so is
+anything you `--exclude`); a folder with no lines changed (only binary files) is left out.
+Most lines first, a tie going to the path that sorts first (`[]` without changes). In
+`path` anything shaped like an email address is replaced with "…". The hot-files card,
+the recap and `wrapped.md` only show folders when there are two or more.
 
 `stats.months` is commits per author-local calendar month: `months` is
 `[{"month": "YYYY-MM", "commits": n}]`, oldest first, contiguous from the first to the last
@@ -586,7 +602,7 @@ README, a PR description or release notes:
 - the power hour, busiest weekday and busiest day (the date with the most commits), the
   time zones (with two or more UTC offsets: how many and the most common one), the
   longest streak, the current one (when a streak is running) and the longest break;
-- tables of the top five hot files and languages, and, in a repo with more than one
+- tables of the top five hot files, top folders (with two or more) and languages, and, in a repo with more than one
   contributor, the top five contributors by name (with `--author`, you marked as "(you)");
 - with several repos, a per-repo table; the biggest commit; the commit type mix (when at
   least 20% of the commits follow Conventional Commits); your emoji (the share of commits

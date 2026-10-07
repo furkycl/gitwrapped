@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Top folders: the most-changed top-level directories by lines changed (added + removed),
+  over the same files as hot files (lockfiles, build output, … left out, `--exclude`
+  applies). Files at a repo's root are grouped as "(root)"; with several repos each folder
+  keeps its repo label (`api/src`, `api/(root)`). `stats.json` gets `stats.folders` (top 5,
+  `[{path, lines, added, deleted, commits}]`, most lines first, ties by path), the recap a
+  "Top folders  src/ (1,234 lines) · test/ (567 lines) · (root) (89 lines)" line,
+  `wrapped.md` a "Top folders" table, and the hot-files card a small "Top folders" bar
+  list (three, else two) under its charts, in spare room only: the hot-files list and the
+  per-repo chart keep every bar at full size (at most the big file name gets one step
+  smaller), and the card is unchanged when it doesn't fit. Shown only with two or more
+  folders (`(root)` / `(kök)` in Turkish).
+
 ## [1.7.0] - 2026-10-07
 
 ### Added

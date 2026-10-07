@@ -195,7 +195,8 @@ describe('buildMarkdown', () => {
     assert.match(md, /^# … Wrapped$/m);
     assert.ok(md.includes('| keys/… |'), md);
     // The repo name of a multi-repo row too.
-    const multi = buildMarkdown({ ...s, repos: [{ name: 'root@buildbox', commits: 1 }, { name: 'web', commits: 1 }] }, { today: TODAY });
+    // (folders dropped: the top-folders table's "(root)" row would mask a leaked "root".)
+    const multi = buildMarkdown({ ...s, folders: [], repos: [{ name: 'root@buildbox', commits: 1 }, { name: 'web', commits: 1 }] }, { today: TODAY });
     assert.ok(!multi.includes('root'), multi);
     // Subject: @ / # kept but joined, so GitHub neither pings nor links.
     const big = buildMarkdown(computeStats([commit('2024-03-01T10:00:00Z', 'thanks @octocat, fixes #12', [{ path: 'a.js', added: 9, removed: 0 }])], { today: TODAY }), { today: TODAY });

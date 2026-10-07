@@ -37,8 +37,9 @@ Options:
   --author <email>     Only include commits by this author email
                        (exact email match, case-insensitive, after .mailmap)
   --exclude <glob>     Leave matching files out of lines, files touched, hot
-                       files, languages, the biggest commit, commit sizes and
-                       files born / buried (repeatable; commits still count).
+                       files, top folders, languages, the biggest commit,
+                       commit sizes and files born / buried (repeatable;
+                       commits still count).
                        *.min.js and docs match at any depth, docs/ or docs/**
                        a whole folder, src/gen/*.js from the repo root
   --out <dir>          Output directory (default: "gitwrapped-out")

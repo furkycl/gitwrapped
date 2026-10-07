@@ -92,7 +92,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
   - [x] CHANGELOG 1.5.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync
 
 ## M12 — 1.6 (proposed by loop turn 050 per the M8 owner note "do not finish the loop"; owner may prune)
-- [ ] Releases shipped: tags (lightweight + annotated, peeled to their commit) pointing at analyzed commits in the window — count, first and latest tag name + day — on the outro card ("You shipped N releases"), stats.json `stats.releases`, recap and wrapped.md; multi-repo summed (repo-prefixed names); en/tr; tests
+- [x] Releases shipped: tags (lightweight + annotated, peeled to their commit) pointing at analyzed commits in the window — count, first and latest tag name + day — on the outro card ("You shipped N releases"), stats.json `stats.releases`, recap and wrapped.md; multi-repo summed (repo-prefixed names); en/tr; tests
 - [ ] Commit emoji: share of subjects with an emoji (incl. `:gitmoji:` shortcodes) and the top 3 emoji on the messages card when ≥5% of commits use one, stats.json `stats.emoji`, recap and wrapped.md; en/tr; tests
 - [ ] Reverts: commits that revert another (`Revert "…"` subject or `This reverts commit <hash>` body), count + share, folded into the messages card and the Fixaholic roast, stats.json `stats.reverts`, recap and wrapped.md; en/tr; tests
 - 1.6.0 release prep (split as before):

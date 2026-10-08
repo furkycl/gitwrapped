@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Power-hour card: a night power hour (10 PM to 4 AM) with late-night commits now shows its
+  "Late nights" row. The hour's own quip made the subtitle four lines long and left no
+  room for the row, so it gives way to a short "Night owl." ("Tam bir gece kuşu." in
+  Turkish), or to no quip when even that is too long, whichever lets the row fit (with the
+  same one-shrink-step allowance as before) while the busiest weekday (when it showed) and
+  the time zones still show; the "Latest night" row still follows only in spare room.
+  Day and evening power hours, night ones without late-night commits, and cards the row
+  already fitted on are unchanged.
+
 ## [1.9.0] - 2026-10-08
 
 ### Added

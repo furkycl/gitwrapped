@@ -216,11 +216,25 @@ describe('power-hour card', () => {
     // The fixture repo's dates: every hour tied at one commit, so a long subtitle, small bars.
     const commits = ['2024-03-04T10:00:00+01:00', '2024-03-05T14:30:00+01:00', '2024-03-06T23:45:00+01:00', '2024-03-09T11:00:00+01:00',
       '2024-03-10T02:15:00-08:00', '2024-03-11T09:00:00+00:00', '2024-03-12T16:20:00+05:30', '2024-03-13T12:00:00+00:00'].map((d) => commit(d));
-    const stats = statsOf(commits);
+    // With its 02:15 commit at 05:15 instead: no late nights (with it, see the next test).
+    const stats = statsOf(commits.map((c) => (c.date.includes('T02:15') ? { ...c, date: c.date.replace('T02:15', 'T05:15') } : c)));
     const spec = peakSpec(stats);
     assert.deepEqual(spec.lines, [{ label: '4 time zones', value: 'mostly UTC+01:00' }]);
     assert.deepEqual(peakSpec(stats, { lang: 'tr' }).lines, [{ label: '4 saat dilimi', value: 'en çok UTC+01:00' }]);
     assert.ok(peakSvg(stats).includes('>mostly UTC+01:00<'));
+  });
+
+  test('a night power hour with late nights: the quip may give way so the zones and the late-nights row both show', () => {
+    // Same commits, 2 AM tied for the power hour with a late-night commit: in English the
+    // quip gives way, the zones move into the subtitle and "Late nights" gets the row; in
+    // Turkish that would lose the zones, so the card is as before.
+    const commits = ['2024-03-04T10:00:00+01:00', '2024-03-05T14:30:00+01:00', '2024-03-06T23:45:00+01:00', '2024-03-09T11:00:00+01:00',
+      '2024-03-10T02:15:00-08:00', '2024-03-11T09:00:00+00:00', '2024-03-12T16:20:00+05:30', '2024-03-13T12:00:00+00:00'].map((d) => commit(d));
+    const stats = statsOf(commits);
+    const spec = peakSpec(stats);
+    assert.equal(spec.subtitle, '2 AM is tied for your power hour, with 1 commit. Committed from 4 time zones, mostly UTC+01:00.');
+    assert.deepEqual(spec.lines, [{ label: 'Late nights', value: '1 commit · 13%' }]);
+    assert.deepEqual(peakSpec(stats, { lang: 'tr' }).lines, [{ label: '4 saat dilimi', value: 'en çok UTC+01:00' }]);
   });
 
   test('every theme and language, many shapes: the zones always shown, inside the content area, no overlap', () => {
@@ -384,7 +398,9 @@ describe('time zones: end to end', () => {
     assert.match(r.stdout, /\n {2}Time zones {3}4 time zones · mostly UTC\+01:00 \(50% of commits\)\n/);
     assert.match(readFileSync(join(out, 'wrapped.md'), 'utf8'), /^- \*\*Time zones:\*\* 4 time zones \(mostly UTC\+01:00, 50% of commits\)$/m);
     const card = readFileSync(join(out, 'cards', '03-peak-hour.svg'), 'utf8');
-    assert.ok(card.includes('4 time zones') && card.includes('mostly UTC+01:00'), 'peak-hour card shows the time zones');
+    // As a row, or (a night power hour, with the late-nights row) as the subtitle sentence.
+    const drawn = [...card.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((m) => m[1]).join(' ').replace(/\s+/g, ' ');
+    assert.ok(/4 time zones.*mostly UTC\+01:00/.test(drawn), 'peak-hour card shows the time zones');
   });
 
   test('CLI --since narrows the window: offsets outside it are not counted', () => {

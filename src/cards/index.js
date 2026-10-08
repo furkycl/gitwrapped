@@ -190,6 +190,9 @@ const formatAverage = (n, L = EN) => L.dec(num(n));
 /** Upper bounds (exclusive) of the hours each quip in the string table's peak.quips covers. */
 const QUIP_HOURS = [5, 9, 12, 14, 18, 22];
 
+/** Whether `hour` (0-23) is a night hour, 22:00-04:59: the two night quips' hours. */
+const isNightHour = (hour) => Number.isInteger(hour) && (hour >= QUIP_HOURS[QUIP_HOURS.length - 1] || hour < QUIP_HOURS[0]);
+
 function hourQuip(hour, L) {
   if (hour === null || hour === undefined) return '';
   const i = QUIP_HOURS.findIndex((h) => hour < h);
@@ -577,9 +580,39 @@ function peakHour(s, { L }) {
     return { eyebrow: P.eyebrow, big: P.noneBig, title: P.noneTitle, subtitle: P.noneSubtitle, chart: habitCharts(h, L) };
   }
   const lead = h.peakHourTied ? P.tied(label, h.peakHourCount) : P.landed(h.peakHourCount, label);
-  const parts = [`${lead} ${hourQuip(h.peakHour, L)}`];
   const day = peakDayText(h, L);
   const busiest = day ? (h.peakWeekdayTied ? P.dayTied(day) : P.dayBusiest(day)) : null;
+  const late = shownLateNights(s);
+  const card = (quip) => peakHourCard(s, { label, lead, quip, busiest, late }, L);
+  const { withTz, withLate } = card(hourQuip(h.peakHour, L));
+  // A night power hour's quip makes the subtitle four lines long, which leaves no room for
+  // the "Late nights" row: then the short night quip takes its place, else no quip at all,
+  // but only when that makes the row fit (else, and for every other card, the card is
+  // exactly as before).
+  if (late && withLate === withTz && isNightHour(h.peakHour)) {
+    // Only the quip may give way: the busiest weekday (when the card showed it) and the
+    // time zones (always) must still show.
+    const tz = shownTimezones(s.timezones);
+    const keeps = (c) => (!busiest || !drawsSentence(withTz, busiest, L) || drawsSentence(c, busiest, L))
+      && (!tz || drawsSentence(c, P.timezones(tz.count, tz.top ? utcLabel(tz.top) : null), L) || (c.lines ?? []).some((r) => r.label === L.recap.timezonesValue(tz.count)));
+    for (const quip of [P.nightQuip, '']) {
+      const short = card(quip);
+      if (short.withLate !== short.withTz && keeps(short.withLate)) return withLatest(short.withLate, late, L);
+    }
+  }
+  return withLate === withTz ? withTz : withLatest(withLate, late, L);
+}
+
+/**
+ * The power-hour card for the hour `label` with `quip` after `lead` in its subtitle (then
+ * `busiest`), as `{withTz, withLate}`: the card with its time zones (always, see
+ * withTimezones), and that card with the "Late nights" row for `late` (a shownLateNights()
+ * value) when the row fits, else `withTz` itself (also without late-night commits).
+ */
+function peakHourCard(s, { label, lead, quip, busiest, late }, L) {
+  const P = L.peak;
+  const h = s.habits ?? {};
+  const parts = [quip ? `${lead} ${quip}` : lead];
   if (busiest) parts.push(busiest);
   const spec = {
     eyebrow: P.eyebrow,
@@ -593,11 +626,9 @@ function peakHour(s, { L }) {
   const tz = shownTimezones(s.timezones);
   const withTz = tz ? withTimezones(spec, tz, { lead, busiest }, L) : spec;
   // Commits between 00:00 and 04:59 (stats.lateNights) as a row, with the same allowance as
-  // the time-zones row (the big word at most one step smaller, shared with it), then the
-  // latest-ever commit time as another row in spare room only (see withRoomyRow); without
+  // the time-zones row (the big word at most one step smaller, shared with it); without
   // late-night commits, or without room, the card is exactly as before.
-  const late = shownLateNights(s);
-  if (!late) return withTz;
+  if (!late) return { withTz, withLate: withTz };
   // "12 commits · 4%", or "1,234 · 12%" when the full value would be cut short on the row
   // (e.g. 1,000+ commits with a two-digit share), so the percent always shows.
   const pct = weekendPercentLabel(late.percent, L.pct);
@@ -608,9 +639,13 @@ function peakHour(s, { L }) {
   // card that had shrunk before gets no more.
   const before = layoutOf({ ...spec, lang: L.code }).shrinkSteps;
   const allowed = Math.max(layoutOf({ ...withTz, lang: L.code }).shrinkSteps, before === 0 ? 1 : before);
-  const withLate = withRoomyRow(withTz, row, L, allowed);
-  const latest = withLate !== withTz ? latestNightValue(late.latest, L) : null;
-  return latest ? withRoomyRow(withLate, { label: P.latestLabel, value: latest }, L) : withLate;
+  return { withTz, withLate: withRoomyRow(withTz, row, L, allowed) };
+}
+
+/** `spec` (with its "Late nights" row) with the "Latest night" row after it in spare room only (see withRoomyRow). */
+function withLatest(spec, late, L) {
+  const latest = latestNightValue(late.latest, L);
+  return latest ? withRoomyRow(spec, { label: L.peak.latestLabel, value: latest }, L) : spec;
 }
 
 /**
@@ -642,6 +677,9 @@ function withRoomyRow(spec, row, L, maxSteps) {
   const same = l.drawnCharts.length === base.drawnCharts.length && l.drawnCharts.every((x, i) => x === base.drawnCharts[i]);
   return same && l.shrinkSteps <= Math.max(base.shrinkSteps, maxSteps ?? 0) ? next : spec;
 }
+
+/** Whether the card `spec` draws `sentence` whole in its subtitle (see subtitleText). */
+const drawsSentence = (spec, sentence, L) => subtitleText(layoutOf({ ...spec, lang: L.code })).includes(escapeXml(sentence).replace(/\s+/g, ' '));
 
 /** The text a layout's subtitle block draws, its lines joined with spaces (XML-escaped). */
 const subtitleText = (layout) => {

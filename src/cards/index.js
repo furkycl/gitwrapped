@@ -669,10 +669,12 @@ function peakHourCard(s, { label, lead, quip, busiest, late }, L) {
   // late-night commits, or without room, the card is exactly as before.
   if (!late) return { withTz, withLate: withTz };
   // "12 commits · 4%", or "1,234 · 12%" when the full value would be cut short on the row
-  // (e.g. 1,000+ commits with a two-digit share), so the percent always shows.
+  // (e.g. 1,000+ commits with a two-digit share), so the percent always shows; when even
+  // the short value would be cut (a billion+ commits), no row (never a cut one).
   const pct = weekendPercentLabel(late.percent, L.pct);
   const full = `${plural(late.commits, 'commit', L)} · ${pct}`;
   const row = { label: P.lateNights, value: rowValueFits(full) ? full : `${L.num(late.commits)} · ${pct}` };
+  if (!rowFits(row)) return { withTz, withLate: withTz };
   // One shrink step in all: when the card had not shrunk (before any time-zones row), the
   // late-nights row may take one; a step the time-zones row already took is shared, and a
   // card that had shrunk before gets no more.
@@ -970,12 +972,17 @@ function activity(s, ctx = { L: EN }) {
 
 /**
  * The activity card's weekend row (see stats/weekend.js shownWeekend): "Weekends" and
- * "12 commits · 8%", the percent Weekend Warrior quotes; null without a weekend commit.
+ * "12 commits · 8%", the percent Weekend Warrior quotes, or "1,234 · 8%" when the full
+ * value would be cut on the row (so the percent always shows); null without a weekend
+ * commit, or when even the short value would be cut (never a cut row).
  */
 function weekendRow(s, L) {
   const w = shownWeekend(s);
   if (!w) return null;
-  return { label: L.recap.weekend, value: `${plural(w.commits, 'commit', L)} · ${weekendPercentLabel(w.percent, L.pct)}` };
+  const pct = weekendPercentLabel(w.percent, L.pct);
+  const full = `${plural(w.commits, 'commit', L)} · ${pct}`;
+  const row = { label: L.recap.weekend, value: rowValueFits(full) ? full : `${L.num(w.commits)} · ${pct}` };
+  return rowFits(row) ? row : null;
 }
 
 /**

@@ -19,7 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   changed)" line, `wrapped.md` a "Test lines" item in its numbers, and the hot-files card a
   "Tests  1,234 lines · 23%" row ("Testler" in Turkish) in spare room only: every chart
   keeps its place and nothing shrinks, else the languages card gets the row on the same
-  terms, else it is left off the cards. Cards without room for it are unchanged.
+  terms, else it is left off the cards. Cards without room for it are unchanged. The
+  percent shown is rounded once, from the exact line ratio (not from `share`).
 - Office hours: how many commits landed on a weekday (Monday to Friday) between 09:00 and
   17:59 in each author's own local time, counted over the same dated commits as the power
   hour (merges and future-dated ones included). `stats.json` gets `stats.officeHours`
@@ -42,6 +43,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the time zones still show; the "Latest night" row still follows only in spare room.
   Day and evening power hours, night ones without late-night commits, and cards the row
   already fitted on are unchanged.
+
+### Fixed
+
+- Power-hour card: the "Late nights" row was drawn cut when even its short value was too
+  wide (a billion+ late-night commits, "1,000,000,000 · 14%"); it is now left off, as the
+  office-hours and tests rows are, and a night power hour then keeps its own quip.
+- Activity card: the "Weekends" row was drawn cut when its full value was too wide (e.g.
+  1,200 weekend commits with a two-digit share, "1,200 commits ·…"); it now falls back to
+  "1,200 · 19%" as the other rows do, and is left off when even that would be cut.
 
 ## [1.9.0] - 2026-10-08
 

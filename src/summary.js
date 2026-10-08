@@ -23,6 +23,7 @@ import { shownFileLifecycle } from './stats/files.js';
 import { shownTimezones, utcLabel } from './stats/timezones.js';
 import { shownWeekend, weekendPercentLabel } from './stats/weekend.js';
 import { shownLateNights } from './stats/latenights.js';
+import { shownOfficeHours } from './stats/officehours.js';
 import { shownCadence } from './stats/cadence.js';
 
 const EN = getStrings(DEFAULT_LANG);
@@ -314,6 +315,13 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
       const [y, mo, d] = late.latest ? late.latest.date.split('-').map(Number) : [];
       const latest = late.latest ? ` · ${R.latestAt(L.clock(late.latest.hour, late.latest.minute), L.date(d, mo, y))}` : '';
       lines.push(`  ${label(R.lateNights)}${c('cyan', plural(late.commits, 'commit', L))} ${c('dim', `(${R.ofCommits(weekendPercentLabel(late.percent, L.pct))})${latest}`)}`);
+    }
+
+    // Commits on an author-local weekday between 09:00 and 17:59 (stats.officeHours), of
+    // the same dated commits as the weekend line; only when there is at least one.
+    const office = shownOfficeHours(stats);
+    if (office) {
+      lines.push(`  ${label(R.officeHours)}${c('cyan', plural(office.commits, 'commit', L))} ${c('dim', `(${R.ofCommits(weekendPercentLabel(office.percent, L.pct))})`)}`);
     }
 
     const s = stats?.streaks ?? {};

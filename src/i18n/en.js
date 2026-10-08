@@ -541,6 +541,12 @@ export default {
      */
     lateNights: 'Late nights',
     latestAt: (time, day) => `latest ${time} on ${day}`,
+    /**
+     * The office-hours line and card row (stats.officeHours, weekday commits between 09:00
+     * and 17:59): label, "1,234 commits", then "(23% of commits)" (on a card row "95 commits ·
+     * 23%", or "1,234 · 23%" when the full value would be cut).
+     */
+    officeHours: 'Office hours',
     hottestFile: 'Hottest file',
     /** The files born / buried line (stats.fileLifecycle): label, then "12 born · 3 buried". */
     fileLifecycle: 'Files',
@@ -618,6 +624,8 @@ export default {
      */
     lateNights: 'Late-night commits',
     latestAt: (time, day) => `latest at ${time} on ${day}`,
+    /** Weekday commits between 09:00 and 17:59 author-local (stats.officeHours): "1,234 commits (23% of commits)". */
+    officeHours: 'Office-hours commits',
     /** Files added / deleted in the window (stats.fileLifecycle): "12 files added, 3 deleted". */
     fileLifecycle: 'Files born / buried',
     fileLifecycleValue: (added, deleted) => `${plural(added, UNITS.file)} added, ${num(deleted)} deleted`,

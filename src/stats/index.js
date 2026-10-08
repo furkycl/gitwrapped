@@ -13,6 +13,7 @@ import { computeTimeHabits } from './habits.js';
 import { CADENCE_MIN_DAYS, computeCadence, medianGap, shownCadence } from './cadence.js';
 import { computeWeekend, shownWeekend, WEEKEND_DAYS, weekendCounts, weekendPercent, weekendPercentLabel } from './weekend.js';
 import { computeLateNights, LATE_NIGHT_HOURS, lateNightCounts, NIGHT_ENDS, shownLateNights } from './latenights.js';
+import { computeOfficeHours, OFFICE_DAYS, OFFICE_HOURS, shownOfficeHours } from './officehours.js';
 import { computeTimezones, formatOffset, offsetMinutes, shownTimezones, utcLabel } from './timezones.js';
 import { computeLanguages, languageBarRows, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER as OTHER_LANGUAGE, percentShares } from './languages.js';
 import { computeMessages, isMergeCommit } from './messages.js';
@@ -37,6 +38,7 @@ export { computeTests, isTestPath, shownTests, TEST_DIRS };
 export { CADENCE_MIN_DAYS, computeCadence, medianGap, shownCadence };
 export { computeWeekend, shownWeekend, WEEKEND_DAYS, weekendCounts, weekendPercent, weekendPercentLabel };
 export { computeLateNights, LATE_NIGHT_HOURS, lateNightCounts, NIGHT_ENDS, shownLateNights };
+export { computeOfficeHours, OFFICE_DAYS, OFFICE_HOURS, shownOfficeHours };
 export { computeTimezones, formatOffset, offsetMinutes, shownTimezones, utcLabel };
 export { computeReleases, shownReleases };
 export { computeMerges, pullRequestOf, shownMerges };
@@ -62,7 +64,9 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * weekend.js). `lateNights` is how many of those commits landed between 00:00 and 04:59
  * author-local, their share, and the latest-ever commit time of day with the day ending at
  * 05:00 (commits dated after `today` + 1 left out of it), `{commits, share, latest: {date,
- * time} | null}` (see latenights.js).
+ * time} | null}` (see latenights.js). `officeHours` is how many of those commits landed on an
+ * author-local Monday-Friday between 09:00 and 17:59 and their share, `{commits, share}`
+ * (see officehours.js).
  * `cadence` is `{perActiveDay, medianGapDays}`: commits per active day (1
  * decimal) and the median calendar-day gap between consecutive active days (null with
  * fewer than two), over the same author-local days as totals.activeDays (see cadence.js).
@@ -122,6 +126,7 @@ export function computeStats(commits = [], { today, todayComplete, team, author,
     timezones: computeTimezones(commits),
     weekend: computeWeekend(habits),
     lateNights: computeLateNights(commits, { today }),
+    officeHours: computeOfficeHours(commits),
     streaks: computeStreaks(commits, { today, todayComplete }),
     cadence: computeCadence(daily.days),
     daily,

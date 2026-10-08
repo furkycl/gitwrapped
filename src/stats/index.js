@@ -10,6 +10,7 @@ import { computeFileLifecycle, computeHotFiles, isIgnoredPath, repoRelativePath,
 import { computeFolders, folderOf, ROOT_FOLDER, shownFolders, TOP_FOLDERS } from './folders.js';
 import { computeTests, isTestPath, shownTests, TEST_DIRS } from './tests.js';
 import { CO_CHANGE_MAX_FILES, CO_CHANGE_MIN_COMMITS, computeCoChange, shownCoChange } from './cochange.js';
+import { computeCleanups, shownCleanups } from './cleanups.js';
 import { computeTimeHabits } from './habits.js';
 import { CADENCE_MIN_DAYS, computeCadence, medianGap, shownCadence } from './cadence.js';
 import { computeWeekend, shownWeekend, WEEKEND_DAYS, weekendCounts, weekendPercent, weekendPercentLabel } from './weekend.js';
@@ -38,6 +39,7 @@ export { computeCoAuthors, shownCoAuthors, TOP_CO_AUTHORS };
 export { computeFolders, folderOf, ROOT_FOLDER, shownFolders, TOP_FOLDERS };
 export { computeTests, isTestPath, shownTests, TEST_DIRS };
 export { CO_CHANGE_MAX_FILES, CO_CHANGE_MIN_COMMITS, computeCoChange, shownCoChange };
+export { computeCleanups, shownCleanups };
 export { CADENCE_MIN_DAYS, computeCadence, medianGap, shownCadence };
 export { computeWeekend, shownWeekend, WEEKEND_DAYS, weekendCounts, weekendPercent, weekendPercentLabel };
 export { computeLateNights, LATE_NIGHT_HOURS, lateNightCounts, NIGHT_ENDS, shownLateNights };
@@ -101,6 +103,10 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * (see emoji.js). `reverts` is how many non-merge commits revert another (a `Revert "…"` or `revert: …`
  * subject or a "This reverts commit <hash>" line, see reverts.js), their share, and how
  * many distinct commits they name; the Fixaholic reason mentions them.
+ * `cleanups` is how many non-merge commits removed more lines than they added (counted
+ * like biggestCommit), their share of non-merge commits and the one with the largest net
+ * deletion, `{commits, share, biggest: {hash, subject, date, linesAdded, linesRemoved,
+ * net}}`, or null without a cleanup commit (see cleanups.js).
  * `firstCommit` is the earliest non-merge commit by author date (`{date, subject, hash}`,
  * plus `repo` in a multi-repo run; emails scrubbed from the subject, see first.js), or null.
  * `coAuthors` is how many non-merge commits have a Co-authored-by co-author other than
@@ -160,6 +166,7 @@ export function computeStats(commits = [], { today, todayComplete, team, author,
     commitTypes: computeCommitTypes(commits),
     emoji: computeEmoji(commits),
     reverts: computeReverts(commits),
+    cleanups: computeCleanups(commits),
     firstCommit: computeFirstCommit(commits),
     coAuthors: computeCoAuthors(commits),
     releases: computeReleases(commits),

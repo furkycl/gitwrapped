@@ -31,6 +31,7 @@ import { shownMerges } from '../stats/merges.js';
 import { shownFolders } from '../stats/folders.js';
 import { shownTests } from '../stats/tests.js';
 import { shownCoChange } from '../stats/cochange.js';
+import { shownCleanups } from '../stats/cleanups.js';
 import { sizeShares } from '../stats/sizes.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from '../i18n/index.js';
 import { DEFAULT_COLOR_THEME, isColorTheme } from './themes.js';
@@ -398,7 +399,15 @@ const MAX_ROWS = 6;
 /** The smallest big number (px) the totals card of a multi-repo run shrinks to. */
 const TOTALS_BIG_MIN = 140;
 
-function totals(s, { L, repos }) {
+function totals(s, ctx) {
+  // The cleanup rows (stats.cleanups) go here or on the messages card, never both (see
+  // cleanupsPlacement); without them the card is exactly totalsBase.
+  const place = cleanupsPlacement(s, ctx);
+  return place?.card === 'totals' ? place.spec : totalsBase(s, ctx);
+}
+
+/** The totals card without the cleanup rows. */
+function totalsBase(s, { L, repos }) {
   const T = L.totals;
   const t = s.totals ?? {};
   const commits = num(t.commits);
@@ -454,6 +463,100 @@ function totals(s, { L, repos }) {
   // Only when drawn whole (with 10,000+ pull requests and merges the label would be cut);
   // else the outro shows the merges panel (see mergesOnTotals).
   return merges && rowFits(merges) ? withSpareRow(withLifecycle, merges, L) : withLifecycle;
+}
+
+/** How many of the cleanup `rows` (see cleanupsRows) a card `spec` draws (by identity). */
+const cleanupRowsIn = (spec, rows) => (Array.isArray(spec?.lines) ? spec.lines.filter((r) => r === rows.count || (rows.biggest && r === rows.biggest)).length : 0);
+
+/**
+ * Where the cleanup rows (stats.cleanups, see cleanupsRows) go: `{card: 'totals' |
+ * 'messages', spec}` (that card's spec with them), or null (no cleanups, or no room). Never
+ * on both cards. In order:
+ * 1. the totals card, when it takes every row (the count row, then the biggest cleanup;
+ *    each after the other rows in spare room only, see withSpareRow);
+ * 2. else the messages card, when it takes every row (after its other rows, else with the
+ *    fix / wip / oops counts folded, see withLastRows);
+ * 3. else the totals card with the count row alone, when it fits;
+ * 4. else the messages card with the count row alone, when it fits.
+ */
+function cleanupsPlacement(s, ctx) {
+  const rows = cleanupsRows(s ?? {}, ctx.L);
+  if (!rows) return null;
+  const all = rows.biggest ? 2 : 1;
+  const tBase = totalsBase(s ?? {}, ctx);
+  // A totals card without rows (no commits) never gets them.
+  const onTotals = { card: 'totals', spec: Array.isArray(tBase.lines) ? withCleanups(tBase, rows, (spec, row) => withSpareRow(spec, row, ctx.L)) : tBase };
+  const t = cleanupRowsIn(onTotals.spec, rows);
+  if (t === all) return onTotals;
+  const m = messagesBase(s ?? {}, ctx);
+  const onMessages = m && Array.isArray(m.card.lines) && Array.isArray(m.parts.folded) ? { card: 'messages', spec: withLastRows(m.card, rows, m.parts, ctx.L) } : null;
+  const n = onMessages ? cleanupRowsIn(onMessages.spec, rows) : 0;
+  if (n === all) return onMessages;
+  if (t > 0) return onTotals;
+  return n > 0 ? onMessages : null;
+}
+
+/**
+ * `spec` with the cleanup rows (see cleanupsRows) added by `add(spec, row)` (which returns
+ * `spec` itself when the row has no room): the count row, then the biggest cleanup only
+ * when the count row was added. Used for the totals and messages cards (see cleanupsPlacement).
+ */
+function withCleanups(spec, rows, add) {
+  const withCount = add(spec, rows.count);
+  if (withCount === spec || !rows.biggest) return withCount;
+  return add(withCount, rows.biggest);
+}
+
+/** Whether the totals card shows the cleanup rows (see cleanupsPlacement; else the messages card may). */
+export function cleanupsOnTotals(s, ctx) {
+  return cleanupsPlacement(s, ctx)?.card === 'totals';
+}
+
+/**
+ * A cleanups share (shownCleanups output) as shown: a whole percent of the non-merge
+ * commits, "<1%" when it rounds to 0, never "100%" short of every commit (see shareLabel).
+ * Used by the totals card, the recap and wrapped.md, so they agree.
+ */
+export const cleanupShareText = (c, L = EN) => shareLabel(c?.pct, c?.commits, L.pct);
+
+/**
+ * The cleanup rows (stats.cleanups, see shownCleanups) for the totals card, or the
+ * messages card when it has no room (see withLastRows), each in the first form drawn
+ * whole (see rowFits), or null:
+ * - count: "Cleanups" and "12 commits · 8%", else "12 · 8%" (the share of non-merge
+ *   commits always shows); no rows at all when even that would be cut;
+ * - biggest: "Biggest cleanup" and "−4,210 lines · Mar 3, 2026", else the year-less
+ *   "−4,210 lines · Mar 3", else "−4,210 · Mar 3", else "−4,210 lines" (also without a
+ *   known day); null without one, or when even that would be cut. Its
+ *   subject is in its description (and in the recap and wrapped.md), not on the row.
+ * Null without cleanup commits.
+ */
+function cleanupsRows(s, L) {
+  const c = shownCleanups(s?.cleanups);
+  if (!c) return null;
+  const T = L.totals;
+  const pct = cleanupShareText(c, L);
+  const full = T.cleanupsValue(c.commits, pct);
+  const count = { label: T.cleanups, value: rowValueFits(full) ? full : T.cleanupsShort(c.commits, pct), description: T.cleanupsDescription(c.commits, pct) };
+  if (!rowFits(count)) return null;
+  const b = c.biggest;
+  let biggest = null;
+  if (b) {
+    const minus = signedLines(b.net, '−', L);
+    const lines = T.cleanupLines(minus);
+    const d = parseDay(b.date);
+    const day = d ? L.date(d.day, d.month, d.year) : null;
+    const subject = b.subject ? clip(text(plain(scrubEmails(b.subject)))) : null;
+    const description = T.biggestCleanupDescription(lines, day, subject ? quote(subject) : null);
+    // The full day, else the year-less one (as the "Latest night" row), else that day
+    // with the bare count, else no day.
+    const short = d ? L.dayMonth(d.day, d.month) : null;
+    const values = d ? [T.cleanupLinesOn(lines, day), T.cleanupLinesOn(lines, short), T.cleanupLinesOn(minus, short)] : [];
+    biggest = [...values, lines]
+      .map((value) => ({ label: T.biggestCleanup, value, description }))
+      .find((r) => rowFits(r)) ?? null;
+  }
+  return { count, biggest };
 }
 
 /**
@@ -1486,17 +1589,54 @@ function withReverts(spec, row, { folded, unfolded, emoji }, L) {
   return spec;
 }
 
-function messages(s, { L }) {
+function messages(s, ctx) {
+  // The cleanup rows (stats.cleanups) go here or on the totals card, never both (see
+  // cleanupsPlacement); without them the card is exactly messagesBase's.
+  const place = cleanupsPlacement(s, ctx);
+  return place?.card === 'messages' ? place.spec : messagesBase(s, ctx).card;
+}
+
+/** The messages card without the cleanup rows (`card`), and messagesCard's parts (`parts`: its card and folded rows). */
+function messagesBase(s, { L }) {
   const spec = messagesCard(s, L);
   const types = typeStack(s, L);
   const card = types ? withTypeMix(spec.card, types, spec.folded, L) : spec.card;
   const emoji = emojiRow(s, L);
   const withRow = emoji ? withEmoji(card, emoji, spec.folded, L) : card;
   const reverts = revertsRow(s, L);
-  if (!reverts) return withRow;
   // The three counter rows are still there when neither the type mix nor the emoji row folded them.
-  const unfolded = Array.isArray(card.lines) && card.lines !== spec.folded && withRow.lines?.length === card.lines.length + (withRow === card ? 0 : 1) && withRow.lines.slice(0, card.lines.length).every((x, i) => x === card.lines[i]);
-  return withReverts(withRow, reverts, { folded: spec.folded, unfolded, emoji }, L);
+  const unfolded = reverts && Array.isArray(card.lines) && card.lines !== spec.folded && withRow.lines?.length === card.lines.length + (withRow === card ? 0 : 1) && withRow.lines.slice(0, card.lines.length).every((x, i) => x === card.lines[i]);
+  return { card: reverts ? withReverts(withRow, reverts, { folded: spec.folded, unfolded, emoji }, L) : withRow, parts: spec };
+}
+
+/**
+ * The messages card `spec` (as withReverts left it) with the cleanup rows (see
+ * cleanupsRows, withCleanups) after its rows, each fitting as well as `spec` did (see
+ * fitsLike: at most 6 rows, every chart still drawn, nothing shrinking more than on
+ * `spec`), in two layouts:
+ * a. after the rows as they are;
+ * b. with the "fix" / "wip" / "oops" rows folded into one (`parts.folded`'s last row, in
+ *    the place of the first of them), when they are all still there (`parts.card`'s last
+ *    three rows; the rows after them, emoji and reverts, are kept).
+ * The first layout that takes every row wins; else the first that takes the count row
+ * alone (a before b); without room either way, `spec` itself (so the card is byte-identical).
+ */
+function withLastRows(spec, rows, parts, L) {
+  const add = (base) => withCleanups(base, rows, (sp, row) => {
+    const next = { ...sp, lines: [...sp.lines, row] };
+    return fitsLike(next, spec, 0, L) ? next : sp;
+  });
+  const all = rows.biggest ? 2 : 1;
+  const appended = add(spec);
+  if (cleanupRowsIn(appended, rows) === all) return appended;
+  const counters = Array.isArray(parts.card?.lines) ? parts.card.lines.slice(-3) : [];
+  const at = spec.lines.indexOf(counters[0]);
+  if (counters.length !== 3 || at < 0 || !counters.every((r, i) => spec.lines[at + i] === r)) return appended;
+  const compact = { ...spec, lines: [...spec.lines.slice(0, at), parts.folded.at(-1), ...spec.lines.slice(at + 3)] };
+  const withRows = add(compact);
+  // Every row folded beats the count row alone unfolded; else as few changes as possible.
+  if (cleanupRowsIn(withRows, rows) === all || appended === spec) return withRows === compact ? spec : withRows;
+  return appended;
 }
 
 /** The messages card without the type mix (`card`), and its rows with the three counters folded into one (`folded`, null without rows). */
@@ -1796,7 +1936,7 @@ function withPanels(spec, tiles, panels, yoySentence, L) {
 export function mergesOnTotals(s, ctx) {
   const row = mergesRow(s ?? {}, ctx.L);
   if (!row) return false;
-  const lines = totals(s ?? {}, ctx).lines;
+  const lines = totalsBase(s ?? {}, ctx).lines;
   return Array.isArray(lines) && lines.some((r) => r?.label === row.label && r?.value === row.value);
 }
 

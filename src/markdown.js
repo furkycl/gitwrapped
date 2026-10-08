@@ -5,11 +5,12 @@
 // part only (authorName), and email-shaped text in any repo-derived text (subjects,
 // paths, repo and contributor names) is cut out by escapeMarkdown.
 
-import { authorName, busFactorShareText, displayRepoName, folderLabel, formatDateRange, formatDay, conventionalText, emojiShareText, mergeShareText, pctText, revertShareText, repoRows, shownDayRange, sizeShareText, testsShareText } from './cards/index.js';
+import { authorName, busFactorShareText, displayRepoName, folderLabel, cleanupShareText, formatDateRange, formatDay, conventionalText, emojiShareText, mergeShareText, pctText, revertShareText, repoRows, shownDayRange, sizeShareText, testsShareText } from './cards/index.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
 import { shownEmoji } from './stats/emoji.js';
 import { shownReverts } from './stats/reverts.js';
+import { shownCleanups } from './stats/cleanups.js';
 import { shownFileLifecycle } from './stats/files.js';
 import { shownFolders } from './stats/folders.js';
 import { shownTests } from './stats/tests.js';
@@ -121,6 +122,10 @@ const item = (label, value) => `- **${label}:** ${value}`;
  * A "Bus factor" item ends the team section ("2 people (58% of lines changed)": the fewest
  * authors who made at least half of the lines changed; stats.contributors.busFactor, see
  * stats/contributors.js shownBusFactor) when there is one.
+ * A "Cleanups" section follows the reverts ("12 commits (8% of non-merge commits); biggest:
+ * “drop the old parser” · −4,210 lines (Mar 3, 2026)": the non-merge commits that removed
+ * more lines than they added and the biggest net deletion; stats.cleanups, see
+ * stats/cleanups.js shownCleanups) when there is at least one.
  * Sections without data are left out (no habits / streak / hot files / languages section
  * for an empty history, no team section unless the contributors card is built, ...).
  */
@@ -362,6 +367,20 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
     // --- reverts (as on the messages card and the recap; only with any) -----------------
     const reverts = shownReverts(stats?.reverts);
     if (reverts) section(M.reverts, [escapeMarkdown(`${plural(reverts.count, 'commit', L)} (${L.recap.ofNonMerge(revertShareText(reverts, L))})`)]);
+
+    // --- cleanups (as on the totals card and the recap; only with any) ------------------
+    const cleanups = shownCleanups(stats?.cleanups);
+    if (cleanups) {
+      const b = cleanups.biggest;
+      const count = escapeMarkdown(`${plural(cleanups.commits, 'commit', L)} (${L.recap.ofNonMerge(cleanupShareText(cleanups, L))})`);
+      let biggest = '';
+      if (b) {
+        const subject = b.subject ? escapeMarkdown(b.subject, 120) : '';
+        const day = formatDay(b.date, lang);
+        biggest = `; ${escapeMarkdown(M.biggestCleanup)} ${subject ? `“${subject}”` : escapeMarkdown(L.messages.noSubject)} · ${signed(b.net, '−', L)} ${M.linesWord}${day ? ` (${escapeMarkdown(day)})` : ''}`;
+      }
+      section(M.cleanups, [`${count}${biggest}`]);
+    }
 
     // --- personality ------------------------------------------------------------------
     const a = stats?.personality?.archetype;

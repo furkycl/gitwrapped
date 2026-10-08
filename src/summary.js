@@ -14,13 +14,14 @@ import { epochDay } from './stats/time.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
-import { busFactorShareText, conventionalText, emojiShareText, folderLabel, mergeShareText, revertShareText, sizeShareText, testsShareText } from './cards/index.js';
+import { busFactorShareText, cleanupShareText, conventionalText, emojiShareText, folderLabel, mergeShareText, revertShareText, sizeShareText, testsShareText } from './cards/index.js';
 import { shownMerges } from './stats/merges.js';
 import { shownFolders } from './stats/folders.js';
 import { shownTests } from './stats/tests.js';
 import { shownCoChange } from './stats/cochange.js';
 import { shownEmoji } from './stats/emoji.js';
 import { shownReverts } from './stats/reverts.js';
+import { shownCleanups } from './stats/cleanups.js';
 import { shownFileLifecycle } from './stats/files.js';
 import { shownTimezones, utcLabel } from './stats/timezones.js';
 import { shownWeekend, weekendPercentLabel } from './stats/weekend.js';
@@ -227,6 +228,11 @@ function shortText(s, maxWidth = 48) {
  * at least 5% of the commits have one.
  * A "Reverts" line shows how many non-merge commits revert another and their share
  * (stats.reverts, see stats/reverts.js shownReverts) when there is at least one.
+ * A "Cleanups" line shows how many non-merge commits removed more lines than they added,
+ * their share of non-merge commits, and the biggest net deletion with its subject, lines
+ * and day ("12 commits (8% of non-merge commits) · biggest "drop the old parser" (−4,210
+ * lines · Mar 3, 2026)"; stats.cleanups, see stats/cleanups.js shownCleanups) when there
+ * is at least one.
  * A "Team" line (top contributor, or the --author's rank) appears exactly when the
  * contributors card is built (see hasTeamCard in stats/contributors.js), followed by a
  * "Bus factor" line ("2 people (58% of lines changed)": the fewest authors who made at
@@ -499,6 +505,23 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     // Commits that revert another (stats.reverts), as on the messages card; only with any.
     const reverts = shownReverts(stats?.reverts);
     if (reverts) lines.push(`  ${label(R.reverts)}${plural(reverts.count, 'commit', L)} ${c('dim', `(${R.ofNonMerge(revertShareText(reverts, L))})`)}`);
+
+    // Commits that removed more lines than they added (stats.cleanups), as on the totals
+    // card, with the biggest net deletion's subject, lines and day; only with any.
+    const cleanups = shownCleanups(stats?.cleanups);
+    if (cleanups) {
+      const b = cleanups.biggest;
+      let biggest = '';
+      if (b) {
+        const short = b.subject ? shortText(scrubEmails(b.subject), 40) : '';
+        const subject = short ? `"${short}"` : L.messages.noSubject;
+        // A valid 'YYYY-MM-DD' only (epochDay rejects other shapes and impossible dates).
+        const day = typeof b.date === 'string' && epochDay(b.date) !== null ? b.date.split('-').map(Number) : null;
+        const when = day ? ` · ${L.date(day[2], day[1], day[0])}` : '';
+        biggest = ` ${c('dim', '·')} ${R.biggestCleanup} ${c('cyan', subject)} ${c('dim', `(${signed(b.net, '−', L)} ${R.lines}${when})`)}`;
+      }
+      lines.push(`  ${label(R.cleanups)}${plural(cleanups.commits, 'commit', L)} ${c('dim', `(${R.ofNonMerge(cleanupShareText(cleanups, L))})`)}${biggest}`);
+    }
 
     const a = stats?.personality?.archetype;
     if (a?.name) {

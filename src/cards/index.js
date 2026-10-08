@@ -9,7 +9,7 @@ import { dayKeyFromEpoch as dayKeyOf, epochDay, mondayOf, WEEKDAY_NAMES } from '
 import { languageBarRows, languageHeadline, OTHER as OTHER_LANGUAGE } from '../stats/languages.js';
 import { busiestOf, daysUpTo, shownLongest, shownLongestBreak } from '../stats/daily.js';
 import { monthIndex, monthsFromDays } from '../stats/months.js';
-import { hasTeamCard, shareLabel, shownBusFactor, TOP_CONTRIBUTORS } from '../stats/contributors.js';
+import { contributorShare, hasTeamCard, shareLabel, shownBusFactor, TOP_CONTRIBUTORS } from '../stats/contributors.js';
 import { shownCoAuthors } from '../stats/coauthors.js';
 import { shownTimezones, utcLabel } from '../stats/timezones.js';
 import { shownLateNights } from '../stats/latenights.js';
@@ -1559,7 +1559,7 @@ const personName = (p, L = EN) => clip(text(p?.name)) ?? L.contributors.unknown;
 function contributorRow(p, you, L) {
   const C = L.contributors;
   const name = personName(p, L);
-  const share = shareLabel(p?.share, p?.commits, L.pct);
+  const share = shareLabel(contributorShare(p), p?.commits, L.pct);
   return {
     label: name,
     sub: you ? (num(p.rank) > TOP_CONTRIBUTORS ? C.youRank(p.rank) : C.you) : '',
@@ -1621,7 +1621,7 @@ function teamCard(s, L) {
   const chart = items.length > 0 ? { kind: 'hbars', title: C.chartTitle, items } : null;
   const eyebrow = C.eyebrow;
   if (you) {
-    const share = shareLabel(you.share, you.commits, L.pct);
+    const share = shareLabel(contributorShare(you), you.commits, L.pct);
     return {
       eyebrow,
       big: `#${L.num(you.rank)}`,
@@ -1637,7 +1637,7 @@ function teamCard(s, L) {
     const who = tied.length > 3 ? C.several : L.andList(tied.map((p) => personName(p, L)));
     subtitle = C.shareLead(who, lead.commits);
   } else if (lead) {
-    subtitle = C.leads(personName(lead, L), shareLabel(lead.share, lead.commits, L.pct));
+    subtitle = C.leads(personName(lead, L), shareLabel(contributorShare(lead), lead.commits, L.pct));
   }
   return {
     eyebrow,

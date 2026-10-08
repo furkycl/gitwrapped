@@ -1,6 +1,6 @@
 // Stats engine: pure functions over readCommits() output. No git calls, no I/O.
 import { computeBiggestCommit, shownBiggestLines } from './biggest.js';
-import { computeBusFactor, computeContributors, contributorName, hasTeamCard, shareLabel, shownBusFactor, TOP_CONTRIBUTORS } from './contributors.js';
+import { computeBusFactor, computeContributors, contributorName, contributorShare, exactPercent, hasTeamCard, shareLabel, shownBusFactor, TOP_CONTRIBUTORS } from './contributors.js';
 import { computeFirstCommit, SHORT_HASH } from './first.js';
 import { computeCoAuthors, shownCoAuthors, TOP_CO_AUTHORS } from './coauthors.js';
 import { computeReleases, shownReleases } from './releases.js';
@@ -31,7 +31,7 @@ import { computeEmoji, EMOJI_MIN_SHARE, emojiIn, emojiKey, GITMOJI, isEmoji, sho
 
 export { computeTotals, computeTimeHabits, computeStreaks, computeDaily, busiestOf, daysUpTo, longestGap, longestRun, shownBusiestDay, shownLongest, shownLongestBreak, computeFileLifecycle, shownFileLifecycle, computeHotFiles, isIgnoredPath, repoRelativePath, computeRepos, computeYearOverYear, yearOverYear, computePreviousPeriod, previousPeriod, previousWindow };
 export { computeLanguages, languageBarRows, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER_LANGUAGE, percentShares };
-export { computeBusFactor, computeContributors, contributorName, hasTeamCard, shareLabel, shownBusFactor, TOP_CONTRIBUTORS };
+export { computeBusFactor, computeContributors, contributorName, contributorShare, exactPercent, hasTeamCard, shareLabel, shownBusFactor, TOP_CONTRIBUTORS };
 export { computeFirstCommit, SHORT_HASH };
 export { computeCoAuthors, shownCoAuthors, TOP_CO_AUTHORS };
 export { computeFolders, folderOf, ROOT_FOLDER, shownFolders, TOP_FOLDERS };

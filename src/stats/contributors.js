@@ -88,6 +88,26 @@ export function shownBusFactor(stat) {
 const percent = (part, whole) => (whole > 0 ? Math.round((part / whole) * 1000) / 10 : 0);
 
 /**
+ * The non-enumerable key a contributor row (and a shown time-zone or pairing share, see
+ * timezones.js and coauthors.js) keeps its exact (unrounded) percent under (see exactPercent).
+ */
+export const EXACT_PERCENT = Symbol('exactPercent');
+
+/**
+ * A value's share as a percent for shareLabel: the exact one kept under EXACT_PERCENT
+ * (non-enumerable, never in stats.json), so the shown whole percent is rounded once
+ * (49 of 2,000 reads "2%", not "3%" via 2.5), else (e.g. a JSON copy) its one-decimal
+ * `share`.
+ */
+export function exactPercent(p) {
+  const exact = p && typeof p === 'object' ? p[EXACT_PERCENT] : undefined;
+  return typeof exact === 'number' && Number.isFinite(exact) ? exact : p?.share;
+}
+
+/** A contributor row's share for shareLabel (see exactPercent). */
+export const contributorShare = exactPercent;
+
+/**
  * A contributor's `share` (a percent, maybe with a decimal) as a whole percent for
  * display: "<1%" for a contributor with commits whose share rounds to 0, and never "100%"
  * short of everything (99.6 → "99%"). Used by the card and the terminal recap.
@@ -196,7 +216,11 @@ export function computeContributors(commits, { author, truncated = false } = {})
     || (b.added + b.removed) - (a.added + a.removed)
     || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)
     || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
-  const row = (p, i) => ({ name: p.name, rank: i + 1, commits: p.commits, added: p.added, removed: p.removed, share: percent(p.commits, all) });
+  const row = (p, i) => Object.defineProperty(
+    { name: p.name, rank: i + 1, commits: p.commits, added: p.added, removed: p.removed, share: percent(p.commits, all) },
+    EXACT_PERCENT,
+    { value: all > 0 ? (p.commits / all) * 100 : 0 },
+  );
   const want = typeof author === 'string' ? author.trim().toLowerCase() : '';
   const at = want ? people.findIndex((p) => p.email !== '' && p.email === want) : -1;
   return {

@@ -3,7 +3,7 @@
 
 import { shownBusiestDay, shownLongest, shownLongestBreak } from './stats/daily.js';
 import { languageHeadline } from './stats/languages.js';
-import { hasTeamCard, shareLabel, shownBusFactor } from './stats/contributors.js';
+import { contributorShare, exactPercent, hasTeamCard, shareLabel, shownBusFactor } from './stats/contributors.js';
 import { shownCoAuthors } from './stats/coauthors.js';
 import { shownReleases } from './stats/releases.js';
 import { scrubEmails } from './privacy.js';
@@ -310,7 +310,7 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     // the most common one with its share (left out when two offsets tie for it).
     const tz = shownTimezones(stats?.timezones);
     if (tz) {
-      const top = tz.top ? ` ${c('dim', `· ${R.mostly(utcLabel(tz.top))} (${R.ofCommits(shareLabel(tz.share, tz.commits, L.pct))})`)}` : '';
+      const top = tz.top ? ` ${c('dim', `· ${R.mostly(utcLabel(tz.top))} (${R.ofCommits(shareLabel(exactPercent(tz), tz.commits, L.pct))})`)}` : '';
       lines.push(`  ${label(R.timezones)}${c('cyan', R.timezonesValue(tz.count))}${top}`);
     }
 
@@ -398,10 +398,10 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
       const you = team.you;
       const lead = team.top?.[0];
       let detail = '';
-      if (you?.rank > 0) detail = ` · ${R.youAre} ${c('cyan', `#${num(you.rank, L)}`)} ${c('dim', `(${R.ofCommits(shareLabel(you.share, you.commits, L.pct))})`)}`;
+      if (you?.rank > 0) detail = ` · ${R.youAre} ${c('cyan', `#${num(you.rank, L)}`)} ${c('dim', `(${R.ofCommits(shareLabel(contributorShare(you), you.commits, L.pct))})`)}`;
       else if (lead?.name) {
         const tied = team.top[1]?.commits === lead.commits ? R.tied : '';
-        detail = ` · ${R.top} ${c('cyan', shortWord(lead.name))} ${c('dim', `(${shareLabel(lead.share, lead.commits, L.pct)}${tied})`)}`;
+        detail = ` · ${R.top} ${c('cyan', shortWord(lead.name))} ${c('dim', `(${shareLabel(contributorShare(lead), lead.commits, L.pct)}${tied})`)}`;
       }
       lines.push(`  ${label(R.team)}${plural(team.total, 'contributor', L)}${detail}`);
       // The smallest number of authors who made half the lines changed (contributors.busFactor).
@@ -414,7 +414,7 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     if (paired) {
       const top = paired.top ? shortWord(scrubEmails(paired.top)) : '';
       const who = top ? ` · ${R.topCoAuthor} ${c('cyan', top)}` : '';
-      lines.push(`  ${label(R.paired)}${plural(paired.paired, 'commit', L)} ${c('dim', `(${R.ofNonMerge(shareLabel(paired.share, paired.paired, L.pct))})`)}${who}`);
+      lines.push(`  ${label(R.paired)}${plural(paired.paired, 'commit', L)} ${c('dim', `(${R.ofNonMerge(shareLabel(exactPercent(paired), paired.paired, L.pct))})`)}${who}`);
     }
 
     const m = stats?.messages ?? {};

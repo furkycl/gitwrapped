@@ -1,6 +1,7 @@
 // The UTC offsets the commits were made from: each commit's author date carries the
 // author's own offset (git's %aI, see time.js), so a run says how many time zones the
 // work came from and which one most of it did.
+import { EXACT_PERCENT } from './contributors.js';
 import { localParts } from './time.js';
 
 const OFFSET = /^([+-])(\d{2}):(\d{2})$/;
@@ -63,7 +64,8 @@ export const utcLabel = (offset) => `UTC${String(offset).replace(/^-/, '−')}`;
  * `{count, top, share, commits}` when the commits came from two or more offsets, where
  * `top` is the most common offset ("+03:00") or null when another offset has as many
  * commits (no single "mostly"), and `share` its share as a percent (0..99.9, one
- * decimal: there are always other offsets, so never 100); null for fewer than two offsets or a malformed stat. stats.json keeps the raw
+ * decimal: there are always other offsets, so never 100; the exact percent is kept under
+ * EXACT_PERCENT for display, see exactPercent in contributors.js); null for fewer than two offsets or a malformed stat. stats.json keeps the raw
  * value.
  */
 export function shownTimezones(tz) {
@@ -73,11 +75,14 @@ export function shownTimezones(tz) {
   const sorted = [...list].sort((a, b) => b.commits - a.commits || offsetMinutes(a.offset) - offsetMinutes(b.offset));
   const tied = sorted[1].commits === sorted[0].commits;
   const total = sorted.reduce((n, o) => n + o.commits, 0);
-  return {
+  const shown = {
     count: list.length,
     top: tied ? null : sorted[0].offset,
     commits: sorted[0].commits,
     // At most 99.9 short of every commit, so shareLabel never shows "100%" for it.
     share: Math.min(Math.round((sorted[0].commits / total) * 1000) / 10, 99.9),
   };
+  // The exact percent rides along non-enumerably (see exactPercent in contributors.js), so
+  // the shown whole percent is rounded once (1,049 of 2,000 reads "52%", not "53%" via 52.5).
+  return Object.defineProperty(shown, EXACT_PERCENT, { value: Math.min((sorted[0].commits / total) * 100, 99.9) });
 }

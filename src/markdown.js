@@ -20,7 +20,7 @@ import { shownOfficeHours } from './stats/officehours.js';
 import { shownCadence } from './stats/cadence.js';
 import { shownBusiestDay, shownLongest, shownLongestBreak } from './stats/daily.js';
 import { shownBiggestLines } from './stats/biggest.js';
-import { contributorName, hasTeamCard, shareLabel, shownBusFactor } from './stats/contributors.js';
+import { contributorName, contributorShare, exactPercent, hasTeamCard, shareLabel, shownBusFactor } from './stats/contributors.js';
 import { shownCoAuthors } from './stats/coauthors.js';
 import { shownReleases } from './stats/releases.js';
 import { shownMerges } from './stats/merges.js';
@@ -175,7 +175,7 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
     // Commits with a Co-authored-by co-author (stats.coAuthors), as on the cards and the recap.
     const paired = shownCoAuthors(stats?.coAuthors);
     if (paired) {
-      const share = `${plural(paired.paired, 'commit', L)} (${L.recap.ofNonMerge(shareLabel(paired.share, paired.paired, L.pct))})`;
+      const share = `${plural(paired.paired, 'commit', L)} (${L.recap.ofNonMerge(shareLabel(exactPercent(paired), paired.paired, L.pct))})`;
       const top = paired.top ? escapeMarkdown(M.topCoAuthor(paired.top), 120) : '';
       numbers.push(item(escapeMarkdown(M.paired), `${escapeMarkdown(share)}${top ? `, ${top}` : ''}`));
     }
@@ -210,7 +210,7 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
     // Commits from two or more time zones (stats.timezones), as in the recap.
     const tz = shownTimezones(stats?.timezones);
     if (tz) {
-      const top = tz.top ? ` (${L.recap.mostly(utcLabel(tz.top))}, ${L.recap.ofCommits(shareLabel(tz.share, tz.commits, L.pct))})` : '';
+      const top = tz.top ? ` (${L.recap.mostly(utcLabel(tz.top))}, ${L.recap.ofCommits(shareLabel(exactPercent(tz), tz.commits, L.pct))})` : '';
       habits.push(item(L.recap.timezones, `${L.recap.timezonesValue(tz.count)}${top}`));
     }
     // Commits on an author-local Saturday or Sunday (stats.weekend), as in the recap.
@@ -293,11 +293,11 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
       const rows = (Array.isArray(c.top) ? c.top : []).slice(0, MD_TOP).map((p) => {
         const person = contributorName(p?.name) ?? L.contributors.unknown;
         const label = p?.rank === youRank ? L.contributors.youName(person) : person;
-        return `| ${num(p?.rank, L)} | ${escapeMarkdown(label, 80)} | ${num(p?.commits, L)} | ${escapeMarkdown(shareLabel(p?.share, p?.commits, L.pct))} |`;
+        return `| ${num(p?.rank, L)} | ${escapeMarkdown(label, 80)} | ${num(p?.commits, L)} | ${escapeMarkdown(shareLabel(contributorShare(p), p?.commits, L.pct))} |`;
       });
       const lines = [escapeMarkdown(`${plural(c.total, 'contributor', L)}`)];
       if (youRank && !(c.top ?? []).some((p) => p?.rank === youRank)) {
-        lines.push('', escapeMarkdown(`${L.recap.youAre} #${num(youRank, L)} (${L.recap.ofCommits(shareLabel(c.you.share, c.you.commits, L.pct))})`));
+        lines.push('', escapeMarkdown(`${L.recap.youAre} #${num(youRank, L)} (${L.recap.ofCommits(shareLabel(contributorShare(c.you), c.you.commits, L.pct))})`));
       }
       if (rows.length > 0) lines.push('', `| # | ${M.contributor} | ${M.commits} | ${M.share} |`, '|--:|:--|--:|--:|', ...rows);
       // The fewest authors who made half the lines changed (contributors.busFactor), as in the recap.

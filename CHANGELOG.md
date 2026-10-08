@@ -45,6 +45,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `stats.tests` in `stats.json` may now be higher, notably for Python, Ruby, Rust, JVM, .NET,
   Swift and PHP repos.
 
+### Fixed
+
+- Merge share and contributor shares were rounded twice: the merge share (totals card,
+  outro, terminal recap, `wrapped.md`) was a whole percent of its 3-decimal `share`, so 45
+  merges of 10,000 commits read "1%" instead of "<1%" and 49 of 2,000 read "3%" instead of
+  "2%"; a contributor's share on the team card, the recap and `wrapped.md` was a whole
+  percent of its one-decimal `share`, so 49 of 2,000 commits (2.45%) read "3%" instead of
+  "2%"; the top time zone's share on the recap and `wrapped.md` ("mostly UTC+03:00 (53% of
+  commits)" for 1,049 of 2,000, 52.45%) and the paired share ("3% of non-merge commits"
+  for 49 of 2,000) were rounded the same way. All are now rounded once from the exact
+  ratio, as the test share and the bus factor already are. `stats.json` is unchanged.
+
 ## [1.10.0] - 2026-10-08
 
 ### Added

@@ -150,6 +150,21 @@ export default {
      */
     mergesLabel: (prs, merges) => (prs > 0 ? (merges > 0 ? 'Merged PRs / merges' : 'Merged PRs') : 'Merge commits'),
     mergesValue: (prs, merges, share) => (prs > 0 ? (merges > 0 ? `${num(prs)} / ${num(merges)}` : num(prs)) : `${num(merges)} · ${share}`),
+    /**
+     * The cleanup rows (stats.cleanups), in spare room only, after the other rows:
+     * "Cleanups" and "12 commits · 8%" (or "12 · 8%" when that would be cut), then
+     * "Biggest cleanup" and "−4,210 lines · Mar 3, 2026" (else "−4,210 lines · Mar 3",
+     * "−4,210 · Mar 3" or "−4,210 lines", the first one drawn whole).
+     * `lines` / `pct` / `day` / `subject` come already formatted (subject quoted, or null).
+     */
+    cleanups: 'Cleanups',
+    cleanupsValue: (commits, pct) => `${plural(commits, UNITS.commit)} · ${pct}`,
+    cleanupsShort: (commits, pct) => `${num(commits)} · ${pct}`,
+    cleanupsDescription: (commits, pct) => `${plural(commits, UNITS.commit)} removed more lines than they added (${pct} of non-merge commits)`,
+    biggestCleanup: 'Biggest cleanup',
+    cleanupLines: (minus) => `${minus} lines`,
+    cleanupLinesOn: (lines, day) => `${lines} · ${day}`,
+    biggestCleanupDescription: (lines, day, subject) => `Biggest cleanup: ${lines}${day ? ` on ${day}` : ''}${subject ? `, ${subject}` : ''}`,
   },
 
   /**
@@ -630,6 +645,12 @@ export default {
     emoji: 'Emoji',
     /** The reverts line: label, "3 commits", then "(2% of non-merge commits)". */
     reverts: 'Reverts',
+    /**
+     * The cleanups line (stats.cleanups): label, "12 commits", "(8% of non-merge commits)",
+     * then "· biggest "drop the old parser" (−4,210 lines · Mar 3, 2026)" when known.
+     */
+    cleanups: 'Cleanups',
+    biggestCleanup: 'biggest',
     you: 'You are',
     cardsIn: (count, dir) => `${count} in ${dir}`,
     shareImage: 'share image:',
@@ -697,6 +718,12 @@ export default {
     emoji: 'Emoji',
     /** The reverts item (stats.reverts): "3 commits (2% of non-merge commits)". */
     reverts: 'Reverts',
+    /**
+     * The cleanups item (stats.cleanups): "12 commits (8% of non-merge commits); biggest:
+     * “drop the old parser” · −4,210 lines (Mar 3, 2026)".
+     */
+    cleanups: 'Cleanups',
+    biggestCleanup: 'biggest:',
     /** The pairing item (stats.coAuthors): "12 commits (31% of non-merge commits), top co-author: Ada". */
     paired: 'Paired',
     topCoAuthor: (name) => `top co-author: ${name}`,

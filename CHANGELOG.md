@@ -20,6 +20,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ("src/a.js + src/b.js (12 commits)"; the recap shortens long paths from the start, and
   leaves the line out when the two would then read alike), and `stats.json` gets `stats.coChange`
   (`{files, commits}`, or `null`). English and Turkish.
+- Cleanup commits: the non-merge commits that removed more lines than they added (counted
+  over the same files as hot files, so lockfiles, build output and anything you
+  `--exclude` are left out; a commit with no counted line is not one), their share of the
+  non-merge commits, and the one with the largest net deletion (a tie goes to the earliest
+  commit). The totals card gets a "Cleanups  12 commits · 8%" row and a "Biggest cleanup
+  −4,210 lines · Mar 3, 2026" row after it (shorter forms when those would be cut), in
+  spare room only, after its other rows; when it can't take both, the message hall of fame
+  gets them after its rows if it takes both (folding the fix / wip / oops counts into one
+  row if that makes room), else the count row alone goes where it fits (totals first);
+  never on both cards, and cards without room, or without cleanups, are unchanged. The terminal recap gets a "Cleanups" line and `wrapped.md` a "Cleanups"
+  section after the reverts, both with the biggest one's subject, lines and day, and
+  `stats.json` gets `stats.cleanups` (`{commits, share, biggest: {hash, subject, date,
+  linesAdded, linesRemoved, net}}`, or `null`). English and Turkish.
 
 ## [1.11.0] - 2026-10-08
 

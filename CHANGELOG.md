@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-10-08
+
 ### Added
 
 - Relative windows: `--since` / `--until` also take `30d`, `12w`, `6m` or `1y` (N days,
@@ -40,8 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Late nights: how many commits landed between 00:00 and 04:59 author-local (every dated
   commit counts, as for the power hour), their share, and the latest-ever commit time of
   day, where the day ends at 05:00 (04:59 is the latest, 00:30 beats 23:59; ties go to the
-  earliest commit; commits dated after tomorrow are left out of it). `stats.json` gets `stats.lateNights` (`{commits, share, latest: {date,
-  time} | null}`, author-local day and `HH:MM`, no hash or email). With at least one
+  earliest commit; commits dated after tomorrow are left out of it). `stats.json` gets
+  `stats.lateNights` (`{commits, share, latest: {date, time} | null}`, author-local day and `HH:MM`, no hash or email). With at least one
   late-night commit the recap gets a "Late nights  12 commits (4% of commits) · latest
   4:12 AM on Mar 3, 2024" line, `wrapped.md` a "Late-night commits" item, and the
   power-hour card a "Late nights  12 commits · 4%" row ("1,234 · 12%" when the full value
@@ -529,7 +531,8 @@ First public release on npm as `@furkycl/gitwrapped`.
 - On macOS, color emoji are left out of PNG exports, because resvg drew Apple Color Emoji
   far from their text. SVG cards and `wrapped.html` keep them.
 
-[Unreleased]: https://github.com/furkycl/gitwrapped/compare/v1.8.0...HEAD
+[Unreleased]: https://github.com/furkycl/gitwrapped/compare/v1.9.0...HEAD
+[1.9.0]: https://github.com/furkycl/gitwrapped/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/furkycl/gitwrapped/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/furkycl/gitwrapped/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/furkycl/gitwrapped/compare/v1.5.0...v1.6.0

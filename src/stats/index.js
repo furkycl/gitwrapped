@@ -80,8 +80,9 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * `fileLifecycle` is how many files the commits added and deleted, `{added, deleted}`
  * (renames are neither; ignored paths left out as for hot files, see files.js);
  * `tests` is the lines changed in test files and their share of all lines changed,
- * `{lines, share}` (test/, tests/, __tests__/, spec/ directories and *.test.*, *.spec.*,
- * *_test.* files; the same files as hot files), or null with no line changed (see tests.js);
+ * `{lines, share}` (test/, tests/, __tests__/, spec/, specs/ directories; *.test.*, *.spec.*,
+ * *_test.*, *_spec.*, *_tests.*, test_*.ext, conftest.py and FooTest.java-style files; the
+ * same files as hot files), or null with no line changed (see tests.js);
  * `languages` is lines / files per language (see languages.js). `biggestCommit` is the
  * non-merge commit with the most lines changed, ignored paths left out as for hot files
  * (see biggest.js), or null. `commitSizes` is how many non-merge commits are tiny (< 10

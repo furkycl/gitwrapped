@@ -4,13 +4,30 @@
 import { isIgnoredPath, repoRelativePath } from './files.js';
 import { weekendPercent } from './weekend.js';
 
-/** Directory names that make every file under them a test file (any path segment, case-sensitive). */
-export const TEST_DIRS = Object.freeze(['test', 'tests', '__tests__', 'spec']);
+/**
+ * Directory names that make every file under them a test file (any directory segment, not
+ * the file name itself; exact and case-sensitive).
+ */
+export const TEST_DIRS = Object.freeze(['test', 'tests', '__tests__', 'spec', 'specs']);
 
 const TEST_DIR_SET = new Set(TEST_DIRS);
 
-/** File-name markers of a test file: "foo.test.js", "foo.spec.ts", "foo_test.go". */
-const TEST_NAME = /\.test\.|\.spec\.|_test\./;
+/**
+ * File-name markers of a test file: "foo.test.js", "foo.spec.ts", "foo_test.go",
+ * "foo_spec.rb", "foo_tests.rs".
+ */
+const TEST_NAME = /\.test\.|\.spec\.|_test\.|_spec\.|_tests\./;
+
+/** A pytest-style test module: "test_foo.py" (a non-empty name and an extension). */
+const TEST_PREFIX = /^test_[^./]+\./;
+
+/**
+ * An xUnit-style test class file: "FooTest.java", "UserTests.cs", "LoginSpec.groovy". "Spec"
+ * only counts where spec-style frameworks name their files that way (Spock, ScalaTest,
+ * Kotest, Quick, phpspec, Kiwi), not in Java or .NET, where "PodSpec.java" or a
+ * specification-pattern "ActiveUserSpec.cs" is usually not a test.
+ */
+const TEST_CLASS = /[A-Za-z0-9](?:(?:Test|Tests)\.(?:java|kt|scala|groovy|cs|fs|vb|swift|php|m|mm)|Spec\.(?:kt|scala|groovy|swift|php|m|mm))$/;
 
 /** The non-enumerable key computeTests keeps the exact (unrounded) share under (see shownTests). */
 const EXACT = Symbol('tests.exactShare');
@@ -20,17 +37,34 @@ const count = (n) => (typeof n === 'number' && Number.isFinite(n) && n > 0 ? n :
 
 /**
  * Whether `path` (relative to its repo's root, "/"-separated, see repoRelativePath) is a
- * test file: a directory segment named exactly test, tests, __tests__ or spec (TEST_DIRS;
- * case-sensitive, so "Test/" or "testing/" do not count), or a file name containing
- * ".test.", ".spec." or "_test." (foo.test.js, foo.spec.ts, foo_test.go). Only the file's
- * own name is matched by the name rule, and only its directories by the directory rule (a
- * file literally named "test" is not a test file). False for a non-string or empty path.
+ * test file. Every rule is case-sensitive; any one is enough:
+ * - a directory segment named exactly test, tests, __tests__, spec or specs (TEST_DIRS; so
+ *   "Test/", "Tests/" or "testing/" do not count, nor does a file literally named "test");
+ * - a file name containing ".test.", ".spec.", "_test.", "_spec." or "_tests."
+ *   (foo.test.js, foo.spec.ts, foo_test.go, foo_spec.rb, foo_tests.rs);
+ * - a file name starting "test_" then a name and an extension (test_foo.py; not "test_.py"
+ *   or an extensionless "test_foo");
+ * - a file named exactly "conftest.py";
+ * - a file name ending in Test or Tests after a letter or digit, with a .java, .kt, .scala,
+ *   .groovy, .cs, .fs, .vb, .swift, .php, .m or .mm extension, or in Spec with a .kt,
+ *   .scala, .groovy, .swift, .php, .m or .mm one (FooTest.java, UserTests.cs,
+ *   LoginSpec.groovy; not "Test.java", "Latest.java", "FooTest.js" or "PodSpec.java").
+ * Only the file's own name is matched by the name rules, and only its directories by the
+ * directory rule ("tests.js", "spec.rb", "foo-test.js" and "testdata/a.go" are not tests).
+ * False for a non-string or empty path; never throws.
  */
 export function isTestPath(path) {
   if (typeof path !== 'string' || path === '') return false;
   const segments = path.split('/');
   const base = segments[segments.length - 1];
-  if (TEST_NAME.test(base)) return true;
+  if (
+    TEST_NAME.test(base) ||
+    TEST_PREFIX.test(base) ||
+    base === 'conftest.py' ||
+    TEST_CLASS.test(base)
+  ) {
+    return true;
+  }
   return segments.slice(0, -1).some((s) => TEST_DIR_SET.has(s));
 }
 

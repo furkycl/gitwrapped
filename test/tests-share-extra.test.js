@@ -47,13 +47,13 @@ const busy = () => [
 
 describe('isTestPath: more corner cases', () => {
   test('nested test directories and test names, at any depth', () => {
-    for (const p of ['a/b/__tests__/x.js', 'a/b/c/test/d/e.txt', 'x/spec/y/z.rb', 'pkg/tests/fixtures/a.png', 'foo_test.go', 'a/b/foo_test.py', '.test.js', '_test.go', 'deep/a.b.spec.mjs', 'e2e/login.spec.ts', 'Test/a.test.js']) {
+    for (const p of ['a/b/__tests__/x.js', 'a/b/c/test/d/e.txt', 'x/spec/y/z.rb', 'pkg/tests/fixtures/a.png', 'foo_test.go', 'a/b/foo_test.py', '.test.js', '_test.go', 'deep/a.b.spec.mjs', 'e2e/login.spec.ts', 'Test/a.test.js', 'test_foo.py']) {
       assert.equal(isTestPath(p), true, p);
     }
   });
 
   test('not tests: lookalike names and directories, a trailing ".test", case, file named spec', () => {
-    for (const p of ['spec', 'src/spec', 'test.js', 'tests.js', 'spec.rb', 'contest/a.js', 'src/contest/b.js', 'latest.js', 'src/latest.js', 'attestation/a.js', 'my.test', 'src/my.spec', 'foo_test', 'foo.test.d/x.js', 'x.spec.d/y.ts', 'tests.js/a', 'testdata/a.go', '__test__/a.js', 'Tests/a.js', 'SPEC/a.rb', 'a.Test.js', 'a.SPEC.ts', 'foo_Test.go', 'test_foo.py', 'foo-test.js', 'foo.tests.js']) {
+    for (const p of ['spec', 'src/spec', 'test.js', 'tests.js', 'spec.rb', 'contest/a.js', 'src/contest/b.js', 'latest.js', 'src/latest.js', 'attestation/a.js', 'my.test', 'src/my.spec', 'foo_test', 'foo.test.d/x.js', 'x.spec.d/y.ts', 'tests.js/a', 'testdata/a.go', '__test__/a.js', 'Tests/a.js', 'SPEC/a.rb', 'a.Test.js', 'a.SPEC.ts', 'foo_Test.go', 'foo-test.js', 'foo.tests.js']) {
       assert.equal(isTestPath(p), false, p);
     }
   });

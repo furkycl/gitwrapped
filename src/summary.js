@@ -18,6 +18,7 @@ import { busFactorShareText, conventionalText, emojiShareText, folderLabel, merg
 import { shownMerges } from './stats/merges.js';
 import { shownFolders } from './stats/folders.js';
 import { shownTests } from './stats/tests.js';
+import { shownCoChange } from './stats/cochange.js';
 import { shownEmoji } from './stats/emoji.js';
 import { shownReverts } from './stats/reverts.js';
 import { shownFileLifecycle } from './stats/files.js';
@@ -188,6 +189,9 @@ function shortText(s, maxWidth = 48) {
  * A "Tests" line shows the lines changed in test files and their share of all lines
  * changed ("1,234 lines (23% of lines changed)"; stats.tests, see stats/tests.js
  * shownTests) when at least one test line changed.
+ * A "Co-changed" line shows the two files changed together in the most non-merge
+ * commits ("src/a.js + src/b.js (12 commits)"; stats.coChange, see stats/cochange.js
+ * shownCoChange) when a pair shares at least 3 commits.
  * A "Files" line shows how many files were added and deleted (stats.fileLifecycle, see
  * stats/files.js shownFileLifecycle) when there is at least one.
  * A "Busiest day" line shows the calendar day with the most commits and its commit count
@@ -381,6 +385,16 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     // on the hot-files / languages card; only when a test line changed.
     const tests = shownTests(stats?.tests);
     if (tests) lines.push(`  ${label(R.tests)}${c('cyan', plural(tests.lines, 'line', L))} ${c('dim', `(${R.ofLinesChanged(testsShareText(tests, L))})`)}`);
+
+    // The two files changed together in the most non-merge commits (stats.coChange), as on
+    // the hot-files card but with their paths; only when a pair shares 3+ commits.
+    const pair = shownCoChange(stats?.coChange);
+    // Left out when the two paths would read alike (scrubbed or shortened to the same text).
+    const shown = pair ? pair.files.map((p) => shortPath(p, 40)) : [];
+    if (pair && shown[0] !== shown[1]) {
+      const [a, b] = shown.map((p) => c('cyan', p));
+      lines.push(`  ${label(R.coChange)}${a} ${c('dim', '+')} ${b} ${c('dim', `(${plural(pair.commits, 'commit', L)})`)}`);
+    }
 
     // Files added and deleted in the window (stats.fileLifecycle); only when there are any.
     const lifecycle = shownFileLifecycle(stats?.fileLifecycle);

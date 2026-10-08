@@ -30,6 +30,7 @@ import { shownFileLifecycle } from '../stats/files.js';
 import { shownMerges } from '../stats/merges.js';
 import { shownFolders } from '../stats/folders.js';
 import { shownTests } from '../stats/tests.js';
+import { shownCoChange } from '../stats/cochange.js';
 import { sizeShares } from '../stats/sizes.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from '../i18n/index.js';
 import { DEFAULT_COLOR_THEME, isColorTheme } from './themes.js';
@@ -1054,7 +1055,40 @@ function hotFiles(s, { L, repos }) {
   // only (see withRoomyRow): every chart still drawn, nothing shrinking; else the card is
   // exactly as before and the languages card gets the row instead, when it has room.
   const row = testsRow(s, L);
-  return row ? withRoomyRow(withList, row, L) : withList;
+  const withTests = row ? withRoomyRow(withList, row, L) : withList;
+  // The co-change pair (stats.coChange) last, on the same terms: in spare room only, after
+  // every other row, so it never takes their place; else the card is exactly as before.
+  const pair = coChangeRow(s, L);
+  return pair ? withRoomyRow(withTests, pair, L) : withTests;
+}
+
+/**
+ * The co-change row (stats.coChange, see stats/cochange.js shownCoChange) for the
+ * hot-files card, with the two file names (when both have the same name, folders from the
+ * end until they differ: "lib/index.js + src/index.js"), in the first form drawn whole: "Changed together"
+ * and "a.js + b.js · 12×", else (the value has less room than the label) "a.js + b.js" and
+ * "12× together"; null without a pair, or when neither fits (the row is only ever drawn
+ * whole). The full paths are in its description, the recap and wrapped.md.
+ */
+function coChangeRow(s, L) {
+  const pair = shownCoChange(s?.coChange);
+  if (!pair) return null;
+  const H = L.hotFiles;
+  const [a, b] = pair.files;
+  // The file names, with segments added from the end until the two differ
+  // ("packages/a/src/index.js" + "packages/b/src/index.js" → "a/src/index.js + b/src/index.js").
+  const tail = (p, n) => String(p).split('/').filter(Boolean).slice(-n).join('/') || String(p);
+  const depth = Math.max(a.split('/').length, b.split('/').length);
+  let short = [basename(a), basename(b)];
+  for (let n = 2; short[0] === short[1] && n <= depth; n++) short = [tail(a, n), tail(b, n)];
+  // Paths that still read alike (only "a/x" and "a//x"-style spellings): no row.
+  if (short[0] === short[1]) return null;
+  const description = H.coChangeDescription(a, b, pair.commits);
+  const rows = [
+    { label: H.coChange, value: H.coChangeValue(short[0], short[1], pair.commits), description },
+    { label: H.coChangePair(short[0], short[1]), value: H.coChangeTimes(pair.commits), description },
+  ];
+  return rows.find((r) => rowFits(r)) ?? null;
 }
 
 /**

@@ -13,6 +13,7 @@ import { shownReverts } from './stats/reverts.js';
 import { shownFileLifecycle } from './stats/files.js';
 import { shownFolders } from './stats/folders.js';
 import { shownTests } from './stats/tests.js';
+import { shownCoChange } from './stats/cochange.js';
 import { shownTimezones, utcLabel } from './stats/timezones.js';
 import { shownWeekend, weekendPercentLabel } from './stats/weekend.js';
 import { shownLateNights } from './stats/latenights.js';
@@ -114,6 +115,9 @@ const item = (label, value) => `- **${label}:** ${value}`;
  * hot files when there are two or more folders.
  * A "Test lines" item in the numbers ("1,234 lines (23% of lines changed)"; stats.tests,
  * see stats/tests.js shownTests) shows when at least one test line changed.
+ * A "Changed together" item follows the hot-files table ("src/a.js + src/b.js (12
+ * commits)"; stats.coChange, see stats/cochange.js shownCoChange) when a pair shares at
+ * least 3 commits.
  * A "Bus factor" item ends the team section ("2 people (58% of lines changed)": the fewest
  * authors who made at least half of the lines changed; stats.contributors.busFactor, see
  * stats/contributors.js shownBusFactor) when there is one.
@@ -252,12 +256,21 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
 
     // --- hot files --------------------------------------------------------------------
     const hot = (Array.isArray(stats?.hotFiles) ? stats.hotFiles : []).filter((f) => typeof f?.path === 'string' && f.path.trim()).slice(0, MD_TOP);
+    // The two files changed together in the most non-merge commits (stats.coChange), as in
+    // the recap, after the table; only when a pair shares 3+ commits.
+    const pair = shownCoChange(stats?.coChange);
+    // Left out when the two paths would read alike (scrubbed or clipped to the same text).
+    const shown = pair ? pair.files.map((p) => escapeMarkdown(p)) : [];
+    const together = pair && shown[0] !== shown[1] ? [item(escapeMarkdown(M.coChange), `${shown[0]} + ${shown[1]} (${plural(pair.commits, 'commit', L)})`)] : [];
     if (hot.length > 0) {
       section(M.hotFiles, [
         `| # | ${M.file} | ${M.commits} | ${M.lines} |`,
         '|--:|:--|--:|--:|',
         ...hot.map((f, i) => `| ${i + 1} | ${escapeMarkdown(f.path)} | ${num(f.commits, L)} | ${signed(f.linesAdded, '+', L)} / ${signed(f.linesRemoved, '−', L)} |`),
+        ...(together.length > 0 ? ['', ...together] : []),
       ]);
+    } else {
+      section(M.hotFiles, together);
     }
 
     // --- top folders (stats.folders, two or more) -------------------------------------

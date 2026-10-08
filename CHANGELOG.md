@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Co-change pair: the two files most often changed in the same non-merge commit (at least
+  3 shared commits; the same files as hot files, so lockfiles, build output and anything
+  you `--exclude` are left out; with several repos, repo-labelled paths; a tie goes to the
+  pair that sorts first; commits with more than 30 counted files are skipped so big repos
+  stay fast). The hot-files card gets a "Changed together  a.js + b.js · 12×" row (or
+  "a.js + b.js  12× together" when that would be cut) in spare room only, after its other
+  rows; cards without room are unchanged. The terminal recap gets a "Co-changed" line and
+  `wrapped.md` a "Changed together" item after the hot-files table, both with the paths
+  ("src/a.js + src/b.js (12 commits)"; the recap shortens long paths from the start, and
+  leaves the line out when the two would then read alike), and `stats.json` gets `stats.coChange`
+  (`{files, commits}`, or `null`). English and Turkish.
+
 ## [1.11.0] - 2026-10-08
 
 ### Added

@@ -152,5 +152,5 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] Issue references: non-merge commits whose subject mentions an issue (`#123`, `GH-123`, `ABC-123` Jira-style keys; not inside URLs or hashes) — count + share and the most referenced issue, as a messages-card row when there's room, stats.json `stats.issueRefs {commits, share, top: {ref, commits}}` or null, recap and wrapped.md; en/tr; tests
 - [x] Fixup commits: non-merge commits with `fixup!` / `squash!` / `amend!` subjects that reached the history (count + share), folded into the fix / wip / oops row when it fits, stats.json `stats.messages.fixups`, recap and wrapped.md; en/tr; tests
 - 1.13.0 release prep (split as before):
-  - [ ] Cold audit of the 1.13 work (diff 1.12.0 release commit..main) + fix every real bug found, with tests
+  - [x] Cold audit of the 1.13 work (diff 1.12.0 release commit..main) + fix every real bug found, with tests
   - [ ] CHANGELOG 1.13.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync

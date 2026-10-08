@@ -372,7 +372,7 @@ but it does contain commit subjects and hashes, tag names and repo-relative file
 ```json
 {
   "schemaVersion": 1,
-  "generator": { "name": "@furkycl/gitwrapped", "version": "1.11.0" },
+  "generator": { "name": "@furkycl/gitwrapped", "version": "1.12.0" },
   "repo": "my-app",
   "asOf": "2025-12-31",
   "filters": { "since": "2025-01-01", "until": "2025-12-31", "author": null, "maxCommits": 50000, "exclude": [] },
@@ -969,7 +969,9 @@ npx @furkycl/gitwrapped --year 2025 --md --no-png
   exit with code 1 and a one-line error. If git refuses a repo owned by another user
   ("dubious ownership"), gitwrapped prints the `git config --global --add safe.directory`
   command that allows it.
-- **Renames** are counted as a delete plus an add. Merge commits (more than one parent)
+- **Renames** are counted as a delete plus an add in line counts, files touched, hot
+  files, languages, folders, the test share and the co-change pair (only files born /
+  buried / renamed detect them). Merge commits (more than one parent)
   are skipped in the message stats and in the Fixaholic share.
 - **Submodules:** bumping a submodule is not counted as a file edit.
 - **Shallow clones** (`git clone --depth`): the oldest fetched commit would otherwise

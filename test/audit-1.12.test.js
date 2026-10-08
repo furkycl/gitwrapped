@@ -10,9 +10,12 @@
 // Also removed: the unused cleanupsOnTotals export (added in 1.12).
 // Also pinned here (checked, not bugs): the cleanup share is rounded once (from the exact
 // ratio), and stats.json keeps exactly `{commits, share, biggest}`.
-// Written by the builder of loop turn 083; extended by the tester of loop turn 083.
+// Written by the builder of loop turn 083; extended by the tester of loop turn 083 and by
+// the builder of loop turn 084 (the [1.12.0] CHANGELOG pins).
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { computeCleanups, computeStats, shownCleanups } from '../src/stats/index.js';
 import { buildCards, buildCardSpecs, cleanupShareText } from '../src/cards/index.js';
 import { rowFits } from '../src/cards/svg.js';
@@ -209,5 +212,34 @@ describe('totals card: the pairing row is only ever drawn whole (orchestrator, t
   test('cleanupsOnTotals is no longer exported', async () => {
     const mod = await import('../src/cards/index.js');
     assert.equal(mod.cleanupsOnTotals, undefined);
+  });
+});
+
+describe('CHANGELOG [1.12.0]', () => {
+  const text = readFileSync(fileURLToPath(new URL('../CHANGELOG.md', import.meta.url)), 'utf8');
+
+  test('[1.12.0] names the co-change pair, cleanup commits, renames and the audit fixes', () => {
+    const m = /^## \[1\.12\.0\][^\n]*$([\s\S]*?)(?=^## \[)/m.exec(text);
+    assert.ok(m, 'a [1.12.0] section');
+    assert.match(m[1], /Co-change pair/);
+    assert.match(m[1], /Cleanup commits/);
+    assert.match(m[1], /Renames/);
+    assert.match(m[1], /"Born \/ buried" row was drawn cut/);
+    assert.match(m[1], /"Paired commits"/);
+    assert.match(m[1], /stats\.coChange/);
+    assert.match(m[1], /stats\.cleanups/);
+    assert.match(m[1], /stats\.fileLifecycle\.renamed/);
+  });
+
+  // Empty at release time; later unreleased entries may sit between the two headings.
+  test('[Unreleased] is the first section, and [1.12.0] the first release after it', () => {
+    assert.match(text, /^## \[Unreleased\]\n(?:(?!^## )[\s\S])*?^## \[1\.12\.0\] - \d{4}-\d{2}-\d{2}$/m);
+    assert.equal(/^## \[([^\]]+)\]/m.exec(text)?.[1], 'Unreleased');
+  });
+
+  test('compare links', () => {
+    assert.match(text, /^\[Unreleased\]: \S+\/compare\/v1\.12\.0\.\.\.HEAD$/m);
+    assert.match(text, /^\[1\.12\.0\]: \S+\/compare\/v1\.11\.0\.\.\.v1\.12\.0$/m);
+    assert.match(text, /^\[1\.11\.0\]: \S+\/compare\/v1\.10\.0\.\.\.v1\.11\.0$/m);
   });
 });

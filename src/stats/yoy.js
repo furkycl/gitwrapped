@@ -11,6 +11,31 @@ const linesChanged = (t) => count(t?.linesAdded) + count(t?.linesRemoved);
 const pair = (current, previous) => ({ current, previous, delta: current - previous });
 
 /**
+ * The headline totals (`now`, computeTotals output) next to those of `before` (commits of
+ * the window compared with): `{commits, lines, activeDays}`, each `{current, previous,
+ * delta}` (`lines` is lines changed, added + removed, as in totals). Null when either side
+ * has no commits. Shared by the year-over-year and period-over-period comparisons.
+ */
+export function compareTotals(now, before) {
+  const a = now ?? {};
+  const b = computeTotals(before ?? []);
+  if (count(a.commits) === 0 || b.commits === 0) return null;
+  return {
+    commits: pair(count(a.commits), b.commits),
+    lines: pair(linesChanged(a), linesChanged(b)),
+    activeDays: pair(count(a.activeDays), b.activeDays),
+  };
+}
+
+/** The `{commits, lines, activeDays}` deltas of a stored comparison as finite numbers, or null. */
+export function comparisonDeltas(y) {
+  const d = (k) => (typeof y?.[k]?.delta === 'number' && Number.isFinite(y[k].delta) ? y[k].delta : null);
+  const [commits, lines, activeDays] = [d('commits'), d('lines'), d('activeDays')];
+  if (commits === null || lines === null || activeDays === null) return null;
+  return { commits, lines, activeDays };
+}
+
+/**
  * This year's `totals` (computeTotals output) compared with the previous year's commits
  * (`previous.commits`, the same filters one calendar year earlier): `{year, previousYear,
  * commits, lines, activeDays, previousTruncated}`, each metric as `{current, previous,
@@ -24,17 +49,9 @@ const pair = (current, previous) => ({ current, previous, delta: current - previ
 export function computeYearOverYear(totals, previous = {}) {
   const year = Number(previous?.year);
   if (!Number.isInteger(year)) return null;
-  const now = totals ?? {};
-  const before = computeTotals(previous?.commits ?? []);
-  if (count(now.commits) === 0 || before.commits === 0) return null;
-  return {
-    year,
-    previousYear: year - 1,
-    commits: pair(count(now.commits), before.commits),
-    lines: pair(linesChanged(now), linesChanged(before)),
-    activeDays: pair(count(now.activeDays), before.activeDays),
-    previousTruncated: Boolean(previous?.truncated),
-  };
+  const cmp = compareTotals(totals, previous?.commits);
+  if (!cmp) return null;
+  return { year, previousYear: year - 1, ...cmp, previousTruncated: Boolean(previous?.truncated) };
 }
 
 /**
@@ -45,8 +62,6 @@ export function computeYearOverYear(totals, previous = {}) {
 export function yearOverYear(stats) {
   const y = stats?.yearOverYear;
   if (!y || typeof y !== 'object' || !Number.isInteger(y.previousYear)) return null;
-  const d = (k) => (typeof y[k]?.delta === 'number' && Number.isFinite(y[k].delta) ? y[k].delta : null);
-  const [commits, lines, activeDays] = [d('commits'), d('lines'), d('activeDays')];
-  if (commits === null || lines === null || activeDays === null) return null;
-  return { previousYear: y.previousYear, commits, lines, activeDays };
+  const deltas = comparisonDeltas(y);
+  return deltas ? { previousYear: y.previousYear, ...deltas } : null;
 }

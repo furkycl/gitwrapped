@@ -231,7 +231,7 @@ describe('weekend: CLI end to end', () => {
     const r = bin([dir, '--out', out, '--json', '--since', '2026-03-15']);
     assert.equal(r.status, 0, r.stderr);
     assert.deepEqual(statsJson(out).stats.weekend, { commits: 1, share: 0.25 });
-    assert.match(r.stdout, /Weekends {5}1 commit \(25% of commits\)/);
+    assert.match(r.stdout, /Weekends +1 commit \(25% of commits\)/);
   });
 
   test('several repos: weekend commits are summed', () => {

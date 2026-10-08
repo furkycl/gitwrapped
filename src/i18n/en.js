@@ -164,6 +164,18 @@ export default {
     summary: (year, commits, lines, days) => `vs ${year}: ${signedPluralNb(commits, UNITS.commit)}, ${signedPluralNb(lines, UNITS.line)}\u00a0changed, ${signedPluralNb(days, UNITS.activeDay)}.`,
   },
 
+  /**
+   * A --since run compared with the equal-length window just before it
+   * (stats.previousPeriod): row labels on the totals card (`short` drops the day count
+   * when a row would not fit), and the outro's one-line summary.
+   */
+  period: {
+    commits: (days, short) => (short ? 'Commits vs prev.' : `Commits vs prev. ${plural(days, UNITS.day)}`),
+    lines: (days, short) => (short ? 'Lines vs prev.' : `Lines vs prev. ${plural(days, UNITS.day)}`),
+    activeDays: (days, short) => (short ? 'Active days vs prev.' : `Active days vs prev. ${plural(days, UNITS.day)}`),
+    summary: (days, commits, lines, active) => `vs previous ${plural(days, UNITS.day)}: ${signedPluralNb(commits, UNITS.commit)}, ${signedPluralNb(lines, UNITS.line)}\u00a0changed, ${signedPluralNb(active, UNITS.activeDay)}.`,
+  },
+
   peak: {
     eyebrow: 'Your power hour',
     byHour: 'Commits by hour',
@@ -564,6 +576,8 @@ export default {
     repos: 'Repos',
     /** The year-over-year line's label: "vs 2024". */
     vsYear: (year) => `vs ${year}`,
+    /** The period-over-period line's label: "vs prev. 30 days". */
+    vsPeriod: (days) => `vs prev. ${plural(days, UNITS.day)}`,
     moreRepos: (n) => `…and ${num(n)} more`,
     youAre: "you're",
     ofCommits: (share) => `${share} of commits`,
@@ -690,6 +704,7 @@ export default {
     truncatedRepos: (n) => `Note: these repos have more than ${n} commits together; only the most recent ${n} were analyzed.`,
     /** --year: the previous year (`year`) hit the commit cap. */
     previousYearTruncated: (n, year) => `Note: ${year} has more than ${n} matching commits; the comparison with it counts only its most recent ${n}.`,
+    previousPeriodTruncated: (n, days) => `Note: the previous ${num(days)}-day window has more than ${n} matching commits; the comparison with it counts only its most recent ${n}.`,
     /** --author: the team read hit the cap; `from` is the first day it covers (or null). */
     teamTruncated: (n, from) => `Note: the contributors card ranks only the most recent ${n} commits by everyone${from ? ` (from ${from})` : ''}, you included.`,
     /** --author: everyone's commits are over the cap, so the card ranks them since `from`, the day of your oldest analyzed commit. */

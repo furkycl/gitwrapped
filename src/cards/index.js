@@ -1,7 +1,7 @@
 // The story-card set: turns computeStats() output into Wrapped-style SVG cards.
 // Pure and deterministic. Every card copes with empty stats (0 commits, null peaks,
 // no hot files, null messages) and never prints "null", "undefined" or "NaN".
-import { CALENDAR_MIN_CELL, CALLOUT_NOTE, calendarWindow, escapeXml, formatNumber, graphemes, layoutCard as layoutOf, measureText, renderCardWithLayout, rowFits, rowValueFits, truncateMiddle } from './svg.js';
+import { CALENDAR_MIN_CELL, CALLOUT_NOTE, calendarWindow, escapeXml, formatNumber, graphemes, layoutCard as layoutOf, measureText, elidedPathForms, renderCardWithLayout, rowFits, rowValueFits, truncateMiddle } from './svg.js';
 
 export { formatNumber };
 import { renderShareSvg } from './share.js';
@@ -1178,11 +1178,18 @@ function hotFiles(s, { L, repos }) {
 
 /**
  * The co-change row (stats.coChange, see stats/cochange.js shownCoChange) for the
- * hot-files card, with the two file names (when both have the same name, folders from the
- * end until they differ: "lib/index.js + src/index.js"), in the first form drawn whole: "Changed together"
- * and "a.js + b.js · 12×", else (the value has less room than the label) "a.js + b.js" and
- * "12× together"; null without a pair, or when neither fits (the row is only ever drawn
- * whole). The full paths are in its description, the recap and wrapped.md.
+ * hot-files card, in the first form drawn whole (the row is only ever drawn whole), trying
+ * the names in steps:
+ * 1. the file names (when both have the same name, folders from the end until they
+ *    differ: "lib/index.js + src/index.js");
+ * 2. then, for same-name files, both paths middle-elided from their first folder
+ *    ("api/…/index.js + web/…/index.js", the most kept folders first, alike names skipped);
+ * 3. then, when the paths share leading folders, the same from the first folder where they
+ *    differ ("packages/a/src/index.js" → "a/…/index.js").
+ * Each step tries its names in coChangeRow's row shapes, in order: "Changed together" and
+ * "a.js + b.js · 12×", else "a.js + b.js" and "12× together", else "a.js + b.js" and "12×".
+ * Null without a pair, or when nothing fits. The full paths are in its description, the
+ * recap and wrapped.md.
  */
 function coChangeRow(s, L) {
   const pair = shownCoChange(s?.coChange);
@@ -1198,11 +1205,46 @@ function coChangeRow(s, L) {
   // Paths that still read alike (only "a/x" and "a//x"-style spellings): no row.
   if (short[0] === short[1]) return null;
   const description = H.coChangeDescription(a, b, pair.commits);
+  return coChangeRowFor(short[0], short[1], pair.commits, description, H) ?? elidedCoChangeRow(a, b, pair.commits, description, H);
+}
+
+/** The first co-change row shape (see coChangeRow) that names `x` and `y` whole, or null. */
+function coChangeRowFor(x, y, commits, description, H) {
   const rows = [
-    { label: H.coChange, value: H.coChangeValue(short[0], short[1], pair.commits), description },
-    { label: H.coChangePair(short[0], short[1]), value: H.coChangeTimes(pair.commits), description },
+    { label: H.coChange, value: H.coChangeValue(x, y, commits), description },
+    { label: H.coChangePair(x, y), value: H.coChangeTimes(commits), description },
+    { label: H.coChangePair(x, y), value: H.coChangeTimesShort(commits), description },
   ];
   return rows.find((r) => rowFits(r)) ?? null;
+}
+
+/**
+ * coChangeRow's steps 2 and 3: the two paths middle-elided (elidedPathForms) from their
+ * first folder, then from the first folder where they differ; within a step, for k from
+ * the deepest elision down to 1 (a path with no elided form that keeps k segments is shown
+ * whole), skipping a k where the two names read alike. Only for same-name files: else the
+ * file names (step 1) are already the shortest names that differ.
+ */
+function elidedCoChangeRow(a, b, commits, description, H) {
+  if (basename(a) !== basename(b)) return null;
+  const segs = [a, b].map((p) => String(p).split('/').filter(Boolean));
+  let shared = 0;
+  while (shared < Math.min(segs[0].length, segs[1].length) - 1 && segs[0][shared] === segs[1][shared]) shared++;
+  const starts = shared > 0 ? [0, shared] : [0];
+  for (const from of starts) {
+    const names = segs.map((sg) => {
+      const whole = sg.slice(from).join('/');
+      const forms = elidedPathForms(whole); // forms[i] keeps the last (forms.length − i) segments
+      return { forms, at: (k) => (k <= forms.length ? forms[forms.length - k] : whole) };
+    });
+    for (let k = Math.max(...names.map((n) => n.forms.length)); k >= 1; k--) {
+      const [x, y] = names.map((n) => n.at(k));
+      if (x === y) continue; // alike names: keep fewer folders only if they then differ
+      const row = coChangeRowFor(x, y, commits, description, H);
+      if (row) return row;
+    }
+  }
+  return null;
 }
 
 /**
@@ -1270,6 +1312,8 @@ function folderBars(folders, L) {
         ...(f.repo ? { sub: f.repo } : {}),
         value: H.folderValue(f.lines),
         amount: f.lines,
+        // A top folder is a single segment (the repo label is its `sub`): no folders to
+        // elide as hot files' paths are ("first/…/near"), so a long name keeps the middle cut.
         truncate: 'middle',
         title: H.folderBarTitle(full, f.lines, signedLines(f.added, '+', L), signedLines(f.deleted, '−', L), f.commits),
       };
@@ -1306,16 +1350,21 @@ function withFolders(spec, folders, L) {
 /**
  * The hot-files card's charts: the most-touched files (paths of a multi-repo run start
  * with the repo label, shown dimmed after the file name), plus, for several repos, the
- * files touched per repo; then the file list is cut to 3 so both fit.
+ * files touched per repo; then the file list is cut to 3 so both fit. A folder too long for
+ * its bar is middle-elided ("packages/…/src/lib/"), keeping its first folder (the repo label
+ * in a multi-repo run) and the nearest ones.
  */
 function hotFileCharts(files, repos, L) {
   const H = L.hotFiles;
+  const shown = files.slice(0, repos ? 3 : 5);
   const list = {
     kind: 'hbars',
     title: H.chartTitle,
-    items: files.slice(0, repos ? 3 : 5).map((f) => ({
+    items: shown.map((f) => ({
       label: basename(f.path),
       sub: dirname(f.path),
+      subTruncate: 'path',
+      ...sameNameSubForms(f.path, shown.map((g) => g.path)),
       value: plural(f.commits, 'commit', L),
       amount: num(f.commits),
       truncate: 'middle',
@@ -1323,6 +1372,32 @@ function hotFileCharts(files, repos, L) {
     })),
   };
   return repos ? [list, repoFileBars(repos, L)] : list;
+}
+
+/**
+ * For a hot file whose name another listed file shares, with leading folders in common,
+ * (`{subForms}`, else `{}`): shorter forms of its folder that tell the two apart, tried
+ * before the usual middle elision (which keeps the first folder, and could make both read
+ * "packages/…/forms/"). First the elided forms from the first folder that still keep the
+ * folder where they differ, then those from that folder: "core-x/…/forms/". When none
+ * fits, the usual elision and start cut apply.
+ */
+function sameNameSubForms(path, paths) {
+  const dir = dirname(path);
+  const segs = dir.split('/').filter(Boolean);
+  let shared = 0;
+  for (const other of paths) {
+    if (other === path || basename(other) !== basename(path)) continue;
+    const o = dirname(other).split('/').filter(Boolean);
+    let d = 0;
+    while (d < Math.min(segs.length, o.length) && segs[d] === o[d]) d++;
+    shared = Math.max(shared, d);
+  }
+  if (shared === 0 || shared >= segs.length) return {};
+  // elidedPathForms(dir)[i] keeps the last (segs.length − 2 − i) folders; keep folder `shared`.
+  const keeping = elidedPathForms(dir).filter((_, i) => segs.length - 2 - i >= segs.length - shared);
+  const subForms = [...keeping, ...elidedPathForms(`${segs.slice(shared).join('/')}/`)];
+  return subForms.length ? { subForms } : {};
 }
 
 /** A whole-number share as text; a non-zero amount that rounds to 0% reads "<1%". */
@@ -1896,7 +1971,7 @@ function outro(s, ctx) {
   const tiles = {
     kind: 'tiles',
     items: summaryTiles(s, ctx),
-    wide: top ? { label: O.hottestFile, value: top.path, note: plural(top.commits, 'commit', L), truncate: 'start' } : null,
+    wide: top ? { label: O.hottestFile, value: top.path, note: plural(top.commits, 'commit', L), truncate: 'path' } : null,
   };
   const yoySentence = yoy
     ? L.yoy.summary(yoy.previousYear, yoy.commits, yoy.lines, yoy.activeDays)

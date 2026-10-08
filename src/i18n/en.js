@@ -328,12 +328,13 @@ export default {
     /**
      * The co-change row (stats.coChange), in spare room only, after the other rows:
      * "Changed together" and "a.js + b.js · 12×" (the two file names, then the commits), or
-     * when that would be cut "a.js + b.js" and "12× together".
+     * when that would be cut "a.js + b.js" and "12× together", else "a.js + b.js" and "12×".
      */
     coChange: 'Changed together',
     coChangeValue: (a, b, commits) => `${a} + ${b} · ${num(commits)}×`,
     coChangePair: (a, b) => `${a} + ${b}`,
     coChangeTimes: (commits) => `${num(commits)}× together`,
+    coChangeTimesShort: (commits) => `${num(commits)}×`,
     coChangeDescription: (a, b, commits) => `${a} and ${b} changed together in ${plural(commits, UNITS.commit)}`,
   },
 

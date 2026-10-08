@@ -230,6 +230,34 @@ export function truncateStart(text, { maxWidth, fontSize }) {
 }
 
 /**
+ * The middle-elided forms of a file path, most kept folders first: the first segment, '…',
+ * then the nearest k segments ending in the file name, for k from (segments − 2) down to 1
+ * ("a/b/c/d.js" → ["a/…/c/d.js", "a/…/d.js"]). Empty segments are ignored and a trailing
+ * '/' (a folder) is kept. Fewer than 3 segments: [] (nothing to elide).
+ */
+export function elidedPathForms(path) {
+  const text = String(path ?? '').replace(SPACES, ' ').trim();
+  const segs = text.split('/').filter(Boolean);
+  const n = segs.length;
+  if (n < 3) return [];
+  const trail = text.endsWith('/') ? '/' : '';
+  const forms = [];
+  for (let k = n - 2; k >= 1; k--) forms.push(`${segs[0]}/${ELLIPSIS}/${segs.slice(n - k).join('/')}${trail}`);
+  return forms;
+}
+
+/**
+ * `path` as is when it fits `maxWidth`, else the first of its middle-elided forms
+ * (elidedPathForms: "first/…/near/file.js", the most kept folders first) that fits; null
+ * when none fits (or the path has fewer than 3 segments).
+ */
+export function elidePath(path, { maxWidth, fontSize }) {
+  const text = String(path ?? '').replace(SPACES, ' ').trim();
+  if (measureText(text, fontSize) <= maxWidth) return text;
+  return elidedPathForms(text).find((f) => measureText(f, fontSize) <= maxWidth) ?? null;
+}
+
+/**
  * `text` shortened in the middle (head + '…' + tail) so that it fits `maxWidth`; keeps
  * both ends, so names that share a prefix or a suffix stay distinguishable.
  */
@@ -425,8 +453,15 @@ function normalizeRow(row) {
   return { label: String(row ?? ''), value: '', truncate: 'end' };
 }
 
-/** `label` for a row: shortened from the start or the end to fit `maxWidth`. */
+/**
+ * `label` for a row: shortened from the start, the middle or the end to fit `maxWidth`;
+ * 'path' middle-elides folders ("first/…/file.js") first, then cuts from the start.
+ */
 function fitLabel(label, maxWidth, size, truncate) {
+  if (truncate === 'path') {
+    const opts = { maxWidth: maxWidth / BIG_WEIGHT_FACTOR, fontSize: size };
+    return elidePath(label, opts) ?? truncateStart(label, opts);
+  }
   if (truncate === 'start') return truncateStart(label, { maxWidth: maxWidth / BIG_WEIGHT_FACTOR, fontSize: size });
   if (truncate === 'middle') return truncateMiddle(label, { maxWidth: maxWidth / BIG_WEIGHT_FACTOR, fontSize: size });
   return fitEnd(label, maxWidth, size);
@@ -438,7 +473,7 @@ function caption(y, text, L = EN) {
   return t ? textEl(PAD_X, y + CAPTION.size * 0.76, t, { size: CAPTION.size, weight: 800, opacity: 0.75, spacing: CAPTION.spacing }) : '';
 }
 
-const TRUNCATE_MODES = new Set(['start', 'middle', 'end']);
+const TRUNCATE_MODES = new Set(['start', 'middle', 'end', 'path']);
 
 const titleEl = (t) => (t ? `<title>${escapeXml(t)}</title>` : '');
 
@@ -613,15 +648,17 @@ function barsBlock(spec, compact = false, L = EN) {
 
 /**
  * Horizontal bar list. Spec: `{kind: 'hbars', title, items: [{label, sub, value, amount,
- * title, truncate, subWhole}]}`: label (bold) with an optional dimmer `sub` after it (with
- * `subWhole: true` it is left out rather than shortened when it does not fit), `value` right
+ * title, truncate, subWhole, subTruncate}]}`: label (bold) with an optional dimmer `sub` after
+ * it (cut from the start; with `subTruncate: 'path'` folders are first middle-elided as
+ * "first/…/near/"; `subForms` are shorter forms of it tried first, the first that fits; with `subWhole: true` it is left out rather than shortened when it does
+ * not fit), `value` right
  * aligned, and a bar proportional to `amount` / the largest amount. At most 6 items.
  */
 function hbarsBlock(spec, compact = false, L = EN) {
   const items = (Array.isArray(spec.items) ? spec.items : [])
     .filter((it) => it && (s1(it.label) || s1(it.value)))
     .slice(0, MAX_CHART_ITEMS)
-    .map((it) => ({ label: s1(it.label), sub: s1(it.sub), subWhole: it.subWhole === true, value: s1(it.value), amount: clampNum(it.amount), title: s1(it.title), truncate: TRUNCATE_MODES.has(it.truncate) ? it.truncate : 'end' }));
+    .map((it) => ({ label: s1(it.label), sub: s1(it.sub), subWhole: it.subWhole === true, subPath: it.subTruncate === 'path', subForms: Array.isArray(it.subForms) ? it.subForms.map(s1).filter(Boolean) : [], value: s1(it.value), amount: clampNum(it.amount), title: s1(it.title), truncate: TRUNCATE_MODES.has(it.truncate) ? it.truncate : 'end' }));
   if (items.length === 0) return null;
   const cap = s1(spec.title);
   const capH = cap ? CAPTION.height : 0;
@@ -655,7 +692,10 @@ function hbarsBlock(spec, compact = false, L = EN) {
         const subX = PAD_X + heavyWidth(label, LABEL) + 14;
         const subRoom = PAD_X + room - subX;
         if (it.sub && subRoom >= 80) {
-          const sub = truncateStart(it.sub, { maxWidth: subRoom / BIG_WEIGHT_FACTOR, fontSize: SUB });
+          const subOpts = { maxWidth: subRoom / BIG_WEIGHT_FACTOR, fontSize: SUB };
+          const fits = (t) => measureText(t, SUB) <= subOpts.maxWidth;
+          const sub = (it.subForms.length ? (fits(it.sub) ? it.sub : it.subForms.find(fits)) : null)
+            ?? (it.subPath ? elidePath(it.sub, subOpts) : null) ?? truncateStart(it.sub, subOpts);
           if (sub && sub !== ELLIPSIS && (!it.subWhole || sub === it.sub)) g.push(textEl(subX, baseline, sub, { size: SUB, weight: 600, opacity: 0.6 }));
         }
         if (value) g.push(textEl(PAD_X + CONTENT_WIDTH, baseline, value, { size: LABEL, weight: 800, opacity: 0.85, anchor: 'end' }));
@@ -865,12 +905,12 @@ function calloutBlock(spec, compact = false, L = EN) {
 /**
  * A grid of stat tiles (2 per row) plus an optional full-width `wide` tile.
  * Spec: `{kind: 'tiles', items: [{label, value}] (up to 4), wide: {label, value, note,
- * truncate} | null}`.
+ * truncate ('end', 'start' or 'path')} | null}`.
  */
 function tilesBlock(spec, compact = false, L = EN) {
   const items = (Array.isArray(spec.items) ? spec.items : []).slice(0, 4).map((t) => ({ label: L.upper(s1(t?.label)), value: s1(t?.value) || '—' }));
   const wide = spec.wide && (s1(spec.wide.value) || s1(spec.wide.label))
-    ? { label: L.upper(s1(spec.wide.label)), value: s1(spec.wide.value), note: s1(spec.wide.note), truncate: spec.wide.truncate === 'start' ? 'start' : 'end' }
+    ? { label: L.upper(s1(spec.wide.label)), value: s1(spec.wide.value), note: s1(spec.wide.note), truncate: ['start', 'path'].includes(spec.wide.truncate) ? spec.wide.truncate : 'end' }
     : null;
   if (items.length === 0 && !wide) return null;
   const TILE_H = 196;

@@ -449,17 +449,29 @@ describe('seeded fuzz: merges / late nights never leak or break, en + tr', () =>
   });
 });
 
-describe('CHANGELOG [Unreleased]', () => {
+describe('CHANGELOG [1.9.0]', () => {
   const text = readFileSync(fileURLToPath(new URL('../CHANGELOG.md', import.meta.url)), 'utf8');
-  const unreleased = text.slice(text.indexOf('## [Unreleased]'), text.indexOf('## [1.8.0]')).replace(/\s+/g, ' ');
+  const release190 = text.slice(text.indexOf('## [1.9.0]'), text.indexOf('## [1.8.0]')).replace(/\s+/g, ' ');
+
+  test('[1.9.0] names relative windows, merges and late nights', () => {
+    const m = /^## \[1\.9\.0\][^\n]*$([\s\S]*?)(?=^## \[)/m.exec(text);
+    assert.ok(m, 'a [1.9.0] section');
+    assert.match(m[1], /Relative windows/);
+    assert.match(m[1], /Merges/);
+    assert.match(m[1], /Late nights/);
+    assert.match(m[1], /stats\.merges/);
+    assert.match(m[1], /stats\.lateNights/);
+    assert.match(text, /^\[Unreleased\]: \S+\/compare\/v1\.9\.0\.\.\.HEAD$/m);
+    assert.match(text, /^\[1\.9\.0\]: \S+\/compare\/v1\.8\.0\.\.\.v1\.9\.0$/m);
+  });
 
   test('names the "Latest night" row by its label', () => {
-    assert.match(unreleased, /"Latest night" row/);
-    assert.doesNotMatch(unreleased, /"Latest commit" row/);
+    assert.match(release190, /"Latest night" row/);
+    assert.doesNotMatch(release190, /"Latest commit" row/);
     assert.equal(en.peak.latestLabel, 'Latest night');
   });
 
   test('does not say late nights are the Night Owl hours', () => {
-    assert.doesNotMatch(unreleased, /same hours as the Night Owl personality \(22:00–03:59\)/);
+    assert.doesNotMatch(release190, /same hours as the Night Owl personality \(22:00–03:59\)/);
   });
 });

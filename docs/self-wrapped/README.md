@@ -4,8 +4,8 @@ This folder is what you get when you run gitwrapped on its own repo. Every commi
 was made by the autonomous agent loop that builds gitwrapped (see `.loop/`), so these
 cards tell the story of the loop itself.
 
-- **Generated:** 2026-10-07
-- **Commits analyzed:** 133 (the full history at the time of the run)
+- **Generated:** 2026-10-08
+- **Commits analyzed:** 143 (the full history at the time of the run)
 - **Regenerate:** `npm run self-wrapped` (runs `gitwrapped . --out docs/self-wrapped`),
   then `npm run hero-gif` to rebuild the README's [`docs/hero.gif`](../hero.gif) from
   these cards
@@ -18,16 +18,21 @@ preview service.
 
 The ten cards, as SVG (the repo has a single author after `.mailmap`, so there is no
 team card, and its pairing with its `Co-authored-by:` co-author shows up as a "Paired" row
-on the totals card instead, which leaves no spare room for a "Born / buried" row (the 168
-files born and 2 buried are in the recap); its commits come from two UTC offsets, so
-the power-hour card has a "2 time zones · mostly UTC+00:00" row; with two or more active
-days the streak card has a cadence row ("33.3 per active day · every day"); some commits
-landed on a Sunday, so the activity card has a "Weekends 24 commits · 18%" row; its
-changes span several top-level folders, so the hot-files card ends with a "Top folders"
-list (test/, src/, docs/); its whole history falls inside one calendar month, so there is
-no monthly timeline card; no commit has an emoji or reverts another, so the messages card
-has no Emoji or Reverts row; and the repo has no tags, so the outro has no Releases
-panel):
+on the totals card instead, which leaves no spare room for a "Born / buried" row (the 177
+files born and 2 buried are in the recap) or a merges row; its 8 PM power hour is tied,
+and its commits come from two UTC offsets, so the power-hour card ends its subtitle with
+"Committed from 2 time zones, mostly UTC+00:00." and has no room left for a "Late
+nights" row (the 22 late-night commits, 15%, latest 4:21 AM on Oct 6, 2026, are in the
+recap); with two or more active days the streak card has a cadence row ("28.6 per active
+day · every day"); some commits landed on a Sunday, so the activity card has a "Weekends
+24 commits · 17%" row; its changes span several top-level folders, so the hot-files card
+ends with a "Top folders" list (test/, src/, docs/); its whole history falls inside one
+calendar month, so there is no monthly timeline card; no commit has an emoji or reverts
+another, so the messages card has no Emoji or Reverts row; the repo has no tags, so the
+outro has no Releases panel; and the totals card has no spare room for a merges row, so
+the outro has a "Merges" panel instead, in place of its "Made with gitwrapped" line, with
+only the pull-request line ("You merged 69 pull requests") because every pull request was
+squash-merged and there are no merge commits):
 
 ![Intro](cards/01-intro.svg)
 ![Totals](cards/02-totals.svg)

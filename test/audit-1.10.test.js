@@ -274,13 +274,7 @@ describe('CHANGELOG [1.10.0]', () => {
     assert.match(m[1], /stats\.officeHours/);
   });
 
-  // Empty at release time; later unreleased entries may sit between the two headings.
-  test('[Unreleased] is the first section, and [1.10.0] the first release after it', () => {
-    assert.match(text, /^## \[Unreleased\]\n(?:(?!^## )[\s\S])*?^## \[1\.10\.0\] - \d{4}-\d{2}-\d{2}$/m);
-  });
-
   test('compare links', () => {
-    assert.match(text, /^\[Unreleased\]: \S+\/compare\/v1\.10\.0\.\.\.HEAD$/m);
     assert.match(text, /^\[1\.10\.0\]: \S+\/compare\/v1\.9\.0\.\.\.v1\.10\.0$/m);
     assert.match(text, /^\[1\.9\.0\]: \S+\/compare\/v1\.8\.0\.\.\.v1\.9\.0$/m);
   });

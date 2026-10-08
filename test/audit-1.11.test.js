@@ -10,6 +10,8 @@
 // Written by the tester of loop turn 078.
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { computeContributors, computeMerges, computeStats, contributorShare, shareLabel, shownMerges } from '../src/stats/index.js';
 import { buildCardSpecs, mergeShareText } from '../src/cards/index.js';
 import { buildStatsJson } from '../src/json.js';
@@ -334,5 +336,32 @@ describe('time-zone and pairing shares: the shown percent is rounded once (fix a
     const trMd = buildMarkdown(s, opts('tr'));
     assert.match(trMd, /%52/);
     assert.match(trMd, /merge dışı commit'lerin %2 kadarı/);
+  });
+});
+
+describe('CHANGELOG [1.11.0]', () => {
+  const text = readFileSync(fileURLToPath(new URL('../CHANGELOG.md', import.meta.url)), 'utf8');
+
+  test('[1.11.0] names period over period, bus factor, broader test detection and the rounding fix', () => {
+    const m = /^## \[1\.11\.0\][^\n]*$([\s\S]*?)(?=^## \[)/m.exec(text);
+    assert.ok(m, 'a [1.11.0] section');
+    assert.match(m[1], /Period over period/);
+    assert.match(m[1], /Bus factor/);
+    assert.match(m[1], /Broader test detection/);
+    assert.match(m[1], /rounded twice/);
+    assert.match(m[1], /stats\.previousPeriod/);
+    assert.match(m[1], /stats\.contributors\.busFactor/);
+  });
+
+  // Empty at release time; later unreleased entries may sit between the two headings.
+  test('[Unreleased] is the first section, and [1.11.0] the first release after it', () => {
+    assert.match(text, /^## \[Unreleased\]\n(?:(?!^## )[\s\S])*?^## \[1\.11\.0\] - \d{4}-\d{2}-\d{2}$/m);
+    assert.equal(/^## \[([^\]]+)\]/m.exec(text)?.[1], 'Unreleased');
+  });
+
+  test('compare links', () => {
+    assert.match(text, /^\[Unreleased\]: \S+\/compare\/v1\.11\.0\.\.\.HEAD$/m);
+    assert.match(text, /^\[1\.11\.0\]: \S+\/compare\/v1\.10\.0\.\.\.v1\.11\.0$/m);
+    assert.match(text, /^\[1\.10\.0\]: \S+\/compare\/v1\.9\.0\.\.\.v1\.10\.0$/m);
   });
 });

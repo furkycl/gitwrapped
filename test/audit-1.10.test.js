@@ -13,6 +13,8 @@
 //   it now falls back to "1,200 · 19%" and is left out when even that would be cut.
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { computeStats, computeTests, shownTests } from '../src/stats/index.js';
 import { buildCards, buildCardSpecs, testsShareText } from '../src/cards/index.js';
 import { rowFits } from '../src/cards/svg.js';
@@ -256,5 +258,29 @@ describe('activity card: the "Weekends" row is never drawn cut', () => {
       assert.equal(weekendOf(spec, L), undefined, `${lang}: ${JSON.stringify(spec.lines)}`);
       for (const r of spec.lines ?? []) assert.ok(rowFits(r), `${lang}: ${JSON.stringify(r)}`);
     }
+  });
+});
+
+describe('CHANGELOG [1.10.0]', () => {
+  const text = readFileSync(fileURLToPath(new URL('../CHANGELOG.md', import.meta.url)), 'utf8');
+
+  test('[1.10.0] names test share, office hours and the night power hour change', () => {
+    const m = /^## \[1\.10\.0\][^\n]*$([\s\S]*?)(?=^## \[)/m.exec(text);
+    assert.ok(m, 'a [1.10.0] section');
+    assert.match(m[1], /Test share/);
+    assert.match(m[1], /Office hours/);
+    assert.match(m[1], /night power hour/);
+    assert.match(m[1], /stats\.tests/);
+    assert.match(m[1], /stats\.officeHours/);
+  });
+
+  test('[Unreleased] is empty and sits right above [1.10.0]', () => {
+    assert.match(text, /^## \[Unreleased\]\n\n## \[1\.10\.0\] - \d{4}-\d{2}-\d{2}$/m);
+  });
+
+  test('compare links', () => {
+    assert.match(text, /^\[Unreleased\]: \S+\/compare\/v1\.10\.0\.\.\.HEAD$/m);
+    assert.match(text, /^\[1\.10\.0\]: \S+\/compare\/v1\.9\.0\.\.\.v1\.10\.0$/m);
+    assert.match(text, /^\[1\.9\.0\]: \S+\/compare\/v1\.8\.0\.\.\.v1\.9\.0$/m);
   });
 });

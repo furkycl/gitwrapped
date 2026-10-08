@@ -461,7 +461,6 @@ describe('CHANGELOG [1.9.0]', () => {
     assert.match(m[1], /Late nights/);
     assert.match(m[1], /stats\.merges/);
     assert.match(m[1], /stats\.lateNights/);
-    assert.match(text, /^\[Unreleased\]: \S+\/compare\/v1\.9\.0\.\.\.HEAD$/m);
     assert.match(text, /^\[1\.9\.0\]: \S+\/compare\/v1\.8\.0\.\.\.v1\.9\.0$/m);
   });
 

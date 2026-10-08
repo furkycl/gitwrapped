@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-10-08
+
 ### Added
 
 - Period over period: with `--since` (absolute or relative) and no `--year`, the window
@@ -629,7 +631,8 @@ First public release on npm as `@furkycl/gitwrapped`.
 - On macOS, color emoji are left out of PNG exports, because resvg drew Apple Color Emoji
   far from their text. SVG cards and `wrapped.html` keep them.
 
-[Unreleased]: https://github.com/furkycl/gitwrapped/compare/v1.10.0...HEAD
+[Unreleased]: https://github.com/furkycl/gitwrapped/compare/v1.11.0...HEAD
+[1.11.0]: https://github.com/furkycl/gitwrapped/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/furkycl/gitwrapped/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/furkycl/gitwrapped/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/furkycl/gitwrapped/compare/v1.7.0...v1.8.0

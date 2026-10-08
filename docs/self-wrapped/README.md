@@ -5,7 +5,7 @@ was made by the autonomous agent loop that builds gitwrapped (see `.loop/`), so 
 cards tell the story of the loop itself.
 
 - **Generated:** 2026-10-08
-- **Commits analyzed:** 153 (the full history at the time of the run)
+- **Commits analyzed:** 163 (the full history at the time of the run)
 - **Regenerate:** `npm run self-wrapped` (runs `gitwrapped . --out docs/self-wrapped`),
   then `npm run hero-gif` to rebuild the README's [`docs/hero.gif`](../hero.gif) from
   these cards
@@ -17,24 +17,25 @@ source, so download it and open it in a browser, or paste its raw URL into an HT
 preview service.
 
 The ten cards, as SVG (the repo has a single author after `.mailmap`, so there is no
-team card, and its pairing with its `Co-authored-by:` co-author shows up as a "Paired" row
-on the totals card instead, which leaves no spare room for a "Born / buried" row (the 185
+team card (and so no "Bus factor" row), and its pairing with its `Co-authored-by:` co-author shows up as a "Paired" row
+on the totals card instead, which leaves no spare room for a "Born / buried" row (the 190
 files born and 2 buried are in the recap) or a merges row; its 8 PM power hour is tied
 (and is not a night power hour, so its quip does not give way), and its commits come from
 two UTC offsets, so the power-hour card ends its subtitle with "Committed from 2 time
 zones, mostly UTC+00:00." and has no room left for a "Late nights" row (the 29 late-night
-commits, 19%, latest 4:42 AM on Oct 8, 2026, are in the recap) or an "Office hours" row;
-with two or more active days the streak card has a cadence row ("30.6 per active day ·
+commits, 18%, latest 4:42 AM on Oct 8, 2026, are in the recap) or an "Office hours" row;
+with two or more active days the streak card has a cadence row ("32.6 per active day ·
 every day"); some commits landed on a Sunday, so the activity card has a "Weekends 24
-commits · 16%" row, followed by the "Office hours 54 commits · 35%" row the power-hour
+commits · 15%" row, followed by the "Office hours 60 commits · 37%" row the power-hour
 card had no room for; its changes span several top-level folders, so the hot-files card
 ends with a "Top folders" list (test/, src/, docs/), which leaves no spare room for a
-"Tests" row there, so the languages card has the "Tests 36,726 lines · 62%" row instead;
+"Tests" row there, so the languages card has the "Tests 38,582 lines · 62%" row instead;
 its whole history falls inside one calendar month, so there is no monthly timeline card;
+the run has no `--since`, so there are no "vs prev." rows;
 no commit has an emoji or reverts another, so the messages card has no Emoji or Reverts
 row; the repo has no tags, so the outro has no Releases panel; and the totals card has no
 spare room for a merges row, so the outro has a "Merges" panel instead, in place of its
-"Made with gitwrapped" line, with only the pull-request line ("You merged 74 pull
+"Made with gitwrapped" line, with only the pull-request line ("You merged 79 pull
 requests") because every pull request was squash-merged and there are no merge commits):
 
 ![Intro](cards/01-intro.svg)

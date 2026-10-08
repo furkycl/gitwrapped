@@ -153,4 +153,12 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] Fixup commits: non-merge commits with `fixup!` / `squash!` / `amend!` subjects that reached the history (count + share), folded into the fix / wip / oops row when it fits, stats.json `stats.messages.fixups`, recap and wrapped.md; en/tr; tests
 - 1.13.0 release prep (split as before):
   - [x] Cold audit of the 1.13 work (diff 1.12.0 release commit..main) + fix every real bug found, with tests
-  - [ ] CHANGELOG 1.13.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync
+  - [x] CHANGELOG 1.13.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync
+
+## M20 — 1.14 (proposed by loop turn 089 per the M8 owner note "do not finish the loop"; owner may prune)
+- [ ] Docs share: share of changed lines in documentation files (`docs/`, `doc/` dirs, `*.md`, `*.mdx`, `*.rst`, `*.adoc`, `*.txt` under docs dirs; same ignore rules / `--exclude` as hot files) as a "Docs" row next to "Tests" on the languages or hot-files card when there's room, stats.json `stats.docShare {lines, share}` or null, recap and wrapped.md; en/tr; tests
+- [ ] Dependency bumps: non-merge commits that touch only lockfiles / dependency manifests (the lockfile list in src/stats/files.js plus `package.json`, `go.mod`, `Cargo.toml`, `pyproject.toml`, `requirements*.txt`, `Gemfile`; read from the existing name-status data, not the ignored line counts) — count + share as a row when there's room, stats.json `stats.depBumps {commits, share}` or null, recap and wrapped.md; en/tr; tests
+- [ ] Subject length: median non-merge commit subject length (code points, trimmed) and the share over 72 characters, as a messages-card row when there's room (never displacing existing rows), stats.json `stats.messages.subjectLength {median, over72, share}`, recap and wrapped.md; en/tr; tests
+- 1.14.0 release prep (split as before):
+  - [ ] Cold audit of the 1.14 work (diff 1.13.0 release commit..main) + fix every real bug found, with tests
+  - [ ] CHANGELOG 1.14.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync

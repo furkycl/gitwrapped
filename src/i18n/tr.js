@@ -154,6 +154,7 @@ export default {
       'Mesai sonrası kahramanı.',
       'Gece yarısı ship etmek, gelenektir.',
     ],
+    nightQuip: 'Tam bir gece kuşu.',
     dayTied: (day) => `${day}, en yoğun günlerinden biri.`,
     // A weekday name is lower-case inside a Turkish sentence (pazartesi); dayTied starts
     // the sentence with it, so it stays capitalized there.

@@ -184,6 +184,11 @@ export default {
       'After-hours hero.',
       'Late-night shipping, as is tradition.',
     ],
+    /**
+     * The short quip a night power hour (22:00-04:59) gets in place of its own when that
+     * makes room for the "Late nights" row below the subtitle.
+     */
+    nightQuip: 'Night owl.',
     dayTied: (day) => `${day} is tied for your busiest day.`,
     dayBusiest: (day) => `${day} is your busiest day.`,
     /**

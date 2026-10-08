@@ -286,22 +286,59 @@ describe('power-hour card', () => {
     assert.ok(shown >= 10, `shown on ${shown} cards`);
   });
 
-  test('a night power hour: the row needs more than one step, so it is left out and nothing else changes', () => {
-    // A night hour's quip makes a four-line subtitle: the row would take three shrink steps.
+  test('a night power hour: the short night quip takes the long one\'s place so the row fits', () => {
+    // A night hour's own quip makes a four-line subtitle: the row would take three shrink
+    // steps, so "Night owl." (or no quip) takes its place, with at most one step.
     for (const peak of [22, 23, 0, 1, 2, 3, 4]) {
       const s = clear(peak);
-      for (const lang of ['en', 'tr']) {
+      for (const [lang, L] of [['en', en], ['tr', tr]]) {
         const spec = peakSpec(s, lang);
-        assert.equal(spec.lines, undefined, `${lang} ${peak}`);
-        assert.equal(steps(spec, lang), 0);
-        assert.doesNotMatch(peakSvg(s, lang), /Late nights|Gece mesaisi/);
+        assert.ok((spec.lines ?? []).some(isLate), `${lang} ${peak}`);
+        assert.ok(steps(spec, lang) <= 1, `${lang} ${peak}`);
+        assert.ok(!spec.subtitle.includes(L.peak.quips[0]) && !spec.subtitle.includes(L.peak.quips[6]), spec.subtitle);
+        assert.ok(spec.subtitle.includes(L.peak.nightQuip), spec.subtitle);
+        assert.match(peakSvg(s, lang), lang === 'en' ? /Late nights/ : /Gece mesaisi/);
+        assert.match(peakSvg(s, lang), lang === 'en' ? /Night owl\./ : /Tam bir gece kuşu\./);
       }
     }
-    const s = statsOf([
-      commit('2026-03-02T02:00:00Z'), commit('2026-03-03T02:00:00Z'), commit('2026-03-04T02:00:00Z'),
-      commit('2026-03-05T10:00:00Z'),
-    ]);
-    for (const lang of ['en', 'tr']) assert.equal(peakSpec(s, lang).lines, undefined);
+    // 1,000+ commits in Turkish: even the short quip leaves no room, so the quip goes.
+    const cs = [];
+    for (let i = 0; i < 1200; i++) cs.push(commit(`2026-03-${String(2 + 7 * (i % 4)).padStart(2, '0')}T01:${String(10 + (i % 40)).padStart(2, '0')}:00+03:00`));
+    for (let i = 1; i < 20; i++) cs.push(commit(`2026-04-${String(i).padStart(2, '0')}T${String((4 + i) % 24).padStart(2, '0')}:10:00+03:00`));
+    const big = statsOf(cs);
+    assert.equal(peakSpec(big, 'tr').subtitle, '1.200 commit saat 01:00 sularında geldi. En yoğun günün pazartesi.');
+    assert.ok(peakSpec(big, 'tr').lines.some(isLate));
+    assert.ok(peakSpec(big, 'en').subtitle.includes('Night owl.'));
+    assert.ok(peakSpec(big, 'en').lines.some(isLate));
+  });
+
+  test('a night power hour without late-night commits, or a day one, keeps its own quip', () => {
+    // 23:00 peak, nothing between 00:00 and 04:59: no row, so the long quip stays.
+    const cs = [];
+    for (let i = 0; i < 10; i++) cs.push(commit(`2026-03-${String(2 + 7 * (i % 4)).padStart(2, '0')}T23:${10 + i}:00+03:00`));
+    for (let i = 1; i < 10; i++) cs.push(commit(`2026-04-${String(i).padStart(2, '0')}T${String(8 + i).padStart(2, '0')}:10:00+03:00`));
+    const s = statsOf(cs);
+    assert.equal(s.lateNights.commits, 0);
+    for (const [lang, L] of [['en', en], ['tr', tr]]) {
+      const spec = peakSpec(s, lang);
+      assert.equal(spec.lines, undefined);
+      assert.ok(spec.subtitle.includes(L.peak.quips[6]), spec.subtitle);
+    }
+    // Day power hours never get the night quip.
+    for (let peak = 5; peak < 22; peak++) {
+      for (const [lang, L] of [['en', en], ['tr', tr]]) assert.ok(!peakSpec(clear(peak), lang).subtitle.includes(L.peak.nightQuip), `${lang} ${peak}`);
+    }
+  });
+
+  test('a night power hour with time zones still shows them (the quip had already given way)', () => {
+    for (const peak of [23, 1]) {
+      for (const [lang, L] of [['en', en], ['tr', tr]]) {
+        const spec = peakSpec(clear(peak, { tz: true }), lang);
+        const shown = spec.subtitle.includes(L.peak.timezones(2, 'UTC+03:00')) || (spec.lines ?? []).some((r) => r.label === L.recap.timezonesValue(2));
+        assert.ok(shown, `${lang} ${peak}: ${spec.subtitle}`);
+        assert.ok(!spec.subtitle.includes(L.peak.nightQuip));
+      }
+    }
   });
 });
 

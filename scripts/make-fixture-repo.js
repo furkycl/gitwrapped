@@ -35,7 +35,7 @@ const f = (path, added, removed, binary = false) => ({ path, added, removed, bin
 
 // Oldest first. `files` is the expected `git log --numstat --no-renames` result, in git's
 // path order; `born` / `buried` the paths it adds / deletes (renames excluded, see
-// readLifecycle in src/git.js), only when there are any. Dates use explicit offsets so the history is the same in every timezone.
+// readLifecycle in src/git.js) and `renamed` its renames (`[{from, to}]`), only when there are any. Dates use explicit offsets so the history is the same in every timezone.
 const STEPS = [
   {
     subject: 'feat: initial commit',
@@ -90,12 +90,13 @@ const STEPS = [
   },
   {
     // A rename shows up as delete + add because readCommits passes --no-renames; it is
-    // neither born nor buried (readLifecycle detects renames).
+    // neither born nor buried but renamed (readLifecycle detects renames).
     subject: 'refactor: move app to main',
     by: 'bob',
     date: '2024-03-13T12:00:00+00:00',
     move: [['src/app.js', 'src/main.js']],
     files: [f('src/app.js', 0, 7), f('src/main.js', 7, 0)],
+    renamed: [{ from: 'src/app.js', to: 'src/main.js' }],
   },
 ];
 
@@ -163,6 +164,7 @@ export function makeFixtureRepo({ dir } = {}) {
         linesRemoved: files.reduce((n, x) => n + x.removed, 0),
         ...(step.born ? { born: [...step.born] } : {}),
         ...(step.buried ? { buried: [...step.buried] } : {}),
+        ...(step.renamed ? { renamed: step.renamed.map((r) => ({ ...r })) } : {}),
       });
     }
     return { dir, cleanup, commits: commits.reverse() };

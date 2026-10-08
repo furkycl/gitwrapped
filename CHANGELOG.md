@@ -33,6 +33,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   section after the reverts, both with the biggest one's subject, lines and day, and
   `stats.json` gets `stats.cleanups` (`{commits, share, biggest: {hash, subject, date,
   linesAdded, linesRemoved, net}}`, or `null`). English and Turkish.
+- Renames: files renamed or moved in the window (git's rename detection, as already used
+  to keep renames out of files born / buried; copies are not counted; the same files as
+  hot files, judged by the new path, so a move into `vendor/` or an `--exclude`d folder
+  does not count; merge commits skipped; with several repos, the sum). `stats.json` gets
+  `stats.fileLifecycle.renamed` (`{added, deleted, renamed}`), the recap's "Files" line
+  " · 4 renamed" and `wrapped.md`'s "Files born / buried" item ", 4 renamed" when there are
+  any. The totals card's born / buried row becomes "Born / buried / renamed  12 / 3 / 4"
+  when that is drawn whole, else stays as it was; without renames every card is unchanged.
+  English and Turkish ("taşındı").
 
 ## [1.11.0] - 2026-10-08
 

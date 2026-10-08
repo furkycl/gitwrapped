@@ -260,6 +260,7 @@ export default {
     coChangeValue: (a, b, commits) => `${a} + ${b} · ${num(commits)}×`,
     coChangePair: (a, b) => `${a} + ${b}`,
     coChangeTimes: (commits) => `${num(commits)} kez birlikte`,
+    coChangeTimesShort: (commits) => `${num(commits)}×`,
     coChangeDescription: (a, b, commits) => `${a} ve ${b}, ${num(commits)} commit'te birlikte değişti`,
   },
 

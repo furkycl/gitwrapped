@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Middle-elided paths on cards: a hot file's folder, the outro's hottest file and the
+  co-change pair, when too long, are shortened as "first/…/file.js" (the first folder,
+  in a multi-repo run the repo label, and the nearest folders that fit) before being cut
+  from the start; the co-change row, which used to be left out when the two same-name
+  paths did not fit, now tries these forms (keeping folders until the two names differ)
+  before it is dropped. When the pair shares leading folders ("packages/core/…" and
+  "packages/web/…"), it also tries names that start at the folder where the two differ
+  ("core/…/index.js + web/…/index.js"), and a shorter value ("a.js + b.js  12×") as a last
+  shape; a long pair can still be left out. Two listed hot files with the same name in
+  folders that share leading folders get their folders shortened from where they differ
+  ("core-x/…/forms/" and "web-y/…/forms/"), so they never read alike when that fits.
+  Top folders are single folder names, so a long one keeps its cut in the middle.
+  Tooltips, the recap, `wrapped.md` and `stats.json` keep the full paths.
+
 ## [1.12.0] - 2026-10-08
 
 ### Added

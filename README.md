@@ -266,7 +266,8 @@ both.
 With `--since` (an absolute date or a relative window like `30d`) and no `--year`,
 gitwrapped compares the window with the same number of days just before it: for
 `--since 2026-09-09` on 2026-10-08 (30 days, today included), that is 2026-08-10 to
-2026-09-08. The window ends at `--until`, or today without it; an `--until` after today
+2026-09-08. `--since 30d` covers 31 days, today included, so it is compared with the 31
+days before. The window ends at `--until`, or today without it; an `--until` after today
 counts only up to today (`--since 2026-10-01 --until 2026-12-31` on 2026-10-08 compares
 8 days with the 8 before), and a window that starts after today is not compared. The
 days are plain calendar days (month lengths and leap days count as they fall), so a

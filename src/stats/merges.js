@@ -14,6 +14,9 @@ const TRAILING_PR = /\((?:pull request )?#(\d+)\)$/;
 /** Most significant digits a PR number may have (leading zeros aside); longer is noise. */
 const MAX_DIGITS = 9;
 
+/** The non-enumerable key computeMerges keeps the exact (unrounded) share under (see shownMerges). */
+const EXACT = Symbol('merges.exactShare');
+
 /** `digits` as a PR number: a positive integer of at most MAX_DIGITS digits once leading zeros are dropped, else null. */
 function prNumber(digits) {
   const d = typeof digits === 'string' ? digits.replace(/^0+/, '') : '';
@@ -66,7 +69,9 @@ export function computeMerges(commits) {
     if (pr !== null) prs.add(`${typeof c.repo === 'string' ? c.repo : ''}\u0000${pr}`);
   }
   const share = total > 0 ? Math.min(Math.round((merges / total) * 1000) / 1000, merges < total ? 0.999 : 1) : 0;
-  return { commits: merges, share, pullRequests: prs.size };
+  // The exact ratio rides along non-enumerably, so shownMerges rounds once while
+  // stats.json (and any JSON copy) keeps exactly `{commits, share, pullRequests}`.
+  return Object.defineProperty({ commits: merges, share, pullRequests: prs.size }, EXACT, { value: total > 0 ? merges / total : 0 });
 }
 
 /** A shown count: a finite positive number rounded to an integer, anything else 0. */
@@ -75,7 +80,8 @@ const shownCount = (n) => (typeof n === 'number' && Number.isFinite(n) && n > 0 
 /**
  * The merges the totals card, the recap and wrapped.md show for `stats.merges`:
  * `{commits, pullRequests, pct}` (pct = share as a percent for shareLabel in
- * stats/contributors.js: below 100 unless the share is exactly 1, every commit a merge), or null when there is no object or neither a merge commit nor a
+ * stats/contributors.js, from the exact ratio computeMerges keeps, else from `share`:
+ * below 100 unless the share is exactly 1, every commit a merge), or null when there is no object or neither a merge commit nor a
  * pull request. All outputs use this, so they agree.
  */
 export function shownMerges(stat) {
@@ -83,9 +89,14 @@ export function shownMerges(stat) {
   const commits = shownCount(stat.commits);
   const pullRequests = shownCount(stat.pullRequests);
   if (commits === 0 && pullRequests === 0) return null;
-  const raw = typeof stat.share === 'number' && Number.isFinite(stat.share) ? Math.min(Math.max(stat.share, 0), 1) : 0;
+  // The percent comes from the exact ratio when computeMerges recorded it, so a 3-decimal
+  // share is not rounded twice (45 of 10,000 would read "1%"); else (e.g. a JSON copy)
+  // from `share`.
+  const exact = stat[EXACT];
+  const ratio = typeof exact === 'number' && Number.isFinite(exact) ? exact : stat.share;
+  const raw = typeof ratio === 'number' && Number.isFinite(ratio) ? Math.min(Math.max(ratio, 0), 1) : 0;
   // 1 (100%) only when every commit is a merge, i.e. a share of exactly 1 from computeMerges;
   // a malformed share above 1 is read as "almost all" (shown 99%, see shareLabel).
-  const share = stat.share === 1 ? 1 : Math.min(raw, 0.999);
+  const share = ratio === 1 ? 1 : Math.min(raw, 0.999);
   return { commits, pullRequests, pct: commits > 0 ? share * 100 : 0 };
 }

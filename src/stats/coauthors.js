@@ -1,6 +1,6 @@
 // Pairing: commits with `Co-authored-by:` trailers, and who the co-authors are.
 // Pure function over readCommits() output. Names only: no email ever leaves this module.
-import { contributorName, TOP_CONTRIBUTORS } from './contributors.js';
+import { contributorName, EXACT_PERCENT, TOP_CONTRIBUTORS } from './contributors.js';
 import { isMergeCommit } from './messages.js';
 
 /** How many co-authors `top` lists (as many as the team card's top contributors). */
@@ -83,24 +83,33 @@ export function computeCoAuthors(commits) {
   people.sort((a, b) => b.commits - a.commits
     || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)
     || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
-  return {
+  const result = {
     paired,
     commits: all,
     share: percent(paired, all),
     total: people.length,
     top: people.slice(0, TOP_CO_AUTHORS).map(({ name, commits: n }) => ({ name, commits: n })),
   };
+  // The exact percent rides along non-enumerably, so shownCoAuthors rounds once while
+  // stats.json (and any JSON copy) keeps the one-decimal share.
+  return Object.defineProperty(result, EXACT_PERCENT, { value: all > 0 ? (paired / all) * 100 : 0 });
 }
 
 /**
  * The pairing as shown on the cards, the recap and wrapped.md: `{paired, share, top}`
  * (top: the first co-author's name, or null) when at least one commit was paired, else
- * null. Tolerates any shape (stats.json written by hand, older stats).
+ * null. `share` is the one-decimal percent; the exact one computeCoAuthors keeps rides
+ * along under EXACT_PERCENT (see exactPercent in contributors.js). Tolerates any shape (stats.json written by hand, older stats).
  */
 export function shownCoAuthors(co) {
   const paired = typeof co?.paired === 'number' && Number.isFinite(co.paired) ? Math.floor(co.paired) : 0;
   if (paired <= 0) return null;
   const first = Array.isArray(co.top) ? co.top[0] : null;
   const share = typeof co.share === 'number' && Number.isFinite(co.share) && co.share > 0 ? co.share : 0;
-  return { paired, share, top: contributorName(first?.name) };
+  const shown = { paired, share, top: contributorName(first?.name) };
+  // The exact percent computeCoAuthors keeps (none on a JSON copy: exactPercent then
+  // falls back to `share`), so the shown whole percent is rounded once.
+  const exact = co[EXACT_PERCENT];
+  if (typeof exact === 'number' && Number.isFinite(exact)) Object.defineProperty(shown, EXACT_PERCENT, { value: Math.min(Math.max(exact, 0), 100) });
+  return shown;
 }

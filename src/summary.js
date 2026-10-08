@@ -14,7 +14,7 @@ import { epochDay } from './stats/time.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
-import { busFactorShareText, cleanupShareText, conventionalText, emojiShareText, folderLabel, mergeShareText, revertShareText, sizeShareText, testsShareText } from './cards/index.js';
+import { busFactorShareText, cleanupShareText, conventionalText, emojiShareText, folderLabel, issueRefsShareText, mergeShareText, revertShareText, sizeShareText, testsShareText } from './cards/index.js';
 import { shownMerges } from './stats/merges.js';
 import { shownFolders } from './stats/folders.js';
 import { shownTests } from './stats/tests.js';
@@ -22,6 +22,7 @@ import { shownCoChange } from './stats/cochange.js';
 import { shownEmoji } from './stats/emoji.js';
 import { shownReverts } from './stats/reverts.js';
 import { shownCleanups } from './stats/cleanups.js';
+import { issueRefLabel, shownIssueRefs } from './stats/issues.js';
 import { shownFileLifecycle } from './stats/files.js';
 import { shownTimezones, utcLabel } from './stats/timezones.js';
 import { shownWeekend, weekendPercentLabel } from './stats/weekend.js';
@@ -233,6 +234,10 @@ function shortText(s, maxWidth = 48) {
  * and day ("12 commits (8% of non-merge commits) · biggest "drop the old parser" (−4,210
  * lines · Mar 3, 2026)"; stats.cleanups, see stats/cleanups.js shownCleanups) when there
  * is at least one.
+ * An "Issue refs" line shows how many non-merge commits mention an issue in the subject,
+ * their share of non-merge commits and the most referenced issue ("42 commits (12% of
+ * non-merge commits) · top #128 (9 commits)"; stats.issueRefs, see stats/issues.js
+ * shownIssueRefs) when there is at least one.
  * A "Team" line (top contributor, or the --author's rank) appears exactly when the
  * contributors card is built (see hasTeamCard in stats/contributors.js), followed by a
  * "Bus factor" line ("2 people (58% of lines changed)": the fewest authors who made at
@@ -521,6 +526,15 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
         biggest = ` ${c('dim', '·')} ${R.biggestCleanup} ${c('cyan', subject)} ${c('dim', `(${signed(b.net, '−', L)} ${R.lines}${when})`)}`;
       }
       lines.push(`  ${label(R.cleanups)}${plural(cleanups.commits, 'commit', L)} ${c('dim', `(${R.ofNonMerge(cleanupShareText(cleanups, L))})`)}${biggest}`);
+    }
+
+    // Commits that mention an issue (stats.issueRefs), as on the messages card, with the
+    // most referenced one; only with any.
+    const issues = shownIssueRefs(stats?.issueRefs);
+    if (issues) {
+      const t = issues.top;
+      const top = t ? ` ${c('dim', '·')} ${R.topIssue(c('cyan', shortText(issueRefLabel(t), 40)), plural(t.commits, 'commit', L))}` : '';
+      lines.push(`  ${label(R.issueRefs)}${plural(issues.commits, 'commit', L)} ${c('dim', `(${R.ofNonMerge(issueRefsShareText(issues, L))})`)}${top}`);
     }
 
     const a = stats?.personality?.archetype;

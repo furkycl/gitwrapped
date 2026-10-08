@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Issue references: how many non-merge commits mention an issue in their subject (`#123`,
+  `GH-123` or a Jira-style key such as `ABC-123`; not inside URLs, commit hashes or email
+  addresses, and not `UTF-8`-style names), their share of non-merge commits and the most
+  referenced issue (`stats.issueRefs {commits, share, top: {ref, commits}}`, or null). The
+  message hall of fame gets an "Issue refs (top #128 ×9)  42 · 12%" row ("Issue atıfları"
+  in Turkish) as its lowest-priority row, only in spare room (else with the fix / wip /
+  oops counts folded); the recap and `wrapped.md` get an "Issue refs" / "Issue references"
+  line. Without issue references every output is exactly as before.
+
 ### Changed
 
 - Middle-elided paths on cards: a hot file's folder, the outro's hottest file and the

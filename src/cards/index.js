@@ -32,6 +32,7 @@ import { shownFolders } from '../stats/folders.js';
 import { shownTests } from '../stats/tests.js';
 import { shownCoChange } from '../stats/cochange.js';
 import { shownCleanups } from '../stats/cleanups.js';
+import { issueRefLabel, shownIssueRefs } from '../stats/issues.js';
 import { sizeShares } from '../stats/sizes.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from '../i18n/index.js';
 import { DEFAULT_COLOR_THEME, isColorTheme } from './themes.js';
@@ -1679,7 +1680,75 @@ function messages(s, ctx) {
   // The cleanup rows (stats.cleanups) go here or on the totals card, never both (see
   // cleanupsPlacement); without them the card is exactly messagesBase's.
   const place = cleanupsPlacement(s, ctx);
-  return place?.card === 'messages' ? place.spec : messagesBase(s, ctx).card;
+  const base = messagesBase(s, ctx);
+  const spec = place?.card === 'messages' ? place.spec : base.card;
+  // The issue references row (stats.issueRefs) last of all, in spare room only.
+  const rows = issueRefsRows(s, ctx.L);
+  return rows ? withIssueRefs(spec, rows, base.parts, ctx.L) : spec;
+}
+
+/**
+ * An issue-references share (shownIssueRefs output) as shown: a whole percent of the
+ * non-merge commits, "<1%" when it rounds to 0, never "100%" short of every commit (see
+ * shareLabel). Used by the messages card, the recap and wrapped.md, so they agree.
+ */
+export const issueRefsShareText = (r, L = EN) => shareLabel(r?.pct, r?.commits, L.pct);
+
+/**
+ * The messages card's issue references row (stats.issueRefs, see shownIssueRefs) in each
+ * form drawn whole (see rowFits), longest first: "Issue refs (top #128 ×9)" and "42 · 12%"
+ * (the count, its share of non-merge commits, and the most referenced issue, "web#128"
+ * with a repo label), then "Issue refs" and "42 · 12% (#128 ×9)", then "Issue refs" and
+ * "42 · 12%" (the only form without a shown top, see shownIssueRefs). Null without
+ * referencing commits, or when even the short form would be cut. The hover text has it all.
+ */
+function issueRefsRows(s, L) {
+  const r = shownIssueRefs(s?.issueRefs);
+  if (!r) return null;
+  const M = L.messages;
+  const pct = issueRefsShareText(r, L);
+  const ref = r.top ? text(plain(issueRefLabel(r.top))) : null;
+  const times = r.top ? r.top.commits : 0;
+  const description = M.issueRefsDescription(r.commits, pct, ref, times);
+  const forms = [
+    ...(ref ? [[M.issueRefsTitle(ref, times), M.issueRefsValue(r.commits, pct, null, 0)], [M.issueRefsTitle(null, 0), M.issueRefsValue(r.commits, pct, ref, times)]] : []),
+    [M.issueRefsTitle(null, 0), M.issueRefsValue(r.commits, pct, null, 0)],
+  ];
+  const rows = forms.map(([label, value]) => ({ label, value, description })).filter((row) => rowFits(row));
+  return rows.length > 0 ? rows : null;
+}
+
+/**
+ * The messages card `spec` (as messages() built it, cleanup rows included) with the issue
+ * references row after every other row, in the first of these that fits as well as `spec`
+ * did (see fitsLike: at most 6 rows, every chart still drawn), each with the longest row
+ * form that fits (see issueRefsRows):
+ * 1. after the rows as they are;
+ * 2. with the "fix" / "wip" / "oops" rows folded into one (`parts.folded`'s last row, in
+ *    the place of the first of them), when they are all still there (`parts.card`'s last
+ *    three rows; the rows after them are kept);
+ * 3. either of those with the big word one step (15%) smaller, when nothing shrank.
+ * It never takes the place of any row or chart, so without room (or without rows: no
+ * subjects) the card is `spec` itself, byte-identical.
+ */
+function withIssueRefs(spec, rows, parts, L) {
+  if (!Array.isArray(spec.lines) || !Array.isArray(parts?.folded)) return spec;
+  const layouts = [spec.lines];
+  const counters = Array.isArray(parts.card?.lines) ? parts.card.lines.slice(-3) : [];
+  const at = spec.lines.indexOf(counters[0]);
+  if (counters.length === 3 && at >= 0 && counters.every((r, i) => spec.lines[at + i] === r)) {
+    layouts.push([...spec.lines.slice(0, at), parts.folded.at(-1), ...spec.lines.slice(at + 3)]);
+  }
+  const steps = layoutOf({ ...spec, lang: L.code }).shrinkSteps === 0 ? [0, 1] : [0];
+  for (const more of steps) {
+    for (const lines of layouts) {
+      for (const row of rows) {
+        const next = { ...spec, lines: [...lines, row] };
+        if (fitsLike(next, spec, more, L)) return next;
+      }
+    }
+  }
+  return spec;
 }
 
 /** The messages card without the cleanup rows (`card`), and messagesCard's parts (`parts`: its card and folded rows). */

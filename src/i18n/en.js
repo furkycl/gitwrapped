@@ -424,6 +424,15 @@ export default {
     /** The reverts row (stats.reverts): caption, then the count and its share of non-merge commits ("3 · 2%"). */
     revertsTitle: 'Reverts',
     revertsValue: (count, pct) => `${num(count)} · ${pct}`,
+    /**
+     * The issue references row (stats.issueRefs), in spare room only, after every other
+     * row: "Issue refs (top #128 ×9)" and "42 · 12%" (the count and its share of non-merge
+     * commits), else "Issue refs" and "42 · 12% (#128 ×9)", else "Issue refs" and
+     * "42 · 12%" when the longer forms would be cut; its hover text says it in words.
+     */
+    issueRefsTitle: (ref, times) => (ref ? `Issue refs (top ${ref} ×${num(times)})` : 'Issue refs'),
+    issueRefsValue: (count, pct, ref, times) => `${num(count)} · ${pct}${ref ? ` (${ref} ×${num(times)})` : ''}`,
+    issueRefsDescription: (count, pct, ref, times) => `${plural(count, UNITS.commit)} ${count === 1 ? 'mentions' : 'mention'} an issue (${pct} of non-merge commits)${ref ? `; most referenced: ${ref} (${plural(times, UNITS.commit)})` : ''}`,
   },
 
   personality: {
@@ -656,6 +665,9 @@ export default {
      */
     cleanups: 'Cleanups',
     biggestCleanup: 'biggest',
+    /** The issue references line (stats.issueRefs): label, "42 commits", "(12% of non-merge commits)", then "· top #128 (9 commits)". */
+    issueRefs: 'Issue refs',
+    topIssue: (ref, commits) => `top ${ref} (${commits})`,
     you: 'You are',
     cardsIn: (count, dir) => `${count} in ${dir}`,
     shareImage: 'share image:',
@@ -729,6 +741,9 @@ export default {
      */
     cleanups: 'Cleanups',
     biggestCleanup: 'biggest:',
+    /** The issue references item (stats.issueRefs): "42 commits (12% of non-merge commits); most referenced: #128 (9 commits)". */
+    issueRefs: 'Issue references',
+    topIssue: 'most referenced:',
     /** The pairing item (stats.coAuthors): "12 commits (31% of non-merge commits), top co-author: Ada". */
     paired: 'Paired',
     topCoAuthor: (name) => `top co-author: ${name}`,

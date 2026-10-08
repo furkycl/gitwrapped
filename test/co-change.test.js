@@ -167,7 +167,8 @@ describe('stats.coChange', () => {
     const s = stats(roomy());
     assert.deepEqual(s.coChange, { files: ['src/a.js', 'src/b.js'], commits: 3 });
     const keys = Object.keys(s);
-    assert.equal(keys[keys.indexOf('tests') + 1], 'coChange');
+    assert.equal(keys[keys.indexOf('tests') + 1], 'docShare');
+    assert.equal(keys[keys.indexOf('docShare') + 1], 'coChange');
     const doc = JSON.parse(buildStatsJson({ stats: s, repoName: 'demo', version: '0.0.0', asOf: TODAY }));
     assert.deepEqual(doc.stats.coChange, { files: ['src/a.js', 'src/b.js'], commits: 3 });
     assert.equal(JSON.parse(buildStatsJson({ stats: stats([]), repoName: 'demo' })).stats.coChange, null);

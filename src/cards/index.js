@@ -30,6 +30,7 @@ import { shownFileLifecycle } from '../stats/files.js';
 import { shownMerges } from '../stats/merges.js';
 import { shownFolders } from '../stats/folders.js';
 import { shownTests } from '../stats/tests.js';
+import { shownDocShare } from '../stats/docs.js';
 import { shownCoChange } from '../stats/cochange.js';
 import { shownCleanups } from '../stats/cleanups.js';
 import { issueRefLabel, shownIssueRefs } from '../stats/issues.js';
@@ -1147,7 +1148,13 @@ const shownHotFiles = (s) => (Array.isArray(s?.hotFiles) ? s.hotFiles : [])
   .filter((f) => typeof f?.path === 'string' && text(scrubEmails(f.path)))
   .map((f) => ({ ...f, path: scrubEmails(f.path) }));
 
-function hotFiles(s, { L, repos }) {
+function hotFiles(s, ctx) {
+  const spec = hotFilesBase(s, ctx);
+  return docsCard(s, ctx) === 'hot-files' ? withDocsRow(spec, docsRow(s, ctx.L), s, ctx.L) : spec;
+}
+
+/** The hot-files card without the docs-share row (see hotFiles, docsCard). */
+function hotFilesBase(s, { L, repos }) {
   const H = L.hotFiles;
   const files = shownHotFiles(s);
   if (files.length === 0) {
@@ -1280,8 +1287,68 @@ export const testsShareText = (t, L = EN) => weekendPercentLabel(t?.percent ?? 0
 export function testsOnHotFiles(s, ctx) {
   const row = testsRow(s ?? {}, ctx.L);
   if (!row) return false;
-  const lines = hotFiles(s ?? {}, ctx).lines;
+  const lines = hotFilesBase(s ?? {}, ctx).lines;
   return Array.isArray(lines) && lines.some((r) => r?.label === row.label && r?.value === row.value);
+}
+
+/**
+ * The docs-share row (stats.docShare, see shownDocShare) for the hot-files or languages
+ * card, as testsRow: "Docs" and "1,234 lines · 23%", or "1,234 · 23%" when the full value
+ * would be cut; null without a changed doc line, or when even the short value would be cut.
+ */
+function docsRow(s, L) {
+  const d = shownDocShare(s?.docShare);
+  if (!d) return null;
+  const H = L.hotFiles;
+  const pct = testsShareText(d, L);
+  const full = H.docsValue(d.lines, pct);
+  const row = { label: H.docs, value: rowValueFits(full) ? full : H.docsShort(d.lines, pct), description: H.docsDescription(d.lines, pct) };
+  return rowFits(row) ? row : null;
+}
+
+/**
+ * `spec` (a hot-files or languages card without the docs row) with the docs `row` right
+ * after its "Tests" row, or, without one, before the hot-files card's co-change row, else
+ * last, when that fits on withRoomyRow's terms (at most 6 rows, the same charts drawn,
+ * nothing shrinking more); else `spec` itself. Every row already on the card stays: the
+ * docs row only ever takes spare room.
+ */
+function withDocsRow(spec, row, s, L) {
+  const lines = Array.isArray(spec.lines) ? spec.lines : [];
+  if (!row || lines.length >= MAX_ROWS) return spec;
+  const same = (a, b) => a && b && a.label === b.label && a.value === b.value;
+  const tests = testsRow(s, L);
+  const pair = coChangeRow(s, L);
+  let at = lines.findIndex((r) => same(r, tests));
+  if (at >= 0) at += 1;
+  else at = lines.findIndex((r) => same(r, pair));
+  if (at < 0) at = lines.length;
+  const next = { ...spec, lines: [...lines.slice(0, at), row, ...lines.slice(at)] };
+  const base = layoutOf({ ...spec, lang: L.code });
+  const l = layoutOf({ ...next, lang: L.code });
+  const fits = l.drawnCharts.length === base.drawnCharts.length && l.drawnCharts.every((x, i) => x === base.drawnCharts[i]);
+  return fits && l.shrinkSteps <= base.shrinkSteps ? next : spec;
+}
+
+/**
+ * Which card shows the docs-share row: 'hot-files', 'languages' or null (no row, or no
+ * room on either). The card the "Tests" row is on is tried first (the hot-files card when
+ * neither has it, as for the tests row), then the other; on each it only takes spare room
+ * (see withDocsRow), after every other row is placed, so it never displaces one.
+ */
+export function docsCard(s, ctx) {
+  const row = docsRow(s ?? {}, ctx.L);
+  if (!row) return null;
+  const hot = shownHotFiles(s ?? {}).length > 0 ? hotFilesBase(s ?? {}, ctx) : null;
+  const lang = languagesBase(s ?? {}, ctx);
+  const tests = testsRow(s ?? {}, ctx.L);
+  const testsOnLanguages = !!tests && Array.isArray(lang.lines) && lang.lines.some((r) => r?.label === tests.label && r?.value === tests.value);
+  const candidates = [['hot-files', hot], ['languages', lang.chart ? lang : null]];
+  if (testsOnLanguages) candidates.reverse();
+  for (const [id, spec] of candidates) {
+    if (spec && withDocsRow(spec, row, s ?? {}, ctx.L) !== spec) return id;
+  }
+  return null;
 }
 
 /** How many folders the hot-files card lists at most (stats.folders keeps five). */
@@ -1437,6 +1504,12 @@ function languageBars(h, L) {
 }
 
 function languages(s, ctx) {
+  const spec = languagesBase(s, ctx);
+  return docsCard(s, ctx) === 'languages' ? withDocsRow(spec, docsRow(s, ctx.L), s, ctx.L) : spec;
+}
+
+/** The languages card without the docs-share row (see languages, docsCard). */
+function languagesBase(s, ctx) {
   const spec = languagesCard(s, ctx);
   // The test share (stats.tests) when the hot-files card had no room for it (see
   // testsOnHotFiles), on the same terms: in spare room only, else the card is unchanged.

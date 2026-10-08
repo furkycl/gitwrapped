@@ -16,6 +16,7 @@ import { shownFixups } from './stats/messages.js';
 import { shownFileLifecycle } from './stats/files.js';
 import { shownFolders } from './stats/folders.js';
 import { shownTests } from './stats/tests.js';
+import { shownDocShare } from './stats/docs.js';
 import { shownCoChange } from './stats/cochange.js';
 import { shownTimezones, utcLabel } from './stats/timezones.js';
 import { shownWeekend, weekendPercentLabel } from './stats/weekend.js';
@@ -117,7 +118,8 @@ const item = (label, value) => `- **${label}:** ${value}`;
  * A "Top folders" table (stats.folders: folder, lines added / removed, commits) follows the
  * hot files when there are two or more folders.
  * A "Test lines" item in the numbers ("1,234 lines (23% of lines changed)"; stats.tests,
- * see stats/tests.js shownTests) shows when at least one test line changed.
+ * see stats/tests.js shownTests) shows when at least one test line changed, then a "Doc
+ * lines" item the same for documentation files (stats.docShare, see stats/docs.js).
  * A "Changed together" item follows the hot-files table ("src/a.js + src/b.js (12
  * commits)"; stats.coChange, see stats/cochange.js shownCoChange) when a pair shares at
  * least 3 commits.
@@ -172,6 +174,8 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
     // Lines changed in test files and their share (stats.tests), as in the recap; only with any.
     const tests = shownTests(stats?.tests);
     if (tests) numbers.push(item(escapeMarkdown(M.tests), `${plural(tests.lines, 'line', L)} (${L.recap.ofLinesChanged(testsShareText(tests, L))})`));
+    const docs = shownDocShare(stats?.docShare);
+    if (docs) numbers.push(item(escapeMarkdown(M.docs), `${plural(docs.lines, 'line', L)} (${L.recap.ofLinesChanged(testsShareText(docs, L))})`));
     const yoy = yearOverYear(stats);
     if (yoy) numbers.push(item(escapeMarkdown(L.recap.vsYear(yoy.previousYear)), escapeMarkdown(L.yoy.changes(yoy.commits, yoy.lines, yoy.activeDays))));
     // --since: the change since the equal-length window before it (stats.previousPeriod).

@@ -198,7 +198,9 @@ describe('cards', () => {
   test('never displaces anything: same charts drawn, no extra shrinking, on whichever card shows it', () => {
     const cases = [roomy(), busy(), crowded(), [...busy(), ...crowded().map((c, i) => ({ ...c, hash: H(50 + i) }))]];
     for (const commits of cases) {
-      const s = computeStats(commits, { today: TODAY });
+      // Without the docs-share row (test/docs-share.test.js covers it), which would take the
+      // tests row's spare room when that is left out.
+      const s = { ...computeStats(commits, { today: TODAY }), docShare: null };
       for (const lang of ['en', 'tr']) {
         for (const opts of [{}, { colorTheme: 'mono' }]) {
           let shown = 0;

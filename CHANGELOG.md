@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Docs share: lines changed in documentation files (any file under a `docs/` or `doc/`
+  folder, plus `*.md`, `*.mdx`, `*.rst` and `*.adoc` anywhere, extensions in any case)
+  and their share of all lines changed, over the same files as the hot files (same ignore
+  rules and `--exclude`) (`stats.docShare {lines, share}`, or null). A "Docs" row follows
+  the "Tests" row on the hot-files or languages card when there is spare room (it never
+  displaces a row); the recap gets a "Docs" line ("Dokümanlar") and `wrapped.md` a
+  "Doc lines" item ("Doküman satırları"). A file such as `test/README.md` counts in both
+  the test and the docs share. Without doc lines every card is unchanged.
+
 ## [1.13.0] - 2026-10-08
 
 ### Added

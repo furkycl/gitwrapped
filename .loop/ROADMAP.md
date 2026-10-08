@@ -145,4 +145,12 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] Renames: files renamed in the window (`R` status from the existing name-status read, same ignore rules) added to the files born/buried row when it fits, stats.json `stats.fileLifecycle.renamed`, recap and wrapped.md; en/tr; tests
 - 1.12.0 release prep (split as before):
   - [x] Cold audit of the 1.12 work (diff 1.11.0 release commit..main) + fix every real bug found, with tests
-  - [ ] CHANGELOG 1.12.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync
+  - [x] CHANGELOG 1.12.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync
+
+## M19 — 1.13 (proposed by loop turn 084 per the M8 owner note "do not finish the loop"; owner may prune)
+- [ ] Middle-elided paths on cards: when a path (hot files, co-change pair, top folders) would be cut, shorten it as `first/…/file.js` (keep the first folder and the file name, then the nearest folders that fit) before falling back to dropping the row; same-name files keep enough folders to differ; en/tr layout fit tests
+- [ ] Issue references: non-merge commits whose subject mentions an issue (`#123`, `GH-123`, `ABC-123` Jira-style keys; not inside URLs or hashes) — count + share and the most referenced issue, as a messages-card row when there's room, stats.json `stats.issueRefs {commits, share, top: {ref, commits}}` or null, recap and wrapped.md; en/tr; tests
+- [ ] Fixup commits: non-merge commits with `fixup!` / `squash!` / `amend!` subjects that reached the history (count + share), folded into the fix / wip / oops row when it fits, stats.json `stats.messages.fixups`, recap and wrapped.md; en/tr; tests
+- 1.13.0 release prep (split as before):
+  - [ ] Cold audit of the 1.13 work (diff 1.12.0 release commit..main) + fix every real bug found, with tests
+  - [ ] CHANGELOG 1.13.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync

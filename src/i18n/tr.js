@@ -234,6 +234,10 @@ export default {
     rootFolder: '(kök)',
     folderValue: (lines) => plural(lines, UNITS.line),
     folderBarTitle: (path, lines, added, removed, commits) => `${path}: ${plural(commits, UNITS.commit)} içinde ${plural(lines, UNITS.line)} değişti (${added} / ${removed})`,
+    tests: 'Testler',
+    testsValue: (lines, pct) => `${plural(lines, UNITS.line)} · ${pct}`,
+    testsShort: (lines, pct) => `${num(lines)} · ${pct}`,
+    testsDescription: (lines, pct) => `Testlerde ${plural(lines, UNITS.line)} değişti (değişen satırların ${pct} kadarı)`,
   },
 
   languages: {
@@ -446,6 +450,8 @@ export default {
     fileLifecycleValue: (added, deleted) => `${num(added)} doğdu · ${num(deleted)} gömüldü`,
     topFolders: 'Gözde klasörler',
     folderLines: (lines) => plural(lines, UNITS.line),
+    tests: 'Testler',
+    ofLinesChanged: (share) => `değişen satırların ${share} kadarı`,
     topLanguage: 'Favori dil',
     languageDetail: (share, basis, tiedMore) => `${basis === 'files' ? 'dosyaların' : 'satırların'} ${share} kadarı${tiedMore > 0 ? `, ${num(tiedMore)} dil ile berabere` : ''}`,
     team: 'Ekip',
@@ -506,6 +512,7 @@ export default {
     file: 'Dosya',
     topFolders: 'Gözde klasörler',
     folder: 'Klasör',
+    tests: 'Test satırları',
     languages: 'Diller',
     language: 'Dil',
     contributor: 'Katkıcı',

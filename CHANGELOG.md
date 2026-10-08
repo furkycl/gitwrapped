@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Test share: the lines changed in test files and their share of all lines changed. A test
+  file is one under a `test/`, `tests/`, `__tests__/` or `spec/` directory at any depth
+  (exact, case-sensitive names), or one named like `*.test.*`, `*.spec.*` or `*_test.*`;
+  the same files as hot files count (lockfiles, build output, … left out, `--exclude`
+  applies), checked on the path inside each repo in a multi-repo run. `stats.json` gets
+  `stats.tests` (`{lines, share}`, share with three decimals and never 1 short of every
+  line; `null` when no line changed), the recap a "Tests  1,234 lines (23% of lines
+  changed)" line, `wrapped.md` a "Test lines" item in its numbers, and the hot-files card a
+  "Tests  1,234 lines · 23%" row ("Testler" in Turkish) in spare room only: every chart
+  keeps its place and nothing shrinks, else the languages card gets the row on the same
+  terms, else it is left off the cards. Cards without room for it are unchanged.
+
 ### Changed
 
 - Power-hour card: a night power hour (10 PM to 4 AM) with late-night commits now shows its

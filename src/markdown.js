@@ -5,13 +5,14 @@
 // part only (authorName), and email-shaped text in any repo-derived text (subjects,
 // paths, repo and contributor names) is cut out by escapeMarkdown.
 
-import { authorName, displayRepoName, folderLabel, formatDateRange, formatDay, conventionalText, emojiShareText, mergeShareText, pctText, revertShareText, repoRows, shownDayRange, sizeShareText } from './cards/index.js';
+import { authorName, displayRepoName, folderLabel, formatDateRange, formatDay, conventionalText, emojiShareText, mergeShareText, pctText, revertShareText, repoRows, shownDayRange, sizeShareText, testsShareText } from './cards/index.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
 import { shownEmoji } from './stats/emoji.js';
 import { shownReverts } from './stats/reverts.js';
 import { shownFileLifecycle } from './stats/files.js';
 import { shownFolders } from './stats/folders.js';
+import { shownTests } from './stats/tests.js';
 import { shownTimezones, utcLabel } from './stats/timezones.js';
 import { shownWeekend, weekendPercentLabel } from './stats/weekend.js';
 import { shownLateNights } from './stats/latenights.js';
@@ -109,6 +110,8 @@ const item = (label, value) => `- **${label}:** ${value}`;
  *   (e.g. "cards/01-intro.svg"); linked as images at the end
  * A "Top folders" table (stats.folders: folder, lines added / removed, commits) follows the
  * hot files when there are two or more folders.
+ * A "Test lines" item in the numbers ("1,234 lines (23% of lines changed)"; stats.tests,
+ * see stats/tests.js shownTests) shows when at least one test line changed.
  * Sections without data are left out (no habits / streak / hot files / languages section
  * for an empty history, no team section unless the contributors card is built, ...).
  */
@@ -143,6 +146,9 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
     // Files added and deleted in the window (stats.fileLifecycle), as in the recap; only with any.
     const lifecycle = shownFileLifecycle(stats?.fileLifecycle);
     if (lifecycle) numbers.push(item(escapeMarkdown(M.fileLifecycle), escapeMarkdown(M.fileLifecycleValue(lifecycle.added, lifecycle.deleted))));
+    // Lines changed in test files and their share (stats.tests), as in the recap; only with any.
+    const tests = shownTests(stats?.tests);
+    if (tests) numbers.push(item(escapeMarkdown(M.tests), `${plural(tests.lines, 'line', L)} (${L.recap.ofLinesChanged(testsShareText(tests, L))})`));
     const yoy = yearOverYear(stats);
     if (yoy) numbers.push(item(escapeMarkdown(L.recap.vsYear(yoy.previousYear)), escapeMarkdown(L.yoy.changes(yoy.commits, yoy.lines, yoy.activeDays))));
     // The commit size mix, as on the totals card and the recap; only when there is one.

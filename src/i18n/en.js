@@ -285,6 +285,14 @@ export default {
     rootFolder: '(root)',
     folderValue: (lines) => plural(lines, UNITS.line),
     folderBarTitle: (path, lines, added, removed, commits) => `${path}: ${plural(lines, UNITS.line)} changed (${added} / ${removed}) in ${plural(commits, UNITS.commit)}`,
+    /**
+     * The test-share row (stats.tests), on this card or else the languages card, in spare
+     * room only: "Tests" and "1,234 lines · 23%" ("1,234 · 23%" when that would be cut).
+     */
+    tests: 'Tests',
+    testsValue: (lines, pct) => `${plural(lines, UNITS.line)} · ${pct}`,
+    testsShort: (lines, pct) => `${num(lines)} · ${pct}`,
+    testsDescription: (lines, pct) => `${plural(lines, UNITS.line)} changed in tests (${pct} of lines changed)`,
   },
 
   languages: {
@@ -540,6 +548,9 @@ export default {
     /** The top-folders line (stats.folders): label, then "src/ (1,234 lines) · test/ (567 lines) · (root) (89 lines)". */
     topFolders: 'Top folders',
     folderLines: (lines) => plural(lines, UNITS.line),
+    /** The test-share line (stats.tests): label, "1,234 lines", then "(23% of lines changed)". */
+    tests: 'Tests',
+    ofLinesChanged: (share) => `${share} of lines changed`,
     topLanguage: 'Top language',
     /** "(74% of lines, tied with 1 more)". */
     languageDetail: (share, basis, tiedMore) => `${share} ${basis === 'files' ? 'of files' : 'of lines'}${tiedMore > 0 ? `, tied with ${tiedMore} more` : ''}`,
@@ -623,6 +634,8 @@ export default {
     /** The top-folders table (stats.folders). */
     topFolders: 'Top folders',
     folder: 'Folder',
+    /** Lines changed in test files (stats.tests): "1,234 lines (23% of lines changed)". */
+    tests: 'Test lines',
     languages: 'Languages',
     language: 'Language',
     contributor: 'Contributor',

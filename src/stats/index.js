@@ -8,6 +8,7 @@ import { computeMerges, pullRequestOf, shownMerges } from './merges.js';
 import { busiestOf, computeDaily, daysUpTo, longestGap, longestRun, shownBusiestDay, shownLongest, shownLongestBreak } from './daily.js';
 import { computeFileLifecycle, computeHotFiles, isIgnoredPath, repoRelativePath, shownFileLifecycle } from './files.js';
 import { computeFolders, folderOf, ROOT_FOLDER, shownFolders, TOP_FOLDERS } from './folders.js';
+import { computeTests, isTestPath, shownTests, TEST_DIRS } from './tests.js';
 import { computeTimeHabits } from './habits.js';
 import { CADENCE_MIN_DAYS, computeCadence, medianGap, shownCadence } from './cadence.js';
 import { computeWeekend, shownWeekend, WEEKEND_DAYS, weekendCounts, weekendPercent, weekendPercentLabel } from './weekend.js';
@@ -32,6 +33,7 @@ export { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONT
 export { computeFirstCommit, SHORT_HASH };
 export { computeCoAuthors, shownCoAuthors, TOP_CO_AUTHORS };
 export { computeFolders, folderOf, ROOT_FOLDER, shownFolders, TOP_FOLDERS };
+export { computeTests, isTestPath, shownTests, TEST_DIRS };
 export { CADENCE_MIN_DAYS, computeCadence, medianGap, shownCadence };
 export { computeWeekend, shownWeekend, WEEKEND_DAYS, weekendCounts, weekendPercent, weekendPercentLabel };
 export { computeLateNights, LATE_NIGHT_HOURS, lateNightCounts, NIGHT_ENDS, shownLateNights };
@@ -73,6 +75,9 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * repo label; the same files as hot files, see folders.js);
  * `fileLifecycle` is how many files the commits added and deleted, `{added, deleted}`
  * (renames are neither; ignored paths left out as for hot files, see files.js);
+ * `tests` is the lines changed in test files and their share of all lines changed,
+ * `{lines, share}` (test/, tests/, __tests__/, spec/ directories and *.test.*, *.spec.*,
+ * *_test.* files; the same files as hot files), or null with no line changed (see tests.js);
  * `languages` is lines / files per language (see languages.js). `biggestCommit` is the
  * non-merge commit with the most lines changed, ignored paths left out as for hot files
  * (see biggest.js), or null. `commitSizes` is how many non-merge commits are tiny (< 10
@@ -125,6 +130,7 @@ export function computeStats(commits = [], { today, todayComplete, team, author,
     hotFiles: computeHotFiles(commits),
     folders: computeFolders(commits),
     fileLifecycle: computeFileLifecycle(commits),
+    tests: computeTests(commits),
     languages: computeLanguages(commits),
     contributors: computeContributors(team ?? commits, { author, truncated: teamTruncated }),
     messages: computeMessages(commits),

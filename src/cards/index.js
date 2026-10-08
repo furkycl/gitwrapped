@@ -27,6 +27,7 @@ import { shownReverts } from '../stats/reverts.js';
 import { shownFileLifecycle } from '../stats/files.js';
 import { shownMerges } from '../stats/merges.js';
 import { shownFolders } from '../stats/folders.js';
+import { shownTests } from '../stats/tests.js';
 import { sizeShares } from '../stats/sizes.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from '../i18n/index.js';
 import { DEFAULT_COLOR_THEME, isColorTheme } from './themes.js';
@@ -976,7 +977,47 @@ function hotFiles(s, { L, repos }) {
   // the other charts, in spare room only (see withFolders); without it the card is exactly
   // as before.
   const folders = shownFolders(s.folders);
-  return folders ? withFolders(spec, folders, L) : spec;
+  const withList = folders ? withFolders(spec, folders, L) : spec;
+  // The test share (stats.tests) as a row, after the folders are placed and in spare room
+  // only (see withRoomyRow): every chart still drawn, nothing shrinking; else the card is
+  // exactly as before and the languages card gets the row instead, when it has room.
+  const row = testsRow(s, L);
+  return row ? withRoomyRow(withList, row, L) : withList;
+}
+
+/**
+ * The test-share row (stats.tests, see shownTests) for the hot-files or languages card:
+ * "Tests" and "1,234 lines · 23%", or "1,234 · 23%" when the full value would be cut on
+ * the row (so the percent always shows); null without a changed test line, or when even
+ * the short value would be cut (the row is only ever drawn whole).
+ */
+function testsRow(s, L) {
+  const t = shownTests(s?.tests);
+  if (!t) return null;
+  const H = L.hotFiles;
+  const pct = testsShareText(t, L);
+  const full = H.testsValue(t.lines, pct);
+  const row = { label: H.tests, value: rowValueFits(full) ? full : H.testsShort(t.lines, pct), description: H.testsDescription(t.lines, pct) };
+  // Even the short value can be cut (a billion+ lines): then no row, never a cut one.
+  return rowFits(row) ? row : null;
+}
+
+/**
+ * A shownTests() value's share as shown: a whole percent of the lines changed, "<1%" when
+ * it rounds to 0, never "100%" short of every line. Used by the cards, the recap and
+ * wrapped.md, so they agree.
+ */
+export const testsShareText = (t, L = EN) => weekendPercentLabel(t?.percent ?? 0, L.pct);
+
+/**
+ * Whether the hot-files card shows the test-share row (it is only added in spare room), so
+ * the languages card shows it exactly when the hot-files card does not.
+ */
+export function testsOnHotFiles(s, ctx) {
+  const row = testsRow(s ?? {}, ctx.L);
+  if (!row) return false;
+  const lines = hotFiles(s ?? {}, ctx).lines;
+  return Array.isArray(lines) && lines.some((r) => r?.label === row.label && r?.value === row.value);
 }
 
 /** How many folders the hot-files card lists at most (stats.folders keeps five). */
@@ -1097,7 +1138,15 @@ function languageBars(h, L) {
   return { kind: 'hbars', title: h.basis === 'files' ? G.shareOfFiles : G.shareOfLines, items };
 }
 
-function languages(s, { L }) {
+function languages(s, ctx) {
+  const spec = languagesCard(s, ctx);
+  // The test share (stats.tests) when the hot-files card had no room for it (see
+  // testsOnHotFiles), on the same terms: in spare room only, else the card is unchanged.
+  const row = spec.chart ? testsRow(s, ctx.L) : null;
+  return row && !testsOnHotFiles(s, ctx) ? withRoomyRow(spec, row, ctx.L) : spec;
+}
+
+function languagesCard(s, { L }) {
   const G = L.languages;
   const l = s.languages ?? {};
   const h = languageHeadline(l);

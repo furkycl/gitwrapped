@@ -5,12 +5,13 @@
 // part only (authorName), and email-shaped text in any repo-derived text (subjects,
 // paths, repo and contributor names) is cut out by escapeMarkdown.
 
-import { authorName, busFactorShareText, displayRepoName, folderLabel, cleanupShareText, formatDateRange, formatDay, conventionalText, emojiShareText, mergeShareText, pctText, revertShareText, repoRows, shownDayRange, sizeShareText, testsShareText } from './cards/index.js';
+import { authorName, busFactorShareText, displayRepoName, folderLabel, cleanupShareText, formatDateRange, formatDay, conventionalText, emojiShareText, issueRefsShareText, mergeShareText, pctText, revertShareText, repoRows, shownDayRange, sizeShareText, testsShareText } from './cards/index.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
 import { shownEmoji } from './stats/emoji.js';
 import { shownReverts } from './stats/reverts.js';
 import { shownCleanups } from './stats/cleanups.js';
+import { issueRefLabel, shownIssueRefs } from './stats/issues.js';
 import { shownFileLifecycle } from './stats/files.js';
 import { shownFolders } from './stats/folders.js';
 import { shownTests } from './stats/tests.js';
@@ -126,6 +127,10 @@ const item = (label, value) => `- **${label}:** ${value}`;
  * “drop the old parser” · −4,210 lines (Mar 3, 2026)": the non-merge commits that removed
  * more lines than they added and the biggest net deletion; stats.cleanups, see
  * stats/cleanups.js shownCleanups) when there is at least one.
+ * An "Issue references" section follows the cleanups ("42 commits (12% of non-merge
+ * commits); most referenced: #128 (9 commits)": the non-merge commits whose subject
+ * mentions an issue; stats.issueRefs, see stats/issues.js shownIssueRefs) when there is
+ * at least one. The ref is escaped like all repo text, so "#128" is never a heading.
  * Sections without data are left out (no habits / streak / hot files / languages section
  * for an empty history, no team section unless the contributors card is built, ...).
  */
@@ -380,6 +385,14 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
         biggest = `; ${escapeMarkdown(M.biggestCleanup)} ${subject ? `“${subject}”` : escapeMarkdown(L.messages.noSubject)} · ${signed(b.net, '−', L)} ${M.linesWord}${day ? ` (${escapeMarkdown(day)})` : ''}`;
       }
       section(M.cleanups, [`${count}${biggest}`]);
+    }
+
+    // --- issue references (as on the messages card and the recap; only with any) ------
+    const issues = shownIssueRefs(stats?.issueRefs);
+    if (issues) {
+      const t = issues.top;
+      const top = t ? `; ${M.topIssue} ${issueRefLabel(t)} (${plural(t.commits, 'commit', L)})` : '';
+      section(M.issueRefs, [escapeMarkdown(`${plural(issues.commits, 'commit', L)} (${L.recap.ofNonMerge(issueRefsShareText(issues, L))})${top}`)]);
     }
 
     // --- personality ------------------------------------------------------------------

@@ -11,6 +11,7 @@ import { computeFolders, folderOf, ROOT_FOLDER, shownFolders, TOP_FOLDERS } from
 import { computeTests, isTestPath, shownTests, TEST_DIRS } from './tests.js';
 import { CO_CHANGE_MAX_FILES, CO_CHANGE_MIN_COMMITS, computeCoChange, shownCoChange } from './cochange.js';
 import { computeCleanups, shownCleanups } from './cleanups.js';
+import { computeIssueRefs, issueRefLabel, issueRefsInSubject, shownIssueRefs } from './issues.js';
 import { computeTimeHabits } from './habits.js';
 import { CADENCE_MIN_DAYS, computeCadence, medianGap, shownCadence } from './cadence.js';
 import { computeWeekend, shownWeekend, WEEKEND_DAYS, weekendCounts, weekendPercent, weekendPercentLabel } from './weekend.js';
@@ -40,6 +41,7 @@ export { computeFolders, folderOf, ROOT_FOLDER, shownFolders, TOP_FOLDERS };
 export { computeTests, isTestPath, shownTests, TEST_DIRS };
 export { CO_CHANGE_MAX_FILES, CO_CHANGE_MIN_COMMITS, computeCoChange, shownCoChange };
 export { computeCleanups, shownCleanups };
+export { computeIssueRefs, issueRefLabel, issueRefsInSubject, shownIssueRefs };
 export { CADENCE_MIN_DAYS, computeCadence, medianGap, shownCadence };
 export { computeWeekend, shownWeekend, WEEKEND_DAYS, weekendCounts, weekendPercent, weekendPercentLabel };
 export { computeLateNights, LATE_NIGHT_HOURS, lateNightCounts, NIGHT_ENDS, shownLateNights };
@@ -108,6 +110,10 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * like biggestCommit), their share of non-merge commits and the one with the largest net
  * deletion, `{commits, share, biggest: {hash, subject, date, linesAdded, linesRemoved,
  * net}}`, or null without a cleanup commit (see cleanups.js).
+ * `issueRefs` is how many non-merge commits mention an issue in the subject (`#123`,
+ * `GH-123` or a Jira-style `ABC-123`, not inside URLs or hashes), their share of non-merge
+ * commits and the most referenced issue, `{commits, share, top: {ref, commits}}` (`top.repo`
+ * too for a "#" ref in a multi-repo run), or null when none does (see issues.js).
  * `firstCommit` is the earliest non-merge commit by author date (`{date, subject, hash}`,
  * plus `repo` in a multi-repo run; emails scrubbed from the subject, see first.js), or null.
  * `coAuthors` is how many non-merge commits have a Co-authored-by co-author other than
@@ -168,6 +174,7 @@ export function computeStats(commits = [], { today, todayComplete, team, author,
     emoji: computeEmoji(commits),
     reverts: computeReverts(commits),
     cleanups: computeCleanups(commits),
+    issueRefs: computeIssueRefs(commits),
     firstCommit: computeFirstCommit(commits),
     coAuthors: computeCoAuthors(commits),
     releases: computeReleases(commits),

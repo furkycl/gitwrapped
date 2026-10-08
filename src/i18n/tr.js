@@ -338,6 +338,9 @@ export default {
     emojiShare: (pct) => `commit'lerin ${pct} kadarı`,
     revertsTitle: "Revert'ler",
     revertsValue: (count, pct) => `${num(count)} · ${pct}`,
+    issueRefsTitle: (ref, times) => (ref ? `Issue atıfları (en çok ${ref} ×${num(times)})` : 'Issue atıfları'),
+    issueRefsValue: (count, pct, ref, times) => `${num(count)} · ${pct}${ref ? ` (${ref} ×${num(times)})` : ''}`,
+    issueRefsDescription: (count, pct, ref, times) => `${plural(count, UNITS.commit)} bir issue'ya atıf yapıyor (merge dışı commit'lerin ${pct} kadarı)${ref ? `; en çok atıf yapılan: ${ref} (${plural(times, UNITS.commit)})` : ''}`,
   },
 
   personality: {
@@ -512,6 +515,8 @@ export default {
     reverts: "Revert'ler",
     cleanups: 'Temizlikler',
     biggestCleanup: 'en büyüğü',
+    issueRefs: 'Issue atıfları',
+    topIssue: (ref, commits) => `en çok ${ref} (${commits})`,
     you: 'Kişiliğin',
     cardsIn: (count, dir) => `${count}: ${dir}`,
     shareImage: 'paylaşım görseli:',
@@ -561,6 +566,8 @@ export default {
     reverts: "Revert'ler",
     cleanups: 'Temizlikler',
     biggestCleanup: 'en büyüğü:',
+    issueRefs: 'Issue atıfları',
+    topIssue: 'en çok atıf yapılan:',
     paired: 'Birlikte yazılan',
     topCoAuthor: (name) => `en sık ortak: ${name}`,
     releases: 'Sürümler',

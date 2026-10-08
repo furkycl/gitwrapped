@@ -132,7 +132,7 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
   - [x] CHANGELOG 1.10.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync
 
 ## M17 — 1.11 (proposed by loop turn 075 per the M8 owner note "do not finish the loop"; owner may prune)
-- [ ] Broader test detection for the test share: `specs/` dirs, `test_*.py` / `conftest.py`, `*_spec.*`, `*_tests.*`, and class-style `FooTest`/`FooTests`/`FooSpec` files (.java/.kt/.scala/.groovy/.cs/.fs/.vb/.swift/.php/.m/.mm), case-sensitive; README/CHANGELOG; tests
+- [x] Broader test detection for the test share: `specs/` dirs, `test_*.py` / `conftest.py`, `*_spec.*`, `*_tests.*`, and class-style `FooTest`/`FooTests`/`FooSpec` files (.java/.kt/.scala/.groovy/.cs/.fs/.vb/.swift/.php/.m/.mm), case-sensitive; README/CHANGELOG; tests
 - [ ] Period-over-period: with `--since` (absolute or relative) and no `--year`, compare against the equal-length window just before it on the totals and outro cards like year-over-year (+/- commits, lines, active days), stats.json `stats.previousPeriod`, recap and wrapped.md; en/tr; tests
 - [ ] Bus factor (team repos): smallest number of authors who together made ≥50% of the lines changed (after .mailmap, same ignore rules as hot files) on the contributors card when there's room, stats.json `stats.contributors.busFactor`, recap and wrapped.md; en/tr; tests
 - 1.11.0 release prep (split as before):

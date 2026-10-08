@@ -20,6 +20,7 @@ describe('computeMessages: empty / invalid input', () => {
         topWord: null,
         counts: { fix: 0, wip: 0, oops: 0 },
         averageLength: 0,
+        fixups: { commits: 0, share: 0 },
       });
     }
   });

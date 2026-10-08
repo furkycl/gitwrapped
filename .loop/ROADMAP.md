@@ -121,4 +121,12 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] Late nights: share of commits between 00:00 and 04:59 author-local and the latest-ever commit time (day + HH:MM, no emails) on the power-hour card when there's room, consistent with the Night Owl fact, stats.json `stats.lateNights {commits, share, latest}`, recap and wrapped.md; en/tr; tests
 - 1.9.0 release prep (split as before):
   - [x] Cold audit of the 1.9 work (diff 1.8.0 release commit..main) + fix every real bug found, with tests
-  - [ ] CHANGELOG 1.9.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync
+  - [x] CHANGELOG 1.9.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync
+
+## M16 — 1.10 (proposed by loop turn 069 per the M8 owner note "do not finish the loop"; owner may prune)
+- [ ] Night power hour: when the power hour is at night (22–04) the quip makes a 4-line subtitle and the Late nights row never fits — swap/shorten the night quip (e.g. fold the late-nights fact into the subtitle) so night owls actually see their late-night stat on the power-hour card; byte-identical for day power hours; en/tr; tests
+- [ ] Test share: share of changed lines in test files (`test/`, `tests/`, `__tests__/`, `spec/`, `*.test.*`, `*.spec.*`, `*_test.*`, same ignore rules / `--exclude` as hot files) as a row on the hot-files or languages card when there's room, stats.json `stats.tests {lines, share}`, recap and wrapped.md; en/tr; tests
+- [ ] Office hours: share of weekday commits between 09:00 and 17:59 author-local vs outside, as a row on the activity or power-hour card when there's room, consistent with habits.byHour/byWeekday, stats.json `stats.officeHours {commits, share}`, recap and wrapped.md; en/tr; tests
+- 1.10.0 release prep (split as before):
+  - [ ] Cold audit of the 1.10 work (diff 1.9.0 release commit..main) + fix every real bug found, with tests
+  - [ ] CHANGELOG 1.10.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync

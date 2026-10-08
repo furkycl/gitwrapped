@@ -193,8 +193,8 @@ function shortText(s, maxWidth = 48) {
  * A "Co-changed" line shows the two files changed together in the most non-merge
  * commits ("src/a.js + src/b.js (12 commits)"; stats.coChange, see stats/cochange.js
  * shownCoChange) when a pair shares at least 3 commits.
- * A "Files" line shows how many files were added and deleted (stats.fileLifecycle, see
- * stats/files.js shownFileLifecycle) when there is at least one.
+ * A "Files" line shows how many files were added and deleted, and renamed when any were
+ * (stats.fileLifecycle, see stats/files.js shownFileLifecycle), when there is at least one.
  * A "Busiest day" line shows the calendar day with the most commits and its commit count
  * (stats.busiestDay, ties → the earliest day; future-dated days left out with `today`, see
  * stats/daily.js shownBusiestDay) when there is one.
@@ -402,9 +402,9 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
       lines.push(`  ${label(R.coChange)}${a} ${c('dim', '+')} ${b} ${c('dim', `(${plural(pair.commits, 'commit', L)})`)}`);
     }
 
-    // Files added and deleted in the window (stats.fileLifecycle); only when there are any.
+    // Files added, deleted and renamed in the window (stats.fileLifecycle); only when there are any.
     const lifecycle = shownFileLifecycle(stats?.fileLifecycle);
-    if (lifecycle) lines.push(`  ${label(R.fileLifecycle)}${c('cyan', R.fileLifecycleValue(lifecycle.added, lifecycle.deleted))}`);
+    if (lifecycle) lines.push(`  ${label(R.fileLifecycle)}${c('cyan', R.fileLifecycleValue(lifecycle.added, lifecycle.deleted, lifecycle.renamed))}`);
 
     const topLang = languageHeadline(stats?.languages);
     if (topLang) {

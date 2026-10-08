@@ -157,9 +157,9 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
       item(M.lines, `${signed(t.linesAdded, '+', L)} / ${signed(t.linesRemoved, '−', L)}`),
       item(L.totals.filesTouched, num(t.filesTouched, L)),
     ];
-    // Files added and deleted in the window (stats.fileLifecycle), as in the recap; only with any.
+    // Files added, deleted and renamed in the window (stats.fileLifecycle), as in the recap; only with any.
     const lifecycle = shownFileLifecycle(stats?.fileLifecycle);
-    if (lifecycle) numbers.push(item(escapeMarkdown(M.fileLifecycle), escapeMarkdown(M.fileLifecycleValue(lifecycle.added, lifecycle.deleted))));
+    if (lifecycle) numbers.push(item(escapeMarkdown(M.fileLifecycle), escapeMarkdown(M.fileLifecycleValue(lifecycle.added, lifecycle.deleted, lifecycle.renamed))));
     // Lines changed in test files and their share (stats.tests), as in the recap; only with any.
     const tests = shownTests(stats?.tests);
     if (tests) numbers.push(item(escapeMarkdown(M.tests), `${plural(tests.lines, 'line', L)} (${L.recap.ofLinesChanged(testsShareText(tests, L))})`));

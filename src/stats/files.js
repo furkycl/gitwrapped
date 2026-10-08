@@ -157,7 +157,9 @@ export function computeHotFiles(commits, { limit = 5 } = {}) {
  * missing or non-finite count adds 0); other commits are kept as they are (same object).
  * Commits are never dropped, even when every file is excluded: commit counts, active
  * days, streaks and time habits do not change. The input is not modified.
- * The commit's `born` / `buried` paths (when present) drop the same files.
+ * The commit's `born` / `buried` paths (when present) drop the same files, and its
+ * `renamed` entries drop those whose new path (`to`) is dropped (as computeFileLifecycle
+ * judges a rename by where the file went).
  * `isExcluded` null / undefined → `commits` itself.
  */
 export function excludeFiles(commits, isExcluded) {
@@ -171,6 +173,10 @@ export function excludeFiles(commits, isExcluded) {
       if (!Array.isArray(c[key])) continue;
       const kept = c[key].filter((p) => !dropped(p));
       if (kept.length !== c[key].length) lifecycle[key] = kept;
+    }
+    if (Array.isArray(c.renamed)) {
+      const kept = c.renamed.filter((r) => !dropped(r?.to));
+      if (kept.length !== c.renamed.length) lifecycle.renamed = kept;
     }
     const changed = Object.keys(lifecycle).length > 0;
     if (!Array.isArray(c.files) || c.files.length === 0) return changed ? { ...c, ...lifecycle } : c;
@@ -187,37 +193,44 @@ export function excludeFiles(commits, isExcluded) {
 }
 
 /**
- * Files born and buried in the window: `{added, deleted}`, how many files the commits
- * added and deleted (the `born` / `buried` paths of readLifecycle in src/git.js; a rename
- * is neither). Each add or delete counts once per commit, so a file added, deleted and
- * added again counts as 2 added and 1 deleted. Ignored paths are skipped as for hot files
- * (see isIgnoredPath; relative to each repo's root in a multi-repo run, see
- * repoRelativePath), and --exclude has already dropped its files (see excludeFiles).
- * Merge commits never count (git gives them no diff, as for the line counts). Commits
- * without the fields (lifecycle not read) add nothing. Never throws; `{added: 0,
- * deleted: 0}` for none.
+ * Files born, buried and renamed in the window: `{added, deleted, renamed}`, how many
+ * files the commits added, deleted and renamed (the `born` / `buried` paths and `renamed`
+ * entries of readLifecycle in src/git.js; a rename is neither added nor deleted). Each
+ * add, delete or rename counts once per commit, so a file added, deleted and added again
+ * counts as 2 added and 1 deleted, and a file renamed in two commits counts as 2
+ * renamed. Ignored paths are skipped as for hot files (see isIgnoredPath; relative to
+ * each repo's root in a multi-repo run, see repoRelativePath), and --exclude has already
+ * dropped its files (see excludeFiles). A rename is judged by its new path (`to`): one into an ignored path
+ * (say, into vendor/) does not count, one out of it does (the file is now counted
+ * where it was not before). Merge commits never count (git gives them no diff, as for the
+ * line counts). Commits without the fields (lifecycle not read) add nothing. Never
+ * throws; `{added: 0, deleted: 0, renamed: 0}` for none.
  */
 export function computeFileLifecycle(commits) {
   let added = 0;
   let deleted = 0;
+  let renamed = 0;
   for (const c of Array.isArray(commits) ? commits : []) {
     if (!c || (Array.isArray(c.parents) && c.parents.length > 1)) continue;
-    const counted = (paths) => (Array.isArray(paths) ? paths.filter((p) => typeof p === 'string' && !isIgnoredPath(repoRelativePath(c, p))).length : 0);
+    const counted = (paths) => (Array.isArray(paths) ? paths.filter((p) => typeof p === 'string' && p !== '' && !isIgnoredPath(repoRelativePath(c, p))).length : 0);
     added += counted(c.born);
     deleted += counted(c.buried);
+    if (Array.isArray(c.renamed)) renamed += counted(c.renamed.map((r) => r?.to));
   }
-  return { added, deleted };
+  return { added, deleted, renamed };
 }
 
 /**
- * stats.fileLifecycle as the cards, recap and wrapped.md show it: `{added, deleted}` (each a
- * non-negative integer, else 0), or null when no file was added or deleted (or the value is
- * missing / malformed), so nothing is shown.
+ * stats.fileLifecycle as the cards, recap and wrapped.md show it: `{added, deleted,
+ * renamed}` (each a non-negative integer, else 0; a stats.json without `renamed`, from
+ * before renames were counted, reads as 0), or null when no file was added, deleted or
+ * renamed (or the value is missing / malformed), so nothing is shown.
  */
 export function shownFileLifecycle(lifecycle) {
   if (!lifecycle || typeof lifecycle !== 'object') return null;
   const whole = (n) => (Number.isSafeInteger(n) && n > 0 ? n : 0);
   const added = whole(lifecycle.added);
   const deleted = whole(lifecycle.deleted);
-  return added + deleted > 0 ? { added, deleted } : null;
+  const renamed = whole(lifecycle.renamed);
+  return added + deleted + renamed > 0 ? { added, deleted, renamed } : null;
 }

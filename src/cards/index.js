@@ -453,9 +453,9 @@ function totalsBase(s, { L, repos }) {
   // show them (see pairingOnTeam) and the row fits in spare room only.
   const row = pairingOnTeam(s, L) ? null : pairedRow(s, L);
   const withPaired = row ? withSpareRow(spec, row, L) : spec;
-  // Files born / buried (stats.fileLifecycle) after it, again in spare room only: it never
-  // displaces the pairing row or anything else (it is always in the recap, wrapped.md and
-  // stats.json).
+  // Files born / buried (and renamed when that fits, see lifecycleRow; stats.fileLifecycle)
+  // after it, again in spare room only: it never displaces the pairing row or anything else
+  // (it is always in the recap, wrapped.md and stats.json).
   const lifecycle = lifecycleRow(s, L);
   const withLifecycle = lifecycle ? withSpareRow(withPaired, lifecycle, L) : withPaired;
   // Merged pull requests and merge commits (stats.merges) last, on the same terms.
@@ -579,12 +579,20 @@ function mergesRow(s, L) {
 
 /**
  * The totals card's files born / buried row (stats.fileLifecycle, see shownFileLifecycle):
- * "Born / buried" and "12 / 3"; null when no file was added or deleted.
+ * "Born / buried" and "12 / 3"; with renames, "Born / buried / renamed" and "12 / 3 / 4"
+ * when that is drawn whole (see rowFits), else the born / buried row (null when no file
+ * was added or deleted either). Null when no file was added, deleted or renamed. Without
+ * renames the row is exactly the born / buried one.
  */
 function lifecycleRow(s, L) {
   const lc = shownFileLifecycle(s.fileLifecycle);
   if (!lc) return null;
-  return { label: L.totals.fileLifecycle, value: L.totals.fileLifecycleValue(lc.added, lc.deleted) };
+  const T = L.totals;
+  if (lc.renamed > 0) {
+    const row = { label: T.fileLifecycleRenamed, value: T.fileLifecycleValue(lc.added, lc.deleted, lc.renamed) };
+    if (rowFits(row)) return row;
+  }
+  return lc.added + lc.deleted > 0 ? { label: T.fileLifecycle, value: T.fileLifecycleValue(lc.added, lc.deleted) } : null;
 }
 
 /**

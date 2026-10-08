@@ -366,8 +366,8 @@ async function shallowBoundary(repoPath) {
  * skips that git call for a read whose releases are not used.
  * A commit whose message says "This reverts commit <hash>" gets `revertOf`, those hashes
  * (see readReverts); `reverts: false` skips that git call for a read whose reverts are not used.
- * A commit that adds or deletes files gets `born` / `buried`, those paths (see
- * readLifecycle); `lifecycle: false` skips that git call for a read whose file lifecycle
+ * A commit that adds, deletes or renames files gets `born` / `buried`, those paths, and
+ * `renamed`, `[{from, to}]` (see readLifecycle); `lifecycle: false` skips that git call for a read whose file lifecycle
  * is not used.
  * `commits` is [] for a repo without commits. When HEAD has no commits (a new repo, or an
  * orphan branch) the result also has `unborn: true` and `otherRefs` (see hasOtherRefs):
@@ -426,6 +426,7 @@ export async function readHistory(repoPath, { since, until, author, limit = DEFA
       // Diffed against an empty tree: its whole tree would count as born.
       delete c.born;
       delete c.buried;
+      delete c.renamed;
     }
   }
   return { commits, truncated, limit, shallow: Boolean(boundary) };
@@ -562,17 +563,19 @@ const FULL_HASH = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 const NAME_STATUS = /^([A-Z])(\d*)$/;
 
 /**
- * `git log -z --name-status --format=%H` output → Map of commit hash → `{born, buried}`:
- * the paths its diff adds (status A) and deletes (status D), in git's order; commits with
- * neither are left out. Observed byte layout, one NUL-terminated token per item:
+ * `git log -z --name-status --format=%H` output → Map of commit hash → `{born, buried,
+ * renamed}`: the paths its diff adds (status A) and deletes (status D), and the files it
+ * renames (status R, as `{from, to}`), in git's order; commits with none are left out.
+ * Observed byte layout, one NUL-terminated token per item:
  *
  *   <hash>\0                                 commit with no matching file changes
  *   <hash>\0\n<status>\0<path>\0...           "\n" before the first entry
+ *   ...R<score>\0<old path>\0<new path>\0...   a rename carries two paths
  *
- * A rename or copy (R / C, with a score) carries two paths and is skipped, as is every
- * other status. Paths are raw (may hold any byte but NUL), so a token is only read as a
- * header where a status could start, and a status is one uppercase letter (plus digits)
- * while a hash is 40 or 64 lowercase hex digits: they never look alike. Pure function.
+ * A copy (C, with a score) also carries two paths and is skipped, as is every other
+ * status. Paths are raw (may hold any byte but NUL), so a token is only read as a header
+ * where a status could start, and a status is one uppercase letter (plus digits) while a
+ * hash is 40 or 64 lowercase hex digits: they never look alike. Pure function.
  */
 export function parseLifecycleLog(stdout) {
   const found = new Map();
@@ -581,7 +584,7 @@ export function parseLifecycleLog(stdout) {
   for (let i = 0; i < tokens.length; i++) {
     const tok = tokens[i].replace(/^[\r\n]+/, '');
     if (FULL_HASH.test(tok)) {
-      current = { born: [], buried: [] };
+      current = { born: [], buried: [], renamed: [] };
       found.set(tok, current);
       continue;
     }
@@ -589,28 +592,32 @@ export function parseLifecycleLog(stdout) {
     if (!m || !current) continue;
     const paths = m[1] === 'R' || m[1] === 'C' ? 2 : 1;
     const path = tokens[i + 1];
+    const to = paths === 2 ? tokens[i + 2] : undefined;
     i += paths;
     if (typeof path !== 'string' || path === '') continue;
     if (m[1] === 'A') current.born.push(path);
     else if (m[1] === 'D') current.buried.push(path);
+    else if (m[1] === 'R' && typeof to === 'string' && to !== '') current.renamed.push({ from: path, to });
   }
-  for (const [hash, v] of found) if (v.born.length === 0 && v.buried.length === 0) found.delete(hash);
+  for (const [hash, v] of found) if (v.born.length === 0 && v.buried.length === 0 && v.renamed.length === 0) found.delete(hash);
   return found;
 }
 
 /**
- * Give every commit that adds files `born` (those paths) and every commit that deletes
- * files `buried` (those paths), as git prints them; other commits are left without the
+ * Give every commit that adds files `born` (those paths), every commit that deletes
+ * files `buried` (those paths) and every commit that renames files `renamed` (`[{from,
+ * to}]`, the old and new paths), as git prints them; other commits are left without the
  * fields. The numstat read passes --no-renames (a rename is a delete plus an add there),
  * so this is one extra `git log -z --no-walk=unsorted --stdin --name-status` call over
  * exactly the given commits (hashes on stdin, as readReverts: the window, --author and the
  * cap apply as to everything else) with rename detection forced on (`-M`, whatever
- * diff.renames says) and `--diff-filter=AD`, so a rename (or a copy, when detected) is
- * neither born nor buried: only the A and D entries come back. A rename edited past git's
- * similarity threshold is still an add plus a delete. Same diff settings as the numstat
- * read: merge commits get no diff (no -m), the root commit does (--root), submodule bumps
- * are skipped, diff.relative is off. Best effort: when git fails, no commit gets the
- * fields (stats.fileLifecycle is then 0 / 0). Returns `commits`.
+ * diff.renames says) and `--diff-filter=ADR`, so a rename is neither born nor buried but
+ * renamed, and a copy (when detected) is none of them: only the A, D and R entries come
+ * back. A rename edited past git's similarity threshold is still an add plus a delete.
+ * Same diff settings as the numstat read: merge commits get no diff (no -m), the root
+ * commit does (--root), submodule bumps are skipped, diff.relative is off. Best effort:
+ * when git fails, no commit gets the fields (stats.fileLifecycle is then 0 / 0 / 0).
+ * Returns `commits`.
  */
 export async function readLifecycle(repoPath, commits) {
   if (!Array.isArray(commits) || commits.length === 0) return commits;
@@ -620,7 +627,7 @@ export async function readLifecycle(repoPath, commits) {
   try {
     const run = execFileAsync(
       'git',
-      ['-C', repoPath, '-c', 'diff.relative=false', 'log', '-z', '--no-walk=unsorted', '--stdin', '--no-color', '--no-show-signature', '--format=%H', '--name-status', '-M', '--diff-filter=AD', '--root', '-O/dev/null', '--ignore-submodules=all'],
+      ['-C', repoPath, '-c', 'diff.relative=false', 'log', '-z', '--no-walk=unsorted', '--stdin', '--no-color', '--no-show-signature', '--format=%H', '--name-status', '-M', '--diff-filter=ADR', '--root', '-O/dev/null', '--ignore-submodules=all'],
       { encoding: 'utf8', env: gitEnv(), maxBuffer: MAX_BUFFER },
     );
     run.child.stdin.on('error', () => {}); // git exiting early (EPIPE) surfaces below
@@ -635,6 +642,7 @@ export async function readLifecycle(repoPath, commits) {
     if (!hit) continue;
     if (hit.born.length > 0) c.born = hit.born;
     if (hit.buried.length > 0) c.buried = hit.buried;
+    if (hit.renamed.length > 0) c.renamed = hit.renamed;
   }
   return commits;
 }
@@ -787,7 +795,7 @@ export function repoLabels(names) {
  * `commits` as readHistory gives them) into one, newest first, capped at `limit` commits.
  * Every commit is copied with `repo: <label>` and its file paths prefixed with
  * `<label>/` ("src/x.js" in repo "api" → "api/src/x.js"; its `born` / `buried` paths
- * too); the inputs are not changed.
+ * and both paths of each `renamed` entry too); the inputs are not changed.
  * Order: by author-date instant, newest first; equal instants (and unparseable dates,
  * which sort last) keep their input order: repo by repo, each in git's order.
  * A commit whose hash was already seen in an earlier repo (a fork or a second clone that
@@ -813,6 +821,7 @@ export function mergeHistories(histories, { limit = DEFAULT_LIMIT } = {}) {
       const copy = { ...c, repo: label, files: (c.files ?? []).map((f) => ({ ...f, path: `${label}/${f.path}` })) };
       // Added / deleted paths (see readLifecycle) get the same prefix.
       for (const key of ['born', 'buried']) if (Array.isArray(c[key])) copy[key] = c[key].map((p) => `${label}/${p}`);
+      if (Array.isArray(c.renamed)) copy.renamed = c.renamed.filter((r) => typeof r?.from === 'string' && typeof r?.to === 'string').map((r) => ({ from: `${label}/${r.from}`, to: `${label}/${r.to}` }));
       if (c.hash) seen.set(c.hash, copy);
       merged.push(copy);
     }

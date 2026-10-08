@@ -82,8 +82,9 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * `folders` is the most-changed top-level folders by lines changed, `[{path, lines, added,
  * deleted, commits}]` (top 5; files at a repo root are "(root)", multi-repo paths keep the
  * repo label; the same files as hot files, see folders.js);
- * `fileLifecycle` is how many files the commits added and deleted, `{added, deleted}`
- * (renames are neither; ignored paths left out as for hot files, see files.js);
+ * `fileLifecycle` is how many files the commits added, deleted and renamed, `{added,
+ * deleted, renamed}` (a rename is neither added nor deleted; ignored paths left out as
+ * for hot files, see files.js);
  * `tests` is the lines changed in test files and their share of all lines changed,
  * `{lines, share}` (test/, tests/, __tests__/, spec/, specs/ directories; *.test.*, *.spec.*,
  * *_test.*, *_spec.*, *_tests.*, test_*.ext, conftest.py and FooTest.java-style files; the

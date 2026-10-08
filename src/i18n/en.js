@@ -140,9 +140,13 @@ export default {
     sizes: { tiny: 'Tiny', small: 'Small', medium: 'Medium', large: 'Large' },
     sizeRanges: { tiny: 'under 10 lines', small: '10–99 lines', medium: '100–500 lines', large: 'over 500 lines' },
     sizeTitle: (name, range, commits, pct) => `${name} (${range}): ${plural(commits, UNITS.commit)} (${pct})`,
-    /** Files added / deleted in the window (stats.fileLifecycle), as one row: "12 / 3". */
+    /**
+     * Files added / deleted in the window (stats.fileLifecycle), as one row: "12 / 3"; with
+     * renames (when the row fits), "Born / buried / renamed" and "12 / 3 / 4".
+     */
     fileLifecycle: 'Born / buried',
-    fileLifecycleValue: (added, deleted) => `${num(added)} / ${num(deleted)}`,
+    fileLifecycleRenamed: 'Born / buried / renamed',
+    fileLifecycleValue: (added, deleted, renamed = 0) => `${num(added)} / ${num(deleted)}${renamed > 0 ? ` / ${num(renamed)}` : ''}`,
     /**
      * The merges row (stats.merges): with both, "Merged PRs / merges" and "12 / 8"; only
      * pull requests (a squash-merge repo), "Merged PRs" and "12"; only merge commits,
@@ -594,9 +598,9 @@ export default {
      */
     officeHours: 'Office hours',
     hottestFile: 'Hottest file',
-    /** The files born / buried line (stats.fileLifecycle): label, then "12 born · 3 buried". */
+    /** The files born / buried line (stats.fileLifecycle): label, then "12 born · 3 buried" (" · 4 renamed" with any). */
     fileLifecycle: 'Files',
-    fileLifecycleValue: (added, deleted) => `${num(added)} born · ${num(deleted)} buried`,
+    fileLifecycleValue: (added, deleted, renamed = 0) => `${num(added)} born · ${num(deleted)} buried${renamed > 0 ? ` · ${num(renamed)} renamed` : ''}`,
     /** The top-folders line (stats.folders): label, then "src/ (1,234 lines) · test/ (567 lines) · (root) (89 lines)". */
     topFolders: 'Top folders',
     folderLines: (lines) => plural(lines, UNITS.line),
@@ -685,9 +689,9 @@ export default {
     latestAt: (time, day) => `latest at ${time} on ${day}`,
     /** Weekday commits between 09:00 and 17:59 author-local (stats.officeHours): "1,234 commits (23% of commits)". */
     officeHours: 'Office-hours commits',
-    /** Files added / deleted in the window (stats.fileLifecycle): "12 files added, 3 deleted". */
+    /** Files added / deleted / renamed in the window (stats.fileLifecycle): "12 files added, 3 deleted" (", 4 renamed" with any). */
     fileLifecycle: 'Files born / buried',
-    fileLifecycleValue: (added, deleted) => `${plural(added, UNITS.file)} added, ${num(deleted)} deleted`,
+    fileLifecycleValue: (added, deleted, renamed = 0) => `${plural(added, UNITS.file)} added, ${num(deleted)} deleted${renamed > 0 ? `, ${num(renamed)} renamed` : ''}`,
     tied: 'tied',
     streaks: 'Streaks',
     longestStreak: 'Longest streak',

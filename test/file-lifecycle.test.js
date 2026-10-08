@@ -1,6 +1,6 @@
 // Files born and buried: files added vs deleted in the window, read by src/git.js
-// readLifecycle (one `git log --name-status -M --diff-filter=AD` call over the analyzed
-// commits), counted by computeFileLifecycle (src/stats/files.js) and shown as
+// readLifecycle (one `git log --name-status -M --diff-filter=ADR` call over the analyzed
+// commits; also R entries since renames), counted by computeFileLifecycle (src/stats/files.js) and shown as
 // stats.fileLifecycle, a recap line, a wrapped.md item and a totals-card row (spare room only).
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -40,18 +40,18 @@ describe('parseLifecycleLog', () => {
   const b = 'b'.repeat(40);
   const c = 'c'.repeat(64);
 
-  test('A / D entries per commit; renames, copies and other statuses skipped', () => {
+  test('A / D / R entries per commit; copies and other statuses skipped', () => {
     const out = `${a}\0\nA\0new.js\0D\0old.js\0R087\0from.js\0to.js\0M\0kept.js\0${b}\0${c}\0\nC100\0x\0y\0A\0z\0`;
     const found = parseLifecycleLog(out);
-    assert.deepEqual(found.get(a), { born: ['new.js'], buried: ['old.js'] });
+    assert.deepEqual(found.get(a), { born: ['new.js'], buried: ['old.js'], renamed: [{ from: 'from.js', to: 'to.js' }] });
     assert.equal(found.has(b), false); // no matching entries: left out
-    assert.deepEqual(found.get(c), { born: ['z'], buried: [] }); // SHA-256 hash
+    assert.deepEqual(found.get(c), { born: ['z'], buried: [], renamed: [] }); // SHA-256 hash
     assert.equal(found.size, 2);
   });
 
   test('paths that look like a status or a hash, or hold newlines, stay paths', () => {
     const out = `${a}\0\nA\0A\0A\0${b}\0D\0line\nbreak.txt\0`;
-    assert.deepEqual(parseLifecycleLog(out).get(a), { born: ['A', b], buried: ['line\nbreak.txt'] });
+    assert.deepEqual(parseLifecycleLog(out).get(a), { born: ['A', b], buried: ['line\nbreak.txt'], renamed: [] });
   });
 
   test('junk and empty input', () => {
@@ -72,29 +72,29 @@ describe('computeFileLifecycle / shownFileLifecycle', () => {
       null,
       commit(6, { born: [null, 7, ''], buried: 'nope' }),
     ];
-    assert.deepEqual(computeFileLifecycle(commits), { added: 3, deleted: 1 });
-    assert.deepEqual(computeFileLifecycle([]), { added: 0, deleted: 0 });
-    assert.deepEqual(computeFileLifecycle(undefined), { added: 0, deleted: 0 });
+    assert.deepEqual(computeFileLifecycle(commits), { added: 3, deleted: 1, renamed: 0 });
+    assert.deepEqual(computeFileLifecycle([]), { added: 0, deleted: 0, renamed: 0 });
+    assert.deepEqual(computeFileLifecycle(undefined), { added: 0, deleted: 0, renamed: 0 });
   });
 
   test('multi-repo: root-level ignore rules apply at each repo root', () => {
     const commits = [commit(1, { repo: 'api', born: ['api/dist/x.js', 'api/src/x.js'], buried: ['api/build/y.js'] })];
-    assert.deepEqual(computeFileLifecycle(commits), { added: 1, deleted: 0 });
+    assert.deepEqual(computeFileLifecycle(commits), { added: 1, deleted: 0, renamed: 0 });
   });
 
   test('computeStats puts fileLifecycle right after hotFiles and folders', () => {
     const stats = computeStats([commit(1, { born: ['src/a.js'] })], { today: TODAY });
     const keys = Object.keys(stats);
     assert.deepEqual(keys.slice(keys.indexOf('hotFiles') + 1, keys.indexOf('hotFiles') + 3), ['folders', 'fileLifecycle']);
-    assert.deepEqual(stats.fileLifecycle, { added: 1, deleted: 0 });
+    assert.deepEqual(stats.fileLifecycle, { added: 1, deleted: 0, renamed: 0 });
   });
 
   test('shownFileLifecycle: null without any; malformed values are 0', () => {
     assert.equal(shownFileLifecycle({ added: 0, deleted: 0 }), null);
     assert.equal(shownFileLifecycle(null), null);
     assert.equal(shownFileLifecycle('x'), null);
-    assert.deepEqual(shownFileLifecycle({ added: 2, deleted: -1 }), { added: 2, deleted: 0 });
-    assert.deepEqual(shownFileLifecycle({ added: 1.5, deleted: 3 }), { added: 0, deleted: 3 });
+    assert.deepEqual(shownFileLifecycle({ added: 2, deleted: -1 }), { added: 2, deleted: 0, renamed: 0 });
+    assert.deepEqual(shownFileLifecycle({ added: 1.5, deleted: 3 }), { added: 0, deleted: 3, renamed: 0 });
   });
 });
 
@@ -132,7 +132,7 @@ describe('cards, recap and wrapped.md', () => {
     const stats = base();
     const without = { ...stats };
     delete without.fileLifecycle;
-    assert.deepEqual(stats.fileLifecycle, { added: 0, deleted: 0 });
+    assert.deepEqual(stats.fileLifecycle, { added: 0, deleted: 0, renamed: 0 });
     assert.equal(totalsSvg(stats), totalsSvg(without));
     assert.doesNotMatch(totalsSvg(stats), /born/);
   });
@@ -245,25 +245,28 @@ describe('git (real repos)', () => {
   });
   after(() => rmSync(root, { recursive: true, force: true }));
 
-  test('readCommits gives born / buried; renames are neither; merges get none', async () => {
+  test('readCommits gives born / buried; renames are neither but renamed; merges get none', async () => {
     const commits = await readCommits(repo);
     const by = new Map(commits.map((c) => [c.subject, c]));
     assert.deepEqual(by.get('feat: start').born, ['docs/guide.md', 'package-lock.json', 'src/a.js', 'src/b.js']);
     assert.equal('buried' in by.get('feat: start'), false);
     assert.deepEqual(by.get('refactor: rename a, drop b, add c').born, ['src/c.js']);
     assert.deepEqual(by.get('refactor: rename a, drop b, add c').buried, ['src/b.js']);
+    assert.deepEqual(by.get('refactor: rename a, drop b, add c').renamed, [{ from: 'src/a.js', to: 'src/alpha.js' }]);
+    assert.equal('renamed' in by.get('feat: start'), false);
     assert.deepEqual(by.get('feat: side').born, ['src/side.js']);
     assert.equal('born' in by.get('Merge side'), false);
     assert.equal('buried' in by.get('Merge side'), false);
+    assert.equal('renamed' in by.get('Merge side'), false);
     // The numstat read still sees the rename as a delete plus an add.
     assert.deepEqual(by.get('refactor: rename a, drop b, add c').files.map((f) => f.path).sort(), ['src/a.js', 'src/alpha.js', 'src/b.js', 'src/c.js']);
-    // Lockfile left out: 3 + 1 + 1 + 1 born, 1 + 1 buried.
-    assert.deepEqual(computeStats(commits, { today: TODAY }).fileLifecycle, { added: 6, deleted: 2 });
+    // Lockfile left out: 3 + 1 + 1 + 1 born, 1 + 1 buried, 1 renamed.
+    assert.deepEqual(computeStats(commits, { today: TODAY }).fileLifecycle, { added: 6, deleted: 2, renamed: 1 });
   });
 
   test('lifecycle: false skips the read; a failing git gives no fields, never an error', async () => {
     const commits = await readCommits(repo, { lifecycle: false });
-    assert.equal(commits.some((c) => 'born' in c || 'buried' in c), false);
+    assert.equal(commits.some((c) => 'born' in c || 'buried' in c || 'renamed' in c), false);
     const fake = [{ hash: hashes.start }];
     assert.equal(await readLifecycle(join(root, 'missing'), fake), fake);
     assert.equal('born' in fake[0], false);
@@ -272,25 +275,25 @@ describe('git (real repos)', () => {
 
   test('the window: only the analyzed commits count', async () => {
     const commits = await readCommits(repo, { since: '2025-03-02', until: '2025-03-03' });
-    assert.deepEqual(computeStats(commits, { today: TODAY }).fileLifecycle, { added: 2, deleted: 2 });
+    assert.deepEqual(computeStats(commits, { today: TODAY }).fileLifecycle, { added: 2, deleted: 2, renamed: 1 });
   });
 
   test('generate: stats.json shape, recap and wrapped.md; --exclude drops files', async () => {
     const r = await generate({ path: repo, out: join(root, 'o1'), png: false, json: true, md: true }, { today: TODAY });
     const doc = JSON.parse(readFileSync(r.statsJson, 'utf8'));
-    assert.deepEqual(doc.stats.fileLifecycle, { added: 6, deleted: 2 });
-    assert.deepEqual(Object.keys(doc.stats.fileLifecycle), ['added', 'deleted']);
-    assert.match(readFileSync(r.markdown, 'utf8'), /- \*\*Files born \/ buried:\*\* 6 files added, 2 deleted/);
-    assert.match(formatSummary(r.stats, { repoName: 'app', today: TODAY }), /Files\s+6 born · 2 buried/);
+    assert.deepEqual(doc.stats.fileLifecycle, { added: 6, deleted: 2, renamed: 1 });
+    assert.deepEqual(Object.keys(doc.stats.fileLifecycle), ['added', 'deleted', 'renamed']);
+    assert.match(readFileSync(r.markdown, 'utf8'), /- \*\*Files born \/ buried:\*\* 6 files added, 2 deleted, 1 renamed/);
+    assert.match(formatSummary(r.stats, { repoName: 'app', today: TODAY }), /Files\s+6 born · 2 buried · 1 renamed/);
 
     const x = await generate({ path: repo, out: join(root, 'o2'), png: false, json: true, exclude: ['docs/'] }, { today: TODAY });
-    assert.deepEqual(JSON.parse(readFileSync(x.statsJson, 'utf8')).stats.fileLifecycle, { added: 4, deleted: 1 });
+    assert.deepEqual(JSON.parse(readFileSync(x.statsJson, 'utf8')).stats.fileLifecycle, { added: 4, deleted: 1, renamed: 1 });
   });
 
   test('generate: several repos are summed (ignore rules at each repo root)', async () => {
     const r = await generate({ paths: [repo, other], out: join(root, 'o3'), png: false, json: true }, { today: TODAY });
-    // app 6 / 2; lib: index.js + main.js born (dist/ ignored), index.js buried.
-    assert.deepEqual(JSON.parse(readFileSync(r.statsJson, 'utf8')).stats.fileLifecycle, { added: 8, deleted: 3 });
+    // app 6 / 2 / 1; lib: index.js + main.js born (dist/ ignored), index.js buried.
+    assert.deepEqual(JSON.parse(readFileSync(r.statsJson, 'utf8')).stats.fileLifecycle, { added: 8, deleted: 3, renamed: 1 });
   });
 
   test('generate: the team read of an --author run skips the lifecycle read', async () => {
@@ -314,7 +317,7 @@ describe('git (real repos)', () => {
     const commits = await readCommits(clone);
     assert.equal(commits.length, 1);
     assert.equal('born' in commits[0], false);
-    assert.deepEqual(computeStats(commits, { today: TODAY }).fileLifecycle, { added: 0, deleted: 0 });
+    assert.deepEqual(computeStats(commits, { today: TODAY }).fileLifecycle, { added: 0, deleted: 0, renamed: 0 });
   });
 });
 
@@ -390,32 +393,33 @@ describe('git (real repos): odd paths, author, cap, CLI', () => {
     assert.deepEqual(by.get('feat: image and submodule').born, ['img.png']); // gitlink skipped
     assert.equal('born' in by.get('docs: rename readme'), false);
     assert.equal('buried' in by.get('docs: rename readme'), false);
-    assert.deepEqual(computeStats(commits, { today: TODAY }).fileLifecycle, { added: 9, deleted: 4 });
+    assert.deepEqual(by.get('docs: rename readme').renamed, [{ from: 'Readme.md', to: 'README.md' }]);
+    assert.deepEqual(computeStats(commits, { today: TODAY }).fileLifecycle, { added: 9, deleted: 4, renamed: 1 });
   });
 
   test('a file born and buried inside the window counts on both sides', async () => {
     const commits = await readCommits(repo, { since: '2025-04-02', until: '2025-04-03' });
     assert.equal(commits.length, 2);
-    assert.deepEqual(computeStats(commits, { today: TODAY }).fileLifecycle, { added: 1, deleted: 3 });
+    assert.deepEqual(computeStats(commits, { today: TODAY }).fileLifecycle, { added: 1, deleted: 3, renamed: 0 });
   });
 
   test('--author: only that author\'s commits count (real read)', async () => {
     const ada = await readCommits(repo, { author: 'ada@example.com' });
-    assert.deepEqual(computeStats(ada, { today: TODAY }).fileLifecycle, { added: 7, deleted: 2 });
+    assert.deepEqual(computeStats(ada, { today: TODAY }).fileLifecycle, { added: 7, deleted: 2, renamed: 0 });
     const bob = await readCommits(repo, { author: 'BOB@example.com' });
-    assert.deepEqual(computeStats(bob, { today: TODAY }).fileLifecycle, { added: 2, deleted: 2 });
+    assert.deepEqual(computeStats(bob, { today: TODAY }).fileLifecycle, { added: 2, deleted: 2, renamed: 1 });
   });
 
   test('--author via generate: stats.fileLifecycle is the author\'s, not the team\'s', async () => {
     const r = await generate({ path: repo, out: join(root, 'oa'), png: false, json: true, author: 'bob@example.com' }, { today: TODAY });
-    assert.deepEqual(JSON.parse(readFileSync(r.statsJson, 'utf8')).stats.fileLifecycle, { added: 2, deleted: 2 });
+    assert.deepEqual(JSON.parse(readFileSync(r.statsJson, 'utf8')).stats.fileLifecycle, { added: 2, deleted: 2, renamed: 1 });
   });
 
   test('--max-commits: only the capped commits count', async () => {
     const r = await generate({ path: repo, out: join(root, 'om'), png: false, json: true, maxCommits: 2 }, { today: TODAY });
     const doc = JSON.parse(readFileSync(r.statsJson, 'utf8'));
     assert.equal(doc.stats.totals.commits, 2);
-    assert.deepEqual(doc.stats.fileLifecycle, { added: 1, deleted: 0 });
+    assert.deepEqual(doc.stats.fileLifecycle, { added: 1, deleted: 0, renamed: 1 });
   });
 
   test('the binary end to end: --json, --md, --author, --exclude, recap', () => {
@@ -428,16 +432,16 @@ describe('git (real repos): odd paths, author, cap, CLI', () => {
     const out = join(root, 'cli1');
     const r = run(['--json', '--md', '--out', out]);
     assert.equal(r.status, 0, r.stderr);
-    assert.deepEqual(JSON.parse(readFileSync(join(out, 'stats.json'), 'utf8')).stats.fileLifecycle, { added: 9, deleted: 4 });
-    assert.match(r.stdout, /Files\s+9 born · 4 buried/);
-    assert.match(readFileSync(join(out, 'wrapped.md'), 'utf8'), /Files born \/ buried:\*\* 9 files added, 4 deleted/);
-    assert.match(readFileSync(join(out, 'cards', '02-totals.svg'), 'utf8'), />Born \/ buried</);
+    assert.deepEqual(JSON.parse(readFileSync(join(out, 'stats.json'), 'utf8')).stats.fileLifecycle, { added: 9, deleted: 4, renamed: 1 });
+    assert.match(r.stdout, /Files\s+9 born · 4 buried · 1 renamed/);
+    assert.match(readFileSync(join(out, 'wrapped.md'), 'utf8'), /Files born \/ buried:\*\* 9 files added, 4 deleted, 1 renamed/);
+    assert.match(readFileSync(join(out, 'cards', '02-totals.svg'), 'utf8'), />Born \/ buried \/ renamed</);
 
     const out2 = join(root, 'cli2');
     const a = run(['--json', '--author', 'ada@example.com', '--exclude', 'ünïcödé/', '--lang', 'tr', '--out', out2]);
     assert.equal(a.status, 0, a.stderr);
     // Ada: 7 / 2, the naïve.md add dropped by --exclude.
-    assert.deepEqual(JSON.parse(readFileSync(join(out2, 'stats.json'), 'utf8')).stats.fileLifecycle, { added: 6, deleted: 2 });
+    assert.deepEqual(JSON.parse(readFileSync(join(out2, 'stats.json'), 'utf8')).stats.fileLifecycle, { added: 6, deleted: 2, renamed: 0 });
     assert.match(a.stdout, /Dosyalar\s+6 doğdu · 2 gömüldü/);
   });
 });

@@ -135,6 +135,14 @@ export default {
     summary: (year, commits, lines, days) => `${year} yılına göre: ${signedPluralNb(commits, UNITS.commit)}, ${signedPluralNb(lines, ['değişen satır', 'değişen satır'])}, ${signedPluralNb(days, UNITS.activeDay)}.`,
   },
 
+  // "önceki 30 gün" / "önceki 30 güne göre": the suffix goes on "gün", never on the number.
+  period: {
+    commits: (days, short) => (short ? 'Commit farkı' : `Commit farkı (önceki ${num(days)} gün)`),
+    lines: (days, short) => (short ? 'Satır farkı' : `Satır farkı (önceki ${num(days)} gün)`),
+    activeDays: (days, short) => (short ? 'Gün farkı' : `Gün farkı (önceki ${num(days)} gün)`),
+    summary: (days, commits, lines, active) => `Önceki ${num(days)} güne göre: ${signedPluralNb(commits, UNITS.commit)}, ${signedPluralNb(lines, ['değişen satır', 'değişen satır'])}, ${signedPluralNb(active, UNITS.activeDay)}.`,
+  },
+
   peak: {
     eyebrow: 'Altın saatin',
     byHour: 'Saatlere göre commit',
@@ -458,6 +466,7 @@ export default {
     team: 'Ekip',
     repos: 'Repolar',
     vsYear: (year) => `${year} ile fark`,
+    vsPeriod: (days) => `Önceki ${num(days)} güne göre`,
     moreRepos: (n) => `…ve ${num(n)} repo daha`,
     youAre: 'sıran',
     ofCommits: (share) => `commit'lerin ${share} kadarı`,
@@ -552,6 +561,7 @@ export default {
     truncated: (n) => `Not: bu repoda ${n} üzerinde commit var; yalnızca en yeni ${n} commit incelendi.`,
     truncatedRepos: (n) => `Not: bu repolarda toplam ${n} üzerinde commit var; yalnızca en yeni ${n} commit incelendi.`,
     previousYearTruncated: (n, year) => `Not: ${year} yılında eşleşen commit sayısı ${n} üzerinde; karşılaştırma o yılın yalnızca en yeni ${n} commit'ini sayıyor.`,
+    previousPeriodTruncated: (n, days) => `Not: önceki ${num(days)} günlük dönemde eşleşen commit sayısı ${n} üzerinde; karşılaştırma o dönemin yalnızca en yeni ${n} commit'ini sayıyor.`,
     teamTruncated: (n, from) => `Not: katkıcı kartı yalnızca herkesin (senin de) en yeni ${n} commit'ini sıralıyor${from ? ` (${from} itibarıyla)` : ''}.`,
     teamSince: (n, from) => `Not: herkesin commit'leri toplamda ${n} üzerinde; katkıcı kartı yalnızca incelenen en eski commit'inden (${from}) bu yana olanları sıralıyor.`,
     shallow: "Not: sığ klon (shallow clone): en eski (sınır) commit'in satır sayıları atlandı ve daha eski geçmiş eksik.",

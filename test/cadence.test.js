@@ -435,7 +435,7 @@ describe('cadence: CLI end to end', () => {
     const r = bin([repo('since', ['2026-02-01T10:00:00Z', '2026-02-02T10:00:00Z', ...base.slice(3)]), '--out', out, '--json', '--since', '2026-03-03']);
     assert.equal(r.status, 0, r.stderr);
     assert.deepEqual(statsJson(out).stats.cadence, { perActiveDay: 1.5, medianGapDays: 3 });
-    assert.match(r.stdout, /Cadence {6}1\.5 commits per active day · every 3 days/);
+    assert.match(r.stdout, /Cadence +1\.5 commits per active day · every 3 days/);
   });
 
   test('several repos: active days merged across repos', () => {

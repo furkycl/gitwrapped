@@ -27,6 +27,7 @@ import { shownMerges } from './stats/merges.js';
 import { scrubEmails } from './privacy.js';
 import { languageBarRows, languageHeadline } from './stats/languages.js';
 import { yearOverYear } from './stats/yoy.js';
+import { previousPeriod } from './stats/period.js';
 import { getStrings, languageLabel } from './i18n/index.js';
 
 /** How many hot files / languages / contributors the summary lists. */
@@ -152,6 +153,9 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
     if (tests) numbers.push(item(escapeMarkdown(M.tests), `${plural(tests.lines, 'line', L)} (${L.recap.ofLinesChanged(testsShareText(tests, L))})`));
     const yoy = yearOverYear(stats);
     if (yoy) numbers.push(item(escapeMarkdown(L.recap.vsYear(yoy.previousYear)), escapeMarkdown(L.yoy.changes(yoy.commits, yoy.lines, yoy.activeDays))));
+    // --since: the change since the equal-length window before it (stats.previousPeriod).
+    const pop = yoy ? null : previousPeriod(stats);
+    if (pop) numbers.push(item(escapeMarkdown(L.recap.vsPeriod(pop.days)), escapeMarkdown(L.yoy.changes(pop.commits, pop.lines, pop.activeDays))));
     // The commit size mix, as on the totals card and the recap; only when there is one.
     const mix = shownCommitSizes(stats?.commitSizes);
     if (mix) numbers.push(item(escapeMarkdown(L.totals.commitSizes), escapeMarkdown(mix.map((b) => `${sizeShareText(b, mix, L)} ${L.recap.sizeNames[b.id]}`).join(' · '))));

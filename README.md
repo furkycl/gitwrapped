@@ -125,7 +125,7 @@ gitwrapped [path...] [options]
 | Argument / option     | What it does                                                                           |
 |-----------------------|----------------------------------------------------------------------------------------|
 | `path`                | Path to the git repository (default: `.`; an empty path also means `.`). Give several paths for one Wrapped of all of them (see [Several repos at once](#several-repos-at-once)) |
-| `--since YYYY-MM-DD`  | Only include commits made on or after this day (the author's local calendar day). Also a relative window: `30d`, `12w`, `6m` or `1y` before today (see [Relative windows](#relative-windows)) |
+| `--since YYYY-MM-DD`  | Only include commits made on or after this day (the author's local calendar day). Also a relative window: `30d`, `12w`, `6m` or `1y` before today (see [Relative windows](#relative-windows)). Without `--year`, the window is compared with the same number of days just before it (see [Period over period](#period-over-period)) |
 | `--until YYYY-MM-DD`  | Only include commits made on or before this day, inclusive (the author's local calendar day). Also relative: `30d`, `12w`, `6m`, `1y` |
 | `--year YYYY`         | One calendar year, the classic Wrapped: same as `--since YYYY-01-01 --until YYYY-12-31` (can't be combined with them), plus a comparison with the year before (see [Year over year](#year-over-year)) |
 | `--author <email>`    | Only include commits by this author email (exact, case-insensitive match against the email after `.mailmap` is applied) |
@@ -255,8 +255,34 @@ With `--year`, gitwrapped also reads the year before with the same filters (`--a
   (see [JSON output](#json-output)).
 
 When either year has no commits (your first year in the repo, or a quiet one) there is
-nothing to compare, and nothing is added. `--since` / `--until` windows are never
-compared, even when they cover exactly one calendar year.
+nothing to compare, and nothing is added. A `--since` / `--until` window that covers
+exactly one calendar year gets the period-over-period comparison below instead, never
+both.
+
+## Period over period
+
+With `--since` (an absolute date or a relative window like `30d`) and no `--year`,
+gitwrapped compares the window with the same number of days just before it: for
+`--since 2026-09-09` on 2026-10-08 (30 days, today included), that is 2026-08-10 to
+2026-09-08. The window ends at `--until`, or today without it; an `--until` after today
+counts only up to today (`--since 2026-10-01 --until 2026-12-31` on 2026-10-08 compares
+8 days with the 8 before), and a window that starts after today is not compared. The
+days are plain calendar days (month lengths and leap days count as they fall), so a
+whole calendar year given as `--since 2025-01-01 --until 2025-12-31` is compared with
+the 365 days before it, 2024-01-02 to 2024-12-31 after a leap year: use `--year 2025`
+for a calendar year-over-year comparison. The earlier window is
+read with the same filters as for [Year over year](#year-over-year), and:
+
+- the totals card adds three rows, e.g. "Commits vs prev. 30 days" (just "Commits vs
+  prev." when a large number leaves no room for the day count);
+- the outro card opens with one line, e.g. "vs previous 30 days: +12 commits, −340
+  lines changed, +3 active days.";
+- the terminal recap and `wrapped.md` get a `vs prev. 30 days` line, and `stats.json` a
+  `previousPeriod` object (see [JSON output](#json-output)).
+
+When either window has no commits, or the earlier one would start before 1970, nothing
+is added. If `--max-commits` cuts the earlier window short the recap says so, and if its
+read fails gitwrapped prints a one-line warning and leaves the comparison out.
 
 ## Several repos at once
 
@@ -333,7 +359,7 @@ but it does contain commit subjects and hashes, tag names and repo-relative file
 | `asOf`          | `YYYY-MM-DD` the current streak is counted up to: today, or the end of a past `--until` / `--year` window |
 | `filters`       | `{since, until, author, maxCommits, exclude}` as used (`--year` shows as since/until); dates and author are `null` when not set, `maxCommits` is the cap in effect, `exclude` the `--exclude` patterns in order (`[]` when none) |
 | `truncated`     | `true` when `--max-commits` cut the history short                             |
-| `stats`         | Every computed stat: `totals`, `habits`, `timezones`, `weekend`, `lateNights`, `officeHours`, `streaks`, `cadence`, `daily`, `busiestDay`, `months`, `hotFiles`, `folders`, `fileLifecycle`, `tests`, `languages`, `contributors`, `messages`, `biggestCommit`, `commitSizes`, `commitTypes`, `emoji`, `reverts`, `firstCommit`, `coAuthors`, `releases`, `merges`, `personality`, `repos` with several repos, and `yearOverYear` with `--year` |
+| `stats`         | Every computed stat: `totals`, `habits`, `timezones`, `weekend`, `lateNights`, `officeHours`, `streaks`, `cadence`, `daily`, `busiestDay`, `months`, `hotFiles`, `folders`, `fileLifecycle`, `tests`, `languages`, `contributors`, `messages`, `biggestCommit`, `commitSizes`, `commitTypes`, `emoji`, `reverts`, `firstCommit`, `coAuthors`, `releases`, `merges`, `personality`, `repos` with several repos, `yearOverYear` with `--year`, and `previousPeriod` with `--since` (no `--year`) |
 
 ```json
 {
@@ -706,7 +732,16 @@ the one before: `{"year": 2025, "previousYear": 2024, "commits": {"current": 412
 `totals`), each `delta` is `current - previous`, and `previousTruncated` is `true` when
 the previous year hit `--max-commits`. The key is absent without `--year`, and also when
 either year has no commits (a repo's first year, or a quiet year): there is nothing to
-compare, and the output is the same as for `--since YYYY-01-01 --until YYYY-12-31`.
+compare.
+
+With `--since` and no `--year`, `stats.previousPeriod` (the last key of `stats`) compares
+the window with the equal-length one just before it: `{"since": "2026-09-09", "until":
+"2026-10-08", "previousSince": "2026-08-10", "previousUntil": "2026-09-08", "days": 30,
+"commits": {"current": 41, "previous": 29, "delta": 12}, "lines": {...}, "activeDays":
+{...}, "previousTruncated": false}`. `until` is `--until`, or the run's day when there
+is no `--until` or it is later; the metrics and `previousTruncated` work as in `yearOverYear`. The key
+is absent when either window has no commits or the earlier one would start before 1970,
+and a `--year` run never has it.
 
 Without `--json` no stats.json is written, and one left over from an earlier `--json` run
 is left as it is.
@@ -818,6 +853,9 @@ npx @furkycl/gitwrapped --year 2025 --md --no-png
   cover only its most recent commits (`previousTruncated` in `stats.json`). If that
   extra read fails, gitwrapped prints a one-line warning, leaves the comparison out and
   still writes everything else.
+- **`--since` reads the window before it too** (without `--year`): the same number of
+  days just before `--since`, with the same filters and cap, for the period-over-period
+  comparison; skipped, capped and failed reads are handled as for `--year`.
 - **`--author` reads the history twice:** once for your commits and once for everyone's
   (same window and `--max-commits`), so the team card can rank you. If the cap cuts the
   second read short, everyone is read a third time from the day of your oldest analyzed

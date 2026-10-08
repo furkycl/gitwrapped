@@ -9,6 +9,7 @@ import { shownReleases } from './stats/releases.js';
 import { scrubEmails } from './privacy.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from './i18n/index.js';
 import { yearOverYear } from './stats/yoy.js';
+import { previousPeriod } from './stats/period.js';
 import { epochDay } from './stats/time.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { shownCommitSizes } from './stats/sizes.js';
@@ -179,7 +180,8 @@ function shortText(s, maxWidth = 48) {
  * A multi-repo run (stats.repos with two or more rows) gets a "Repos" line and one line
  * per repo (commits and lines; the first five, then "…and N more").
  * A --year run with a comparison (stats.yearOverYear) gets a "vs <previous year>" line
- * with the change in commits, lines changed and active days.
+ * with the change in commits, lines changed and active days; a --since run with one
+ * (stats.previousPeriod) a "vs prev. N days" line, the change since the N days before.
  * A "Top folders" line shows the three most-changed top-level folders by lines changed
  * ("src/ (1,234 lines) · test/ (567 lines) · (root) (89 lines)"; stats.folders, see
  * stats/folders.js shownFolders) when there are two or more.
@@ -247,7 +249,13 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
 
   for (const note of notes) lines.push(c('yellow', `  ${sc(note)}`));
 
-  const label = (s) => c('dim', s.padEnd(R.labelWidth));
+  // --since: the "vs prev. N days" line (stats.previousPeriod) can be wider than the label
+  // column; then the whole column widens so the values still line up (only then: runs
+  // without the comparison keep R.labelWidth).
+  const pop = commits > 0 && !yearOverYear(stats) ? previousPeriod(stats) : null;
+  const popLabel = pop ? R.vsPeriod(pop.days) : null;
+  const labelWidth = popLabel ? Math.max(R.labelWidth, displayWidth(popLabel) + 1) : R.labelWidth;
+  const label = (s) => c('dim', s.padEnd(labelWidth));
   if (commits === 0) {
     lines.push(c('yellow', `  ${R.noCommits}`));
   } else {
@@ -275,6 +283,8 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     // --year: the change since the previous year (stats.yearOverYear), as on the cards.
     const yoy = yearOverYear(stats);
     if (yoy) lines.push(`  ${label(R.vsYear(yoy.previousYear))}${c('cyan', L.yoy.changes(yoy.commits, yoy.lines, yoy.activeDays))}`);
+    // --since: the change since the equal-length window before it (stats.previousPeriod).
+    if (pop) lines.push(`  ${label(popLabel)}${c('cyan', L.yoy.changes(pop.commits, pop.lines, pop.activeDays))}`);
 
     const h = stats?.habits ?? {};
     if (h.peakHourLabel) {

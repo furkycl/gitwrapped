@@ -8,7 +8,7 @@ import { compileExcludes } from './glob.js';
 import { buildStatsJson } from './json.js';
 import { buildMarkdown } from './markdown.js';
 import { renderPng } from './png.js';
-import { computeStats, localParts, localToday } from './stats/index.js';
+import { computeStats, localParts, localToday, previousWindow } from './stats/index.js';
 import { excludeFiles } from './stats/files.js';
 import { hasTeamCard } from './stats/contributors.js';
 import { formatSummary, shouldUseColor, stripControl } from './summary.js';
@@ -31,7 +31,8 @@ Arguments:
 
 Options:
   --since YYYY-MM-DD   Only include commits on or after this date
-                       (or relative to today: 30d, 12w, 6m, 1y)
+                       (or relative to today: 30d, 12w, 6m, 1y), compared
+                       with the same number of days just before it
   --until YYYY-MM-DD   Only include commits on or before this date
                        (or relative to today: 30d, 12w, 6m, 1y)
   --year YYYY          One calendar year: --since YYYY-01-01 --until YYYY-12-31,
@@ -647,7 +648,7 @@ async function teamSpan(team, mine, { read, until, limit, labels }) {
  * the cap (`teamTruncated`), everyone is read once more from the day of the author's
  * oldest commit in this run (see teamSpan), so both sides of the ranking cover the same
  * span; `teamSpan` is then `{from, capped}` (else null).
- * Returns {commits, stats, repoName, truncated, teamTruncated, teamSpan, previousYearTruncated, previousYearError, limit, shallow, unbornWithRefs, html, cardsDir, cardFiles,
+ * Returns {commits, stats, repoName, truncated, teamTruncated, teamSpan, previousYearTruncated, previousYearError, previousPeriodTruncated, previousPeriodError, limit, shallow, unbornWithRefs, html, cardsDir, cardFiles,
  * shareSvg, pngDir, pngFiles, sharePng, pngSkipped, statsJson, markdown, asOf, pastWindow}
  * with the written paths
  * (joined onto `out`; PNG paths null/[] when skipped, statsJson null without `json`,
@@ -673,6 +674,12 @@ async function teamSpan(team, mine, { read, until, limit, labels }) {
  * `previousYearError` holds the reason (else null); `previousYearTruncated` is true when
  * --max-commits cut the previous year short (its numbers then cover only its most recent
  * commits).
+ * With `since` and no `year`, the window [since, until] (`until` capped at `today`) of
+ * N days is compared the same way with the N days just before it (see previousWindow in
+ * stats/period.js), for stats.previousPeriod, shown on the same cards and in the recap
+ * and wrapped.md; skipped when this window has no commits or the previous one would start
+ * before 1970. A failed read leaves `previousPeriodError` (else null);
+ * `previousPeriodTruncated` is true when --max-commits cut the previous window short.
  * With `exclude` (glob patterns, see compileGlob in src/glob.js) the matching files are
  * removed from every commit right after each read (this run's, the team read and the
  * previous year's; see excludeFiles in stats/files.js), so lines, files touched, hot
@@ -720,6 +727,22 @@ export async function generate({ path, paths, since, until, year, author, exclud
       previousYearError = String(err?.message ?? err).split('\n')[0] || 'unknown error';
     }
   }
+  // --since without --year: the equal-length window just before [since, end], end being
+  // the earlier of --until and the reference day (days still to come are not compared;
+  // a window entirely in the future has none), read with the same filters and cap, for the
+  // period-over-period comparison (stats.previousPeriod, see stats/period.js). Not when
+  // this window has no commits, and like the previous year's read, an extra: if it
+  // fails, the run goes on without it.
+  const periodWindow = !year && !isYear && since && commits.length > 0 ? previousWindow(since, until && until < ref ? until : ref) : null;
+  let previousWindowRead = null;
+  let previousPeriodError = null;
+  if (periodWindow) {
+    try {
+      previousWindowRead = await read({ since: periodWindow.previousSince, until: periodWindow.previousUntil, author, limit: maxCommits, labels, coAuthors: false, tags: false, reverts: false, lifecycle: false });
+    } catch (err) {
+      previousPeriodError = String(err?.message ?? err).split('\n')[0] || 'unknown error';
+    }
+  }
   // A capped team read holds only everyone's most recent commits, which can leave out some
   // (or all) of yours: rank everyone over the span your commits cover instead.
   const span = team?.truncated ? await teamSpan(team, commits, { read, until, limit: maxCommits, labels }) : null;
@@ -733,6 +756,7 @@ export async function generate({ path, paths, since, until, year, author, exclud
     teamTruncated: team ? Boolean(team.truncated) : Boolean(truncated),
     ...(multi ? { repos: labels } : {}),
     ...(previous ? { previousYear: { year: prevYear + 1, commits: previous.commits, truncated: Boolean(previous.truncated) } } : {}),
+    ...(previousWindowRead ? { previousPeriod: { since: periodWindow.since, until: periodWindow.until, commits: previousWindowRead.commits, truncated: Boolean(previousWindowRead.truncated) } } : {}),
   });
   // Several repos are named together ("3 repos", in `lang`); one repo by its folder.
   const name = multi ? displayRepoName(stats, { lang }) : await repoName(path);
@@ -828,6 +852,8 @@ export async function generate({ path, paths, since, until, year, author, exclud
     teamSpan: span ? { from: span.from, capped: span.capped } : null,
     previousYearTruncated: Boolean(stats.yearOverYear?.previousTruncated),
     previousYearError,
+    previousPeriodTruncated: Boolean(stats.previousPeriod?.previousTruncated),
+    previousPeriodError,
     limit,
     shallow: Boolean(shallow),
     unbornWithRefs: Boolean(unborn && otherRefs),
@@ -985,6 +1011,9 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
   if (result.previousYearTruncated) {
     notes.push(N.previousYearTruncated(limitText(), result.stats.yearOverYear.previousYear));
   }
+  if (result.previousPeriodTruncated) {
+    notes.push(N.previousPeriodTruncated(limitText(), result.stats.previousPeriod.days));
+  }
   if (result.shallow) {
     notes.push(N.shallow);
   }
@@ -1019,6 +1048,7 @@ export async function run(argv, { stdout = process.stdout, stderr = process.stde
   );
   if (result.pngSkipped) stderr.write(`gitwrapped: PNG export skipped: ${result.pngSkipped}\n`);
   if (result.previousYearError) stderr.write(`gitwrapped: year-over-year comparison skipped: ${result.previousYearError}\n`);
+  if (result.previousPeriodError) stderr.write(`gitwrapped: period-over-period comparison skipped: ${result.previousPeriodError}\n`);
   if (opts.open) {
     const target = resolve(result.html);
     // Say so first: the opener may take up to OPEN_WAIT_MS to report a failure.

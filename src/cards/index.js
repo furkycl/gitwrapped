@@ -20,6 +20,7 @@ import { shownReleases } from '../stats/releases.js';
 import { scrubEmails } from '../privacy.js';
 import { personalityReason } from '../stats/personality.js';
 import { yearOverYear } from '../stats/yoy.js';
+import { previousPeriod } from '../stats/period.js';
 import { shownBiggestLines } from '../stats/biggest.js';
 import { shownCommitSizes } from '../stats/sizes.js';
 import { foldCommitTypes, shownCommitTypes } from '../stats/types.js';
@@ -363,6 +364,33 @@ function intro(s, ctx) {
   };
 }
 
+/**
+ * The totals card's comparison rows: --year's change since the previous year
+ * (stats.yearOverYear), else a --since run's change since the equal-length window before
+ * it (stats.previousPeriod), with the day count in the labels when all three rows fit
+ * whole and the short labels otherwise; [] without either.
+ */
+function comparisonRows(s, L) {
+  const yoy = yearOverYear(s);
+  if (yoy) {
+    return [
+      { label: L.yoy.commits(yoy.previousYear), value: L.delta(yoy.commits) },
+      { label: L.yoy.lines(yoy.previousYear), value: L.delta(yoy.lines) },
+      { label: L.yoy.activeDays(yoy.previousYear), value: L.delta(yoy.activeDays) },
+    ];
+  }
+  const p = previousPeriod(s);
+  if (!p) return [];
+  const P = L.period;
+  const rows = (short) => [
+    { label: P.commits(p.days, short), value: L.delta(p.commits) },
+    { label: P.lines(p.days, short), value: L.delta(p.lines) },
+    { label: P.activeDays(p.days, short), value: L.delta(p.activeDays) },
+  ];
+  const full = rows(false);
+  return full.every((r) => rowFits(r)) ? full : rows(true);
+}
+
 /** The most list rows a card draws (see renderCard's `lines`). */
 const MAX_ROWS = 6;
 
@@ -383,15 +411,9 @@ function totals(s, { L, repos }) {
     { label: T.filesTouched, value: L.num(t.filesTouched) },
   ];
   if (num(t.authors) > 1) rows.push({ label: T.contributors, value: L.num(t.authors) });
-  // --year: the change since the previous year (at most 6 rows in all).
-  const yoy = yearOverYear(s);
-  if (yoy) {
-    rows.push(
-      { label: L.yoy.commits(yoy.previousYear), value: L.delta(yoy.commits) },
-      { label: L.yoy.lines(yoy.previousYear), value: L.delta(yoy.lines) },
-      { label: L.yoy.activeDays(yoy.previousYear), value: L.delta(yoy.activeDays) },
-    );
-  }
+  // --year: the change since the previous year; --since: since the window before it
+  // (at most 6 rows in all).
+  rows.push(...comparisonRows(s, L));
   const split = {
     kind: 'split',
     title: T.linesChanged,
@@ -1655,15 +1677,18 @@ function outro(s, ctx) {
   const O = L.outro;
   const commits = num(s.totals?.commits);
   const [top] = shownHotFiles(s);
-  // --year: one sentence on the change since the previous year, first (when the subtitle
-  // runs out of lines, trailing sentences are dropped).
+  // --year: one sentence on the change since the previous year (--since: since the window
+  // before it), first (when the subtitle runs out of lines, trailing sentences are dropped).
   const yoy = commits > 0 ? yearOverYear(s) : null;
+  const pop = commits > 0 && !yoy ? previousPeriod(s) : null;
   const tiles = {
     kind: 'tiles',
     items: summaryTiles(s, ctx),
     wide: top ? { label: O.hottestFile, value: top.path, note: plural(top.commits, 'commit', L), truncate: 'start' } : null,
   };
-  const yoySentence = yoy ? L.yoy.summary(yoy.previousYear, yoy.commits, yoy.lines, yoy.activeDays) : null;
+  const yoySentence = yoy
+    ? L.yoy.summary(yoy.previousYear, yoy.commits, yoy.lines, yoy.activeDays)
+    : pop ? L.period.summary(pop.days, pop.commits, pop.lines, pop.activeDays) : null;
   const spec = {
     eyebrow: O.eyebrow,
     big: O.big,

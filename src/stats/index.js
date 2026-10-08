@@ -25,10 +25,11 @@ import { COMMIT_SIZE_BUCKETS, COMMIT_SIZE_IDS, commitSizeOf, computeCommitSizes,
 import { computeTotals } from './totals.js';
 import { COMMIT_TYPE_IDS, COMMIT_TYPES_MIN_SHARE, commitTypeOf, computeCommitTypes, foldCommitTypes, shownCommitTypes } from './types.js';
 import { computeYearOverYear, yearOverYear } from './yoy.js';
+import { computePreviousPeriod, previousPeriod, previousWindow } from './period.js';
 import { computeReverts, isRevertCommit, isRevertSubject, shownReverts } from './reverts.js';
 import { computeEmoji, EMOJI_MIN_SHARE, emojiIn, emojiKey, GITMOJI, isEmoji, shownEmoji, TOP_EMOJI } from './emoji.js';
 
-export { computeTotals, computeTimeHabits, computeStreaks, computeDaily, busiestOf, daysUpTo, longestGap, longestRun, shownBusiestDay, shownLongest, shownLongestBreak, computeFileLifecycle, shownFileLifecycle, computeHotFiles, isIgnoredPath, repoRelativePath, computeRepos, computeYearOverYear, yearOverYear };
+export { computeTotals, computeTimeHabits, computeStreaks, computeDaily, busiestOf, daysUpTo, longestGap, longestRun, shownBusiestDay, shownLongest, shownLongestBreak, computeFileLifecycle, shownFileLifecycle, computeHotFiles, isIgnoredPath, repoRelativePath, computeRepos, computeYearOverYear, yearOverYear, computePreviousPeriod, previousPeriod, previousWindow };
 export { computeLanguages, languageBarRows, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER_LANGUAGE, percentShares };
 export { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONTRIBUTORS };
 export { computeFirstCommit, SHORT_HASH };
@@ -116,9 +117,13 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * year's commits, read with the same filters): `stats.yearOverYear` compares the two
  * years (see yoy.js), as the last key; it is absent when there is nothing to compare
  * (no previousYear, or either year has no commits), so other runs are unchanged.
+ * `previousPeriod` (a --since run without --year: `{since, until, commits, truncated}`
+ * with the commits of the equal-length window just before [since, until], read with the
+ * same filters): `stats.previousPeriod` compares the two windows (see period.js), as the
+ * last key; absent when there is nothing to compare. A run never has both comparisons.
  * Later milestones add keys.
  */
-export function computeStats(commits = [], { today, todayComplete, team, author, teamTruncated = false, repos, previousYear } = {}) {
+export function computeStats(commits = [], { today, todayComplete, team, author, teamTruncated = false, repos, previousYear, previousPeriod: previousWindowCommits } = {}) {
   const daily = computeDaily(commits);
   const habits = computeTimeHabits(commits);
   const stats = {
@@ -156,6 +161,9 @@ export function computeStats(commits = [], { today, todayComplete, team, author,
   if (previousYear) {
     const yoy = computeYearOverYear(stats.totals, previousYear);
     if (yoy) stats.yearOverYear = yoy;
+  } else if (previousWindowCommits) {
+    const pop = computePreviousPeriod(stats.totals, previousWindowCommits);
+    if (pop) stats.previousPeriod = pop;
   }
   return stats;
 }

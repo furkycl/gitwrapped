@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Period over period: with `--since` (absolute or relative) and no `--year`, the window
+  [`--since`, `--until` or today, whichever is earlier] of N days is compared with the N
+  days just before it, read with the same filters and cap (a window starting after today
+  is not compared). The totals card adds three signed rows ("Commits /
+  Lines / Active days vs prev. 30 days", or "… vs prev." when a large number leaves no
+  room), the outro opens with "vs previous 30 days: …", the terminal recap and
+  `wrapped.md` get a "vs prev. 30 days" line, and `stats.json` gets `stats.previousPeriod`
+  (`since`, `until`, `previousSince`, `previousUntil`, `days`, `commits`, `lines`,
+  `activeDays` as `{current, previous, delta}`, `previousTruncated`). Nothing is added when
+  either window has no commits or the earlier one would start before 1970; a capped
+  earlier window gets a note and a failed read a one-line warning. English and Turkish.
+  `--year` runs keep their year-over-year comparison and never get this one.
+
 ### Changed
 
 - Broader test detection for the test share. Besides `test/`, `tests/`, `__tests__/` and

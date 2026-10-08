@@ -411,3 +411,62 @@ describe('review fixes (turn 086)', () => {
     assert.match(en.messages.issueRefsDescription(2, '5%', null, 0), /^2 commits mention an issue/);
   });
 });
+
+describe('audit fixes (turn 088)', () => {
+  test('a reference right after "/" counts when the "/" follows another reference', () => {
+    assert.deepEqual(refs('closes #12/#13'), ['#12', '#13']);
+    assert.deepEqual(refs('ABC-1/ABC-2'), ['ABC-1', 'ABC-2']);
+    assert.deepEqual(refs('#1/#2/#3'), ['#1', '#2', '#3']);
+    assert.deepEqual(refs('GH-1/gh-2'), ['#1', '#2']);
+    for (const s of ['foo/#12', 'owner/repo#12', 'path/ABC-1', 'src/ABC-1/ABC-2', 'UTF-8/#3', 'https://x.y/#12/#13']) assert.deepEqual(refs(s), [], s);
+  });
+});
+
+describe('audit fixes (turn 088): edge cases', () => {
+  test('chains and mixes of references after "/"', () => {
+    assert.deepEqual(refs('#1/#2/#3/#4'), ['#1', '#2', '#3', '#4']);
+    assert.deepEqual(refs('ABC-1/#2'), ['ABC-1', '#2']);
+    assert.deepEqual(refs('#2/ABC-1'), ['#2', 'ABC-1']);
+    assert.deepEqual(refs('gh-7/ABC-8'), ['#7', 'ABC-8']);
+    assert.deepEqual(refs('(#12/#13)'), ['#12', '#13']);
+    assert.deepEqual(refs('#12/#12'), ['#12']);
+    assert.deepEqual(refs('#12 / #13'), ['#12', '#13']);
+  });
+
+  test('a "/" after a non-reference still excludes what follows it', () => {
+    // The first one is after a path, so the chain never starts.
+    assert.deepEqual(refs('src/ABC-1/ABC-2'), []);
+    assert.deepEqual(refs('src/#1/#2/#3'), []);
+    // A break in the chain: "foo" is not a reference.
+    assert.deepEqual(refs('#12/foo/#13'), ['#12']);
+    assert.deepEqual(refs('#12//#13'), ['#12']);
+    // Not counted refs do not start a chain: "a#12", "#13abc", "UTF-8", a hex hash.
+    assert.deepEqual(refs('a#12/#13'), []);
+    assert.deepEqual(refs('#13abc/#14'), []);
+    assert.deepEqual(refs('UTF-8/ABC-2'), []);
+    assert.deepEqual(refs('deadbeef1/#14'), []);
+    assert.deepEqual(refs('owner/repo#12/#13'), []);
+    assert.deepEqual(refs('https://x.io/a#12/#13 and #14'), ['#14']);
+  });
+
+  test('with fixups the issue refs row may still fold the counters (documented: the segment yields), en / tr', () => {
+    const s = computeStats(['fix #12', 'fix #12 again', 'fixup! fix #12', 'add x', 'wip'].map((t, i) => commit(t, i)), { today: TODAY });
+    assert.equal(s.messages.fixups.commits, 1);
+    for (const lang of ['en', 'tr']) {
+      const lines = messagesSpec(s, lang).lines;
+      assert.ok(lines.some((r) => r.label === '“fix” / “wip” / “oops”'), `${lang}: ${JSON.stringify(lines)}`);
+      assert.ok(!lines.some((r) => /fixup!/.test(String(r.value))), `${lang}: ${JSON.stringify(lines)}`);
+      assert.ok(lines.at(-1).label.startsWith((lang === 'en' ? en : tr).messages.issueRefsTitle(null, 0)), `${lang}: ${JSON.stringify(lines)}`);
+    }
+  });
+
+  test('without fixups the issue refs row still folds the counters to make room (en, tr)', () => {
+    const s = computeStats(['fix #12', 'fix #12 again', 'fixup x', 'add x', 'wip'].map((t, i) => commit(t, i)), { today: TODAY });
+    assert.equal(s.messages.fixups.commits, 0);
+    for (const lang of ['en', 'tr']) {
+      const lines = messagesSpec(s, lang).lines;
+      assert.ok(lines.some((r) => r.label === '“fix” / “wip” / “oops”'), `${lang}: ${JSON.stringify(lines)}`);
+      assert.ok(lines.at(-1).label.startsWith((lang === 'en' ? en : tr).messages.issueRefsTitle(null, 0)), `${lang}: ${JSON.stringify(lines)}`);
+    }
+  });
+});

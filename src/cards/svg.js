@@ -531,8 +531,8 @@ const ROW_VALUE_MAX_WIDTH = WRAP_WIDTH * 0.55;
 
 /** Whether rowsBlock draws `value` (a row's value) whole, without cutting it. */
 export function rowValueFits(value) {
-  const v = String(value ?? '');
-  return v === '' || wrapText(v, { maxWidth: ROW_VALUE_MAX_WIDTH, fontSize: LIST.size, maxLines: 1 })[0] === v;
+  const v = s1(value);
+  return v === '' || s1(wrapText(v, { maxWidth: ROW_VALUE_MAX_WIDTH, fontSize: LIST.size, maxLines: 1 })[0]) === v;
 }
 
 /** A row (`{label, value, truncate}`, see normalizeRow) as rowsBlock draws it: its label and value text, either possibly cut. */
@@ -546,11 +546,14 @@ function drawnRow(row) {
   return { label, value };
 }
 
-/** Whether rowsBlock draws `row` (`{label, value}`) whole: neither its label nor its value cut. */
+/**
+ * Whether rowsBlock draws `row` (`{label, value}`) whole: neither its label nor its value
+ * cut. Runs of whitespace are drawn as one space, so they are compared that way.
+ */
 export function rowFits(row) {
   const r = normalizeRow(row);
   const drawn = drawnRow(r);
-  return drawn.label === r.label && (drawn.value ?? '') === r.value;
+  return s1(drawn.label) === s1(r.label) && s1(drawn.value) === s1(r.value);
 }
 
 function rowsBlock(lines) {
@@ -650,7 +653,8 @@ function barsBlock(spec, compact = false, L = EN) {
  * Horizontal bar list. Spec: `{kind: 'hbars', title, items: [{label, sub, value, amount,
  * title, truncate, subWhole, subTruncate}]}`: label (bold) with an optional dimmer `sub` after
  * it (cut from the start; with `subTruncate: 'path'` folders are first middle-elided as
- * "first/…/near/"; `subForms` are shorter forms of it tried first, the first that fits; with `subWhole: true` it is left out rather than shortened when it does
+ * "first/…/near/"; `subForms` are shorter forms of it tried first, the first that fits, and when none does
+ * `subCut` is cut in the middle in place of the usual elision; with `subWhole: true` it is left out rather than shortened when it does
  * not fit), `value` right
  * aligned, and a bar proportional to `amount` / the largest amount. At most 6 items.
  */
@@ -658,7 +662,7 @@ function hbarsBlock(spec, compact = false, L = EN) {
   const items = (Array.isArray(spec.items) ? spec.items : [])
     .filter((it) => it && (s1(it.label) || s1(it.value)))
     .slice(0, MAX_CHART_ITEMS)
-    .map((it) => ({ label: s1(it.label), sub: s1(it.sub), subWhole: it.subWhole === true, subPath: it.subTruncate === 'path', subForms: Array.isArray(it.subForms) ? it.subForms.map(s1).filter(Boolean) : [], value: s1(it.value), amount: clampNum(it.amount), title: s1(it.title), truncate: TRUNCATE_MODES.has(it.truncate) ? it.truncate : 'end' }));
+    .map((it) => ({ label: s1(it.label), sub: s1(it.sub), subWhole: it.subWhole === true, subPath: it.subTruncate === 'path', subForms: Array.isArray(it.subForms) ? it.subForms.map(s1).filter(Boolean) : [], subCut: s1(it.subCut), value: s1(it.value), amount: clampNum(it.amount), title: s1(it.title), truncate: TRUNCATE_MODES.has(it.truncate) ? it.truncate : 'end' }));
   if (items.length === 0) return null;
   const cap = s1(spec.title);
   const capH = cap ? CAPTION.height : 0;
@@ -695,6 +699,7 @@ function hbarsBlock(spec, compact = false, L = EN) {
           const subOpts = { maxWidth: subRoom / BIG_WEIGHT_FACTOR, fontSize: SUB };
           const fits = (t) => measureText(t, SUB) <= subOpts.maxWidth;
           const sub = (it.subForms.length ? (fits(it.sub) ? it.sub : it.subForms.find(fits)) : null)
+            ?? (it.subCut ? truncateMiddle(it.subCut, subOpts) : null)
             ?? (it.subPath ? elidePath(it.sub, subOpts) : null) ?? truncateStart(it.sub, subOpts);
           if (sub && sub !== ELLIPSIS && (!it.subWhole || sub === it.sub)) g.push(textEl(subX, baseline, sub, { size: SUB, weight: 600, opacity: 0.6 }));
         }

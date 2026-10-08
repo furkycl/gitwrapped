@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { computeStats } from '../src/stats/index.js';
 import { mergeHistories } from '../src/git.js';
 import { buildCards, buildCardSpecs } from '../src/cards/index.js';
-import { elidePath, elidedPathForms, escapeXml, measureText, rowFits } from '../src/cards/svg.js';
+import { elidePath, elidedPathForms, escapeXml, measureText, rowFits, rowValueFits } from '../src/cards/svg.js';
 import { formatSummary } from '../src/summary.js';
 import { buildMarkdown } from '../src/markdown.js';
 import en from '../src/i18n/en.js';
@@ -235,6 +235,20 @@ describe('hot files: same-name files keep the folder where they differ', () => {
     assert.ok(subs.some((x) => x.startsWith('packages/…/')), JSON.stringify(subs));
   });
 
+  test('a short differing tail is offered whole ("core/forms/", not "packages/…/forms/" twice)', () => {
+    const t = stats([...times(10, ['packages/shared/core/forms/InputField.tsx']), ...times(8, ['packages/shared/web/forms/InputField.tsx'], 100)]);
+    for (const [lang] of LANGS) {
+      const subs = subsOf(svgOf(t, lang, 'hot-files'));
+      assert.equal(new Set(subs).size, subs.length, JSON.stringify(subs));
+      assert.ok(subs.includes('core/forms/') && subs.includes('web/forms/'), JSON.stringify(subs));
+    }
+  });
+
+  test('a label with runs of whitespace that draws whole fits', () => {
+    assert.ok(rowFits({ label: 'a  b/i.js', value: '3' }));
+    assert.ok(rowFits({ label: 'x', value: '1  2' }));
+  });
+
   test('same-name files whose folders fit are unchanged', () => {
     const subs = subsOf(svgOf(stats([...times(3, ['src/core/lib/index.js']), ...times(2, ['src/web/lib/index.js'], 10), commit(20, ['README.md'])]), 'en', 'hot-files'));
     assert.ok(subs.includes('src/core/lib/') && subs.includes('src/web/lib/'), JSON.stringify(subs));
@@ -271,4 +285,61 @@ describe('top folders: single segments keep the middle cut', () => {
       assert.ok(!folder.includes('/…/'));
     });
   }
+});
+
+describe('audit fixes (turn 088): same-name hot files, edge cases', () => {
+  // When no form fits, the part from where they differ is cut in the middle: both its
+  // start (the differing folder) and its end stay, so they never read alike.
+  for (const [name, p, q, a, b] of [
+    ['differing at the end of the folder', 'packages/shared/component-library-alpha-version-one/forms/InputField.tsx', 'packages/shared/component-library-alpha-version-two/forms/InputField.tsx', null, null],
+    ['differing at the start of the folder', 'packages/shared/one-component-library-alpha-version/forms/InputField.tsx', 'packages/shared/two-component-library-alpha-version/forms/InputField.tsx', 'one', 'two'],
+    ['short differing prefix', 'packages/shared/core-library-alpha-long-name/forms/InputField.tsx', 'packages/shared/web-library-alpha-long-name/forms/InputField.tsx', 'core', 'web'],
+  ]) {
+    test(`a differing tail too long for every form is cut in the middle, never alike: ${name} (en, tr)`, () => {
+      const t = stats([...times(10, [p]), ...times(8, [q], 100)]);
+      for (const [lang] of LANGS) {
+        const subs = subsOf(svgOf(t, lang, 'hot-files'));
+        assert.equal(subs.length, 2, JSON.stringify(subs));
+        assert.equal(new Set(subs).size, 2, JSON.stringify(subs));
+        assert.ok(subs.every((x) => !x.includes('packages') && x.endsWith('/forms/')), JSON.stringify(subs));
+        if (a) assert.ok(subs[0].startsWith(a) && subs[1].startsWith(b), JSON.stringify(subs));
+      }
+    });
+  }
+
+  test('multi-repo: same name in one repo keeps the repo label and the differing folder (en, tr)', () => {
+    const { commits } = mergeHistories([
+      { label: 'api', commits: [...times(10, ['packages/shared/core/forms/InputField.tsx']), ...times(8, ['packages/shared/web/forms/InputField.tsx'], 50)] },
+      { label: 'web', commits: times(3, ['README.md'], 100) },
+    ]);
+    const t = computeStats(commits, { today: TODAY, repos: ['api', 'web'] });
+    for (const [lang] of LANGS) {
+      const subs = subsOf(svgOf(t, lang, 'hot-files'));
+      assert.ok(subs.includes('api/…/core/forms/') && subs.includes('api/…/web/forms/'), JSON.stringify(subs));
+    }
+  });
+
+  test('multi-repo: same path in two repos differs at the repo label, which is kept (en, tr)', () => {
+    const f = 'packages/core-x/src/components/forms/inputs/fields/TextInputField.tsx';
+    const { commits } = mergeHistories([
+      { label: 'api', commits: times(10, [f]) },
+      { label: 'web', commits: times(8, [f], 100) },
+    ]);
+    const t = computeStats(commits, { today: TODAY, repos: ['api', 'web'] });
+    for (const [lang] of LANGS) {
+      const subs = subsOf(svgOf(t, lang, 'hot-files'));
+      assert.ok(subs.some((x) => x.startsWith('api/')) && subs.some((x) => x.startsWith('web/')), JSON.stringify(subs));
+      assert.ok(!subs.some((x) => x.startsWith('packages/')), JSON.stringify(subs));
+    }
+  });
+
+  test('rowFits / rowValueFits: runs of whitespace on either side compare as one space', () => {
+    assert.ok(rowValueFits('1  2'));
+    assert.ok(rowValueFits(' 12 '));
+    assert.ok(rowValueFits('1\t\t2'));
+    assert.ok(rowFits({ label: '  x  y  ', value: ' 3  ×' }));
+    // Still false when the text really is cut.
+    assert.ok(!rowValueFits('x '.repeat(200)));
+    assert.ok(!rowFits({ label: 'y'.repeat(400), value: '1' }));
+  });
 });

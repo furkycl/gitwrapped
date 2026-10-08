@@ -1381,8 +1381,9 @@ function hotFileCharts(files, repos, L) {
  * (`{subForms}`, else `{}`): shorter forms of its folder that tell the two apart, tried
  * before the usual middle elision (which keeps the first folder, and could make both read
  * "packages/…/forms/"). First the elided forms from the first folder that still keep the
- * folder where they differ, then those from that folder: "core-x/…/forms/". When none
- * fits, the usual elision and start cut apply.
+ * folder where they differ, then the folder from that one on ("core/forms/") and its
+ * elided forms ("core-x/…/forms/"). When none fits, `subCut` (that tail) is cut in the
+ * middle, never the usual elision or a start cut, which could hide the folder where they differ.
  */
 function sameNameSubForms(path, paths) {
   const dir = dirname(path);
@@ -1398,8 +1399,8 @@ function sameNameSubForms(path, paths) {
   if (shared === 0 || shared >= segs.length) return {};
   // elidedPathForms(dir)[i] keeps the last (segs.length − 2 − i) folders; keep folder `shared`.
   const keeping = elidedPathForms(dir).filter((_, i) => segs.length - 2 - i >= segs.length - shared);
-  const subForms = [...keeping, ...elidedPathForms(`${segs.slice(shared).join('/')}/`)];
-  return subForms.length ? { subForms } : {};
+  const tail = `${segs.slice(shared).join('/')}/`;
+  return { subForms: [...keeping, tail, ...elidedPathForms(tail)], subCut: tail };
 }
 
 /** A whole-number share as text; a non-zero amount that rounds to 0% reads "<1%". */

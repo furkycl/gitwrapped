@@ -161,6 +161,10 @@ describe('recap / wrapped.md with unusual paths', () => {
   });
 });
 
+// Windows forbids < and > in file names: the real-repo odd paths drop them there (the
+// unit tests above still cover `<>` escaping on every platform).
+const ODD = process.platform === 'win32' ? 'we & [ird]' : 'we <&> ird';
+
 describe('end to end (real repos via the CLI)', () => {
   const BIN = fileURLToPath(new URL('../bin/gitwrapped.js', import.meta.url));
   const base = { GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: process.platform === 'win32' ? 'NUL' : '/dev/null' };
@@ -239,7 +243,7 @@ describe('end to end (real repos via the CLI)', () => {
     change(thresh, ['p.js', 'q.js']);
 
     odd = init('odd');
-    for (let i = 0; i < 3; i++) change(odd, ['we <&> ird/a & b.js', 'we <&> ird/ünï cödé.js']);
+    for (let i = 0; i < 3; i++) change(odd, [`${ODD}/a & b.js`, `${ODD}/ünï cödé.js`]);
 
     renamed = init('renamed');
     git(renamed, ['config', 'diff.renames', 'true']);
@@ -301,8 +305,8 @@ describe('end to end (real repos via the CLI)', () => {
 
   test('`<&>`, spaces and unicode paths: exact in stats.json, escaped in SVG and markdown', () => {
     const r = run([odd]);
-    assert.deepEqual(r.coChange, { files: ['we <&> ird/a & b.js', 'we <&> ird/ünï cödé.js'], commits: 3 });
-    assert.ok(r.stdout.includes('we <&> ird/a & b.js + we <&> ird/ünï cödé.js (3 commits)'), r.stdout);
+    assert.deepEqual(r.coChange, { files: [`${ODD}/a & b.js`, `${ODD}/ünï cödé.js`], commits: 3 });
+    assert.ok(r.stdout.includes(`${ODD}/a & b.js + ${ODD}/ünï cödé.js (3 commits)`), r.stdout);
     assertWellEscaped(r.svg);
     assert.ok(r.svg.includes(escapeXml('a & b.js + ünï cödé.js')), 'card row');
     const line = r.md.split('\n').find((l) => l.startsWith('- **Changed together:**'));

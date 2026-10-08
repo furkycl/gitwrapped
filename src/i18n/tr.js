@@ -247,6 +247,11 @@ export default {
     testsValue: (lines, pct) => `${plural(lines, UNITS.line)} · ${pct}`,
     testsShort: (lines, pct) => `${num(lines)} · ${pct}`,
     testsDescription: (lines, pct) => `Testlerde ${plural(lines, UNITS.line)} değişti (değişen satırların ${pct} kadarı)`,
+    coChange: 'Birlikte değişenler',
+    coChangeValue: (a, b, commits) => `${a} + ${b} · ${num(commits)}×`,
+    coChangePair: (a, b) => `${a} + ${b}`,
+    coChangeTimes: (commits) => `${num(commits)} kez birlikte`,
+    coChangeDescription: (a, b, commits) => `${a} ve ${b}, ${num(commits)} commit'te birlikte değişti`,
   },
 
   languages: {
@@ -465,6 +470,7 @@ export default {
     topFolders: 'Gözde klasörler',
     folderLines: (lines) => plural(lines, UNITS.line),
     tests: 'Testler',
+    coChange: 'Birlikte değişen',
     ofLinesChanged: (share) => `değişen satırların ${share} kadarı`,
     topLanguage: 'Favori dil',
     languageDetail: (share, basis, tiedMore) => `${basis === 'files' ? 'dosyaların' : 'satırların'} ${share} kadarı${tiedMore > 0 ? `, ${num(tiedMore)} dil ile berabere` : ''}`,
@@ -531,6 +537,7 @@ export default {
     topFolders: 'Gözde klasörler',
     folder: 'Klasör',
     tests: 'Test satırları',
+    coChange: 'Birlikte değişenler',
     languages: 'Diller',
     language: 'Dil',
     contributor: 'Katkıcı',

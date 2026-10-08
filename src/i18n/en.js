@@ -306,6 +306,16 @@ export default {
     testsValue: (lines, pct) => `${plural(lines, UNITS.line)} · ${pct}`,
     testsShort: (lines, pct) => `${num(lines)} · ${pct}`,
     testsDescription: (lines, pct) => `${plural(lines, UNITS.line)} changed in tests (${pct} of lines changed)`,
+    /**
+     * The co-change row (stats.coChange), in spare room only, after the other rows:
+     * "Changed together" and "a.js + b.js · 12×" (the two file names, then the commits), or
+     * when that would be cut "a.js + b.js" and "12× together".
+     */
+    coChange: 'Changed together',
+    coChangeValue: (a, b, commits) => `${a} + ${b} · ${num(commits)}×`,
+    coChangePair: (a, b) => `${a} + ${b}`,
+    coChangeTimes: (commits) => `${num(commits)}× together`,
+    coChangeDescription: (a, b, commits) => `${a} and ${b} changed together in ${plural(commits, UNITS.commit)}`,
   },
 
   languages: {
@@ -577,6 +587,8 @@ export default {
     folderLines: (lines) => plural(lines, UNITS.line),
     /** The test-share line (stats.tests): label, "1,234 lines", then "(23% of lines changed)". */
     tests: 'Tests',
+    /** The co-change line (stats.coChange): label, "src/a.js + src/b.js", then "(12 commits)" (fits labelWidth). */
+    coChange: 'Co-changed',
     ofLinesChanged: (share) => `${share} of lines changed`,
     topLanguage: 'Top language',
     /** "(74% of lines, tied with 1 more)". */
@@ -670,6 +682,8 @@ export default {
     folder: 'Folder',
     /** Lines changed in test files (stats.tests): "1,234 lines (23% of lines changed)". */
     tests: 'Test lines',
+    /** The co-change item after the hot-files table (stats.coChange): "src/a.js + src/b.js (12 commits)". */
+    coChange: 'Changed together',
     languages: 'Languages',
     language: 'Language',
     contributor: 'Contributor',

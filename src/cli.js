@@ -40,8 +40,9 @@ Options:
   --author <email>     Only include commits by this author email
                        (exact email match, case-insensitive, after .mailmap)
   --exclude <glob>     Leave matching files out of lines, files touched, hot
-                       files, top folders, the test share, languages, the
-                       biggest commit, commit sizes and files born / buried
+                       files, top folders, the test share, the co-change
+                       pair, languages, the biggest commit, commit sizes and
+                       files born / buried
                        (repeatable; commits still count).
                        *.min.js and docs match at any depth, docs/ or docs/**
                        a whole folder, src/gen/*.js from the repo root

@@ -28,6 +28,7 @@ const UNITS = {
   fix: ['fix', 'fix'],
   repo: ['repo', 'repo'],
   release: ['sürüm', 'sürüm'],
+  person: ['kişi', 'kişi'],
 };
 
 /**
@@ -361,6 +362,10 @@ export default {
     shareLead: (who, commits) => `${who}, kişi başı ${plural(commits, UNITS.commit)} ile liderliği paylaşıyor.`,
     leads: (name, share) => `${name}, commit'lerin ${share} kadarıyla sürünün başında.`,
     title: 'katkıcı',
+    busFactor: 'Otobüs faktörü',
+    busFactorValue: (authors, pct) => `${plural(authors, UNITS.person)} · ${pct}`,
+    busFactorShort: (authors, pct) => `${num(authors)} · ${pct}`,
+    busFactorDescription: (authors, pct) => `Değişen satırların ${pct} kadarını ${plural(authors, UNITS.person)} yaptı`,
   },
 
   pairing: {
@@ -464,6 +469,8 @@ export default {
     topLanguage: 'Favori dil',
     languageDetail: (share, basis, tiedMore) => `${basis === 'files' ? 'dosyaların' : 'satırların'} ${share} kadarı${tiedMore > 0 ? `, ${num(tiedMore)} dil ile berabere` : ''}`,
     team: 'Ekip',
+    busFactor: 'Otobüs faktörü',
+    busFactorValue: (authors) => plural(authors, UNITS.person),
     repos: 'Repolar',
     vsYear: (year) => `${year} ile fark`,
     vsPeriod: (days) => `Önceki ${num(days)} güne göre`,
@@ -528,6 +535,7 @@ export default {
     language: 'Dil',
     contributor: 'Katkıcı',
     share: 'Pay',
+    busFactor: 'Otobüs faktörü',
     repo: 'Repo',
     commitTypes: 'Commit türleri',
     emoji: 'Emoji',

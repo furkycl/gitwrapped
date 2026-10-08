@@ -3,7 +3,7 @@
 
 import { shownBusiestDay, shownLongest, shownLongestBreak } from './stats/daily.js';
 import { languageHeadline } from './stats/languages.js';
-import { hasTeamCard, shareLabel } from './stats/contributors.js';
+import { hasTeamCard, shareLabel, shownBusFactor } from './stats/contributors.js';
 import { shownCoAuthors } from './stats/coauthors.js';
 import { shownReleases } from './stats/releases.js';
 import { scrubEmails } from './privacy.js';
@@ -14,7 +14,7 @@ import { epochDay } from './stats/time.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
-import { conventionalText, emojiShareText, folderLabel, mergeShareText, revertShareText, sizeShareText, testsShareText } from './cards/index.js';
+import { busFactorShareText, conventionalText, emojiShareText, folderLabel, mergeShareText, revertShareText, sizeShareText, testsShareText } from './cards/index.js';
 import { shownMerges } from './stats/merges.js';
 import { shownFolders } from './stats/folders.js';
 import { shownTests } from './stats/tests.js';
@@ -224,7 +224,10 @@ function shortText(s, maxWidth = 48) {
  * A "Reverts" line shows how many non-merge commits revert another and their share
  * (stats.reverts, see stats/reverts.js shownReverts) when there is at least one.
  * A "Team" line (top contributor, or the --author's rank) appears exactly when the
- * contributors card is built (see hasTeamCard in stats/contributors.js).
+ * contributors card is built (see hasTeamCard in stats/contributors.js), followed by a
+ * "Bus factor" line ("2 people (58% of lines changed)": the fewest authors who made at
+ * least half of the lines changed, stats.contributors.busFactor, see shownBusFactor) when
+ * there is one.
  * A "Paired" line shows how many commits had a Co-authored-by co-author, their share of
  * the non-merge commits and the top co-author's name (stats.coAuthors, see
  * stats/coauthors.js shownCoAuthors) when at least one commit was paired.
@@ -401,6 +404,9 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
         detail = ` · ${R.top} ${c('cyan', shortWord(lead.name))} ${c('dim', `(${shareLabel(lead.share, lead.commits, L.pct)}${tied})`)}`;
       }
       lines.push(`  ${label(R.team)}${plural(team.total, 'contributor', L)}${detail}`);
+      // The smallest number of authors who made half the lines changed (contributors.busFactor).
+      const bus = shownBusFactor(team.busFactor);
+      if (bus) lines.push(`  ${label(R.busFactor)}${c('cyan', R.busFactorValue(bus.authors))} ${c('dim', `(${R.ofLinesChanged(busFactorShareText(bus, L))})`)}`);
     }
 
     // Commits with a Co-authored-by co-author (stats.coAuthors), as on the team / totals card.

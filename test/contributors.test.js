@@ -33,7 +33,7 @@ const times = (n, make) => Array.from({ length: n }, (_, i) => make(i));
 // ---------------------------------------------------------------------------------------
 describe('computeContributors', () => {
   test('empty / missing input', () => {
-    const empty = { total: 0, top: [], you: null, authorFilter: false, truncated: false };
+    const empty = { total: 0, top: [], you: null, authorFilter: false, truncated: false, busFactor: null };
     assert.deepEqual(computeContributors([]), empty);
     assert.deepEqual(computeContributors(), empty);
     assert.deepEqual(computeContributors(null, { author: 'a@x.io', truncated: 1 }), { ...empty, authorFilter: true, truncated: true });

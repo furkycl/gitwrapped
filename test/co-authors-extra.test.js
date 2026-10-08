@@ -268,7 +268,7 @@ describe('cards, recap and wrapped.md (extra)', () => {
             if (c) assertTextsInside(c.svg, `${label}/${id}`);
           }
           const shown = cards.map((c) => texts(c.svg).join('\n')).join('\n');
-          assert.match(shown, kind === 'team' ? /paired|birlikte yazıldı/ : /Paired|Eşli/, `${label}: pairing shown somewhere`);
+          assert.match(shown, kind === 'team' ? /paired|birlikte yazıldı/ : /Paired|Eşli|Birlikte yazılan/, `${label}: pairing shown somewhere`);
           assert.doesNotMatch(shown, /long@x\.io/);
         }
       }
@@ -280,7 +280,7 @@ describe('cards, recap and wrapped.md (extra)', () => {
       const stats = computeStats(commits, { today: TODAY });
       for (const lang of ['en', 'tr']) {
         const cards = buildCards(stats, { repoName: 'r', today: TODAY, lang });
-        const hits = cards.filter((c) => texts(c.svg).some((t) => /^(Paired|Eşli \(|6 commits paired|6 commit birlikte)/.test(t)));
+        const hits = cards.filter((c) => texts(c.svg).some((t) => /^(Paired|Eşli \(|Birlikte yazılan|6 commits paired|6 commit birlikte)/.test(t)));
         assert.equal(hits.length, 1, `${lang}: ${hits.map((c) => c.id)}`);
       }
     }

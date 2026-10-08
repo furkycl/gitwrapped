@@ -43,6 +43,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   when that is drawn whole, else stays as it was; without renames every card is unchanged.
   English and Turkish ("taşındı").
 
+### Fixed
+
+- Totals card: the "Born / buried" row was drawn cut when its value was too wide
+  (millions of files added and deleted, "9,999,999 / 9,999,…"); it is now left off, as
+  the merges row is (the counts are still in the recap, `wrapped.md` and `stats.json`).
+- Totals card: the "Paired (top: …)" row drew a long top co-author name cut with "…";
+  it now reads "Paired commits" when the name would be cut (the name is still in the
+  recap, `wrapped.md` and `stats.json`).
+
 ## [1.11.0] - 2026-10-08
 
 ### Added

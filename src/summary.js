@@ -13,9 +13,10 @@ import { epochDay } from './stats/time.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
-import { conventionalText, emojiShareText, folderLabel, mergeShareText, revertShareText, sizeShareText } from './cards/index.js';
+import { conventionalText, emojiShareText, folderLabel, mergeShareText, revertShareText, sizeShareText, testsShareText } from './cards/index.js';
 import { shownMerges } from './stats/merges.js';
 import { shownFolders } from './stats/folders.js';
+import { shownTests } from './stats/tests.js';
 import { shownEmoji } from './stats/emoji.js';
 import { shownReverts } from './stats/reverts.js';
 import { shownFileLifecycle } from './stats/files.js';
@@ -181,6 +182,9 @@ function shortText(s, maxWidth = 48) {
  * A "Top folders" line shows the three most-changed top-level folders by lines changed
  * ("src/ (1,234 lines) · test/ (567 lines) · (root) (89 lines)"; stats.folders, see
  * stats/folders.js shownFolders) when there are two or more.
+ * A "Tests" line shows the lines changed in test files and their share of all lines
+ * changed ("1,234 lines (23% of lines changed)"; stats.tests, see stats/tests.js
+ * shownTests) when at least one test line changed.
  * A "Files" line shows how many files were added and deleted (stats.fileLifecycle, see
  * stats/files.js shownFileLifecycle) when there is at least one.
  * A "Busiest day" line shows the calendar day with the most commits and its commit count
@@ -351,6 +355,11 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
       const list = folders.slice(0, RECAP_FOLDERS).map((f) => `${c('cyan', shortPath(folderLabel(f, L), 32))} ${c('dim', `(${R.folderLines(f.lines)})`)}`);
       lines.push(`  ${label(R.topFolders)}${list.join(c('dim', ' · '))}`);
     }
+
+    // Lines changed in test files and their share of all lines changed (stats.tests), as
+    // on the hot-files / languages card; only when a test line changed.
+    const tests = shownTests(stats?.tests);
+    if (tests) lines.push(`  ${label(R.tests)}${c('cyan', plural(tests.lines, 'line', L))} ${c('dim', `(${R.ofLinesChanged(testsShareText(tests, L))})`)}`);
 
     // Files added and deleted in the window (stats.fileLifecycle); only when there are any.
     const lifecycle = shownFileLifecycle(stats?.fileLifecycle);

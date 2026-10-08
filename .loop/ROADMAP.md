@@ -144,5 +144,5 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] Cleanup commits: non-merge commits that remove more lines than they add (same ignore rules as hot files), count + share and the biggest net deletion (subject scrubbed, day, −N) on the messages or totals card when there's room, stats.json `stats.cleanups {commits, share, biggest}`, recap and wrapped.md; en/tr; tests
 - [x] Renames: files renamed in the window (`R` status from the existing name-status read, same ignore rules) added to the files born/buried row when it fits, stats.json `stats.fileLifecycle.renamed`, recap and wrapped.md; en/tr; tests
 - 1.12.0 release prep (split as before):
-  - [ ] Cold audit of the 1.12 work (diff 1.11.0 release commit..main) + fix every real bug found, with tests
+  - [x] Cold audit of the 1.12 work (diff 1.11.0 release commit..main) + fix every real bug found, with tests
   - [ ] CHANGELOG 1.12.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync

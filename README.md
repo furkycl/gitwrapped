@@ -686,7 +686,8 @@ a cleanup (the cards, recap and `wrapped.md` then show nothing).
 "share", "top": {"ref", "commits"}}`. Only non-merge commits count ("Merge pull request
 #12" is a merge), and only their subject. A mention is `#123` (1–7 digits, not starting
 with 0; not right after a letter, digit, `_`, `/`, `&` or `#`, so `a#1`, `foo/#12` and the
-HTML entity `&#123;` don't count, nor `#123abc`), `GH-123` in any case (the same issue as
+HTML entity `&#123;` don't count, nor `#123abc`; a `/` right after another mention is fine, so
+`#12/#13` counts both), `GH-123` in any case (the same issue as
 `#123`), or a Jira-style key: an uppercase project key of 2–10 letters and digits starting
 with a letter, `-` and a number (`ABC-123`; not inside a path, a dotted name or a version
 such as `ABC-1.2`, and not the encodings, hashes, standards and advisories `UTF`, `SHA`,

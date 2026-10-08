@@ -20,18 +20,20 @@ const HEX_HASH = /(?<![\p{L}\p{N}_])(?=[0-9a-f]*[a-f])(?=[0-9a-f]*\d)[0-9a-f]{7,
 
 /**
  * A GitHub-style `#123` (1–7 digits, the first 1–9): not after a letter, digit, "_", "/",
- * "&" or another "#" ("a#1", "foo/#12", the HTML entity "&#123;", "##1" are not mentions),
+ * "&" or another "#" ("a#1", "foo/#12", the HTML entity "&#123;", "##1" are not mentions;
+ * a "/" right after another reference does not count, see issueRefsInSubject: "#12/#13"),
  * and not followed by a letter, digit or "_" ("#123abc"). A squash-merge subject's PR
  * number ("feat: x (#12)") counts: GitHub numbers issues and PRs alike.
  */
-const HASH_REF = /(?<![\p{L}\p{N}_/&#])#([1-9]\d{0,6})(?![\p{L}\p{N}_])/gu;
+const HASH_REF = /(?<![\p{L}\p{N}_&#])#([1-9]\d{0,6})(?![\p{L}\p{N}_])/gu;
 
 /**
  * `GH-123` (any case), GitHub's other spelling of `#123`, normalized to it. Not after a
- * letter, digit, "_", "-", "." or "/", not followed by a letter, digit or "_", nor by "."
- * or "-" and a digit (a version, "gh-1.2").
+ * letter, digit, "_", "-", "." or "/" (unless that "/" follows another reference, as for
+ * HASH_REF), not followed by a letter, digit or "_", nor by "." or "-" and a digit (a
+ * version, "gh-1.2").
  */
-const GH_REF = /(?<![\p{L}\p{N}_\-./])gh-([1-9]\d{0,6})(?![\p{L}\p{N}_]|[.-]\d)/giu;
+const GH_REF = /(?<![\p{L}\p{N}_\-.])gh-([1-9]\d{0,6})(?![\p{L}\p{N}_]|[.-]\d)/giu;
 
 /**
  * A Jira-style key `ABC-123`: an uppercase project key (a letter, then 1–9 uppercase
@@ -39,7 +41,7 @@ const GH_REF = /(?<![\p{L}\p{N}_\-./])gh-([1-9]\d{0,6})(?![\p{L}\p{N}_]|[.-]\d)/
  * GH_REF ("x.ABC-1", "path/ABC-1", "ABC-1.2", "ABC-1-2" and "ABC-12x" are not keys), and
  * also not after "#". Lowercase keys ("abc-123") are not keys.
  */
-const JIRA_REF = /(?<![\p{L}\p{N}_\-./#])([A-Z][A-Z0-9]{1,9})-([1-9]\d{0,6})(?![\p{L}\p{N}_]|[.-]\d)/gu;
+const JIRA_REF = /(?<![\p{L}\p{N}_\-.#])([A-Z][A-Z0-9]{1,9})-([1-9]\d{0,6})(?![\p{L}\p{N}_]|[.-]\d)/gu;
 
 /**
  * Key-shaped names that are not issue trackers: encodings, hashes, standards, security
@@ -63,11 +65,21 @@ export function issueRefsInSubject(subject) {
   if (typeof subject !== 'string' || subject === '') return [];
   const s = scrubEmails(subject).replace(URL, ' ').replace(HEX_HASH, ' ');
   const found = [];
-  for (const m of s.matchAll(HASH_REF)) found.push([m.index, `#${m[1]}`]);
-  for (const m of s.matchAll(GH_REF)) found.push([m.index, `#${m[1]}`]);
-  for (const m of s.matchAll(JIRA_REF)) if (!NOT_ISSUE_KEYS.has(m[1])) found.push([m.index, `${m[1]}-${m[2]}`]);
+  for (const m of s.matchAll(HASH_REF)) found.push([m.index, `#${m[1]}`, m.index + m[0].length]);
+  for (const m of s.matchAll(GH_REF)) found.push([m.index, `#${m[1]}`, m.index + m[0].length]);
+  for (const m of s.matchAll(JIRA_REF)) if (!NOT_ISSUE_KEYS.has(m[1])) found.push([m.index, `${m[1]}-${m[2]}`, m.index + m[0].length]);
   found.sort((a, b) => a[0] - b[0]);
-  return [...new Set(found.map(([, ref]) => ref))];
+  // The patterns leave "/" to here: a reference right after "/" counts only when that "/"
+  // directly follows another counted reference ("#12/#13", "ABC-1/ABC-2"), never after a
+  // path ("foo/#12", "owner/repo#12" is cut by the letter before "#").
+  const ends = new Set();
+  const refs = [];
+  for (const [index, ref, end] of found) {
+    if (s[index - 1] === '/' && !ends.has(index - 1)) continue;
+    ends.add(end);
+    refs.push(ref);
+  }
+  return [...new Set(refs)];
 }
 
 /**

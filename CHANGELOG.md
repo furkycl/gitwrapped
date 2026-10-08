@@ -42,6 +42,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Top folders are single folder names, so a long one keeps its cut in the middle.
   Tooltips, the recap, `wrapped.md` and `stats.json` keep the full paths.
 
+### Fixed
+
+- Two hot files with the same name could both show the same shortened folder
+  ("packages/…/forms/") even when the folders from where they differ ("core/forms/",
+  "web/forms/") fit; those are now tried first, and when nothing fits the part from
+  where they differ is cut in the middle instead, keeping the start of the differing folder.
+- Issue references: a mention right after another one and a `/` (`#12/#13`, `ABC-1/ABC-2`)
+  now counts; `foo/#12` and `owner/repo#12` still don't.
+- Card rows whose label or value has runs of spaces were never treated as fitting.
+
 ## [1.12.0] - 2026-10-08
 
 ### Added

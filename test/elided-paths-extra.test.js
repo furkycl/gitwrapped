@@ -60,10 +60,19 @@ function isAllowedForm(drawn, full) {
   if (drawn === f) return 'full';
   if (elidedPathForms(f).includes(drawn)) return 'elided';
   // Same-name hot files / co-change pairs: elided from the first folder where they differ
-  // (an elided form of a trailing part of the path, "core-x/…/forms/").
+  // (a trailing part of the path from that folder, "core/forms/", or an elided form of it,
+  // "core-x/…/forms/").
   const segs = f.split('/').filter(Boolean);
   for (let i = 1; i < segs.length; i++) {
-    if (elidedPathForms(`${segs.slice(i).join('/')}${f.endsWith('/') ? '/' : ''}`).includes(drawn)) return 'anchored';
+    const part = `${segs.slice(i).join('/')}${f.endsWith('/') ? '/' : ''}`;
+    if (drawn === part || elidedPathForms(part).includes(drawn)) return 'anchored';
+    // …or, when no form fits, that part cut in the middle (its start and end kept).
+    const at = drawn.indexOf(ELL);
+    if (at > 0 && drawn.indexOf(ELL, at + 1) < 0) {
+      const head = drawn.slice(0, at).trimEnd();
+      const rest = drawn.slice(at + ELL.length).trimStart();
+      if (part.startsWith(head) && part.endsWith(rest) && head.length + rest.length < part.length) return 'middle';
+    }
   }
   if (drawn.startsWith(ELL)) {
     const tail = drawn.slice(ELL.length);

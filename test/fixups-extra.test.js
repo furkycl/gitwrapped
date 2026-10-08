@@ -186,6 +186,24 @@ describe('the messages card: drawn whole, else byte-identical', () => {
     }
   });
 
+  test('counters folded for the emoji or reverts row (documented trade-off) never get the segment: byte-identical', () => {
+    const cases = [
+      ['✨ add x', '🐛 fix y', 'fixup! add x', '📝 docs', 'wip', 'oops', 'fix z', 'more', 'tidy', 'other'],
+      ['Revert "add x"', 'fix y', 'fixup! add x', 'docs', 'wip', 'oops', 'fix z', 'more', 'tidy', 'other'],
+      ['✨ add x', 'Revert "🐛 fix y"', 'fixup! add x', '📝 docs', 'wip', 'oops', 'fix z', 'more', 'tidy', 'other'],
+    ];
+    for (const subjects of cases) {
+      const s = computeStats(subjects.map((t, i) => commit(t, i)), { today: TODAY });
+      assert.ok(s.messages.fixups.commits > 0);
+      for (const lang of ['en', 'tr']) {
+        const lines = messagesSpec(s, lang).lines;
+        assert.ok(lines.some((r) => r.label === '“fix” / “wip” / “oops”'), `${lang}: counters folded ${JSON.stringify(lines)}`);
+        assert.ok(!lines.some((r) => /fixup!/.test(String(r.value))), lang);
+        assert.equal(messagesSvg(s, lang), messagesSvg(noFixups(s), lang), lang);
+      }
+    }
+  });
+
   test('every other card is byte-identical with or without fixups (en, tr, plain and conventional)', () => {
     const conv = computeStats(history(CONV), { today: TODAY });
     for (const s of [plain, conv]) {

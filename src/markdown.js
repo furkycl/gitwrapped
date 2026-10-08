@@ -16,6 +16,7 @@ import { shownTests } from './stats/tests.js';
 import { shownTimezones, utcLabel } from './stats/timezones.js';
 import { shownWeekend, weekendPercentLabel } from './stats/weekend.js';
 import { shownLateNights } from './stats/latenights.js';
+import { shownOfficeHours } from './stats/officehours.js';
 import { shownCadence } from './stats/cadence.js';
 import { shownBusiestDay, shownLongest, shownLongestBreak } from './stats/daily.js';
 import { shownBiggestLines } from './stats/biggest.js';
@@ -216,6 +217,9 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
       const latest = on ? `, ${M.latestAt(L.clock(late.latest.hour, late.latest.minute), escapeMarkdown(on))}` : '';
       habits.push(item(M.lateNights, `${plural(late.commits, 'commit', L)} (${L.recap.ofCommits(weekendPercentLabel(late.percent, L.pct))})${latest}`));
     }
+    // Weekday commits between 09:00 and 17:59 author-local (stats.officeHours), as in the recap.
+    const office = shownOfficeHours(stats);
+    if (office) habits.push(item(M.officeHours, `${plural(office.commits, 'commit', L)} (${L.recap.ofCommits(weekendPercentLabel(office.percent, L.pct))})`));
     section(M.habits, habits);
 
     // --- streaks ----------------------------------------------------------------------

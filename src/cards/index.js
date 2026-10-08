@@ -13,6 +13,7 @@ import { hasTeamCard, shareLabel, TOP_CONTRIBUTORS } from '../stats/contributors
 import { shownCoAuthors } from '../stats/coauthors.js';
 import { shownTimezones, utcLabel } from '../stats/timezones.js';
 import { shownLateNights } from '../stats/latenights.js';
+import { shownOfficeHours } from '../stats/officehours.js';
 import { shownWeekend, weekendPercentLabel } from '../stats/weekend.js';
 import { shownCadence } from '../stats/cadence.js';
 import { shownReleases } from '../stats/releases.js';
@@ -573,7 +574,44 @@ function peakDayText(h, L) {
   return Number.isInteger(h.peakWeekday) && L.weekdays[h.peakWeekday] ? L.weekdays[h.peakWeekday] : day;
 }
 
-function peakHour(s, { L }) {
+function peakHour(s, ctx) {
+  const spec = peakHourBase(s, ctx);
+  // Weekday commits between 09:00 and 17:59 (stats.officeHours) as the last row, in spare
+  // room only (see withRoomyRow): every chart still drawn, and with the late-nights row's
+  // allowance of one shrink step in all (a step the time-zones or late-nights rows already
+  // took is shared; a card that had shrunk more gets no more); else the card is exactly as
+  // before and the activity card gets the row instead, when it has room.
+  const row = officeHoursRow(s, ctx.L);
+  return row ? withRoomyRow(spec, row, ctx.L, 1) : spec;
+}
+
+/**
+ * The office-hours row (stats.officeHours, see shownOfficeHours) for the power-hour or
+ * activity card: "Office hours" and "95 commits · 23%", or "1,234 · 23%" when the full
+ * value would be cut on the row (so the percent always shows); null without an
+ * office-hours commit, or when even the short value would be cut (never a cut row).
+ */
+function officeHoursRow(s, L) {
+  const o = shownOfficeHours(s);
+  if (!o) return null;
+  const pct = weekendPercentLabel(o.percent, L.pct);
+  const full = `${plural(o.commits, 'commit', L)} · ${pct}`;
+  const row = { label: L.recap.officeHours, value: rowValueFits(full) ? full : `${L.num(o.commits)} · ${pct}` };
+  return rowFits(row) ? row : null;
+}
+
+/**
+ * Whether the power-hour card shows the office-hours row (it is only added in spare room),
+ * so the activity card shows it exactly when the power-hour card does not.
+ */
+export function officeHoursOnPeak(s, ctx) {
+  const row = officeHoursRow(s ?? {}, ctx.L);
+  if (!row) return false;
+  const lines = peakHour(s ?? {}, ctx).lines;
+  return Array.isArray(lines) && lines.some((r) => r?.label === row.label && r?.value === row.value);
+}
+
+function peakHourBase(s, { L }) {
   const P = L.peak;
   const h = s.habits ?? {};
   const label = peakHourText(h, L);
@@ -922,7 +960,12 @@ function activity(s, ctx = { L: EN }) {
   // (not clipped to 53 weeks, no future-dated day left off) and there is room for it
   // with the calendar's cells kept at their normal minimum size or larger.
   const weekend = win.clipped || dropped ? null : weekendRow(s, L);
-  return weekend ? withCalendarRow(spec, weekend, L) : spec;
+  const withWeekend = weekend ? withCalendarRow(spec, weekend, L) : spec;
+  // Weekday commits between 09:00 and 17:59 (stats.officeHours) after it, on the same
+  // terms, when the power-hour card had no room for the row (see officeHoursOnPeak); else
+  // the card is exactly as before.
+  const office = win.clipped || dropped ? null : officeHoursRow(s, L);
+  return office && !officeHoursOnPeak(s, ctx) ? withCalendarRow(withWeekend, office, L) : withWeekend;
 }
 
 /**

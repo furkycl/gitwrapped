@@ -86,7 +86,8 @@ describe('weekend: activity card in every color theme', () => {
         for (const colorTheme of COLOR_THEME_NAMES) {
           const label = `${count} days ${lang} ${colorTheme}`;
           const spec = buildCardSpecs(s, { repoName: 'demo', today: TODAY, lang, colorTheme }).find((c) => c.id === 'activity').spec;
-          assert.equal(spec.lines?.length, 1, `${label}: one row`);
+          // The weekend row first (an office-hours row may follow it, see test/office-hours.test.js).
+          assert.equal(spec.lines?.filter((r) => r.label === (lang === 'tr' ? 'Hafta sonu' : 'Weekends')).length, 1, `${label}: one weekend row`);
           assert.equal(spec.lines[0].label, lang === 'tr' ? 'Hafta sonu' : 'Weekends', label);
           const layout = layoutCard({ ...spec, lang });
           const sorted = [...layout.blocks].sort((a, b) => a.top - b.top);

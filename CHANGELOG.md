@@ -20,6 +20,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   "Tests  1,234 lines · 23%" row ("Testler" in Turkish) in spare room only: every chart
   keeps its place and nothing shrinks, else the languages card gets the row on the same
   terms, else it is left off the cards. Cards without room for it are unchanged.
+- Office hours: how many commits landed on a weekday (Monday to Friday) between 09:00 and
+  17:59 in each author's own local time, counted over the same dated commits as the power
+  hour (merges and future-dated ones included). `stats.json` gets `stats.officeHours`
+  (`{commits, share}`, share of the dated commits with three decimals, never 1 short of
+  every commit), the recap an "Office hours 1,234 commits (23% of commits)" line,
+  `wrapped.md` an "Office-hours commits" item, and the power-hour card an "Office hours
+  95 commits · 23%" row ("1,234 · 23%" when the full value would be cut; "Mesai saatleri"
+  in Turkish) when it fits, with the big number at most one step smaller in all (as the
+  late-nights row), else the activity card gets it after the weekend row in spare room,
+  else it is left off the cards (Turkish cards usually have no room for it). Only shown
+  with at least one office-hours commit; cards without room for it are unchanged.
 
 ### Changed
 

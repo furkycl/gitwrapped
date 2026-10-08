@@ -27,6 +27,12 @@ const commit = (date, extra = {}) => ({
   ...extra,
 });
 const statsOf = (commits) => computeStats(commits, { today: TODAY });
+/** `stats` without stats.officeHours, for the activity-card tests that look at the weekend row alone (the office-hours row: test/office-hours.test.js). */
+const noOffice = (stats) => {
+  const copy = { ...stats };
+  delete copy.officeHours;
+  return copy;
+};
 const day = (epochMs) => new Date(epochMs).toISOString().slice(0, 10);
 /** One commit a day at noon (+03:00) for `count` days ending on `last` ('YYYY-MM-DD'). */
 const daily = (count, last = '2026-10-06', offset = '+03:00') => Array.from({ length: count }, (_, i) =>
@@ -197,7 +203,7 @@ describe('activity card', () => {
 
   test('a weekend row when the grid shows every commit, en and tr', () => {
     for (const count of [7, 60, 150, 200]) {
-      const s = statsOf(daily(count));
+      const s = noOffice(statsOf(daily(count)));
       const w = shownWeekend(s);
       assert.ok(w);
       const spec = activitySpec(s, 'en');
@@ -233,7 +239,7 @@ describe('activity card', () => {
   });
 
   test('byte-identical without a weekend commit', () => {
-    const s = statsOf(daily(7).filter((c) => ![0, 6].includes(new Date(c.date).getUTCDay())));
+    const s = noOffice(statsOf(daily(7).filter((c) => ![0, 6].includes(new Date(c.date).getUTCDay()))));
     assert.equal(s.weekend.commits, 0);
     assert.equal(activitySpec(s, 'en').lines, undefined);
     for (const lang of ['en', 'tr']) assert.equal(activitySvg(s, lang), activitySvg(noWeekend(s), lang));

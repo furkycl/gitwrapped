@@ -425,6 +425,11 @@ export default {
     revertsTitle: 'Reverts',
     revertsValue: (count, pct) => `${num(count)} · ${pct}`,
     /**
+     * Fixup commits (stats.messages.fixups) as a segment after the "fix" count
+     * ("12 · 3 fixup!"), only when drawn whole.
+     */
+    fixupsValue: (value, count) => `${value} · ${num(count)} fixup!`,
+    /**
      * The issue references row (stats.issueRefs), in spare room only, after every other
      * row: "Issue refs (top #128 ×9)" and "42 · 12%" (the count and its share of non-merge
      * commits), else "Issue refs" and "42 · 12% (#128 ×9)", else "Issue refs" and
@@ -659,6 +664,8 @@ export default {
     emoji: 'Emoji',
     /** The reverts line: label, "3 commits", then "(2% of non-merge commits)". */
     reverts: 'Reverts',
+    /** The fixups line (stats.messages.fixups): label, "3 commits", then "(2% of non-merge commits)". */
+    fixups: 'Fixups',
     /**
      * The cleanups line (stats.cleanups): label, "12 commits", "(8% of non-merge commits)",
      * then "· biggest "drop the old parser" (−4,210 lines · Mar 3, 2026)" when known.
@@ -735,6 +742,8 @@ export default {
     emoji: 'Emoji',
     /** The reverts item (stats.reverts): "3 commits (2% of non-merge commits)". */
     reverts: 'Reverts',
+    /** The fixups item (stats.messages.fixups): "3 commits (2% of non-merge commits)". */
+    fixups: 'Fixup commits',
     /**
      * The cleanups item (stats.cleanups): "12 commits (8% of non-merge commits); biggest:
      * “drop the old parser” · −4,210 lines (Mar 3, 2026)".

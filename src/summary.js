@@ -14,7 +14,7 @@ import { epochDay } from './stats/time.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
-import { busFactorShareText, cleanupShareText, conventionalText, emojiShareText, folderLabel, issueRefsShareText, mergeShareText, revertShareText, sizeShareText, testsShareText } from './cards/index.js';
+import { busFactorShareText, cleanupShareText, conventionalText, emojiShareText, fixupShareText, folderLabel, issueRefsShareText, mergeShareText, revertShareText, sizeShareText, testsShareText } from './cards/index.js';
 import { shownMerges } from './stats/merges.js';
 import { shownFolders } from './stats/folders.js';
 import { shownTests } from './stats/tests.js';
@@ -23,6 +23,7 @@ import { shownEmoji } from './stats/emoji.js';
 import { shownReverts } from './stats/reverts.js';
 import { shownCleanups } from './stats/cleanups.js';
 import { issueRefLabel, shownIssueRefs } from './stats/issues.js';
+import { shownFixups } from './stats/messages.js';
 import { shownFileLifecycle } from './stats/files.js';
 import { shownTimezones, utcLabel } from './stats/timezones.js';
 import { shownWeekend, weekendPercentLabel } from './stats/weekend.js';
@@ -234,6 +235,9 @@ function shortText(s, maxWidth = 48) {
  * and day ("12 commits (8% of non-merge commits) · biggest "drop the old parser" (−4,210
  * lines · Mar 3, 2026)"; stats.cleanups, see stats/cleanups.js shownCleanups) when there
  * is at least one.
+ * A "Fixups" line shows how many non-merge commits have a `fixup!` / `squash!` / `amend!`
+ * subject and their share of non-merge commits ("3 commits (2% of non-merge commits)";
+ * stats.messages.fixups, see stats/messages.js shownFixups) when there is at least one.
  * An "Issue refs" line shows how many non-merge commits mention an issue in the subject,
  * their share of non-merge commits and the most referenced issue ("42 commits (12% of
  * non-merge commits) · top #128 (9 commits)"; stats.issueRefs, see stats/issues.js
@@ -510,6 +514,11 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     // Commits that revert another (stats.reverts), as on the messages card; only with any.
     const reverts = shownReverts(stats?.reverts);
     if (reverts) lines.push(`  ${label(R.reverts)}${plural(reverts.count, 'commit', L)} ${c('dim', `(${R.ofNonMerge(revertShareText(reverts, L))})`)}`);
+
+    // Autosquash commits that reached the history (stats.messages.fixups), as on the
+    // messages card; only with any.
+    const fixups = shownFixups(stats?.messages?.fixups);
+    if (fixups) lines.push(`  ${label(R.fixups)}${plural(fixups.commits, 'commit', L)} ${c('dim', `(${R.ofNonMerge(fixupShareText(fixups, L))})`)}`);
 
     // Commits that removed more lines than they added (stats.cleanups), as on the totals
     // card, with the biggest net deletion's subject, lines and day; only with any.

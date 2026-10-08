@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Fixup commits: how many non-merge commits with a `fixup! `, `squash! ` or `amend! `
+  subject (git's autosquash prefixes, matched exactly as git does) reached the history,
+  and their share of non-merge commits (`stats.messages.fixups {commits, share}`). The
+  messages card's "fix" row gets a "· 3 fixup!" segment when it is drawn whole (not when
+  the fix / wip / oops counts are folded into one row); the recap gets a "Fixups" line
+  ("Fixup'lar" in Turkish) and `wrapped.md` a "Fixup commits" section ("Fixup commit'leri").
+  Without fixup commits every card, the recap and `wrapped.md` are unchanged (`stats.json`
+  gains `messages.fixups {commits: 0, share: 0}`).
 - Issue references: how many non-merge commits mention an issue in their subject (`#123`,
   `GH-123` or a Jira-style key such as `ABC-123`; not inside URLs, commit hashes or email
   addresses, and not `UTF-8`-style names), their share of non-merge commits and the most

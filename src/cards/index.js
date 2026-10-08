@@ -33,6 +33,7 @@ import { shownTests } from '../stats/tests.js';
 import { shownCoChange } from '../stats/cochange.js';
 import { shownCleanups } from '../stats/cleanups.js';
 import { issueRefLabel, shownIssueRefs } from '../stats/issues.js';
+import { shownFixups } from '../stats/messages.js';
 import { sizeShares } from '../stats/sizes.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from '../i18n/index.js';
 import { DEFAULT_COLOR_THEME, isColorTheme } from './themes.js';
@@ -1688,6 +1689,13 @@ function messages(s, ctx) {
 }
 
 /**
+ * A fixup-commits share (stats/messages.js shownFixups output) as shown: a whole percent
+ * of the non-merge commits, "<1%" when it rounds to 0, never "100%" short of every commit
+ * (see shareLabel). Used by the messages card, the recap and wrapped.md, so they agree.
+ */
+export const fixupShareText = (f, L = EN) => shareLabel(f?.pct, f?.commits, L.pct);
+
+/**
  * An issue-references share (shownIssueRefs output) as shown: a whole percent of the
  * non-merge commits, "<1%" when it rounds to 0, never "100%" short of every commit (see
  * shareLabel). Used by the messages card, the recap and wrapped.md, so they agree.
@@ -1815,6 +1823,11 @@ function messagesCard(s, L) {
   const rows = [{ label: M.longest(quote(longest)) }];
   if (shortest !== longest) rows.push({ label: M.shortest(quote(shortest)) });
   const folded = [...rows, { label: M.counterCommits, value: M.counterValues(L.num(counts.fix), L.num(counts.wip), L.num(oops)) }];
+  // Fixup commits (stats.messages.fixups) as a "· 3 fixup!" segment on the "fix" row, only
+  // when it is drawn whole (else the row as before). The folded counter row never has room.
+  const fixups = shownFixups(m.fixups);
+  const fixRow = { label: M.fixCommits, value: L.num(counts.fix) };
+  const fixWithFixups = fixups ? { ...fixRow, value: M.fixupsValue(fixRow.value, fixups.commits) } : null;
   const card = {
     eyebrow: M.eyebrow,
     // Same rounding as the subtitle, so the two numbers always agree.
@@ -1823,7 +1836,7 @@ function messagesCard(s, L) {
     subtitle: quip,
     lines: [
       ...rows,
-      { label: M.fixCommits, value: L.num(counts.fix) },
+      fixWithFixups && rowFits(fixWithFixups) ? fixWithFixups : fixRow,
       { label: M.wipCommits, value: L.num(counts.wip) },
       { label: M.oopsCommits, value: L.num(oops) },
     ],

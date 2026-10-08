@@ -18,6 +18,10 @@ const WIP = /(?<![\p{L}\p{N}_])wip(?![\p{L}\p{N}_])/iu;
 const OOPS = /(?<![\p{L}\p{N}_])oo+ps+(?![\p{L}\p{N}_])/iu;
 const COUNTED_WORD = /^(?:(?:hot|bug)?fix(?:e[sd]|ing)?|wip|oo+ps+)$/u;
 const HAS_LETTER = /\p{L}/u;
+/** git's autosquash prefixes (`git commit --fixup / --squash / --fixup=amend:`), exactly as git's autosquash matches them. */
+const FIXUP = /^(?:fixup|squash|amend)! /u;
+/** The non-enumerable key computeMessages keeps the exact (unrounded) fixup share under (see shownFixups). */
+const EXACT = Symbol('messages.fixups.exactShare');
 /** Subjects git generates for merges; they say nothing about the author's habits. */
 const MERGE = /^Merge (?:(?:branch|branches|pull request|remote-tracking branch|tag|commit)\b|(['"]).+?\1 into\b)/;
 
@@ -29,6 +33,15 @@ export function isMergeCommit(c) {
   if (Array.isArray(c?.parents)) return c.parents.length > 1;
   return typeof c?.subject === 'string' && MERGE.test(c.subject.trim());
 }
+
+/**
+ * Whether `subject` is one of git's autosquash subjects: it starts with `fixup! `,
+ * `squash! ` or `amend! ` (the "!" followed by a space), exactly as `git commit --fixup`,
+ * `--squash` and `--fixup=amend:` write them and `git rebase --autosquash` matches them:
+ * case-sensitive ("Fixup! x" is not one), no leading whitespace, and a bare "fixup!" is
+ * not one; `fixup! fixup! x` is one commit. Non-strings → false.
+ */
+export const isFixupSubject = (subject) => typeof subject === 'string' && FIXUP.test(subject);
 
 /** A word is in a counted family if it, or any of its hyphen parts ("hot-fix"), is. */
 const isCountedWord = (word) => word.split('-').some((part) => COUNTED_WORD.test(part));
@@ -42,7 +55,7 @@ const codePoints = (s) => [...s].length;
  * one entry in `parents`; for commits without a `parents` array, subjects starting "Merge
  * branch / branches / pull request / remote-tracking branch / tag / commit" or "Merge
  * '...' into") are skipped by every field.
- * Returns `{shortest, longest, topWord, counts: {fix, wip, oops}, averageLength}`:
+ * Returns `{shortest, longest, topWord, counts: {fix, wip, oops}, averageLength, fixups}`:
  * - shortest / longest: `{subject, hash, length}` (length in Unicode code points) or null
  *   when no commit has a non-empty subject. Ties go to the earliest commit by date;
  *   commits with an unparseable date come after dated ones; then input order.
@@ -57,14 +70,26 @@ const codePoints = (s) => [...s].length;
  *   ("préfix" is not a fix). Each commit counts at most once per category.
  * - averageLength: mean length (code points) of non-empty subjects, rounded to 1 decimal;
  *   0 when there are none.
+ * - fixups: `{commits, share}`: how many non-merge commits have an autosquash subject
+ *   (`fixup!` / `squash!` / `amend!`, see isFixupSubject) that reached the history, and
+ *   their share of every non-merge commit (also those without a subject, as stats.cleanups
+ *   counts them), 3 decimals, at most 0.999 short of every commit (as stats.cleanups
+ *   rounds its share); `{commits: 0, share: 0}` without any. The exact ratio rides along
+ *   non-enumerably for shownFixups, so stats.json keeps exactly `{commits, share}`.
  * Invalid input policy: never throws; a missing / non-string subject is treated as empty
  * and is skipped by every field. Empty input → nulls and zeros.
  */
 export function computeMessages(commits) {
   commits = commits ?? [];
   const entries = [];
+  let nonMerge = 0;
+  let fixups = 0;
   commits.forEach((c, index) => {
     if (isMergeCommit(c)) return;
+    if (c && typeof c === 'object') {
+      nonMerge += 1;
+      if (isFixupSubject(c.subject)) fixups += 1;
+    }
     // Email-shaped text is cut first (see scrubEmails), so no field (the shown subjects,
     // their lengths, the top word) is ever built from an address.
     const subject = typeof c?.subject === 'string' ? scrubEmails(c.subject).trim() : '';
@@ -108,5 +133,33 @@ export function computeMessages(commits) {
     topWord,
     counts,
     averageLength: entries.length ? Math.round((totalLength / entries.length) * 10) / 10 : 0,
+    fixups: fixupsStat(fixups, nonMerge),
   };
+}
+
+/** stats.messages.fixups for `fixups` of `total` non-merge commits (see computeMessages). */
+function fixupsStat(fixups, total) {
+  if (fixups === 0) return { commits: 0, share: 0 };
+  const share = Math.min(Math.round((fixups / total) * 1000) / 1000, fixups < total ? 0.999 : 1);
+  return Object.defineProperty({ commits: fixups, share }, EXACT, { value: fixups / total });
+}
+
+/**
+ * stats.messages.fixups as the messages card, the recap and wrapped.md show it: `{commits,
+ * pct}`, or null (no object, e.g. a stats.json from before the stat, or no fixup commit).
+ * - commits: a positive whole number;
+ * - pct: the share as a percent for shareLabel in stats/contributors.js, from the exact
+ *   ratio computeMessages keeps, else from `share`; below 100 unless the share is exactly 1.
+ * All outputs use this, so they agree.
+ */
+export function shownFixups(stat) {
+  if (!stat || typeof stat !== 'object') return null;
+  const n = stat.commits;
+  const commits = typeof n === 'number' && Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
+  if (commits === 0) return null;
+  const exact = stat[EXACT];
+  const ratio = typeof exact === 'number' && Number.isFinite(exact) ? exact : stat.share;
+  const raw = typeof ratio === 'number' && Number.isFinite(ratio) ? Math.min(Math.max(ratio, 0), 1) : 0;
+  const share = ratio === 1 ? 1 : Math.min(raw, 0.999);
+  return { commits, pct: share * 100 };
 }

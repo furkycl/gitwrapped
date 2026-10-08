@@ -5,13 +5,14 @@
 // part only (authorName), and email-shaped text in any repo-derived text (subjects,
 // paths, repo and contributor names) is cut out by escapeMarkdown.
 
-import { authorName, busFactorShareText, displayRepoName, folderLabel, cleanupShareText, formatDateRange, formatDay, conventionalText, emojiShareText, issueRefsShareText, mergeShareText, pctText, revertShareText, repoRows, shownDayRange, sizeShareText, testsShareText } from './cards/index.js';
+import { authorName, busFactorShareText, displayRepoName, folderLabel, cleanupShareText, formatDateRange, formatDay, conventionalText, emojiShareText, fixupShareText, issueRefsShareText, mergeShareText, pctText, revertShareText, repoRows, shownDayRange, sizeShareText, testsShareText } from './cards/index.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
 import { shownEmoji } from './stats/emoji.js';
 import { shownReverts } from './stats/reverts.js';
 import { shownCleanups } from './stats/cleanups.js';
 import { issueRefLabel, shownIssueRefs } from './stats/issues.js';
+import { shownFixups } from './stats/messages.js';
 import { shownFileLifecycle } from './stats/files.js';
 import { shownFolders } from './stats/folders.js';
 import { shownTests } from './stats/tests.js';
@@ -127,6 +128,9 @@ const item = (label, value) => `- **${label}:** ${value}`;
  * “drop the old parser” · −4,210 lines (Mar 3, 2026)": the non-merge commits that removed
  * more lines than they added and the biggest net deletion; stats.cleanups, see
  * stats/cleanups.js shownCleanups) when there is at least one.
+ * A "Fixup commits" section follows the reverts ("3 commits (2% of non-merge commits)":
+ * the non-merge commits with a `fixup!` / `squash!` / `amend!` subject;
+ * stats.messages.fixups, see stats/messages.js shownFixups) when there is at least one.
  * An "Issue references" section follows the cleanups ("42 commits (12% of non-merge
  * commits); most referenced: #128 (9 commits)": the non-merge commits whose subject
  * mentions an issue; stats.issueRefs, see stats/issues.js shownIssueRefs) when there is
@@ -372,6 +376,10 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
     // --- reverts (as on the messages card and the recap; only with any) -----------------
     const reverts = shownReverts(stats?.reverts);
     if (reverts) section(M.reverts, [escapeMarkdown(`${plural(reverts.count, 'commit', L)} (${L.recap.ofNonMerge(revertShareText(reverts, L))})`)]);
+
+    // --- fixup commits (as on the messages card and the recap; only with any) ----------
+    const fixups = shownFixups(stats?.messages?.fixups);
+    if (fixups) section(M.fixups, [escapeMarkdown(`${plural(fixups.commits, 'commit', L)} (${L.recap.ofNonMerge(fixupShareText(fixups, L))})`)]);
 
     // --- cleanups (as on the totals card and the recap; only with any) ------------------
     const cleanups = shownCleanups(stats?.cleanups);

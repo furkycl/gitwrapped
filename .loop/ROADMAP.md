@@ -128,5 +128,5 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] Test share: share of changed lines in test files (`test/`, `tests/`, `__tests__/`, `spec/`, `*.test.*`, `*.spec.*`, `*_test.*`, same ignore rules / `--exclude` as hot files) as a row on the hot-files or languages card when there's room, stats.json `stats.tests {lines, share}`, recap and wrapped.md; en/tr; tests
 - [x] Office hours: share of weekday commits between 09:00 and 17:59 author-local vs outside, as a row on the activity or power-hour card when there's room, consistent with habits.byHour/byWeekday, stats.json `stats.officeHours {commits, share}`, recap and wrapped.md; en/tr; tests
 - 1.10.0 release prep (split as before):
-  - [ ] Cold audit of the 1.10 work (diff 1.9.0 release commit..main) + fix every real bug found, with tests
+  - [x] Cold audit of the 1.10 work (diff 1.9.0 release commit..main) + fix every real bug found, with tests
   - [ ] CHANGELOG 1.10.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync

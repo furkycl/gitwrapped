@@ -507,11 +507,6 @@ function withCleanups(spec, rows, add) {
   return add(withCount, rows.biggest);
 }
 
-/** Whether the totals card shows the cleanup rows (see cleanupsPlacement; else the messages card may). */
-export function cleanupsOnTotals(s, ctx) {
-  return cleanupsPlacement(s, ctx)?.card === 'totals';
-}
-
 /**
  * A cleanups share (shownCleanups output) as shown: a whole percent of the non-merge
  * commits, "<1%" when it rounds to 0, never "100%" short of every commit (see shareLabel).
@@ -581,8 +576,9 @@ function mergesRow(s, L) {
  * The totals card's files born / buried row (stats.fileLifecycle, see shownFileLifecycle):
  * "Born / buried" and "12 / 3"; with renames, "Born / buried / renamed" and "12 / 3 / 4"
  * when that is drawn whole (see rowFits), else the born / buried row (null when no file
- * was added or deleted either). Null when no file was added, deleted or renamed. Without
- * renames the row is exactly the born / buried one.
+ * was added or deleted either). Null when no file was added, deleted or renamed, or when
+ * even the born / buried row would be cut (7-digit counts): the row is only ever drawn
+ * whole. Without renames the row is exactly the born / buried one.
  */
 function lifecycleRow(s, L) {
   const lc = shownFileLifecycle(s.fileLifecycle);
@@ -592,18 +588,25 @@ function lifecycleRow(s, L) {
     const row = { label: T.fileLifecycleRenamed, value: T.fileLifecycleValue(lc.added, lc.deleted, lc.renamed) };
     if (rowFits(row)) return row;
   }
-  return lc.added + lc.deleted > 0 ? { label: T.fileLifecycle, value: T.fileLifecycleValue(lc.added, lc.deleted) } : null;
+  if (lc.added + lc.deleted === 0) return null;
+  const row = { label: T.fileLifecycle, value: T.fileLifecycleValue(lc.added, lc.deleted) };
+  return rowFits(row) ? row : null;
 }
 
 /**
  * The totals card's pairing row (stats.coAuthors, see shownCoAuthors): "Paired
- * (top: Ada)" and the count; null when no commit was paired.
+ * (top: Ada)" and the count, else "Paired commits" when the name would be cut (see
+ * rowFits); null when no commit was paired or even that would be cut.
  */
 function pairedRow(s, L) {
   const co = shownCoAuthors(s.coAuthors);
   if (!co) return null;
   const top = co.top ? clip(text(plain(scrubEmails(co.top)))) : null;
-  return { label: L.pairing.row(top), value: L.num(co.paired) };
+  const value = L.num(co.paired);
+  const named = { label: L.pairing.row(top), value };
+  if (!top || rowFits(named)) return rowFits(named) ? named : null;
+  const plainRow = { label: L.pairing.row(null), value };
+  return rowFits(plainRow) ? plainRow : null;
 }
 
 /**

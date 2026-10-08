@@ -438,7 +438,8 @@ describe('git (real repo): renames, binary docs, letter case', () => {
     git(repo, ['config', 'diff.renames', 'true']);
     write(repo, 'src/a.js', lines(10));
     write(repo, 'docs/logo.png', Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0, 1, 2, 3, 0]));
-    write(repo, 'Docs/upper.txt', lines(4));
+    // "Doc/" (not "Docs/"): on case-insensitive file systems (macOS, Windows) "Docs/" would be the same folder as "docs/".
+    write(repo, 'Doc/upper.txt', lines(4));
     write(repo, 'NOTES.MD', lines(6));
     git(repo, ['add', '-A']);
     git(repo, ['commit', '-q', '-m', 'feat: a'], at('2026-03-02'));
@@ -452,9 +453,9 @@ describe('git (real repo): renames, binary docs, letter case', () => {
   });
   after(() => rmSync(root, { recursive: true, force: true }));
 
-  test('binary doc adds 0, "Docs/" is not a doc dir, ".MD" is; a rename is delete + add', async () => {
+  test('binary doc adds 0, "Doc/" is not a doc dir, ".MD" is; a rename is delete + add', async () => {
     const r = await generate({ path: repo, out: join(root, 'o1'), png: false, json: true, md: true }, { today: TODAY });
-    // Counted lines: src/a.js 10, Docs/upper.txt 4, NOTES.MD 6, docs/move.txt +5, then -5, notes/move.txt +5 = 35.
+    // Counted lines: src/a.js 10, Doc/upper.txt 4, NOTES.MD 6, docs/move.txt +5, then -5, notes/move.txt +5 = 35.
     // Doc lines: NOTES.MD 6 + docs/move.txt 10 = 16 → 16/35 = 0.457.
     const doc = JSON.parse(readFileSync(r.statsJson, 'utf8'));
     assert.deepEqual(doc.stats.docShare, { lines: 16, share: 0.457 });
@@ -464,7 +465,7 @@ describe('git (real repo): renames, binary docs, letter case', () => {
 
   test('--exclude "*.MD" vs "*.md": exclude matching follows its own case rules, the share follows the files kept', async () => {
     const x = await generate({ path: repo, out: join(root, 'o2'), png: false, json: true, exclude: ['docs/**', 'NOTES.MD'] }, { today: TODAY });
-    // Left: src/a.js 10, Docs/upper.txt 4, notes/move.txt 5 → no doc lines.
+    // Left: src/a.js 10, Doc/upper.txt 4, notes/move.txt 5 → no doc lines.
     assert.deepEqual(JSON.parse(readFileSync(x.statsJson, 'utf8')).stats.docShare, { lines: 0, share: 0 });
   });
 });

@@ -57,10 +57,10 @@ const withoutTests = (s) => {
 
 describe('isTestPath', () => {
   test('test directories at any depth', () => {
-    for (const p of ['test/a.js', 'tests/a.js', '__tests__/a.js', 'spec/a.rb', 'src/test/x.js', 'pkg/a/tests/b/c.py', 'src/__tests__/App.jsx', 'test/fixtures/data.json']) {
+    for (const p of ['test/a.js', 'tests/a.js', '__tests__/a.js', 'spec/a.rb', 'src/test/x.js', 'pkg/a/tests/b/c.py', 'src/__tests__/App.jsx', 'test/fixtures/data.json', 'specs/a.js']) {
       assert.equal(isTestPath(p), true, p);
     }
-    assert.deepEqual(TEST_DIRS, ['test', 'tests', '__tests__', 'spec']);
+    assert.deepEqual(TEST_DIRS, ['test', 'tests', '__tests__', 'spec', 'specs']);
   });
 
   test('test file names: *.test.*, *.spec.*, *_test.*', () => {
@@ -70,7 +70,7 @@ describe('isTestPath', () => {
   });
 
   test('not tests: other names, case, a file named "test", partial directory names', () => {
-    for (const p of ['src/a.js', 'test', 'tests', 'src/test', 'Test/a.js', 'TESTS/a.js', 'testing/a.js', 'contest/a.js', 'src/latest.js', 'attest.js', 'a.testing.js', 'test.js', 'spec.ts', 'mytest.go', 'specs/a.js', 'README.md']) {
+    for (const p of ['src/a.js', 'test', 'tests', 'src/test', 'Test/a.js', 'TESTS/a.js', 'testing/a.js', 'contest/a.js', 'src/latest.js', 'attest.js', 'a.testing.js', 'test.js', 'spec.ts', 'mytest.go', 'specs', 'src/specs', 'README.md']) {
       assert.equal(isTestPath(p), false, p);
     }
   });

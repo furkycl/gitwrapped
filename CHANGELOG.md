@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Broader test detection for the test share. Besides `test/`, `tests/`, `__tests__/` and
+  `spec/` directories and `*.test.*`, `*.spec.*` and `*_test.*` names, a file now counts
+  as a test when it is under a `specs/` directory, its name contains `_spec.` or `_tests.`
+  (`foo_spec.rb`, `foo_spec.lua`, `foo_tests.rs`), it is a `test_<name>.<ext>` module
+  (`test_utils.py`), it is `conftest.py`, or it is a `Test` / `Tests` class file in Java,
+  Kotlin, Scala, Groovy, C#, F#, VB, Swift, PHP or Objective-C, or a `Spec` one in Kotlin,
+  Scala, Groovy, Swift, PHP or Objective-C (`FooTest.java`,
+  `UserTests.cs`, `LoginSpec.groovy`, `AppTests.swift`, `UserTest.php`). Matching stays
+  case-sensitive (`Latest.java`, `FooTEST.java`, `FooTest.js`, `PodSpec.java`, `tests.js` and `testdata/`
+  are still not tests). The test share on the cards, the recap, `wrapped.md` and
+  `stats.tests` in `stats.json` may now be higher, notably for Python, Ruby, Rust, JVM, .NET,
+  Swift and PHP repos.
+
 ## [1.10.0] - 2026-10-08
 
 ### Added

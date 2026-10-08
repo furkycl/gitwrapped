@@ -28,6 +28,7 @@ const UNITS = {
   fix: ['fix', 'fixes'],
   repo: ['repo', 'repos'],
   release: ['release', 'releases'],
+  person: ['person', 'people'],
 };
 
 /**
@@ -433,6 +434,14 @@ export default {
     shareLead: (who, commits) => `${who} share the lead with ${plural(commits, UNITS.commit)} each.`,
     leads: (name, share) => `${name} leads the pack with ${share} of the commits.`,
     title: 'contributors',
+    /**
+     * The bus-factor row (stats.contributors.busFactor), in spare room only: "Bus factor"
+     * and "2 people · 58%" ("2 · 58%" when that would be cut).
+     */
+    busFactor: 'Bus factor',
+    busFactorValue: (authors, pct) => `${plural(authors, UNITS.person)} · ${pct}`,
+    busFactorShort: (authors, pct) => `${num(authors)} · ${pct}`,
+    busFactorDescription: (authors, pct) => `${plural(authors, UNITS.person)} made ${pct} of the lines changed`,
   },
 
   /**
@@ -573,6 +582,9 @@ export default {
     /** "(74% of lines, tied with 1 more)". */
     languageDetail: (share, basis, tiedMore) => `${share} ${basis === 'files' ? 'of files' : 'of lines'}${tiedMore > 0 ? `, tied with ${tiedMore} more` : ''}`,
     team: 'Team',
+    /** The bus-factor line (stats.contributors.busFactor): label, "2 people", then "(58% of lines changed)". */
+    busFactor: 'Bus factor',
+    busFactorValue: (authors) => plural(authors, UNITS.person),
     repos: 'Repos',
     /** The year-over-year line's label: "vs 2024". */
     vsYear: (year) => `vs ${year}`,
@@ -662,6 +674,8 @@ export default {
     language: 'Language',
     contributor: 'Contributor',
     share: 'Share',
+    /** The bus-factor item in the team section (stats.contributors.busFactor): "2 people (58% of lines changed)". */
+    busFactor: 'Bus factor',
     repo: 'Repo',
     /** The conventional-commit mix section. */
     commitTypes: 'Commit types',

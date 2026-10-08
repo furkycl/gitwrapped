@@ -1,6 +1,6 @@
 // Stats engine: pure functions over readCommits() output. No git calls, no I/O.
 import { computeBiggestCommit, shownBiggestLines } from './biggest.js';
-import { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONTRIBUTORS } from './contributors.js';
+import { computeBusFactor, computeContributors, contributorName, hasTeamCard, shareLabel, shownBusFactor, TOP_CONTRIBUTORS } from './contributors.js';
 import { computeFirstCommit, SHORT_HASH } from './first.js';
 import { computeCoAuthors, shownCoAuthors, TOP_CO_AUTHORS } from './coauthors.js';
 import { computeReleases, shownReleases } from './releases.js';
@@ -31,7 +31,7 @@ import { computeEmoji, EMOJI_MIN_SHARE, emojiIn, emojiKey, GITMOJI, isEmoji, sho
 
 export { computeTotals, computeTimeHabits, computeStreaks, computeDaily, busiestOf, daysUpTo, longestGap, longestRun, shownBusiestDay, shownLongest, shownLongestBreak, computeFileLifecycle, shownFileLifecycle, computeHotFiles, isIgnoredPath, repoRelativePath, computeRepos, computeYearOverYear, yearOverYear, computePreviousPeriod, previousPeriod, previousWindow };
 export { computeLanguages, languageBarRows, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER_LANGUAGE, percentShares };
-export { computeContributors, contributorName, hasTeamCard, shareLabel, TOP_CONTRIBUTORS };
+export { computeBusFactor, computeContributors, contributorName, hasTeamCard, shareLabel, shownBusFactor, TOP_CONTRIBUTORS };
 export { computeFirstCommit, SHORT_HASH };
 export { computeCoAuthors, shownCoAuthors, TOP_CO_AUTHORS };
 export { computeFolders, folderOf, ROOT_FOLDER, shownFolders, TOP_FOLDERS };
@@ -110,6 +110,9 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * `team` when given (the unfiltered history of an --author run, so "you" can be ranked
  * against everyone), else from `commits`; `author` (the --author email) picks "you";
  * `teamTruncated` says whether that read was capped (contributors.truncated).
+ * `contributors.busFactor` is the smallest number of authors who made at least half of the
+ * lines changed in that same history, `{authors, share}` (the same files as hot files), or
+ * null with fewer than two contributors or no line changed (see computeBusFactor).
  * `repos` (the labels of a multi-repo run, see mergeHistories in src/git.js): with two or
  * more, `stats.repos` is the per-repo breakdown (see repos.js), as the last key; with
  * fewer the key is absent, so single-repo stats are unchanged.

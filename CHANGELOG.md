@@ -21,6 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   either window has no commits or the earlier one would start before 1970; a capped
   earlier window gets a note and a failed read a one-line warning. English and Turkish.
   `--year` runs keep their year-over-year comparison and never get this one.
+- Bus factor for team repos: the smallest number of contributors who together made at
+  least half of the lines changed (after `.mailmap`, counted over the same files as hot
+  files, so lockfiles, build output and `--exclude`d files are left out; with `--author`,
+  over the whole team's history like the ranking). The team card gets a "Bus factor  2 people · 58%"
+  row in spare room only (cards without room are unchanged), the terminal recap a
+  "Bus factor" line after "Team", `wrapped.md` an item in the team section, and
+  `stats.json` gets `stats.contributors.busFactor` (`{authors, share}`, or `null` with
+  fewer than two contributors or no counted line changed). English and Turkish.
 
 ### Changed
 

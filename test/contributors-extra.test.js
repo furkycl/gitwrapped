@@ -145,7 +145,7 @@ describe('contributors card: rows, numbering and layout', () => {
 
   test('empty history → no contributors card', () => {
     const stats = statsOf([]);
-    assert.deepEqual(stats.contributors, { total: 0, top: [], you: null, authorFilter: false, truncated: false });
+    assert.deepEqual(stats.contributors, { total: 0, top: [], you: null, authorFilter: false, truncated: false, busFactor: null });
     assert.equal(buildCards(stats, { today: TODAY }).length, 10);
     assert.equal(cardOf(stats), undefined);
   });
@@ -370,7 +370,7 @@ describe('end to end (real repos)', () => {
     assert.ok(!files.some((f) => f.includes('contributors')));
     assert.doesNotMatch(text, /Team/);
     const g = await generate({ path: dir, out: out('empty2'), png: false, author: 'a@b.co' }, { today: TODAY });
-    assert.deepEqual(g.stats.contributors, { total: 0, top: [], you: null, authorFilter: true, truncated: false });
+    assert.deepEqual(g.stats.contributors, { total: 0, top: [], you: null, authorFilter: true, truncated: false, busFactor: null });
   });
 
   test('--until window applies to the team read too', async () => {

@@ -9,7 +9,7 @@ import { dayKeyFromEpoch as dayKeyOf, epochDay, mondayOf, WEEKDAY_NAMES } from '
 import { languageBarRows, languageHeadline, OTHER as OTHER_LANGUAGE } from '../stats/languages.js';
 import { busiestOf, daysUpTo, shownLongest, shownLongestBreak } from '../stats/daily.js';
 import { monthIndex, monthsFromDays } from '../stats/months.js';
-import { hasTeamCard, shareLabel, TOP_CONTRIBUTORS } from '../stats/contributors.js';
+import { hasTeamCard, shareLabel, shownBusFactor, TOP_CONTRIBUTORS } from '../stats/contributors.js';
 import { shownCoAuthors } from '../stats/coauthors.js';
 import { shownTimezones, utcLabel } from '../stats/timezones.js';
 import { shownLateNights } from '../stats/latenights.js';
@@ -1573,12 +1573,39 @@ function contributorRow(p, you, L) {
  * The team card (only built when there are 2+ contributors, see cardIdsFor): the top
  * contributors by commits; with --author, where "you" rank among them. Shows git author
  * names (after .mailmap) only, never an email. When commits were paired (stats.coAuthors)
- * and there is room, a pairing panel follows the bars (see pairedCallout).
+ * and there is room, a pairing panel follows the bars (see pairedCallout), then, in spare
+ * room only, a "Bus factor" row (see busFactorRow).
  */
 function contributors(s, { L }) {
   const spec = teamCard(s, L);
-  return teamWithPairing(spec, s, L) ?? spec;
+  const withPanel = teamWithPairing(spec, s, L) ?? spec;
+  // The bus factor (stats.contributors.busFactor) as a row, after the pairing panel is
+  // placed and in spare room only (see withRoomyRow): every chart still drawn, nothing
+  // shrinking; else the card is exactly as before.
+  const row = busFactorRow(s, L);
+  return row ? withRoomyRow(withPanel, row, L) : withPanel;
 }
+
+/**
+ * The bus-factor row (stats.contributors.busFactor, see shownBusFactor) for the team card:
+ * "Bus factor" and "2 people · 58%", or "2 · 58%" when the full value would be cut; null
+ * without a bus factor, or when even the short value would be cut (never a cut row).
+ */
+function busFactorRow(s, L) {
+  const b = shownBusFactor(s?.contributors?.busFactor);
+  if (!b) return null;
+  const C = L.contributors;
+  const pct = busFactorShareText(b, L);
+  const full = C.busFactorValue(b.authors, pct);
+  const row = { label: C.busFactor, value: rowValueFits(full) ? full : C.busFactorShort(b.authors, pct), description: C.busFactorDescription(b.authors, pct) };
+  return rowFits(row) ? row : null;
+}
+
+/**
+ * A shownBusFactor() value's share as shown: a whole percent of the lines changed (never
+ * "100%" short of every line). Used by the card, the recap and wrapped.md, so they agree.
+ */
+export const busFactorShareText = (b, L = EN) => weekendPercentLabel(b?.percent ?? 0, L.pct);
 
 /** The team card without the pairing panel. */
 function teamCard(s, L) {

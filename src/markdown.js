@@ -5,7 +5,7 @@
 // part only (authorName), and email-shaped text in any repo-derived text (subjects,
 // paths, repo and contributor names) is cut out by escapeMarkdown.
 
-import { authorName, displayRepoName, folderLabel, formatDateRange, formatDay, conventionalText, emojiShareText, mergeShareText, pctText, revertShareText, repoRows, shownDayRange, sizeShareText, testsShareText } from './cards/index.js';
+import { authorName, busFactorShareText, displayRepoName, folderLabel, formatDateRange, formatDay, conventionalText, emojiShareText, mergeShareText, pctText, revertShareText, repoRows, shownDayRange, sizeShareText, testsShareText } from './cards/index.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
 import { shownEmoji } from './stats/emoji.js';
@@ -20,7 +20,7 @@ import { shownOfficeHours } from './stats/officehours.js';
 import { shownCadence } from './stats/cadence.js';
 import { shownBusiestDay, shownLongest, shownLongestBreak } from './stats/daily.js';
 import { shownBiggestLines } from './stats/biggest.js';
-import { contributorName, hasTeamCard, shareLabel } from './stats/contributors.js';
+import { contributorName, hasTeamCard, shareLabel, shownBusFactor } from './stats/contributors.js';
 import { shownCoAuthors } from './stats/coauthors.js';
 import { shownReleases } from './stats/releases.js';
 import { shownMerges } from './stats/merges.js';
@@ -114,6 +114,9 @@ const item = (label, value) => `- **${label}:** ${value}`;
  * hot files when there are two or more folders.
  * A "Test lines" item in the numbers ("1,234 lines (23% of lines changed)"; stats.tests,
  * see stats/tests.js shownTests) shows when at least one test line changed.
+ * A "Bus factor" item ends the team section ("2 people (58% of lines changed)": the fewest
+ * authors who made at least half of the lines changed; stats.contributors.busFactor, see
+ * stats/contributors.js shownBusFactor) when there is one.
  * Sections without data are left out (no habits / streak / hot files / languages section
  * for an empty history, no team section unless the contributors card is built, ...).
  */
@@ -297,6 +300,9 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
         lines.push('', escapeMarkdown(`${L.recap.youAre} #${num(youRank, L)} (${L.recap.ofCommits(shareLabel(c.you.share, c.you.commits, L.pct))})`));
       }
       if (rows.length > 0) lines.push('', `| # | ${M.contributor} | ${M.commits} | ${M.share} |`, '|--:|:--|--:|--:|', ...rows);
+      // The fewest authors who made half the lines changed (contributors.busFactor), as in the recap.
+      const bus = shownBusFactor(c.busFactor);
+      if (bus) lines.push('', item(escapeMarkdown(M.busFactor), `${L.recap.busFactorValue(bus.authors)} (${L.recap.ofLinesChanged(busFactorShareText(bus, L))})`));
       section(L.contributors.eyebrow, lines);
     }
 

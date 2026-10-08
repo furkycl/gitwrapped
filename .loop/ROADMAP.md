@@ -137,4 +137,12 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] Bus factor (team repos): smallest number of authors who together made ≥50% of the lines changed (after .mailmap, same ignore rules as hot files) on the contributors card when there's room, stats.json `stats.contributors.busFactor`, recap and wrapped.md; en/tr; tests
 - 1.11.0 release prep (split as before):
   - [x] Cold audit of the 1.11 work (diff 1.10.0 release commit..main) + fix every real bug found, with tests (also: shownMerges rounds its share twice, like tests did before 1.10)
-  - [ ] CHANGELOG 1.11.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync
+  - [x] CHANGELOG 1.11.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync
+
+## M18 — 1.12 (proposed by loop turn 079 per the M8 owner note "do not finish the loop"; owner may prune)
+- [ ] Co-change pair: the two files most often changed in the same non-merge commit (same ignore rules / `--exclude` as hot files, ≥3 shared commits, multi-repo repo-prefixed, ties → alphabetical) as a row on the hot-files card when there's room, stats.json `stats.coChange {files, commits}` or null, recap and wrapped.md; en/tr; tests
+- [ ] Cleanup commits: non-merge commits that remove more lines than they add (same ignore rules as hot files), count + share and the biggest net deletion (subject scrubbed, day, −N) on the messages or totals card when there's room, stats.json `stats.cleanups {commits, share, biggest}`, recap and wrapped.md; en/tr; tests
+- [ ] Renames: files renamed in the window (`R` status from the existing name-status read, same ignore rules) added to the files born/buried row when it fits, stats.json `stats.fileLifecycle.renamed`, recap and wrapped.md; en/tr; tests
+- 1.12.0 release prep (split as before):
+  - [ ] Cold audit of the 1.12 work (diff 1.11.0 release commit..main) + fix every real bug found, with tests
+  - [ ] CHANGELOG 1.12.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync

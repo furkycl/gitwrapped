@@ -42,6 +42,14 @@ const mergesText = (prs, merges, share, sep) => [
   merges > 0 ? `${plural(merges, ['merge commit', 'merge commits'])} (${share} of commits)` : '',
 ].filter(Boolean).join(sep);
 
+/** Whole minutes as a short length: "0 min", "45 min", "3h", "3h 10m" (hours with separators). */
+const sessionLength = (minutes) => {
+  const m = Number.isSafeInteger(minutes) && minutes > 0 ? minutes : 0;
+  const h = Math.floor(m / 60);
+  if (h === 0) return `${m} min`;
+  return m % 60 === 0 ? `${num(h)}h` : `${num(h)}h ${m % 60}m`;
+};
+
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export default {
@@ -280,6 +288,31 @@ export default {
     cadenceRow: (n) => `${dec(n)} per active day`,
     /** The median gap between active days: "every day", "every 3 days", "every 2.5 days". */
     cadenceEvery: (days) => (dec(days) === '1' ? 'every day' : `every ${dec(days)} days`),
+    /**
+     * The coding-sessions row (stats/sessions.js shownSessions), in the forms tried in
+     * turn: "42 coding sessions" / "42 sessions" and "longest 3h 10m", else "Sessions" and
+     * "42". With a single session the value is just its length: "1 coding session" | "26h 41m".
+     */
+    sessionsRowLabel: (count) => plural(count, ['coding session', 'coding sessions']),
+    sessionsRowShort: (count) => plural(count, ['session', 'sessions']),
+    sessionsRowValue: (count, longest) => (count === 1 ? sessionLength(longest) : `longest ${sessionLength(longest)}`),
+    sessionsLabel: 'Sessions',
+    /** A session length in whole minutes: "0 min", "45 min", "3h", "3h 10m". */
+    sessionLength: (minutes) => sessionLength(minutes),
+    /**
+     * The row's text description: "42 coding sessions, median 35 min, longest 3h 10m (14
+     * commits)"; one session: "1 coding session, 26h 41m (50 commits)".
+     */
+    sessionsDescription: (count, median, longest, commits) => (count === 1
+      ? `1 coding session, ${sessionLength(longest)} (${plural(commits, UNITS.commit)})`
+      : `${plural(count, ['coding session', 'coding sessions'])}, median ${sessionLength(median)}, longest ${sessionLength(longest)} (${plural(commits, UNITS.commit)})`),
+    /**
+     * The recap / wrapped.md value: "42 sessions · median 35 min · longest 3h 10m (14
+     * commits, Mar 2, 2026)"; one session: "1 session · 26h 41m (50 commits, Mar 2, 2026)".
+     */
+    sessionsValue: (count, median, longest, commits, day) => (count === 1
+      ? `1 session · ${sessionLength(longest)} (${plural(commits, UNITS.commit)}, ${day})`
+      : `${plural(count, ['session', 'sessions'])} · median ${sessionLength(median)} · longest ${sessionLength(longest)} (${plural(commits, UNITS.commit)}, ${day})`),
   },
 
   activity: {
@@ -623,6 +656,8 @@ export default {
     breakLabel: 'Break',
     /** The cadence line: label, then "2.4 commits per active day · every 3 days". */
     cadence: 'Cadence',
+    /** The coding-sessions line: label, then "42 sessions · median 35 min · longest 3h 10m (14 commits, Mar 2, 2026)". */
+    sessions: 'Sessions',
     /** The busiest-day line: label, "Oct 4, 2026", then "(12 commits)". */
     busiestDay: 'Busiest day',
     /** The time-zones line: label, "3 time zones", then "· mostly UTC+03:00 (62% of commits)". */
@@ -761,6 +796,8 @@ export default {
     longestBreak: 'Longest break',
     /** Commits per active day and the median gap between active days (stats.cadence). */
     cadence: 'Cadence',
+    /** Coding sessions (stats.sessions): "42 sessions · median 35 min · longest 3h 10m (14 commits, Mar 2, 2026)". */
+    sessions: 'Coding sessions',
     hotFiles: 'Hot files',
     file: 'File',
     /** The top-folders table (stats.folders). */

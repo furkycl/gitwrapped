@@ -32,6 +32,7 @@ import { shownWeekend, weekendPercentLabel } from './stats/weekend.js';
 import { shownLateNights } from './stats/latenights.js';
 import { shownOfficeHours } from './stats/officehours.js';
 import { shownCadence } from './stats/cadence.js';
+import { shownSessions } from './stats/sessions.js';
 
 const EN = getStrings(DEFAULT_LANG);
 
@@ -219,6 +220,9 @@ function shortText(s, maxWidth = 48) {
  * A "Cadence" line shows commits per active day and the median gap between active days
  * ("2.4 commits per active day · every 3 days", see stats/cadence.js shownCadence) with two
  * or more active days.
+ * A "Sessions" line shows the coding sessions ("42 sessions · median 35 min · longest 3h
+ * 10m (14 commits, Mar 2, 2026)", see stats/sessions.js shownSessions) when a session lasted
+ * at least a minute.
  * A "First commit" line shows the first commit in the window (stats.firstCommit: subject,
  * day, short hash and, with several repos, its repo) when there is one.
  * A "Biggest" line shows the biggest commit (stats.biggestCommit: subject, lines added /
@@ -392,6 +396,15 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     const cadence = shownCadence(stats, today);
     if (cadence) {
       lines.push(`  ${label(R.cadence)}${c('cyan', L.streak.cadencePerDay(cadence.perActiveDay))} ${c('dim', '·')} ${c('cyan', L.streak.cadenceEvery(cadence.medianGapDays))}`);
+    }
+
+    // Coding sessions (stats.sessions): how many, the median length and the longest one with
+    // its commits and day; only when a session lasted a minute or more (see shownSessions).
+    const sessions = shownSessions(stats);
+    if (sessions) {
+      const { count, medianMinutes, longest } = sessions;
+      const day = L.date(...longest.day.split('-').map(Number).reverse());
+      lines.push(`  ${label(R.sessions)}${c('cyan', L.streak.sessionsValue(count, medianMinutes, longest.minutes, longest.commits, day))}`);
     }
 
     const hot = stats?.hotFiles?.[0];

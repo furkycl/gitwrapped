@@ -16,6 +16,7 @@ import { computeIssueRefs, issueRefLabel, issueRefsInSubject, shownIssueRefs } f
 import { computeDepBumps, DEP_MANIFESTS, isDepPath, shownDepBumps } from './depbumps.js';
 import { computeTimeHabits } from './habits.js';
 import { CADENCE_MIN_DAYS, computeCadence, medianGap, shownCadence } from './cadence.js';
+import { computeSessions, SESSION_GAP_MINUTES, sessionsOf, shownSessions } from './sessions.js';
 import { computeWeekend, shownWeekend, WEEKEND_DAYS, weekendCounts, weekendPercent, weekendPercentLabel } from './weekend.js';
 import { computeLateNights, LATE_NIGHT_HOURS, lateNightCounts, NIGHT_ENDS, shownLateNights } from './latenights.js';
 import { computeOfficeHours, OFFICE_DAYS, OFFICE_HOURS, shownOfficeHours } from './officehours.js';
@@ -47,6 +48,7 @@ export { computeCleanups, shownCleanups };
 export { computeIssueRefs, issueRefLabel, issueRefsInSubject, shownIssueRefs };
 export { computeDepBumps, DEP_MANIFESTS, isDepPath, shownDepBumps };
 export { CADENCE_MIN_DAYS, computeCadence, medianGap, shownCadence };
+export { computeSessions, SESSION_GAP_MINUTES, sessionsOf, shownSessions };
 export { computeWeekend, shownWeekend, WEEKEND_DAYS, weekendCounts, weekendPercent, weekendPercentLabel };
 export { computeLateNights, LATE_NIGHT_HOURS, lateNightCounts, NIGHT_ENDS, shownLateNights };
 export { computeOfficeHours, OFFICE_DAYS, OFFICE_HOURS, shownOfficeHours };
@@ -81,6 +83,11 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * `cadence` is `{perActiveDay, medianGapDays}`: commits per active day (1
  * decimal) and the median calendar-day gap between consecutive active days (null with
  * fewer than two), over the same author-local days as totals.activeDays (see cadence.js).
+ * `sessions` is the coding sessions, per author (as contributors are told apart) a run of
+ * commits each at most two hours after the one before, `{count, medianMinutes, longest:
+ * {minutes, commits, day}}` (a session lasts from its first commit to its last; every
+ * commit counted as for `habits`; sessions starting after `today` + 1 left out of
+ * `longest`), or null without a dated commit (see sessions.js).
  * `daily` is commits per author-local day (see daily.js);
  * `busiestDay` is the single author-local day with the most commits as `{day: 'YYYY-MM-DD',
  * commits}` (ties → the earliest day), or null without commits: a copy of daily.busiest
@@ -170,6 +177,7 @@ export function computeStats(commits = [], { today, todayComplete, team, author,
     officeHours: computeOfficeHours(commits),
     streaks: computeStreaks(commits, { today, todayComplete }),
     cadence: computeCadence(daily.days),
+    sessions: computeSessions(commits, { today }),
     daily,
     busiestDay: daily.busiest ? { ...daily.busiest } : null,
     months: computeMonths(commits),

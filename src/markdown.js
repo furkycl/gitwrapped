@@ -24,6 +24,7 @@ import { shownWeekend, weekendPercentLabel } from './stats/weekend.js';
 import { shownLateNights } from './stats/latenights.js';
 import { shownOfficeHours } from './stats/officehours.js';
 import { shownCadence } from './stats/cadence.js';
+import { shownSessions } from './stats/sessions.js';
 import { shownBusiestDay, shownLongest, shownLongestBreak } from './stats/daily.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { contributorName, contributorShare, exactPercent, hasTeamCard, shareLabel, shownBusFactor } from './stats/contributors.js';
@@ -278,6 +279,14 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
     // Commits per active day and the median gap between active days, as in the recap.
     const cadence = shownCadence(stats, today);
     if (cadence) streaks.push(item(M.cadence, escapeMarkdown(`${L.streak.cadencePerDay(cadence.perActiveDay)} · ${L.streak.cadenceEvery(cadence.medianGapDays)}`)));
+    // Coding sessions, as in the recap (only when a session lasted a minute or more).
+    const sessions = shownSessions(stats);
+    if (sessions) {
+      const { count, medianMinutes, longest } = sessions;
+      const day = formatDay(longest.day, lang) ?? longest.day;
+      // Numbers and a formatted day only (shownSessions checks it), so nothing to escape.
+      streaks.push(item(M.sessions, L.streak.sessionsValue(count, medianMinutes, longest.minutes, longest.commits, day)));
+    }
     section(M.streaks, streaks);
 
     // --- hot files --------------------------------------------------------------------

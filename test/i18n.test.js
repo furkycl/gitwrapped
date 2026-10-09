@@ -59,6 +59,7 @@ function sampleArgs(path, arity) {
   if (path === 'hourLabel') return [[0], [9], [12], [23]];
   if (path === 'upper') return [['istanbul'], ['gitwrapped']];
   if (path.endsWith('languageDetail')) return [['74%', 'files', 0], ['74%', 'lines', 2]];
+  if (/topWords(?:Value|Label|Description)$/.test(path)) return [[[{ word: 'parser', count: 5 }, { word: 'cache', count: 1 }]], [[{ word: 'login', count: 2 }]]];
   return [Array(arity).fill(2), Array(arity).fill(1)];
 }
 

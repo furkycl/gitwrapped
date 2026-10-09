@@ -1,5 +1,6 @@
 import { scrubEmails } from '../privacy.js';
 import { localParts } from './time.js';
+import { stripLeadingEmoji } from './types.js';
 
 /** Words ignored by topWord: English filler, conventional-commit types, and the words
  * that have their own counters (fix / wip / oops families). Words shorter than 3 code
@@ -170,6 +171,128 @@ const isCountedWord = (word) => word.split('-').some((part) => COUNTED_WORD.test
 
 const codePoints = (s) => [...s].length;
 
+/** How many words stats.messages.topWords keeps. */
+export const TOP_WORDS = 3;
+/** The fewest commits a top word needs to be shown (cards, recap, wrapped.md); stats.json keeps the raw top 3. */
+export const TOP_WORDS_MIN = 2;
+/**
+ * Small English + Turkish stopword lists for topWords (lower case, NFC). Words under 3
+ * code points are dropped anyway, so the short ones ("a", "to", "ve", "bu") are listed
+ * for completeness only.
+ */
+const TOP_WORDS_STOPWORDS = new Set([
+  // English
+  'a', 'an', 'the', 'and', 'or', 'but', 'nor', 'for', 'with', 'without', 'from', 'into', 'onto',
+  'to', 'of', 'in', 'on', 'at', 'by', 'as', 'is', 'it', 'be', 'up', 'out', 'off', 'via', 'per',
+  'this', 'that', 'these', 'those', 'are', 'was', 'were', 'been', 'being', 'has', 'have', 'had',
+  'not', 'all', 'any', 'its', "it's", 'our', 'your', 'you', 'they', 'them', 'their', 'there',
+  'when', 'then', 'than', 'also', 'more', 'some', 'too', 'now', 'can', 'will', 'should', 'would',
+  'which', 'what', 'who', 'only', 'just', 'about', 'over', 'after', 'before', 'again', 'so', 'if',
+  'how', 'why', 'where', 'while', 'does', "don't", "doesn't",
+  // Turkish
+  've', 'ile', 'için', 'bir', 'bu', 'şu', 'o', 'da', 'de', 'ki', 'mi', 'mı', 'mu', 'mü', 'ne',
+  'ya', 'veya', 'ama', 'fakat', 'gibi', 'daha', 'çok', 'en', 'her', 'hem', 'olan', 'olarak',
+  'sonra', 'önce', 'kadar', 'göre', 'diye', 'yani', 'ise', 'artık', 'bunu', 'buna', 'bunun',
+  'şey', 'tüm', 'bütün',
+]);
+/**
+ * A leading conventional-commit-shaped prefix (`type(scope)!: `): any word of ASCII
+ * letters (not only the known types stats/types.js buckets), an optional `(scope)` and
+ * `!`, a colon, then blanks or the end of the subject (stats/types.js also wants a
+ * description after it). So a Go-style `pkg: message` loses `pkg` too.
+ */
+const CONVENTIONAL_PREFIX = /^[A-Za-z]+(?:\([^()]*\))?!?:(?:\s+|$)/u;
+/** git's autosquash markers in front of a subject (`fixup! `, `squash! `, `amend! `, repeated). */
+const AUTOSQUASH_MARKERS = /^(?:(?:fixup|squash|amend)!\s*)+/u;
+/** The wrapper `git revert` writes around the reverted subject: `Revert "…"` (the closing quote optional). */
+const REVERT_WRAPPER = /^Revert\s+"([\s\S]*?)"?$/u;
+/** How many rounds of wrappers subjectWords cuts (a revert of a revert of a fixup is 3). */
+const MAX_UNWRAP = 8;
+/** A gitmoji `:shortcode:` anywhere in the subject. */
+const SHORTCODE = /:[a-z0-9_+-]+:/gu;
+/** Text that is never a word: URLs, `owner/repo#12`, `#12`, `GH-12`, Jira keys (`ABC-123`), and hex hashes (7–40 hex digits with at least one digit). */
+const NOT_WORDS = [
+  // The lookbehinds start a match only where a token starts, so a long run such as
+  // "a.a.a.…" is scanned once, not once per position.
+  /(?<![\p{L}\p{N}_+.-])[a-z][a-z0-9+.-]*:\/\/\S*|(?<![\p{L}\p{N}_])www\.\S*/giu,
+  /(?<![\p{L}\p{N}_.-])[\p{L}\p{N}_.-]+\/[\p{L}\p{N}_.-]+#\d+/gu,
+  /#\d+/gu,
+  /(?<![\p{L}\p{N}_])gh-\d+(?![\p{L}\p{N}_])/giu,
+  /(?<![\p{L}\p{N}_])[A-Z][A-Z0-9]{1,9}-\d+(?![\p{L}\p{N}_])/gu,
+  /(?<![\p{L}\p{N}_])(?=[0-9a-f]*\d)[0-9a-f]{7,40}(?![\p{L}\p{N}_])/giu,
+];
+/** A word: a run of Unicode letters (with their combining marks), an inner apostrophe allowed ("don't", "readme'yi"). */
+const LETTER_WORD = /\p{L}[\p{L}\p{M}]*(?:['’]\p{L}[\p{L}\p{M}]*)*/gu;
+
+/**
+ * The distinct words of one commit subject for stats.messages.topWords (see
+ * computeMessages): the subject NFC-normalized and trimmed; then, repeated while anything
+ * changes (at most 8 rounds), git's autosquash markers in front (`fixup! ` / `squash! ` / `amend! `), emoji
+ * and `:shortcode:`s in front (stats/types.js stripLeadingEmoji) and a `Revert "…"`
+ * wrapper cut; then a leading conventional-commit-shaped prefix (see CONVENTIONAL_PREFIX),
+ * `:shortcode:`s anywhere, URLs / issue refs / hex hashes cut, then runs of letters (see LETTER_WORD) lowercased
+ * with toLowerCase (dotted "İ" as "i" first, so "İYİ" is "iyi"; the result is
+ * NFC-normalized again), keeping words of at least 3 code points that are not stopwords.
+ * `’` is read as `'`. Non-strings → none.
+ */
+export function subjectWords(subject) {
+  if (typeof subject !== 'string') return new Set();
+  let s = subject.normalize('NFC').trim();
+  // Wrappers in front of the subject, in any order and nesting ("fixup! ✨ feat: x",
+  // 'Revert "fixup! feat: x"'), at most MAX_UNWRAP rounds (so a crafted subject of
+  // thousands of nested reverts stays linear).
+  for (let prev = null, round = 0; prev !== s && round < MAX_UNWRAP; round += 1) {
+    prev = s;
+    s = stripLeadingEmoji(s.replace(AUTOSQUASH_MARKERS, ''));
+    const revert = REVERT_WRAPPER.exec(s);
+    if (revert) s = revert[1].trim();
+  }
+  s = s.replace(CONVENTIONAL_PREFIX, '').replace(SHORTCODE, ' ');
+  for (const re of NOT_WORDS) s = s.replace(re, ' ');
+  const words = new Set();
+  for (const raw of s.match(LETTER_WORD) ?? []) {
+    const word = raw.replace(/İ/gu, 'i').toLowerCase().normalize('NFC').replace(/’/gu, "'");
+    if (codePoints(word) < 3 || TOP_WORDS_STOPWORDS.has(word)) continue;
+    words.add(word);
+  }
+  return words;
+}
+
+/** stats.messages.topWords from `counts` (word → commits): the top TOP_WORDS by commits, ties alphabetical. */
+function topWordsStat(counts) {
+  return [...counts]
+    .sort(([a, x], [b, y]) => y - x || (a < b ? -1 : a > b ? 1 : 0))
+    .slice(0, TOP_WORDS)
+    .map(([word, count]) => ({ word, count }));
+}
+
+/** A word as subjectWords returns one (letters, marks, inner apostrophes). */
+const SHOWN_WORD = /^\p{L}[\p{L}\p{M}]*(?:'\p{L}[\p{L}\p{M}]*)*$/u;
+
+/**
+ * stats.messages.topWords as the messages card, the recap and wrapped.md show it: the
+ * entries `{word, count}` with a word shaped as subjectWords makes one (letters, marks,
+ * inner apostrophes; at least 3 code points) and a count of at least TOP_WORDS_MIN (2)
+ * commits (rounded to a whole number), each word once, by count then alphabetically, at
+ * most TOP_WORDS (3); null when none is left (no array, e.g. a stats.json from before the
+ * stat, or every word in a single commit). Every output uses this, so they agree.
+ */
+export function shownTopWords(stat) {
+  if (!Array.isArray(stat)) return null;
+  const seen = new Map();
+  for (const e of stat) {
+    const word = e?.word;
+    const n = e?.count;
+    if (typeof word !== 'string' || !SHOWN_WORD.test(word) || codePoints(word) < 3) continue;
+    if (typeof n !== 'number' || !Number.isFinite(n)) continue;
+    const count = Math.round(n);
+    if (count < TOP_WORDS_MIN || seen.has(word)) continue;
+    seen.set(word, count);
+  }
+  const top = topWordsStat(seen);
+  return top.length > 0 ? top : null;
+}
+
 /**
  * Commit-message stats over each commit's subject line (trimmed), with anything shaped
  * like an email address (`name@host`) replaced by "…" first (see scrubEmails), so every
@@ -177,7 +300,7 @@ const codePoints = (s) => [...s].length;
  * one entry in `parents`; for commits without a `parents` array, subjects starting "Merge
  * branch / branches / pull request / remote-tracking branch / tag / commit" or "Merge
  * '...' into") are skipped by every field.
- * Returns `{shortest, longest, topWord, counts: {fix, wip, oops}, averageLength, fixups, subjectLength, bodies}`:
+ * Returns `{shortest, longest, topWord, counts: {fix, wip, oops}, averageLength, fixups, subjectLength, bodies, topWords}`:
  * - shortest / longest: `{subject, hash, length}` (length in Unicode code points) or null
  *   when no commit has a non-empty subject. Ties go to the earliest commit by date;
  *   commits with an unparseable date come after dated ones; then input order.
@@ -216,10 +339,20 @@ const codePoints = (s) => [...s].length;
  *   exact ratio rides along non-enumerably for shownBodies. Null when no non-merge commit
  *   has a known body (there is none, or the bodies could not be read): unknown is never
  *   reported as 0.
+ * - topWords: `[{word, count}]`, the TOP_WORDS (3) most common words in the (email-
+ *   scrubbed) subjects, each counted once per commit ("test test test" counts 1), with
+ *   how many commits use it; by count, ties alphabetical (code-unit order); `[]` when no
+ *   word qualifies. A separate rule from topWord: see subjectWords (NFC; a leading
+ *   conventional `type(scope)!:` prefix cut, so "fix" / "feat" count only when written
+ *   in the subject itself; URLs, `#12`, `owner/repo#12`, `GH-12`, `ABC-123` and hex
+ *   hashes with a digit cut; runs of Unicode letters with an inner apostrophe allowed,
+ *   lowercased, at least 3 code points, an English + Turkish stopword list left out).
+ *   Every count is kept here (also 1); the outputs show only words in at least
+ *   TOP_WORDS_MIN (2) commits (see shownTopWords).
  * Invalid input policy: never throws; a missing / non-string subject is treated as empty
  * and is skipped by every field but fixups, subjectLength and bodies, which count every
  * non-merge commit (subjectLength as length 0). Empty input → nulls and zeros
- * (subjectLength and bodies null).
+ * (subjectLength and bodies null, topWords `[]`).
  */
 export function computeMessages(commits) {
   commits = commits ?? [];
@@ -259,7 +392,9 @@ export function computeMessages(commits) {
   let totalLength = 0;
   const counts = { fix: 0, wip: 0, oops: 0 };
   const words = new Map();
+  const commitWords = new Map();
   for (const e of entries) {
+    for (const word of subjectWords(e.subject)) commitWords.set(word, (commitWords.get(word) ?? 0) + 1);
     if (!shortest || e.length < shortest.length) shortest = e;
     if (!longest || e.length > longest.length) longest = e;
     totalLength += e.length;
@@ -290,6 +425,7 @@ export function computeMessages(commits) {
     fixups: fixupsStat(fixups, nonMerge),
     subjectLength: subjectLengthStat(lengths),
     bodies: known === 0 ? null : bodiesStat(bodies, known),
+    topWords: topWordsStat(commitWords),
   };
 }
 

@@ -13,7 +13,7 @@ import { shownReverts } from './stats/reverts.js';
 import { shownCleanups } from './stats/cleanups.js';
 import { issueRefLabel, shownIssueRefs } from './stats/issues.js';
 import { shownDepBumps } from './stats/depbumps.js';
-import { shownBodies, shownFixups, shownSubjectLength } from './stats/messages.js';
+import { shownBodies, shownFixups, shownSubjectLength, shownTopWords } from './stats/messages.js';
 import { shownFileLifecycle } from './stats/files.js';
 import { shownFolders } from './stats/folders.js';
 import { shownTests } from './stats/tests.js';
@@ -102,6 +102,12 @@ function signed(n, sign, L) {
 }
 
 /** A "- **Label:** value" list item. */
+/** Keep the start of a long word, as the recap does: "supercalifragi…" (max code points, incl. the "…"). */
+function shortWord(w, max = 24) {
+  const chars = [...w];
+  return chars.length <= max ? w : `${chars.slice(0, max - 1).join('')}…`;
+}
+
 const item = (label, value) => `- **${label}:** ${value}`;
 
 /**
@@ -145,6 +151,11 @@ const item = (label, value) => `- **${label}:** ${value}`;
  * A "Message bodies" section follows it ("42 commits (31% of non-merge commits)": the
  * non-merge commits whose message has a body beyond the subject, blank lines and trailers
  * ignored; stats.messages.bodies, see stats/messages.js shownBodies) when there is at least one.
+ * A "Top subject words" section follows the message bodies ("parser (5 commits), cache
+ * (3 commits), login (2 commits)": the most common words in the non-merge commit
+ * subjects, each counted once per commit, a word over 24 characters cut with "…" as in
+ * the recap; stats.messages.topWords, see stats/messages.js shownTopWords: only words in
+ * at least 2 commits) when there is one.
  * An "Issue references" section follows the cleanups ("42 commits (12% of non-merge
  * commits); most referenced: #128 (9 commits)": the non-merge commits whose subject
  * mentions an issue; stats.issueRefs, see stats/issues.js shownIssueRefs) when there is
@@ -422,6 +433,10 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
     // --- message bodies (as on the messages card and the recap; only with any) ---------
     const bodies = shownBodies(stats?.messages?.bodies);
     if (bodies) section(M.bodies, [escapeMarkdown(`${plural(bodies.commits, 'commit', L)} (${L.recap.ofNonMerge(bodiesShareText(bodies, L))})`)]);
+
+    // --- top subject words (as on the messages card and the recap; only with any) -------
+    const topWords = shownTopWords(stats?.messages?.topWords);
+    if (topWords) section(M.topWords, [escapeMarkdown(M.topWordsValue(topWords.map((w) => ({ ...w, word: shortWord(w.word) }))))]);
 
     // --- cleanups (as on the totals card and the recap; only with any) ------------------
     const cleanups = shownCleanups(stats?.cleanups);

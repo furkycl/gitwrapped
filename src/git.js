@@ -26,14 +26,30 @@ const execFileAsync = promisify(execFile);
 //
 // Fields: hash, author name and email (mailmapped: %aN/%aE, matching how --author is
 // matched with --use-mailmap), author date, parent hashes (space-separated; >1 = merge),
-// subject; then, after a newline, the values of the message's `Co-authored-by:` trailers,
+// subject; then, after a newline, the committer date (%cI, strict ISO, on a line of its own:
+// see COMMITTER_DATE), then the values of the message's `Co-authored-by:` trailers,
 // one per line (key matched case-insensitively, folded lines unfolded; nothing when there
 // are none; raw, not mailmapped: see mailmapCoAuthors). A subject (%s) never contains a
 // newline and a trailer value is one line, so the first "\n" of the last field ends the
 // subject, and whatever a trailer value contains (\x1f too) stays in the trailer part.
 const US = '\x1f';
 const NUMSTAT = /^[\r\n]*(\d+|-)\t(\d+|-)\t([\s\S]*)$/;
-export const LOG_FORMAT = '%H%x1f%aN%x1f%aE%x1f%aI%x1f%P%x1f%s%n%(trailers:key=Co-authored-by,valueonly,unfold,separator=%x0a)';
+export const LOG_FORMAT = '%H%x1f%aN%x1f%aE%x1f%aI%x1f%P%x1f%s%n%cI%n%(trailers:key=Co-authored-by,valueonly,unfold,separator=%x0a)';
+
+/**
+ * The committer date line after the subject: strict ISO 8601 as %cI prints it. The line is
+ * always consumed as the committer date line; a value that is not a valid date of this
+ * shape (an fsck-invalid zone such as "+123:45", a 5-digit year) is dropped, not read as a
+ * co-author.
+ */
+const COMMITTER_DATE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:\d{2})$/i;
+
+/**
+ * A `Name <email>` Co-authored-by value. %cI never prints "<", so a line after the subject
+ * shaped like this can only come from a record without the committer date line (output of
+ * the older format, as hand-built test records are): it is then left for the co-authors.
+ */
+const CO_AUTHOR_LINE = /<[^<>]*>\s*$/;
 
 const MAX_BUFFER = 256 * 1024 * 1024;
 
@@ -185,10 +201,12 @@ const coAuthorsOf = (part) => (part.startsWith('%(trailers') ? [] : part.split('
 
 /**
  * Parse `git log -z --numstat --format=LOG_FORMAT` output into commit objects:
- * `{hash, author, email, date, parents, coAuthors: [{name, email}], subject,
+ * `{hash, author, email, date, committerDate, parents, coAuthors: [{name, email}], subject,
  * files: [{path, added, removed, binary}], filesChanged, linesAdded, linesRemoved}`
  * (parents: array of hashes; a merge has more than one; coAuthors: the Co-authored-by
- * trailers in message order, as written, see parseCoAuthor). Binary files count as 0 lines.
+ * trailers in message order, as written, see parseCoAuthor; committerDate: the strict ISO
+ * committer date, "Z" normalized like `date`, present only when the record has one, see
+ * COMMITTER_DATE). Binary files count as 0 lines.
  * Output without numstat entries also parses (files: []). Pure function: returns [] for empty output.
  */
 export function parseLog(stdout) {
@@ -225,14 +243,22 @@ export function parseLog(stdout) {
     // The subject ends at the first newline; the Co-authored-by values follow it.
     const last = rest.join(US);
     const nl = last.indexOf('\n');
+    // The line after the subject is the committer date line (%cI): always consumed, never a
+    // co-author, and kept only when it is a valid strict ISO date (see COMMITTER_DATE).
+    let after = nl < 0 ? '' : last.slice(nl + 1);
+    const nl2 = after.indexOf('\n');
+    const line = (nl2 < 0 ? after : after.slice(0, nl2)).replace(/\r$/, '');
+    const committed = COMMITTER_DATE.test(line) && Number.isFinite(Date.parse(line)) ? line.replace(/Z$/i, '+00:00') : null;
+    if (!CO_AUTHOR_LINE.test(line)) after = nl2 < 0 ? '' : after.slice(nl2 + 1);
     current = {
       hash,
       author,
       email,
       // git >= 2.5x prints UTC as "Z", older git as "+00:00": normalize so output is stable.
       date: date.replace(/Z$/i, '+00:00'),
+      ...(committed ? { committerDate: committed } : {}),
       parents: parents.split(' ').filter(Boolean),
-      coAuthors: nl < 0 ? [] : coAuthorsOf(last.slice(nl + 1)),
+      coAuthors: after === '' ? [] : coAuthorsOf(after),
       subject: nl < 0 ? last : last.slice(0, nl),
       files: [],
       filesChanged: 0,

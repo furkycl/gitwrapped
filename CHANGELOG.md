@@ -22,6 +22,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shrinks or displaces anything); the recap gets a "Top words" line ("Sık kelimeler")
   and `wrapped.md` a "Top subject words" section ("Konu satırlarında en sık geçen kelimeler").
   Only words used by at least 2 commits are shown; `stats.json` keeps the top three.
+- Rewritten commits: non-merge commits whose committer date is more than an hour after
+  their author date (rebased, amended or cherry-picked; the dates compared as instants),
+  with their share of non-merge commits (`stats.rewritten {commits, share}`, or null
+  without non-merge commits). The log read now also takes each commit's committer date.
+  A "Rewritten commits" row ("Yeniden yazılan commit'ler") goes last on the totals card,
+  else last on the message hall of fame, only in spare room (it never displaces a row);
+  the recap gets a "Rewritten" line ("Yeniden yazılmış") and `wrapped.md` a "Rewritten
+  commits" section. Without a rewritten commit every card is unchanged. Squash merges,
+  `git am` and GitHub's "Rebase and merge" also commit again, so a repo that rebase-merges
+  its pull requests can show a share close to 100%.
 
 ## [1.15.0] - 2026-10-09
 

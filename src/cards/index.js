@@ -35,7 +35,7 @@ import { shownCoChange } from '../stats/cochange.js';
 import { shownCleanups } from '../stats/cleanups.js';
 import { issueRefLabel, shownIssueRefs } from '../stats/issues.js';
 import { shownDepBumps } from '../stats/depbumps.js';
-import { shownFixups } from '../stats/messages.js';
+import { shownFixups, shownSubjectLength } from '../stats/messages.js';
 import { sizeShares } from '../stats/sizes.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from '../i18n/index.js';
 import { DEFAULT_COLOR_THEME, isColorTheme } from './themes.js';
@@ -462,12 +462,16 @@ export function depBumpsCard(s, ctx) {
   const t = totalsWithCleanups(s ?? {}, ctx);
   if (Array.isArray(t.lines) && withSpareRow(t, row, ctx.L) !== t) return 'totals';
   const m = messagesWithoutDepBumps(s ?? {}, ctx);
-  if (Array.isArray(m.lines) && withLastDepBumps(m, row, ctx.L) !== m) return 'messages';
+  if (Array.isArray(m.lines) && withLastRow(m, row, ctx.L) !== m) return 'messages';
   return null;
 }
 
-/** The messages card `spec` with the dependency-bumps `row` as its last row when that fits as well as `spec` (see fitsLike, no extra shrink step), else `spec` itself. */
-function withLastDepBumps(spec, row, L) {
+/**
+ * The messages card `spec` with `row` (the dependency-bumps row, or a subject length row
+ * form) as its last row when that fits as well as `spec` (see fitsLike: at most 6 rows,
+ * every chart still drawn, no extra shrink step, nothing folded), else `spec` itself.
+ */
+function withLastRow(spec, row, L) {
   if (!Array.isArray(spec.lines) || spec.lines.length >= MAX_ROWS) return spec;
   const next = { ...spec, lines: [...spec.lines, row] };
   return fitsLike(next, spec, 0, L) ? next : spec;
@@ -1816,9 +1820,49 @@ function withReverts(spec, row, { folded, unfolded, emoji }, L) {
 }
 
 function messages(s, ctx) {
-  const spec = messagesWithoutDepBumps(s, ctx);
+  const without = messagesWithoutDepBumps(s, ctx);
   // The dependency-bumps row (stats.depBumps) when the totals card has no room for it (see depBumpsCard).
-  return depBumpsCard(s, ctx) === 'messages' ? withLastDepBumps(spec, depBumpsRow(s, ctx.L), ctx.L) : spec;
+  const spec = depBumpsCard(s, ctx) === 'messages' ? withLastRow(without, depBumpsRow(s, ctx.L), ctx.L) : without;
+  // The subject length row (stats.messages.subjectLength) last of all, appended in spare
+  // room only (its longest form that fits): it never folds, shrinks or displaces anything.
+  for (const row of subjectLengthRows(s, ctx.L) ?? []) {
+    const next = withLastRow(spec, row, ctx.L);
+    if (next !== spec) return next;
+  }
+  return spec;
+}
+
+/**
+ * The share of non-merge commits with a subject over 72 characters (shownSubjectLength
+ * output) as shown: a whole percent, "<1%" when it rounds to 0 with any, never "100%"
+ * short of every commit (see shareLabel). Used by the messages card, the recap and
+ * wrapped.md, so they agree.
+ */
+export const subjectLengthShareText = (r, L = EN) => shareLabel(r?.pct, r?.over72, L.pct);
+
+/**
+ * The messages card's subject length row (stats.messages.subjectLength, see
+ * shownSubjectLength) in each form drawn whole (see rowFits), longest first:
+ * "Subject length" and "median 48 · 12% over 72" (the median subject length, and the
+ * share of non-merge commits whose subject is longer than 72 characters, left out when
+ * none is), then "48 · 12% >72". Null without the stat (no non-merge commit, or a
+ * stats.json from before it), or when even the short form would be cut. The hover text
+ * says it in words. It is the card's lowest-priority row: messages() appends it after
+ * every other row (issue references and dependency bumps included), on withLastRow's
+ * terms, so it never folds, shrinks or displaces anything.
+ */
+function subjectLengthRows(s, L) {
+  const r = shownSubjectLength(s?.messages?.subjectLength);
+  if (!r) return null;
+  const M = L.messages;
+  const pct = subjectLengthShareText(r, L);
+  const description = M.subjectLengthDescription(r.median, r.over72, pct);
+  const forms = [
+    [M.subjectLengthTitle, M.subjectLengthValue(r.median, r.over72, pct)],
+    [M.subjectLengthTitle, M.subjectLengthShort(r.median, r.over72, pct)],
+  ];
+  const rows = forms.map(([label, value]) => ({ label, value, description })).filter((row) => rowFits(row));
+  return rows.length > 0 ? rows : null;
 }
 
 /** The messages card without the dependency-bumps row (see messages, depBumpsCard). */
@@ -1828,7 +1872,7 @@ function messagesWithoutDepBumps(s, ctx) {
   const place = cleanupsPlacement(s, ctx);
   const base = messagesBase(s, ctx);
   const spec = place?.card === 'messages' ? place.spec : base.card;
-  // The issue references row (stats.issueRefs) last of all, in spare room only.
+  // The issue references row (stats.issueRefs) after the rows so far, in spare room only.
   const rows = issueRefsRows(s, ctx.L);
   return rows ? withIssueRefs(spec, rows, base.parts, ctx.L) : spec;
 }

@@ -351,6 +351,10 @@ export default {
     issueRefsTitle: (ref, times) => (ref ? `Issue atıfları (en çok ${ref} ×${num(times)})` : 'Issue atıfları'),
     issueRefsValue: (count, pct, ref, times) => `${num(count)} · ${pct}${ref ? ` (${ref} ×${num(times)})` : ''}`,
     issueRefsDescription: (count, pct, ref, times) => `${plural(count, UNITS.commit)} bir issue'ya atıf yapıyor (merge dışı commit'lerin ${pct} kadarı)${ref ? `; en çok atıf yapılan: ${ref} (${plural(times, UNITS.commit)})` : ''}`,
+    subjectLengthTitle: 'Konu uzunluğu',
+    subjectLengthValue: (median, over72, pct) => `medyan ${dec(median)}${over72 > 0 ? ` · 72 üstü: ${pct}` : ''}`,
+    subjectLengthShort: (median, over72, pct) => `${dec(median)}${over72 > 0 ? ` · >72: ${pct}` : ''}`,
+    subjectLengthDescription: (median, over72, pct) => `Medyan konu satırı uzunluğu: ${dec(median)} karakter; ${over72 > 0 ? `${plural(over72, UNITS.commit)} 72 karakteri aşıyor (merge dışı commit'lerin ${pct} kadarı)` : "hiçbir commit 72 karakteri aşmıyor"}`,
   },
 
   personality: {
@@ -530,6 +534,8 @@ export default {
     issueRefs: 'Issue atıfları',
     topIssue: (ref, commits) => `en çok ${ref} (${commits})`,
     depBumps: 'Bağımlılıklar',
+    subjects: 'Konu satırları',
+    subjectLengthValue: (median, over72) => `medyan ${dec(median)} karakter · ${over72 > 0 ? `${plural(over72, UNITS.commit)} 72 üstü` : '72 üstü yok'}`,
     you: 'Kişiliğin',
     cardsIn: (count, dir) => `${count}: ${dir}`,
     shareImage: 'paylaşım görseli:',
@@ -584,6 +590,8 @@ export default {
     issueRefs: 'Issue atıfları',
     topIssue: 'en çok atıf yapılan:',
     depBumps: 'Bağımlılık güncellemeleri',
+    subjectLength: 'Konu satırı uzunluğu',
+    subjectLengthValue: (median, over72) => `medyan ${dec(median)} karakter; ${over72 > 0 ? `${plural(over72, UNITS.commit)} 72 karakteri aşıyor` : 'hiçbiri 72 karakteri aşmıyor'}`,
     paired: 'Birlikte yazılan',
     topCoAuthor: (name) => `en sık ortak: ${name}`,
     releases: 'Sürümler',

@@ -26,6 +26,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (it never displaces a row); the recap gets a "Dep bumps" line ("Bağımlılıklar") and
   `wrapped.md` a "Dependency bumps" section. `--exclude` drops files first. Without a
   dependency bump every card is unchanged.
+- Subject length: the median length of non-merge commit subjects (trimmed, in Unicode
+  code points; the mean of the two middle ones for an even count) and how many are longer
+  than 72 characters, with their share of non-merge commits
+  (`stats.messages.subjectLength {median, over72, share}`, or null without non-merge
+  commits). The message hall of fame gets a "Subject length  median 48 · 12% over 72" row
+  ("Konu uzunluğu" in Turkish) as its lowest-priority row, after every other row, only in
+  spare room (it never folds, shrinks or displaces anything); the recap gets a "Subjects"
+  line ("Konu satırları") and `wrapped.md` a "Subject length" section ("Konu satırı
+  uzunluğu"). Without room the card is unchanged.
 
 ## [1.13.0] - 2026-10-08
 

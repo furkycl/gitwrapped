@@ -4,13 +4,21 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { mergeHistories } from '../src/git.js';
-import { computeIssueRefs, computeStats, issueRefLabel, issueRefsInSubject, shownIssueRefs } from '../src/stats/index.js';
+import { computeIssueRefs, computeStats as computeAllStats, issueRefLabel, issueRefsInSubject, shownIssueRefs } from '../src/stats/index.js';
 import { buildCards, buildCardSpecs, issueRefsShareText } from '../src/cards/index.js';
 import { formatSummary } from '../src/summary.js';
 import { buildMarkdown } from '../src/markdown.js';
 import { buildStatsJson } from '../src/json.js';
 import en from '../src/i18n/en.js';
 import tr from '../src/i18n/tr.js';
+
+// The subject length row (stats.messages.subjectLength) is the messages card's lowest-priority
+// row, appended after every other one (see test/subject-length.test.js); these tests are about
+// the rows before it, so their stats leave it out.
+const computeStats = (...args) => {
+  const s = computeAllStats(...args);
+  return s.messages ? { ...s, messages: { ...s.messages, subjectLength: null } } : s;
+};
 
 const TODAY = '2026-04-01';
 const H = (i) => `${String(i).padStart(4, '0')}abcdef0123456789abcdef0123456789abcd`;

@@ -11,13 +11,21 @@ import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, w
 import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { computeStats, shownReverts } from '../src/stats/index.js';
+import { computeStats as computeAllStats, shownReverts } from '../src/stats/index.js';
 import { buildCards, buildCardSpecs } from '../src/cards/index.js';
 import { CONTENT_BOTTOM, CONTENT_TOP, layoutCard } from '../src/cards/svg.js';
 import { readCommits, readReverts } from '../src/git.js';
 import { formatSummary } from '../src/summary.js';
 import { buildMarkdown } from '../src/markdown.js';
 import { getStrings } from '../src/i18n/index.js';
+
+// The subject length row (stats.messages.subjectLength) is the messages card's lowest-priority
+// row, appended after every other one (see test/subject-length.test.js); these tests are about
+// the rows before it, so their stats leave it out.
+const computeStats = (...args) => {
+  const s = computeAllStats(...args);
+  return s.messages ? { ...s, messages: { ...s.messages, subjectLength: null } } : s;
+};
 
 const TODAY = '2026-04-01';
 const ROOT = fileURLToPath(new URL('..', import.meta.url));

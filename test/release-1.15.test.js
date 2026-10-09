@@ -29,14 +29,7 @@ describe('CHANGELOG [1.15.0]', () => {
     assert.ok(flat.includes('"42 oturum en uzun 3 sa 10 dk"'));
   });
 
-  // Empty at release time; later unreleased entries may sit between the two headings.
-  test('[Unreleased] is the first section, and [1.15.0] the first release after it', () => {
-    assert.match(text, /^## \[Unreleased\]\n(?:(?!^## )[\s\S])*?^## \[1\.15\.0\] - \d{4}-\d{2}-\d{2}$/m);
-    assert.equal(/^## \[([^\]]+)\]/m.exec(text)?.[1], 'Unreleased');
-  });
-
   test('compare links', () => {
-    assert.match(text, /^\[Unreleased\]: \S+\/compare\/v1\.15\.0\.\.\.HEAD$/m);
     assert.match(text, /^\[1\.15\.0\]: \S+\/compare\/v1\.14\.0\.\.\.v1\.15\.0$/m);
     assert.match(text, /^\[1\.14\.0\]: \S+\/compare\/v1\.13\.0\.\.\.v1\.14\.0$/m);
   });

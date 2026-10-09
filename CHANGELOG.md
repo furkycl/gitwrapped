@@ -7,21 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.16.0] - 2026-10-09
+
 ### Added
 
 - Top subject words: the three most common words in non-merge commit subjects, each
   counted once per commit, with how many commits use it (`stats.messages.topWords
   [{word, count}]`, `[]` without any). Leading `fixup!` / `squash!` / `amend!` markers,
   emoji, a `Revert "…"` wrapper and a Conventional Commits-shaped prefix (`fix(api)!:`,
-  any `word:`), gitmoji shortcodes, URLs, issue references, hex hashes and numbers are
-  left out; words are runs of Unicode letters, lowercased, at least 3 characters, not on
-  a small English / Turkish stopword list; ties go alphabetically. The message hall of fame gets a
-  "Top words: parser ×5 · cache ×3" row (fewer words when they would be cut, a single
-  one as "Top words  parser ×5"; "En sık kelimeler" in Turkish) as its
-  lowest-priority row, after the message bodies, only in spare room (it never folds,
-  shrinks or displaces anything); the recap gets a "Top words" line ("Sık kelimeler")
-  and `wrapped.md` a "Top subject words" section ("Konu satırlarında en sık geçen kelimeler").
-  Only words used by at least 2 commits are shown; `stats.json` keeps the top three.
+  any `word:`), gitmoji shortcodes, URLs, issue references, hex hashes (7 or more hex
+  digits with at least one digit, so SHA-256 hashes too) and numbers are left out; words
+  are runs of Unicode letters, lowercased, at least 3 characters, not on a small
+  English / Turkish stopword list; ties go alphabetically. The message hall of fame gets
+  a "Top words: parser ×5 · cache ×3" row (fewer words when they would be cut, a single
+  one as "Top words  parser ×5"; "En sık kelimeler" in Turkish) as its lowest-priority
+  row, after the message bodies, only in spare room (it never folds, shrinks or displaces
+  anything); the recap gets a "Top words" line ("Sık kelimeler") and `wrapped.md` a "Top
+  subject words" section ("Konu satırlarında en sık geçen kelimeler"). Only words used by
+  at least 2 commits are shown; `stats.json` keeps the top three.
 - Rewritten commits: non-merge commits whose committer date is more than an hour after
   their author date (rebased, amended or cherry-picked; the dates compared as instants),
   with their share of non-merge commits (`stats.rewritten {commits, share}`, or null
@@ -30,8 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   else last on the message hall of fame, only in spare room (it never displaces a row);
   the recap gets a "Rewritten" line ("Yeniden yazılmış") and `wrapped.md` a "Rewritten
   commits" section. Without a rewritten commit every card is unchanged. Squash merges,
-  `git am` and GitHub's "Rebase and merge" also commit again, so a repo that rebase-merges
-  its pull requests can show a share close to 100%.
+  `git am` and GitHub's "Rebase and merge" also commit again, so they count too when they
+  landed more than an hour after the commit was written, and a repo that rebase-merges its
+  pull requests can show a share close to 100%.
 - Biggest grower: the file with the largest net line growth (lines added − removed) over
   the non-merge commits in the window, over the same files as the hot files (same ignore
   rules and `--exclude`; binary files add 0 lines; a rename removes the old path's lines and
@@ -843,7 +847,8 @@ First public release on npm as `@furkycl/gitwrapped`.
 - On macOS, color emoji are left out of PNG exports, because resvg drew Apple Color Emoji
   far from their text. SVG cards and `wrapped.html` keep them.
 
-[Unreleased]: https://github.com/furkycl/gitwrapped/compare/v1.15.0...HEAD
+[Unreleased]: https://github.com/furkycl/gitwrapped/compare/v1.16.0...HEAD
+[1.16.0]: https://github.com/furkycl/gitwrapped/compare/v1.15.0...v1.16.0
 [1.15.0]: https://github.com/furkycl/gitwrapped/compare/v1.14.0...v1.15.0
 [1.14.0]: https://github.com/furkycl/gitwrapped/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/furkycl/gitwrapped/compare/v1.12.0...v1.13.0

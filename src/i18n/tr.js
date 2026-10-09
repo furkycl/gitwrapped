@@ -352,7 +352,7 @@ export default {
     issueRefsValue: (count, pct, ref, times) => `${num(count)} · ${pct}${ref ? ` (${ref} ×${num(times)})` : ''}`,
     issueRefsDescription: (count, pct, ref, times) => `${plural(count, UNITS.commit)} bir issue'ya atıf yapıyor (merge dışı commit'lerin ${pct} kadarı)${ref ? `; en çok atıf yapılan: ${ref} (${plural(times, UNITS.commit)})` : ''}`,
     subjectLengthTitle: 'Konu uzunluğu',
-    subjectLengthValue: (median, over72, pct) => `medyan ${dec(median)}${over72 > 0 ? ` · 72 üstü: ${pct}` : ''}`,
+    subjectLengthValue: (median, over72, pct) => (over72 > 0 ? `${dec(median)} · 72 üstü ${pct}` : `medyan ${dec(median)}`),
     subjectLengthShort: (median, over72, pct) => `${dec(median)}${over72 > 0 ? ` · >72: ${pct}` : ''}`,
     subjectLengthDescription: (median, over72, pct) => `Medyan konu satırı uzunluğu: ${dec(median)} karakter; ${over72 > 0 ? `${plural(over72, UNITS.commit)} 72 karakteri aşıyor (merge dışı commit'lerin ${pct} kadarı)` : "hiçbir commit 72 karakteri aşmıyor"}`,
   },

@@ -19,22 +19,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the test and the docs share. Without doc lines every card is unchanged.
 - Dependency bumps: non-merge commits that only touched lockfiles (the ones hot files
   ignore) and dependency manifests (`package.json`, `go.mod`, `Cargo.toml`,
-  `pyproject.toml`, `requirements*.txt`, `Gemfile`; exact, case-sensitive names at any
-  depth), with their share of non-merge commits (`stats.depBumps {commits, share}`, or
-  null without non-merge commits). A "Dependency bumps" row ("Bağımlılık güncellemeleri")
-  goes last on the totals card, else last on the message hall of fame, only in spare room
-  (it never displaces a row); the recap gets a "Dep bumps" line ("Bağımlılıklar") and
+  `pyproject.toml`, `requirements*.txt`, `Gemfile`, `composer.json`, `Pipfile`,
+  `pubspec.yaml`, `mix.exs`, `Podfile`, `flake.nix`, Go's `vendor/modules.txt` (vendored sources need `--exclude vendor/`); exact,
+  case-sensitive names at any depth), with their share of non-merge commits
+  (`stats.depBumps {commits, share}`, or null without non-merge commits). A "Dependency
+  bumps" row ("Bağımlılık güncellemeleri") goes last on the totals card, else after the
+  issue references on the message hall of fame (before the subject length row), only in
+  spare room (it never displaces a row); the recap gets a "Dep bumps" line ("Bağımlılıklar") and
   `wrapped.md` a "Dependency bumps" section. `--exclude` drops files first. Without a
   dependency bump every card is unchanged.
 - Subject length: the median length of non-merge commit subjects (trimmed, in Unicode
   code points; the mean of the two middle ones for an even count) and how many are longer
   than 72 characters, with their share of non-merge commits
   (`stats.messages.subjectLength {median, over72, share}`, or null without non-merge
-  commits). The message hall of fame gets a "Subject length  median 48 · 12% over 72" row
-  ("Konu uzunluğu" in Turkish) as its lowest-priority row, after every other row, only in
-  spare room (it never folds, shrinks or displaces anything); the recap gets a "Subjects"
-  line ("Konu satırları") and `wrapped.md` a "Subject length" section ("Konu satırı
-  uzunluğu"). Without room the card is unchanged.
+  commits). The message hall of fame gets a "Subject length  48 · 12% over 72" row
+  ("median 48" when no subject is over 72; "Konu uzunluğu" with "48 · 72 üstü %12" in
+  Turkish) as its lowest-priority row, after every other row, only in spare room (it
+  never folds, shrinks or displaces anything); the recap gets a "Subjects" line ("Konu
+  satırları") and `wrapped.md` a "Subject length" section ("Konu satırı uzunluğu").
+  Without room the card is unchanged.
 
 ## [1.13.0] - 2026-10-08
 

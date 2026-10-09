@@ -226,8 +226,8 @@ describe('display: .5 medians and grouping in en / tr', () => {
   test('card values', () => {
     assert.equal(en.messages.subjectLengthValue(10.5, 0, '0%'), 'median 10.5');
     assert.equal(tr.messages.subjectLengthValue(10.5, 0, '%0'), 'medyan 10,5');
-    assert.equal(en.messages.subjectLengthValue(10.5, 3, '12%'), 'median 10.5 · 12% over 72');
-    assert.equal(tr.messages.subjectLengthValue(10.5, 3, '%12'), 'medyan 10,5 · 72 üstü: %12');
+    assert.equal(en.messages.subjectLengthValue(10.5, 3, '12%'), '10.5 · 12% over 72');
+    assert.equal(tr.messages.subjectLengthValue(10.5, 3, '%12'), '10,5 · 72 üstü %12');
     assert.equal(en.messages.subjectLengthShort(10.5, 3, '12%'), '10.5 · 12% >72');
     assert.equal(tr.messages.subjectLengthShort(10.5, 3, '%12'), '10,5 · >72: %12');
     assert.equal(en.messages.subjectLengthValue(10, 0, '0%'), 'median 10');
@@ -408,7 +408,7 @@ describe('messages card', () => {
   test('share on the card: "<1%" for a tiny share, never 100% short of all, 100% when all', () => {
     const tiny = withStat(roomyOf(['aa', 'bb', 'cc']), { median: 2, over72: 1, share: 0.001 });
     assert.match(messagesSpec(tiny).lines.at(-1).value, /<1% (over 72|>72)$/);
-    assert.match(messagesSpec(tiny, 'tr').lines.at(-1).value, /(72 üstü|>72): <%1$/);
+    assert.match(messagesSpec(tiny, 'tr').lines.at(-1).value, /(72 üstü|>72:) <%1$/);
     const almost = withStat(roomyOf(['aa', 'bb', 'cc']), { median: 80, over72: 999, share: 0.999 });
     assert.match(messagesSpec(almost).lines.at(-1).value, /99% (over 72|>72)$/);
     const all = roomyOf(varieties.allLong);

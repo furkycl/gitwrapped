@@ -123,8 +123,9 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * commits and the most referenced issue, `{commits, share, top: {ref, commits}}` (`top.repo`
  * too for a "#" ref in a multi-repo run), or null when none does (see issues.js).
  * `depBumps` is how many non-merge commits touched only lockfiles and dependency manifests
- * (package.json, go.mod, Cargo.toml, pyproject.toml, requirements*.txt, Gemfile; exact
- * basenames) and their share of non-merge commits, `{commits, share}`, or null without a
+ * (package.json, go.mod, Cargo.toml, pyproject.toml, requirements*.txt, Gemfile,
+ * composer.json, Pipfile, pubspec.yaml, mix.exs, Podfile, flake.nix, exact basenames; Go's
+ * vendor/modules.txt by path; see isDepPath) and their share of non-merge commits, `{commits, share}`, or null without a
  * non-merge commit (see depbumps.js).
  * `firstCommit` is the earliest non-merge commit by author date (`{date, subject, hash}`,
  * plus `repo` in a multi-repo run; emails scrubbed from the subject, see first.js), or null.

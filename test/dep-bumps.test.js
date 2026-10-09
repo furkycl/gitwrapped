@@ -67,7 +67,7 @@ const depRowOf = (spec, L = en) => (spec.lines ?? []).find((r) => isDepRow(r, L)
 
 describe('isDepPath', () => {
   test('lockfiles (also those isIgnoredPath drops) and manifests, by basename at any depth', () => {
-    assert.deepEqual(DEP_MANIFESTS, ['package.json', 'go.mod', 'Cargo.toml', 'pyproject.toml', 'Gemfile']);
+    assert.deepEqual(DEP_MANIFESTS, ['package.json', 'go.mod', 'Cargo.toml', 'pyproject.toml', 'Gemfile', 'composer.json', 'Pipfile', 'pubspec.yaml', 'mix.exs', 'Podfile', 'flake.nix']);
     const lockfiles = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'bun.lockb', 'Cargo.lock', 'Gemfile.lock', 'poetry.lock', 'go.sum', 'uv.lock', 'composer.lock'];
     for (const p of lockfiles) {
       assert.equal(isIgnoredPath(p), true, p);
@@ -76,6 +76,24 @@ describe('isDepPath', () => {
     }
     for (const p of [...DEP_MANIFESTS, 'apps/web/package.json', 'svc/go.mod', 'crates/x/Cargo.toml', 'py/pyproject.toml']) assert.equal(isDepPath(p), true, p);
     for (const p of ['requirements.txt', 'requirements-dev.txt', 'requirements_test.txt', 'requirements.prod.txt', 'py/requirements-ci.txt']) assert.equal(isDepPath(p), true, p);
+  });
+
+  test('each manifest whose lockfile is a lockfile, and Go vendoring (vendor/modules.txt)', () => {
+    for (const [manifest, lock] of [['composer.json', 'composer.lock'], ['Pipfile', 'Pipfile.lock'], ['pubspec.yaml', 'pubspec.lock'], ['mix.exs', 'mix.lock'], ['Podfile', 'Podfile.lock'], ['flake.nix', 'flake.lock']]) {
+      assert.equal(isDepPath(manifest), true, manifest);
+      assert.equal(isDepPath(`app/${manifest}`), true, manifest);
+      assert.equal(isDepPath(lock), true, lock);
+      assert.equal(computeDepBumps([{ hash: 'a', subject: 'bump', files: [{ path: manifest }, { path: lock }] }]).commits, 1, manifest);
+    }
+    for (const p of ['vendor/modules.txt', 'svc/vendor/modules.txt']) assert.equal(isDepPath(p), true, p);
+    for (const p of ['modules.txt', 'src/modules.txt', 'vendor/x/modules.txt', 'Vendor/modules.txt', 'vendor/Modules.txt', 'myvendor/modules.txt', 'pipfile', 'Composer.json', 'podfile', 'Flake.nix']) {
+      assert.equal(isDepPath(p), false, p);
+    }
+    const files = ['go.mod', 'go.sum', 'vendor/modules.txt'].map((path) => ({ path }));
+    assert.equal(computeDepBumps([{ hash: 'a', subject: 'go mod vendor', files }]).commits, 1);
+    const withSources = [...files, { path: 'vendor/github.com/x/y/y.go' }];
+    assert.equal(computeDepBumps([{ hash: 'b', subject: 'go mod vendor', files: withSources }]).commits, 0,
+      'vendored sources are not dependency files (README: needs --exclude vendor/)');
   });
 
   test('exact and case-sensitive, like the lockfiles; no partial names', () => {

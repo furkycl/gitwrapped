@@ -172,9 +172,9 @@ export default {
     cleanupLinesOn: (lines, day) => `${lines} · ${day}`,
     biggestCleanupDescription: (lines, day, subject) => `Biggest cleanup: ${lines}${day ? ` on ${day}` : ''}${subject ? `, ${subject}` : ''}`,
     /**
-     * The dependency-bumps row (stats.depBumps), last of all and in spare room only, here
-     * or else on the messages card: "Dependency bumps" and "12 commits · 8%" (else
-     * "12 · 8%", else "Dep bumps" and "12 · 8%", the first one drawn whole).
+     * The dependency-bumps row (stats.depBumps), in spare room only: last here, or else on
+     * the messages card after the issue references: "Dependency bumps" and "5 commits · 2%"
+     * (else "12 · 8%", else "Dep bumps" and "12 · 8%", the first one drawn whole).
      */
     depBumps: 'Dependency bumps',
     depBumpsLabelShort: 'Dep bumps',
@@ -460,13 +460,13 @@ export default {
     issueRefsDescription: (count, pct, ref, times) => `${plural(count, UNITS.commit)} ${count === 1 ? 'mentions' : 'mention'} an issue (${pct} of non-merge commits)${ref ? `; most referenced: ${ref} (${plural(times, UNITS.commit)})` : ''}`,
     /**
      * The subject length row (stats.messages.subjectLength), in spare room only, after
-     * every other row: "Subject length" and "median 48 · 12% over 72" (the median subject
-     * length in characters, and the share of non-merge commits whose subject is longer
-     * than 72), else "48 · 12% >72"; without such subjects just "median 48" / "48". Its
+     * every other row: "Subject length" and "48 · 12% over 72" (the median subject length
+     * in characters, and the share of non-merge commits whose subject is longer than 72),
+     * else "48 · 12% >72"; without such subjects just "median 48" / "48". Its
      * hover text says it in words.
      */
     subjectLengthTitle: 'Subject length',
-    subjectLengthValue: (median, over72, pct) => `median ${dec(median)}${over72 > 0 ? ` · ${pct} over 72` : ''}`,
+    subjectLengthValue: (median, over72, pct) => (over72 > 0 ? `${dec(median)} · ${pct} over 72` : `median ${dec(median)}`),
     subjectLengthShort: (median, over72, pct) => `${dec(median)}${over72 > 0 ? ` · ${pct} >72` : ''}`,
     subjectLengthDescription: (median, over72, pct) => `Median subject length: ${decPlural(median, ['character', 'characters'])}; ${over72 > 0 ? `${plural(over72, UNITS.commit)} over 72 characters (${pct} of non-merge commits)` : 'no commit over 72 characters'}`,
   },

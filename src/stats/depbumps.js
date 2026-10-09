@@ -8,14 +8,30 @@ import { isMergeCommit } from './messages.js';
 
 /**
  * Dependency manifests, matched by exact (case-sensitive) basename, as the lockfiles are
- * (see LOCKFILES in files.js); `requirements*.txt` is DEP_REQUIREMENTS.
+ * (see LOCKFILES in files.js), each the manifest of one of those lockfiles;
+ * `requirements*.txt` is DEP_REQUIREMENTS, and Go's `vendor/modules.txt` is GO_VENDOR_MANIFEST.
  */
-export const DEP_MANIFESTS = Object.freeze(['package.json', 'go.mod', 'Cargo.toml', 'pyproject.toml', 'Gemfile']);
+export const DEP_MANIFESTS = Object.freeze([
+  'package.json',
+  'go.mod',
+  'Cargo.toml',
+  'pyproject.toml',
+  'Gemfile',
+  'composer.json',
+  'Pipfile',
+  'pubspec.yaml',
+  'mix.exs',
+  'Podfile',
+  'flake.nix',
+]);
 
 const MANIFEST_SET = new Set(DEP_MANIFESTS);
 
 /** pip requirement files: "requirements.txt", "requirements-dev.txt", "requirements_test.txt" (case-sensitive). */
 const DEP_REQUIREMENTS = /^requirements[^/]*\.txt$/;
+
+/** Go's vendoring manifest: `modules.txt` directly in a `vendor` folder (`go mod vendor`), at any depth (case-sensitive). */
+const GO_VENDOR_MANIFEST = 'vendor/modules.txt';
 
 /** The non-enumerable key computeDepBumps keeps the exact (unrounded) share under. */
 const EXACT = Symbol('depBumps.exactShare');
@@ -25,15 +41,19 @@ const EXACT = Symbol('depBumps.exactShare');
  * manifest, by its basename only, at any depth ("packages/web/package.json" counts):
  * - a lockfile (the list isIgnoredPath skips: package-lock.json, yarn.lock, pnpm-lock.yaml,
  *   Cargo.lock, go.sum, poetry.lock, uv.lock, ...);
- * - package.json, go.mod, Cargo.toml, pyproject.toml, Gemfile (DEP_MANIFESTS);
- * - requirements*.txt (requirements.txt, requirements-dev.txt, ...).
+ * - package.json, go.mod, Cargo.toml, pyproject.toml, Gemfile, composer.json, Pipfile,
+ *   pubspec.yaml, mix.exs, Podfile, flake.nix (DEP_MANIFESTS);
+ * - requirements*.txt (requirements.txt, requirements-dev.txt, ...);
+ * - Go's vendor/modules.txt (by its last two path parts: "vendor/modules.txt" or
+ *   "svc/vendor/modules.txt", not a bare "modules.txt").
  * Exact and case-sensitive, as the lockfiles are matched ("Package.json", "gemfile" and
  * "Requirements.txt" do not count). False for a non-string or empty path; never throws.
  */
 export function isDepPath(path) {
   if (typeof path !== 'string' || path === '') return false;
   const base = path.slice(path.lastIndexOf('/') + 1);
-  return isLockfileName(base) || MANIFEST_SET.has(base) || DEP_REQUIREMENTS.test(base);
+  if (isLockfileName(base) || MANIFEST_SET.has(base) || DEP_REQUIREMENTS.test(base)) return true;
+  return path === GO_VENDOR_MANIFEST || path.endsWith(`/${GO_VENDOR_MANIFEST}`);
 }
 
 /**

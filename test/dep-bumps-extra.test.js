@@ -63,7 +63,7 @@ describe('isDepPath: adversarial paths', () => {
       '.package.json', 'package.json~', ' package.json', 'package.json ', 'package.jsonc', 'package_json', 'package-json',
       'Gemfile.rb', 'gems.rb', 'Gemfile_', 'Cargo.toml.orig', 'go.mod.tmp', 'pyproject.toml.j2',
       'requirements', 'requirements.txt/', 'requirements.txt.bak', 'requirements/base.txt', 'my-requirements.txt', 'requirementstxt',
-      'Pipfile', 'setup.py', 'go.work', 'yarn.lock.json', 'package-lock.json5', 'src/package.js', 'package',
+      'Pipfile.bak', 'setup.py', 'go.work', 'yarn.lock.json', 'package-lock.json5', 'src/package.js', 'package',
     ]) {
       assert.equal(isDepPath(p), false, p);
     }

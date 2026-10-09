@@ -426,7 +426,7 @@ export const depBumpShareText = (d, L = EN) => shareLabel(d?.pct, d?.commits, L.
 
 /**
  * The dependency-bumps row (stats.depBumps, see shownDepBumps) in its first form drawn
- * whole (see rowFits): "Dependency bumps" and "12 commits · 8%", else "Dependency bumps"
+ * whole (see rowFits): "Dependency bumps" and "5 commits · 2%", else "Dependency bumps"
  * and "12 · 8%", else "Dep bumps" and "12 · 8%"; null without a dependency bump (also for
  * `{commits: 0}`), or when even the shortest form would be cut. The hover text says it in words.
  */
@@ -446,12 +446,13 @@ function depBumpsRow(s, L) {
 
 /**
  * Which card shows the dependency-bumps row: 'totals', 'messages' or null (no row, or no
- * room on either). It is the lowest-priority row of both: placed after every other row
- * (the cleanup, merges and issue-reference rows included), in spare room only, so it never
- * displaces a row or shrinks anything:
+ * room on either). It is placed after every other row of the totals card (the cleanup and
+ * merges rows included), else after the issue references on the messages card (only the
+ * subject length row comes after it there), in spare room only, so it never displaces a
+ * row or shrinks anything:
  * 1. the totals card, as its last row on withSpareRow's terms (every chart drawn at the
  *    same height);
- * 2. else the messages card, as its last row when that fits as well as the card did
+ * 2. else the messages card, after the issue references when that fits as well as the card did
  *    without it (see fitsLike: at most 6 rows, every chart still drawn, no extra shrink
  *    step, nothing folded).
  * Without the row, or without room on either, every card is byte-identical to before.
@@ -1843,9 +1844,9 @@ export const subjectLengthShareText = (r, L = EN) => shareLabel(r?.pct, r?.over7
 /**
  * The messages card's subject length row (stats.messages.subjectLength, see
  * shownSubjectLength) in each form drawn whole (see rowFits), longest first:
- * "Subject length" and "median 48 · 12% over 72" (the median subject length, and the
- * share of non-merge commits whose subject is longer than 72 characters, left out when
- * none is), then "48 · 12% >72". Null without the stat (no non-merge commit, or a
+ * "Subject length" and "48 · 12% over 72" (the median subject length, and the share of
+ * non-merge commits whose subject is longer than 72 characters; just "median 48" when
+ * none is), then "48 · 12% >72" ("48"). Null without the stat (no non-merge commit, or a
  * stats.json from before it), or when even the short form would be cut. The hover text
  * says it in words. It is the card's lowest-priority row: messages() appends it after
  * every other row (issue references and dependency bumps included), on withLastRow's

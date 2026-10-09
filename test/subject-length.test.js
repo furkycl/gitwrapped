@@ -7,6 +7,7 @@ import { buildMarkdown } from '../src/markdown.js';
 import { buildStatsJson } from '../src/json.js';
 import en from '../src/i18n/en.js';
 import tr from '../src/i18n/tr.js';
+import { rowFits } from '../src/cards/svg.js';
 
 const TODAY = '2026-04-01';
 const LANGS = { en, tr };
@@ -117,7 +118,7 @@ describe('cards', () => {
       const row = spec.lines.at(-1);
       assert.ok(isRow(row, L), `${lang}: ${JSON.stringify(spec.lines)}`);
       assert.ok(spec.lines.length <= 6);
-      assert.match(row.value, lang === 'en' ? /^(median 10 · 25% over 72|10 · 25% >72)$/ : /^(medyan 10 · 72 üstü: %25|10 · >72: %25)$/);
+      assert.match(row.value, lang === 'en' ? /^10 · 25% over 72$/ : /^10 · 72 üstü %25$/);
     }
     assert.match(cardDescription(messagesSpec(s)), /Median subject length: 10 characters; 1 commit over 72 characters \(25% of non-merge commits\)/);
     assert.match(cardDescription(messagesSpec(s, 'tr')), /Medyan konu satırı uzunluğu: 10 karakter; 1 commit 72 karakteri aşıyor \(merge dışı commit'lerin %25 kadarı\)/);
@@ -247,8 +248,20 @@ describe('recap and wrapped.md', () => {
     assert.equal(en.markdown.subjectLengthValue(1, 1), 'median 1 character; 1 commit over 72 characters');
     assert.equal(en.messages.subjectLengthDescription(1, 0, '0%'), 'Median subject length: 1 character; no commit over 72 characters');
     assert.equal(en.recap.subjectLengthValue(1.5, 0), 'median 1.5 chars · none over 72');
-    assert.equal(tr.messages.subjectLengthValue(48, 3, '%12'), 'medyan 48 · 72 üstü: %12');
+    assert.equal(tr.messages.subjectLengthValue(48, 3, '%12'), '48 · 72 üstü %12');
     assert.equal(tr.messages.subjectLengthShort(48, 3, '%12'), '48 · >72: %12');
+  });
+
+  test('the long form with a share over 72 is drawn whole for typical medians and shares (en, tr)', () => {
+    for (const median of [1, 9.5, 48, 72.5]) {
+      for (const share of [0.4, 12, 99]) {
+        for (const L of [en, tr]) {
+          const pct = subjectLengthShareText({ pct: share, over72: 1 }, L);
+          const row = { label: L.messages.subjectLengthTitle, value: L.messages.subjectLengthValue(median, 1, pct) };
+          assert.ok(rowFits(row), JSON.stringify(row));
+        }
+      }
+    }
   });
 
   test('every language has the strings; the recap label fits its column', () => {

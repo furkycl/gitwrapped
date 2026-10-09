@@ -134,6 +134,11 @@ export default {
     cleanupLines: (minus) => `${minus} satır`,
     cleanupLinesOn: (lines, day) => `${lines} · ${day}`,
     biggestCleanupDescription: (lines, day, subject) => `En büyük temizlik: ${day ? `${day} günü ` : ''}${lines}${subject ? `, ${subject}` : ''}`,
+    depBumps: 'Bağımlılık güncellemeleri',
+    depBumpsLabelShort: 'Bağımlılıklar',
+    depBumpsValue: (commits, pct) => `${plural(commits, UNITS.commit)} · ${pct}`,
+    depBumpsShort: (commits, pct) => `${num(commits)} · ${pct}`,
+    depBumpsDescription: (commits, pct) => `${plural(commits, UNITS.commit)} yalnızca kilit dosyalarını veya bağımlılık manifestlerini değiştirdi (merge dışı commit'lerin ${pct} kadarı)`,
   },
 
   // "<yıl> yılına göre" needs no suffix on the number itself.
@@ -524,6 +529,7 @@ export default {
     biggestCleanup: 'en büyüğü',
     issueRefs: 'Issue atıfları',
     topIssue: (ref, commits) => `en çok ${ref} (${commits})`,
+    depBumps: 'Bağımlılıklar',
     you: 'Kişiliğin',
     cardsIn: (count, dir) => `${count}: ${dir}`,
     shareImage: 'paylaşım görseli:',
@@ -577,6 +583,7 @@ export default {
     biggestCleanup: 'en büyüğü:',
     issueRefs: 'Issue atıfları',
     topIssue: 'en çok atıf yapılan:',
+    depBumps: 'Bağımlılık güncellemeleri',
     paired: 'Birlikte yazılan',
     topCoAuthor: (name) => `en sık ortak: ${name}`,
     releases: 'Sürümler',

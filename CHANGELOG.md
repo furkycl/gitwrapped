@@ -17,6 +17,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   displaces a row); the recap gets a "Docs" line ("Dokümanlar") and `wrapped.md` a
   "Doc lines" item ("Doküman satırları"). A file such as `test/README.md` counts in both
   the test and the docs share. Without doc lines every card is unchanged.
+- Dependency bumps: non-merge commits that only touched lockfiles (the ones hot files
+  ignore) and dependency manifests (`package.json`, `go.mod`, `Cargo.toml`,
+  `pyproject.toml`, `requirements*.txt`, `Gemfile`; exact, case-sensitive names at any
+  depth), with their share of non-merge commits (`stats.depBumps {commits, share}`, or
+  null without non-merge commits). A "Dependency bumps" row ("Bağımlılık güncellemeleri")
+  goes last on the totals card, else last on the message hall of fame, only in spare room
+  (it never displaces a row); the recap gets a "Dep bumps" line ("Bağımlılıklar") and
+  `wrapped.md` a "Dependency bumps" section. `--exclude` drops files first. Without a
+  dependency bump every card is unchanged.
 
 ## [1.13.0] - 2026-10-08
 

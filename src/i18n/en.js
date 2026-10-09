@@ -169,6 +169,16 @@ export default {
     cleanupLines: (minus) => `${minus} lines`,
     cleanupLinesOn: (lines, day) => `${lines} · ${day}`,
     biggestCleanupDescription: (lines, day, subject) => `Biggest cleanup: ${lines}${day ? ` on ${day}` : ''}${subject ? `, ${subject}` : ''}`,
+    /**
+     * The dependency-bumps row (stats.depBumps), last of all and in spare room only, here
+     * or else on the messages card: "Dependency bumps" and "12 commits · 8%" (else
+     * "12 · 8%", else "Dep bumps" and "12 · 8%", the first one drawn whole).
+     */
+    depBumps: 'Dependency bumps',
+    depBumpsLabelShort: 'Dep bumps',
+    depBumpsValue: (commits, pct) => `${plural(commits, UNITS.commit)} · ${pct}`,
+    depBumpsShort: (commits, pct) => `${num(commits)} · ${pct}`,
+    depBumpsDescription: (commits, pct) => `${plural(commits, UNITS.commit)} only touched lockfiles or dependency manifests (${pct} of non-merge commits)`,
   },
 
   /**
@@ -685,6 +695,8 @@ export default {
     /** The issue references line (stats.issueRefs): label, "42 commits", "(12% of non-merge commits)", then "· top #128 (9 commits)". */
     issueRefs: 'Issue refs',
     topIssue: (ref, commits) => `top ${ref} (${commits})`,
+    /** The dependency-bumps line (stats.depBumps): label, "12 commits", then "(8% of non-merge commits)". */
+    depBumps: 'Dep bumps',
     you: 'You are',
     cardsIn: (count, dir) => `${count} in ${dir}`,
     shareImage: 'share image:',
@@ -765,6 +777,8 @@ export default {
     /** The issue references item (stats.issueRefs): "42 commits (12% of non-merge commits); most referenced: #128 (9 commits)". */
     issueRefs: 'Issue references',
     topIssue: 'most referenced:',
+    /** The dependency-bumps item (stats.depBumps): "12 commits (8% of non-merge commits)". */
+    depBumps: 'Dependency bumps',
     /** The pairing item (stats.coAuthors): "12 commits (31% of non-merge commits), top co-author: Ada". */
     paired: 'Paired',
     topCoAuthor: (name) => `top co-author: ${name}`,

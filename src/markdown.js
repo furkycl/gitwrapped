@@ -5,13 +5,14 @@
 // part only (authorName), and email-shaped text in any repo-derived text (subjects,
 // paths, repo and contributor names) is cut out by escapeMarkdown.
 
-import { authorName, busFactorShareText, displayRepoName, folderLabel, cleanupShareText, formatDateRange, formatDay, conventionalText, emojiShareText, fixupShareText, issueRefsShareText, mergeShareText, pctText, revertShareText, repoRows, shownDayRange, sizeShareText, testsShareText } from './cards/index.js';
+import { authorName, busFactorShareText, displayRepoName, folderLabel, cleanupShareText, depBumpShareText, formatDateRange, formatDay, conventionalText, emojiShareText, fixupShareText, issueRefsShareText, mergeShareText, pctText, revertShareText, repoRows, shownDayRange, sizeShareText, testsShareText } from './cards/index.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
 import { shownEmoji } from './stats/emoji.js';
 import { shownReverts } from './stats/reverts.js';
 import { shownCleanups } from './stats/cleanups.js';
 import { issueRefLabel, shownIssueRefs } from './stats/issues.js';
+import { shownDepBumps } from './stats/depbumps.js';
 import { shownFixups } from './stats/messages.js';
 import { shownFileLifecycle } from './stats/files.js';
 import { shownFolders } from './stats/folders.js';
@@ -137,6 +138,9 @@ const item = (label, value) => `- **${label}:** ${value}`;
  * commits); most referenced: #128 (9 commits)": the non-merge commits whose subject
  * mentions an issue; stats.issueRefs, see stats/issues.js shownIssueRefs) when there is
  * at least one. The ref is escaped like all repo text, so "#128" is never a heading.
+ * A "Dependency bumps" section follows the issue references ("12 commits (8% of non-merge
+ * commits)": the non-merge commits that only touched lockfiles or dependency manifests;
+ * stats.depBumps, see stats/depbumps.js shownDepBumps) when there is at least one.
  * Sections without data are left out (no habits / streak / hot files / languages section
  * for an empty history, no team section unless the contributors card is built, ...).
  */
@@ -406,6 +410,10 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
       const top = t ? `; ${M.topIssue} ${issueRefLabel(t)} (${plural(t.commits, 'commit', L)})` : '';
       section(M.issueRefs, [escapeMarkdown(`${plural(issues.commits, 'commit', L)} (${L.recap.ofNonMerge(issueRefsShareText(issues, L))})${top}`)]);
     }
+
+    // --- dependency bumps (as on the totals / messages card and the recap; only with any)
+    const depBumps = shownDepBumps(stats?.depBumps);
+    if (depBumps) section(M.depBumps, [escapeMarkdown(`${plural(depBumps.commits, 'commit', L)} (${L.recap.ofNonMerge(depBumpShareText(depBumps, L))})`)]);
 
     // --- personality ------------------------------------------------------------------
     const a = stats?.personality?.archetype;

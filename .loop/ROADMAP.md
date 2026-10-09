@@ -161,4 +161,12 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] Subject length: median non-merge commit subject length (code points, trimmed) and the share over 72 characters, as a messages-card row when there's room (never displacing existing rows), stats.json `stats.messages.subjectLength {median, over72, share}`, recap and wrapped.md; en/tr; tests
 - 1.14.0 release prep (split as before):
   - [x] Cold audit of the 1.14 work (diff 1.13.0 release commit..main) + fix every real bug found, with tests
-  - [ ] CHANGELOG 1.14.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync
+  - [x] CHANGELOG 1.14.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync
+
+## M21 — 1.15 (proposed by loop turn 094 per the M8 owner note "do not finish the loop"; owner may prune)
+- [ ] Coding sessions: per author, consecutive commits no more than 2 hours apart form a session — session count, median session length and the longest session (minutes, commits, day) as a row on the streak or power-hour card when there's room (never displacing a row), stats.json `stats.sessions {count, medianMinutes, longest: {minutes, commits, day}}` or null, recap and wrapped.md; en/tr; tests
+- [ ] Message bodies: share of non-merge commits whose message has a body beyond the subject (ignoring blank lines and trailers such as `Co-authored-by:` / `Signed-off-by:`), as a messages-card row when there's room (lowest priority, never displacing), stats.json `stats.messages.bodies {commits, share}`, recap and wrapped.md; en/tr; tests
+- [ ] One-touch files: files changed by exactly one non-merge commit in the window (same ignore rules / `--exclude` as hot files) — count + share of all changed files, as a hot-files card row when there's room, stats.json `stats.oneTouch {files, share}` or null, recap and wrapped.md; en/tr; tests
+- 1.15.0 release prep (split as before):
+  - [ ] Cold audit of the 1.15 work (diff 1.14.0 release commit..main) + fix every real bug found, with tests
+  - [ ] CHANGELOG 1.15.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync

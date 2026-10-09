@@ -103,13 +103,13 @@ function signed(n, sign, L) {
   return s === '0' ? s : `${sign}${s}`;
 }
 
-/** A "- **Label:** value" list item. */
 /** Keep the start of a long word, as the recap does: "supercalifragi…" (max code points, incl. the "…"). */
 function shortWord(w, max = 24) {
   const chars = [...w];
   return chars.length <= max ? w : `${chars.slice(0, max - 1).join('')}…`;
 }
 
+/** A "- **Label:** value" list item. */
 const item = (label, value) => `- **${label}:** ${value}`;
 
 /**

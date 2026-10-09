@@ -33,7 +33,7 @@ export function computeTotals(commits) {
   let firstDay = null;
   let lastDay = null;
   for (const c of commits) {
-    for (const f of c.files ?? []) if (f && typeof f.path === 'string') paths.add(f.path);
+    for (const f of Array.isArray(c.files) ? c.files : []) if (f && typeof f.path === 'string') paths.add(f.path);
     linesAdded += count(c.linesAdded);
     linesRemoved += count(c.linesRemoved);
     if (c.email) emails.add(String(c.email).toLowerCase());

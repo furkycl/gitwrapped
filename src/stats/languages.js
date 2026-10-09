@@ -230,7 +230,7 @@ export function computeLanguages(commits) {
   const HEADER = '\0h';
   let hasCSource = false;
   for (const c of commits ?? []) {
-    for (const f of c?.files ?? []) {
+    for (const f of Array.isArray(c?.files) ? c.files : []) {
       if (!f || typeof f.path !== 'string' || f.binary === true || isIgnoredPath(repoRelativePath(c, f.path))) continue;
       if (f.added === '-' || f.removed === '-') continue;
       const ext = extensionOf(f.path.split('/').pop());

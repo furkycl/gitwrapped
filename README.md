@@ -749,7 +749,7 @@ email-shaped text cut, as everywhere) is read like this:
   `word(scope):` counts as such a prefix, not only the known types, so a Go-style
   `pkg: message` subject loses `pkg`;
 - gitmoji `:shortcode:`s anywhere, URLs, issue references (`#123`, `owner/repo#12`, `GH-12`, Jira-style `ABC-123`) and
-  hex hashes (7 to 40 hex digits with at least one digit) are cut;
+  hex hashes (7 or more hex digits with at least one digit, so SHA-256 hashes too) are cut;
 - words are runs of Unicode letters (with their combining marks; an inner apostrophe
   keeps one word: "don't", "README'yi"), so numbers and other tokens without letters
   never count ("utf8" counts as "utf"); lowercased the same way in every language (a

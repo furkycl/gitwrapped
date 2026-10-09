@@ -210,7 +210,7 @@ const REVERT_WRAPPER = /^Revert\s+"([\s\S]*?)"?$/u;
 const MAX_UNWRAP = 8;
 /** A gitmoji `:shortcode:` anywhere in the subject. */
 const SHORTCODE = /:[a-z0-9_+-]+:/gu;
-/** Text that is never a word: URLs, `owner/repo#12`, `#12`, `GH-12`, Jira keys (`ABC-123`), and hex hashes (7–40 hex digits with at least one digit). */
+/** Text that is never a word: URLs, `owner/repo#12`, `#12`, `GH-12`, Jira keys (`ABC-123`), and hex hashes (7 or more hex digits with at least one digit: SHA-1, SHA-256 and longer runs). */
 const NOT_WORDS = [
   // The lookbehinds start a match only where a token starts, so a long run such as
   // "a.a.a.…" is scanned once, not once per position.
@@ -219,7 +219,7 @@ const NOT_WORDS = [
   /#\d+/gu,
   /(?<![\p{L}\p{N}_])gh-\d+(?![\p{L}\p{N}_])/giu,
   /(?<![\p{L}\p{N}_])[A-Z][A-Z0-9]{1,9}-\d+(?![\p{L}\p{N}_])/gu,
-  /(?<![\p{L}\p{N}_])(?=[0-9a-f]*\d)[0-9a-f]{7,40}(?![\p{L}\p{N}_])/giu,
+  /(?<![\p{L}\p{N}_])(?=[0-9a-f]*\d)[0-9a-f]{7,}(?![\p{L}\p{N}_])/giu,
 ];
 /** A word: a run of Unicode letters (with their combining marks), an inner apostrophe allowed ("don't", "readme'yi"). */
 const LETTER_WORD = /\p{L}[\p{L}\p{M}]*(?:['’]\p{L}[\p{L}\p{M}]*)*/gu;

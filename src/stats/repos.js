@@ -30,7 +30,7 @@ export function computeRepos(commits, names = []) {
     r.commits += 1;
     r.linesAdded += count(c.linesAdded);
     r.linesRemoved += count(c.linesRemoved);
-    for (const f of c.files ?? []) if (f && typeof f.path === 'string') r.paths.add(f.path);
+    for (const f of Array.isArray(c.files) ? c.files : []) if (f && typeof f.path === 'string') r.paths.add(f.path);
   }
   return [...rows.values()]
     .sort((a, b) => b.commits - a.commits || (b.linesAdded + b.linesRemoved) - (a.linesAdded + a.linesRemoved) || a.i - b.i)

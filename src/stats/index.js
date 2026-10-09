@@ -18,6 +18,7 @@ import { computeOneTouch, shownOneTouch } from './onetouch.js';
 import { computeBiggestGrower, shownBiggestGrower } from './grower.js';
 import { computeBiggestShrinker, shownBiggestShrinker } from './shrinker.js';
 import { computeRewritten, isRewrittenCommit, REWRITE_GAP_MS, shownRewritten } from './rewritten.js';
+import { computeBots, isBotAuthor, shownBots } from './bots.js';
 import { computeTimeHabits } from './habits.js';
 import { CADENCE_MIN_DAYS, computeCadence, medianGap, shownCadence } from './cadence.js';
 import { computeSessions, SESSION_GAP_MINUTES, sessionsOf, shownSessions } from './sessions.js';
@@ -55,6 +56,7 @@ export { computeOneTouch, shownOneTouch };
 export { computeBiggestGrower, shownBiggestGrower };
 export { computeBiggestShrinker, shownBiggestShrinker };
 export { computeRewritten, isRewrittenCommit, REWRITE_GAP_MS, shownRewritten };
+export { computeBots, isBotAuthor, shownBots };
 export { CADENCE_MIN_DAYS, computeCadence, medianGap, shownCadence };
 export { computeSessions, SESSION_GAP_MINUTES, sessionsOf, shownSessions };
 export { computeWeekend, shownWeekend, WEEKEND_DAYS, weekendCounts, weekendPercent, weekendPercentLabel };
@@ -158,6 +160,10 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * their author date (rebased, amended or cherry-picked; instants compared, commits without
  * a committer date not counted) and their share of non-merge commits, `{commits, share}`,
  * or null without a non-merge commit (see rewritten.js).
+ * `bots` is how many non-merge commits have a bot author (a name or email ending in
+ * "[bot]", or a dependabot / renovate / github-actions name; after .mailmap) and their
+ * share of non-merge commits, with the busiest bot, `{commits, share, top: {name, commits}
+ * | null}`, or null without a non-merge commit (see bots.js).
  * `firstCommit` is the earliest non-merge commit by author date (`{date, subject, hash}`,
  * plus `repo` in a multi-repo run; emails scrubbed from the subject, see first.js), or null.
  * `coAuthors` is how many non-merge commits have a Co-authored-by co-author other than
@@ -226,6 +232,7 @@ export function computeStats(commits = [], { today, todayComplete, team, author,
     issueRefs: computeIssueRefs(commits),
     depBumps: computeDepBumps(commits),
     rewritten: computeRewritten(commits),
+    bots: computeBots(commits),
     firstCommit: computeFirstCommit(commits),
     coAuthors: computeCoAuthors(commits),
     releases: computeReleases(commits),

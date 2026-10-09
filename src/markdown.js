@@ -5,7 +5,7 @@
 // part only (authorName), and email-shaped text in any repo-derived text (subjects,
 // paths, repo and contributor names) is cut out by escapeMarkdown.
 
-import { authorName, bodiesShareText, busFactorShareText, displayRepoName, folderLabel, cleanupShareText, depBumpShareText, formatDateRange, formatDay, conventionalText, emojiShareText, fixupShareText, issueRefsShareText, mergeShareText, oneTouchShareText, pctText, revertShareText, rewrittenShareText, repoRows, shownDayRange, subjectLengthShareText, sizeShareText, testsShareText } from './cards/index.js';
+import { authorName, bodiesShareText, busFactorShareText, displayRepoName, folderLabel, cleanupShareText, depBumpShareText, formatDateRange, formatDay, conventionalText, emojiShareText, fixupShareText, issueRefsShareText, mergeShareText, oneTouchShareText, pctText, revertShareText, rewrittenShareText, botsShareText, repoRows, shownDayRange, subjectLengthShareText, sizeShareText, testsShareText } from './cards/index.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
 import { shownEmoji } from './stats/emoji.js';
@@ -22,6 +22,7 @@ import { shownOneTouch } from './stats/onetouch.js';
 import { shownBiggestGrower } from './stats/grower.js';
 import { shownBiggestShrinker } from './stats/shrinker.js';
 import { shownRewritten } from './stats/rewritten.js';
+import { shownBots } from './stats/bots.js';
 import { shownCoChange } from './stats/cochange.js';
 import { shownTimezones, utcLabel } from './stats/timezones.js';
 import { shownWeekend, weekendPercentLabel } from './stats/weekend.js';
@@ -175,6 +176,9 @@ const item = (label, value) => `- **${label}:** ${value}`;
  * non-merge commits committed more than an hour after being authored, i.e. rebased,
  * amended or cherry-picked; stats.rewritten, see stats/rewritten.js shownRewritten) when
  * there is at least one.
+ * A "Bot commits" section follows it ("40 commits (12% of non-merge commits); busiest:
+ * dependabot[bot] (38 commits)": the non-merge commits with a bot author; stats.bots, see
+ * stats/bots.js shownBots) when there is at least one.
  * Sections without data are left out (no habits / streak / hot files / languages section
  * for an empty history, no team section unless the contributors card is built, ...).
  */
@@ -487,6 +491,13 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
     // --- rewritten commits (as on the totals / messages card and the recap; only with any)
     const rewritten = shownRewritten(stats?.rewritten);
     if (rewritten) section(M.rewritten, [escapeMarkdown(`${plural(rewritten.commits, 'commit', L)} (${L.recap.ofNonMerge(rewrittenShareText(rewritten, L))})`)]);
+
+    // --- bot commits (as on the totals / messages card and the recap; only with any)
+    const bots = shownBots(stats?.bots);
+    if (bots) {
+      const top = bots.top ? `; ${M.topBot} ${bots.top.name} (${plural(bots.top.commits, 'commit', L)})` : '';
+      section(M.bots, [escapeMarkdown(`${plural(bots.commits, 'commit', L)} (${L.recap.ofNonMerge(botsShareText(bots, L))})${top}`)]);
+    }
 
     // --- personality ------------------------------------------------------------------
     const a = stats?.personality?.archetype;

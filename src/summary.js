@@ -14,7 +14,7 @@ import { epochDay } from './stats/time.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
-import { bodiesShareText, busFactorShareText, cleanupShareText, conventionalText, depBumpShareText, emojiShareText, fixupShareText, folderLabel, issueRefsShareText, mergeShareText, oneTouchShareText, revertShareText, rewrittenShareText, sizeShareText, subjectLengthShareText, testsShareText } from './cards/index.js';
+import { bodiesShareText, busFactorShareText, cleanupShareText, conventionalText, depBumpShareText, emojiShareText, fixupShareText, folderLabel, issueRefsShareText, mergeShareText, oneTouchShareText, revertShareText, rewrittenShareText, botsShareText, sizeShareText, subjectLengthShareText, testsShareText } from './cards/index.js';
 import { shownMerges } from './stats/merges.js';
 import { shownFolders } from './stats/folders.js';
 import { shownTests } from './stats/tests.js';
@@ -28,6 +28,7 @@ import { shownOneTouch } from './stats/onetouch.js';
 import { shownBiggestGrower } from './stats/grower.js';
 import { shownBiggestShrinker } from './stats/shrinker.js';
 import { shownRewritten } from './stats/rewritten.js';
+import { shownBots } from './stats/bots.js';
 import { issueRefLabel, shownIssueRefs } from './stats/issues.js';
 import { shownBodies, shownFixups, shownSubjectLength, shownTopWords } from './stats/messages.js';
 import { shownFileLifecycle } from './stats/files.js';
@@ -283,6 +284,10 @@ function shortText(s, maxWidth = 48) {
  * after being authored (rebased, amended or cherry-picked) and their share of
  * non-merge commits ("12 commits (8% of non-merge commits)"; stats.rewritten, see
  * stats/rewritten.js shownRewritten) when there is at least one.
+ * A "Bot commits" line shows how many non-merge commits have a bot author and their share
+ * of non-merge commits, with the busiest bot ("40 commits (12% of non-merge commits) ·
+ * top dependabot[bot] (38 commits)"; stats.bots, see stats/bots.js shownBots) when
+ * there is at least one.
  * A "Team" line (top contributor, or the --author's rank) appears exactly when the
  * contributors card is built (see hasTeamCard in stats/contributors.js), followed by a
  * "Bus factor" line ("2 people (58% of lines changed)": the fewest authors who made at
@@ -641,6 +646,15 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     // the totals or messages card; only with any.
     const rewritten = shownRewritten(stats?.rewritten);
     if (rewritten) lines.push(`  ${label(R.rewritten)}${plural(rewritten.commits, 'commit', L)} ${c('dim', `(${R.ofNonMerge(rewrittenShareText(rewritten, L))})`)}`);
+
+    // Commits by bot authors (stats.bots), as on the totals or messages card, with the
+    // busiest bot; only with any.
+    const bots = shownBots(stats?.bots);
+    if (bots) {
+      const t = bots.top;
+      const top = t ? ` ${c('dim', '·')} ${R.topBot(c('cyan', shortText(t.name, 40)), plural(t.commits, 'commit', L))}` : '';
+      lines.push(`  ${label(R.bots)}${plural(bots.commits, 'commit', L)} ${c('dim', `(${R.ofNonMerge(botsShareText(bots, L))})`)}${top}`);
+    }
 
     const a = stats?.personality?.archetype;
     if (a?.name) {

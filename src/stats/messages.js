@@ -71,9 +71,17 @@ const CHERRY_PICKED = /^\(cherry picked from commit [0-9a-f]{7,64}\)$/u;
 /**
  * What `git revert` writes as the body (a whole paragraph, its lines joined by single
  * spaces first, however it is wrapped): "This reverts commit <hash>." and, for a merge,
- * "This reverts commit <hash>, reversing changes made to <hash>.".
+ * "This reverts commit <hash>, reversing changes made to <hash>.". With `git revert
+ * --reference` (git 2.41+) each hash is followed by " (<subject>, <YYYY-MM-DD>)", as its
+ * `%h (%s, %ad)` reference format with a short date writes it.
  */
-const REVERT_BOILERPLATE = /^This reverts commit [0-9a-f]{7,64}(?:, reversing changes made to [0-9a-f]{7,64})?\.$/iu;
+const REVERT_REF = String.raw`[0-9a-f]{7,64}(?: \(.*, \d{4}-\d{2}-\d{2}\))?`;
+const REVERT_BOILERPLATE = new RegExp(String.raw`^This reverts commit ${REVERT_REF}(?:, reversing changes made to ${REVERT_REF})?\.$`, 'iu');
+/**
+ * The two `.*` subjects make REVERT_BOILERPLATE quadratic on a crafted paragraph, so longer
+ * paragraphs (far beyond two real subjects) are prose without running it.
+ */
+const REVERT_MAX_LENGTH = 2048;
 
 /**
  * Whether `line` (trimmed at the end) is a trailer line: `Token: value` with a people
@@ -98,7 +106,8 @@ function isTrailerLine(line) {
 /** Whether a paragraph (its non-blank lines) is only trailers (folded lines too) or git's revert boilerplate. */
 function isBoilerplate(para) {
   if (isTrailerLine(para[0]) && para.every((l, i) => i === 0 || isTrailerLine(l) || /^[ \t]/u.test(l))) return true;
-  return REVERT_BOILERPLATE.test(para.join(' ').replace(/\s+/gu, ' ').trim());
+  const text = para.join(' ').replace(/\s+/gu, ' ').trim();
+  return text.length <= REVERT_MAX_LENGTH && REVERT_BOILERPLATE.test(text);
 }
 
 /**
@@ -110,7 +119,8 @@ function isBoilerplate(para) {
  *   what a trailer line is (`Signed-off-by:`, `Co-authored-by:`, `Change-Id:`,
  *   `Fixes: #12`, git cherry-pick -x's "(cherry picked from commit …)" line); or
  * - it is what `git revert` writes: "This reverts commit <hash>." (", reversing changes
- *   made to <hash>." for a merge), however its lines are wrapped.
+ *   made to <hash>." for a merge; with `--reference` each hash followed by "(<subject>,
+ *   <YYYY-MM-DD>)"), however its lines are wrapped.
  * True when some paragraph is not boilerplate. This is deliberately not git's own trailer
  * parsing (which only reads the last paragraph, takes any `Token: value` and tolerates
  * some other lines in it): the question is whether a person wrote anything beyond the

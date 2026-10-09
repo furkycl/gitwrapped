@@ -19,8 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longest 3h 10m (14 commits, Mar 2, 2026)" line (a single session: "1 session · 26h 41m
   (50 commits, …)"; "Oturumlar", "42 oturum · medyan 35 dk · en uzun 3 sa 10 dk" in
   Turkish), `wrapped.md` a "Coding sessions" item ("Kodlama oturumları") in the streaks
-  section, and the streak card a "42 coding sessions  longest 3h 10m" row ("42 kodlama
-  oturumu  en uzun 3 sa 10 dk"), only in spare room (it never displaces, folds or shrinks
+  section, and the streak card a "42 coding sessions  longest 3h 10m" row ("42 oturum  en
+  uzun 3 sa 10 dk" in Turkish: "42 kodlama oturumu" only fits next to a short value such as
+  "en uzun 45 dk"), only in spare room (it never displaces, folds or shrinks
   anything; without room every card is unchanged). In practice the row lands on the streak
   card only when it has no longest-break panel; the power-hour fallback only happens when
   that card has no hour chart data (it is otherwise full).
@@ -31,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tokens, `Change-Id:`, `Reviewed-on:`, …, and `Fixes:` / `Closes:` / `Cc:` / `Refs:` …
   only with reference values such as `#12`, `ABC-123`, a URL, a hash or `Name <email>`, so
   "Fixes: a race where …" or "Follow-up: …" still count as prose) and the "This reverts
-  commit <hash>." paragraph `git revert` writes (the merge form too); a revert with its
+  commit <hash>." paragraph `git revert` writes (the merge and `--reference` forms too); a revert with its
   own explanation still counts. The message hall of fame gets a "Message bodies  42 · 31%"
   row ("Bodies  31%" when that would be cut; "Mesaj gövdesi" / "Gövde" in Turkish) as its
   lowest-priority row, after the subject length, only in spare room (it never folds,
@@ -44,8 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (same ignore rules and `--exclude`; a rename is the old path plus the new one, as for hot
   files; repo-labelled paths with several repos) (`stats.oneTouch {files, share}`, or null
   without a changed file). The hot-files card gets a "One-touch files  42 files · 31%" row
-  ("42 · 31%", else "One-touch  42 · 31%"; "Tek commit'lik dosyalar" / "Tek commit'lik" in
-  Turkish) as its lowest-priority row, after every other row, only in spare room (it never
+  ("42 · 31%", else "One-touch  42 · 31%"; "Tek commit'lik  42 dosya · %31" /
+  "Tek commit'lik  42 · %31" in Turkish) as its lowest-priority row, after every other row, only in spare room (it never
   displaces, folds or shrinks anything); the recap gets a "One-touch" line ("Tek commit'lik")
   and `wrapped.md` a "One-touch files" item after the hot-files table ("Tek commit'lik
   dosyalar"). Without a one-touch file, or without room, every card is unchanged.

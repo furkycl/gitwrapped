@@ -36,7 +36,7 @@ import { shownCoChange } from '../stats/cochange.js';
 import { shownCleanups } from '../stats/cleanups.js';
 import { issueRefLabel, shownIssueRefs } from '../stats/issues.js';
 import { shownDepBumps } from '../stats/depbumps.js';
-import { shownFixups, shownSubjectLength } from '../stats/messages.js';
+import { shownBodies, shownFixups, shownSubjectLength } from '../stats/messages.js';
 import { sizeShares } from '../stats/sizes.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from '../i18n/index.js';
 import { DEFAULT_COLOR_THEME, isColorTheme } from './themes.js';
@@ -1891,13 +1891,51 @@ function messages(s, ctx) {
   const without = messagesWithoutDepBumps(s, ctx);
   // The dependency-bumps row (stats.depBumps) when the totals card has no room for it (see depBumpsCard).
   const spec = depBumpsCard(s, ctx) === 'messages' ? withLastRow(without, depBumpsRow(s, ctx.L), ctx.L) : without;
-  // The subject length row (stats.messages.subjectLength) last of all, appended in spare
-  // room only (its longest form that fits): it never folds, shrinks or displaces anything.
-  for (const row of subjectLengthRows(s, ctx.L) ?? []) {
-    const next = withLastRow(spec, row, ctx.L);
+  // The subject length row (stats.messages.subjectLength) next, appended in spare room
+  // only (its longest form that fits): it never folds, shrinks or displaces anything.
+  const withSubjects = withFirstFitting(spec, subjectLengthRows(s, ctx.L), ctx.L);
+  // The message bodies row (stats.messages.bodies) last of all, on the same terms.
+  return withFirstFitting(withSubjects, bodiesRows(s, ctx.L), ctx.L);
+}
+
+/** `spec` with the first of `rows` (longest form first) that withLastRow appends, else `spec` itself. */
+function withFirstFitting(spec, rows, L) {
+  for (const row of rows ?? []) {
+    const next = withLastRow(spec, row, L);
     if (next !== spec) return next;
   }
   return spec;
+}
+
+/**
+ * The share of non-merge commits with a message body (shownBodies output) as shown: a
+ * whole percent, "<1%" when it rounds to 0 with any, never "100%" short of every commit
+ * (see shareLabel). Used by the messages card, the recap and wrapped.md, so they agree.
+ */
+export const bodiesShareText = (b, L = EN) => shareLabel(b?.pct, b?.commits, L.pct);
+
+/**
+ * The messages card's message bodies row (stats.messages.bodies, see shownBodies) in each
+ * form drawn whole (see rowFits), longest first: "Message bodies" and "42 · 31%" (how many
+ * non-merge commits have a body beyond the subject, blank lines and trailers ignored, and
+ * their share of non-merge commits), then "Bodies" and "31%". Null without the stat (no
+ * non-merge commit, or a stats.json from before it), without a commit with a body, or
+ * when even the short form would be cut. The hover text says it in words. It is the
+ * card's lowest-priority row: messages() appends it after every other row (the subject
+ * length included), on withLastRow's terms, so it never folds, shrinks or displaces anything.
+ */
+function bodiesRows(s, L) {
+  const b = shownBodies(s?.messages?.bodies);
+  if (!b) return null;
+  const M = L.messages;
+  const pct = bodiesShareText(b, L);
+  const description = M.bodiesDescription(b.commits, pct);
+  const forms = [
+    [M.bodiesTitle, M.bodiesValue(b.commits, pct)],
+    [M.bodiesShortTitle, M.bodiesShort(b.commits, pct)],
+  ];
+  const rows = forms.map(([label, value]) => ({ label, value, description })).filter((row) => rowFits(row));
+  return rows.length > 0 ? rows : null;
 }
 
 /**
@@ -1915,9 +1953,10 @@ export const subjectLengthShareText = (r, L = EN) => shareLabel(r?.pct, r?.over7
  * non-merge commits whose subject is longer than 72 characters; just "median 48" when
  * none is), then "48 · 12% >72" ("48"). Null without the stat (no non-merge commit, or a
  * stats.json from before it), or when even the short form would be cut. The hover text
- * says it in words. It is the card's lowest-priority row: messages() appends it after
- * every other row (issue references and dependency bumps included), on withLastRow's
- * terms, so it never folds, shrinks or displaces anything.
+ * says it in words. It is the card's lowest-priority row but one (only the message
+ * bodies row comes after it): messages() appends it after every other row (issue
+ * references and dependency bumps included), on withLastRow's terms, so it never folds,
+ * shrinks or displaces anything.
  */
 function subjectLengthRows(s, L) {
   const r = shownSubjectLength(s?.messages?.subjectLength);

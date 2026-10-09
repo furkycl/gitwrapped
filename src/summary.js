@@ -14,7 +14,7 @@ import { epochDay } from './stats/time.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
-import { busFactorShareText, cleanupShareText, conventionalText, depBumpShareText, emojiShareText, fixupShareText, folderLabel, issueRefsShareText, mergeShareText, revertShareText, sizeShareText, subjectLengthShareText, testsShareText } from './cards/index.js';
+import { bodiesShareText, busFactorShareText, cleanupShareText, conventionalText, depBumpShareText, emojiShareText, fixupShareText, folderLabel, issueRefsShareText, mergeShareText, revertShareText, sizeShareText, subjectLengthShareText, testsShareText } from './cards/index.js';
 import { shownMerges } from './stats/merges.js';
 import { shownFolders } from './stats/folders.js';
 import { shownTests } from './stats/tests.js';
@@ -25,7 +25,7 @@ import { shownReverts } from './stats/reverts.js';
 import { shownCleanups } from './stats/cleanups.js';
 import { shownDepBumps } from './stats/depbumps.js';
 import { issueRefLabel, shownIssueRefs } from './stats/issues.js';
-import { shownFixups, shownSubjectLength } from './stats/messages.js';
+import { shownBodies, shownFixups, shownSubjectLength } from './stats/messages.js';
 import { shownFileLifecycle } from './stats/files.js';
 import { shownTimezones, utcLabel } from './stats/timezones.js';
 import { shownWeekend, weekendPercentLabel } from './stats/weekend.js';
@@ -250,6 +250,10 @@ function shortText(s, maxWidth = 48) {
  * commits over 72 (2% of non-merge commits)", "median 31 chars · none over 72";
  * stats.messages.subjectLength, see stats/messages.js shownSubjectLength) when there is
  * a non-merge commit.
+ * A "Bodies" line follows it with how many non-merge commits have a message body beyond
+ * the subject (blank lines and trailers ignored) and their share ("42 commits (31% of
+ * non-merge commits)"; stats.messages.bodies, see stats/messages.js shownBodies) when
+ * there is at least one.
  * An "Issue refs" line shows how many non-merge commits mention an issue in the subject,
  * their share of non-merge commits and the most referenced issue ("42 commits (12% of
  * non-merge commits) · top #128 (9 commits)"; stats.issueRefs, see stats/issues.js
@@ -554,6 +558,11 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
       const share = subjects.over72 > 0 ? ` ${c('dim', `(${R.ofNonMerge(subjectLengthShareText(subjects, L))})`)}` : '';
       lines.push(`  ${label(R.subjects)}${R.subjectLengthValue(subjects.median, subjects.over72)}${share}`);
     }
+
+    // Non-merge commits with a message body beyond the subject (stats.messages.bodies), as
+    // on the messages card; only with any.
+    const bodies = shownBodies(stats?.messages?.bodies);
+    if (bodies) lines.push(`  ${label(R.bodies)}${plural(bodies.commits, 'commit', L)} ${c('dim', `(${R.ofNonMerge(bodiesShareText(bodies, L))})`)}`);
 
     // Commits that removed more lines than they added (stats.cleanups), as on the totals
     // card, with the biggest net deletion's subject, lines and day; only with any.

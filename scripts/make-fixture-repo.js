@@ -162,6 +162,8 @@ export function makeFixtureRepo({ dir } = {}) {
         filesChanged: files.length,
         linesAdded: files.reduce((n, x) => n + x.added, 0),
         linesRemoved: files.reduce((n, x) => n + x.removed, 0),
+        // Every fixture message is a subject only (see readBodies).
+        hasBody: false,
         ...(step.born ? { born: [...step.born] } : {}),
         ...(step.buried ? { buried: [...step.buried] } : {}),
         ...(step.renamed ? { renamed: step.renamed.map((r) => ({ ...r })) } : {}),

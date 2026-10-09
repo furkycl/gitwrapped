@@ -22,7 +22,7 @@ import { computeLateNights, LATE_NIGHT_HOURS, lateNightCounts, NIGHT_ENDS, shown
 import { computeOfficeHours, OFFICE_DAYS, OFFICE_HOURS, shownOfficeHours } from './officehours.js';
 import { computeTimezones, formatOffset, offsetMinutes, shownTimezones, utcLabel } from './timezones.js';
 import { computeLanguages, languageBarRows, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER as OTHER_LANGUAGE, percentShares } from './languages.js';
-import { computeMessages, isFixupSubject, isMergeCommit, shownFixups, shownSubjectLength, SUBJECT_LIMIT } from './messages.js';
+import { computeMessages, hasMessageBody, isFixupSubject, isMergeCommit, shownBodies, shownFixups, shownSubjectLength, SUBJECT_LIMIT } from './messages.js';
 import { computeMonths, monthsFromDays } from './months.js';
 import { ARCHETYPES, computePersonality } from './personality.js';
 import { computeStreaks, localToday } from './streaks.js';
@@ -55,7 +55,7 @@ export { computeOfficeHours, OFFICE_DAYS, OFFICE_HOURS, shownOfficeHours };
 export { computeTimezones, formatOffset, offsetMinutes, shownTimezones, utcLabel };
 export { computeReleases, shownReleases };
 export { computeMerges, pullRequestOf, shownMerges };
-export { computeBiggestCommit, shownBiggestLines, computeMessages, computePersonality, isFixupSubject, isMergeCommit, shownFixups, shownSubjectLength, SUBJECT_LIMIT, ARCHETYPES, localToday };
+export { computeBiggestCommit, shownBiggestLines, computeMessages, computePersonality, hasMessageBody, isFixupSubject, isMergeCommit, shownBodies, shownFixups, shownSubjectLength, SUBJECT_LIMIT, ARCHETYPES, localToday };
 export { computeMonths, monthsFromDays };
 export { COMMIT_SIZE_BUCKETS, COMMIT_SIZE_IDS, commitSizeOf, computeCommitSizes, shownCommitSizes, sizeShares };
 export { COMMIT_TYPE_IDS, COMMIT_TYPES_MIN_SHARE, commitTypeOf, computeCommitTypes, foldCommitTypes, shownCommitTypes };

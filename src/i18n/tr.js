@@ -374,6 +374,11 @@ export default {
     subjectLengthValue: (median, over72, pct) => (over72 > 0 ? `${dec(median)} · 72 üstü ${pct}` : `medyan ${dec(median)}`),
     subjectLengthShort: (median, over72, pct) => `${dec(median)}${over72 > 0 ? ` · >72: ${pct}` : ''}`,
     subjectLengthDescription: (median, over72, pct) => `Medyan konu satırı uzunluğu: ${dec(median)} karakter; ${over72 > 0 ? `${plural(over72, UNITS.commit)} 72 karakteri aşıyor (merge dışı commit'lerin ${pct} kadarı)` : "hiçbir commit 72 karakteri aşmıyor"}`,
+    bodiesTitle: 'Mesaj gövdesi',
+    bodiesValue: (count, pct) => `${num(count)} · ${pct}`,
+    bodiesShortTitle: 'Gövde',
+    bodiesShort: (count, pct) => `${pct}`,
+    bodiesDescription: (count, pct) => `Konu satırından sonra açıklama (gövde) içeren: ${plural(count, UNITS.commit)} (merge dışı commit'lerin ${pct} kadarı)`,
   },
 
   personality: {
@@ -556,6 +561,7 @@ export default {
     depBumps: 'Bağımlılıklar',
     subjects: 'Konu satırları',
     subjectLengthValue: (median, over72) => `medyan ${dec(median)} karakter · ${over72 > 0 ? `${plural(over72, UNITS.commit)} 72 üstü` : '72 üstü yok'}`,
+    bodies: 'Mesaj gövdeleri',
     you: 'Kişiliğin',
     cardsIn: (count, dir) => `${count}: ${dir}`,
     shareImage: 'paylaşım görseli:',
@@ -613,6 +619,7 @@ export default {
     depBumps: 'Bağımlılık güncellemeleri',
     subjectLength: 'Konu satırı uzunluğu',
     subjectLengthValue: (median, over72) => `medyan ${dec(median)} karakter; ${over72 > 0 ? `${plural(over72, UNITS.commit)} 72 karakteri aşıyor` : 'hiçbiri 72 karakteri aşmıyor'}`,
+    bodies: 'Mesaj gövdeleri',
     paired: 'Birlikte yazılan',
     topCoAuthor: (name) => `en sık ortak: ${name}`,
     releases: 'Sürümler',

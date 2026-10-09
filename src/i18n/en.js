@@ -502,6 +502,17 @@ export default {
     subjectLengthValue: (median, over72, pct) => (over72 > 0 ? `${dec(median)} · ${pct} over 72` : `median ${dec(median)}`),
     subjectLengthShort: (median, over72, pct) => `${dec(median)}${over72 > 0 ? ` · ${pct} >72` : ''}`,
     subjectLengthDescription: (median, over72, pct) => `Median subject length: ${decPlural(median, ['character', 'characters'])}; ${over72 > 0 ? `${plural(over72, UNITS.commit)} over 72 characters (${pct} of non-merge commits)` : 'no commit over 72 characters'}`,
+    /**
+     * The message bodies row (stats.messages.bodies), in spare room only, after every
+     * other row (the subject length too): "Message bodies" and "42 · 31%" (how many
+     * non-merge commits have a body beyond the subject, and their share), else "Bodies"
+     * and "31%" when that would be cut; its hover text says it in words.
+     */
+    bodiesTitle: 'Message bodies',
+    bodiesValue: (count, pct) => `${num(count)} · ${pct}`,
+    bodiesShortTitle: 'Bodies',
+    bodiesShort: (count, pct) => `${pct}`,
+    bodiesDescription: (count, pct) => `${plural(count, UNITS.commit)} ${count === 1 ? 'has' : 'have'} a message body beyond the subject (${pct} of non-merge commits)`,
   },
 
   personality: {
@@ -751,6 +762,8 @@ export default {
      */
     subjects: 'Subjects',
     subjectLengthValue: (median, over72) => `median ${decPlural(median, ['char', 'chars'])} · ${over72 > 0 ? `${plural(over72, UNITS.commit)} over 72` : 'none over 72'}`,
+    /** The message bodies line (stats.messages.bodies): label, "42 commits", then "(31% of non-merge commits)". */
+    bodies: 'Bodies',
     you: 'You are',
     cardsIn: (count, dir) => `${count} in ${dir}`,
     shareImage: 'share image:',
@@ -842,6 +855,8 @@ export default {
      */
     subjectLength: 'Subject length',
     subjectLengthValue: (median, over72) => `median ${decPlural(median, ['character', 'characters'])}; ${over72 > 0 ? `${plural(over72, UNITS.commit)} over 72 characters` : 'none over 72 characters'}`,
+    /** The message bodies item (stats.messages.bodies): "42 commits (31% of non-merge commits)". */
+    bodies: 'Message bodies',
     /** The pairing item (stats.coAuthors): "12 commits (31% of non-merge commits), top co-author: Ada". */
     paired: 'Paired',
     topCoAuthor: (name) => `top co-author: ${name}`,

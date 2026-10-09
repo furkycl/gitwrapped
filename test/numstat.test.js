@@ -83,6 +83,8 @@ describe('readCommits file stats on the fixture repo', () => {
     for (const c of commits) assert.ok(Array.isArray(c.parents) && c.parents.length <= 1);
     // Nor co-authors: the fixture commits have no Co-authored-by trailers.
     for (const c of commits) assert.deepEqual(c.coAuthors, []);
+    // Nor message bodies: every fixture commit is a subject only.
+    for (const c of commits) assert.equal(c.hasBody, false);
     const noParents = ({ parents, coAuthors, ...c }) => c;
     assert.deepEqual(commits.map(noParents).map(instant), fx.commits.map(instant));
   });

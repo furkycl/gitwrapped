@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Top subject words: the three most common words in non-merge commit subjects, each
+  counted once per commit, with how many commits use it (`stats.messages.topWords
+  [{word, count}]`, `[]` without any). Leading `fixup!` / `squash!` / `amend!` markers,
+  emoji, a `Revert "…"` wrapper and a Conventional Commits-shaped prefix (`fix(api)!:`,
+  any `word:`), gitmoji shortcodes, URLs, issue references, hex hashes and numbers are
+  left out; words are runs of Unicode letters, lowercased, at least 3 characters, not on
+  a small English / Turkish stopword list; ties go alphabetically. The message hall of fame gets a
+  "Top words: parser ×5 · cache ×3" row (fewer words when they would be cut, a single
+  one as "Top words  parser ×5"; "En sık kelimeler" in Turkish) as its
+  lowest-priority row, after the message bodies, only in spare room (it never folds,
+  shrinks or displaces anything); the recap gets a "Top words" line ("Sık kelimeler")
+  and `wrapped.md` a "Top subject words" section ("Konu satırlarında en sık geçen kelimeler").
+  Only words used by at least 2 commits are shown; `stats.json` keeps the top three.
+
 ## [1.15.0] - 2026-10-09
 
 ### Added

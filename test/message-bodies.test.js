@@ -38,10 +38,13 @@ const commit = (subject, i, extra = {}) => ({
 /** `[subject, body]` pairs (or bare subjects, with an empty body) → commits carrying `body`. */
 const history = (items) => items.map((x, i) => (Array.isArray(x) ? commit(x[0], i + 1, { body: x[1] }) : commit(x, i + 1, { body: '' })));
 const bodiesOf = (items) => computeMessages(history(items)).bodies;
-const statsOf = (items) => computeStats(history(items), { today: TODAY });
+// The top words row (stats.messages.topWords, see test/top-words.test.js) comes after the
+// bodies row; these tests are about the bodies row, so their stats leave it out.
+const noTopWords = (s) => ({ ...s, messages: { ...s.messages, topWords: [] } });
+const statsOf = (items) => noTopWords(computeStats(history(items), { today: TODAY }));
 // Build output only (dist/ is ignored like the hot files): no biggest-commit panel, and a
 // single subject (no "Shortest" row), so the messages card has room for both spare rows.
-const roomyOf = (items) => computeStats(history(items).map((c, i) => ({ ...c, files: [{ path: `dist/${i}.js`, added: 3, removed: 1 }] })), { today: TODAY });
+const roomyOf = (items) => noTopWords(computeStats(history(items).map((c, i) => ({ ...c, files: [{ path: `dist/${i}.js`, added: 3, removed: 1 }] })), { today: TODAY }));
 const cardOpts = (lang) => ({ repoName: 'demo', today: TODAY, lang });
 const messagesSpec = (stats, lang = 'en') => buildCardSpecs(stats, cardOpts(lang)).find((c) => c.id === 'messages').spec;
 const svgs = (stats, lang = 'en') => buildCards(stats, cardOpts(lang)).map((c) => [c.id, c.svg]);
@@ -222,14 +225,14 @@ describe('computeMessages: bodies', () => {
     assert.deepEqual(computeMessages([commit('a', 1, { hasBody: true }), commit('b', 2, { hasBody: false, body: 'why' }), commit('c', 3, { hasBody: 'yes', body: 'why' })]).bodies, { commits: 2, share: 0.667 });
   });
 
-  test('the exact ratio rides along non-enumerably; stats.json keeps exactly {commits, share}, last in messages', () => {
+  test('the exact ratio rides along non-enumerably; stats.json keeps exactly {commits, share}, last in messages but topWords', () => {
     const s = statsOf([['a', 'x'], 'b', 'c']);
-    assert.equal(Object.keys(s.messages).at(-1), 'bodies');
+    assert.deepEqual(Object.keys(s.messages).slice(-2), ['bodies', 'topWords']);
     assert.deepEqual(Object.keys(s.messages.bodies), ['commits', 'share']);
     assert.equal(Object.getOwnPropertySymbols(s.messages.bodies).length, 1);
     const doc = JSON.parse(buildStatsJson({ stats: s, repoName: 'demo' }));
     assert.equal(JSON.stringify(doc.stats.messages.bodies), '{"commits":1,"share":0.333}');
-    assert.equal(Object.keys(doc.stats.messages).at(-1), 'bodies');
+    assert.deepEqual(Object.keys(doc.stats.messages).slice(-2), ['bodies', 'topWords']);
     const none = JSON.parse(buildStatsJson({ stats: computeStats([], { today: TODAY }), repoName: 'demo' }));
     assert.equal(none.stats.messages.bodies, null);
   });

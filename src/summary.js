@@ -26,7 +26,7 @@ import { shownCleanups } from './stats/cleanups.js';
 import { shownDepBumps } from './stats/depbumps.js';
 import { shownOneTouch } from './stats/onetouch.js';
 import { issueRefLabel, shownIssueRefs } from './stats/issues.js';
-import { shownBodies, shownFixups, shownSubjectLength } from './stats/messages.js';
+import { shownBodies, shownFixups, shownSubjectLength, shownTopWords } from './stats/messages.js';
 import { shownFileLifecycle } from './stats/files.js';
 import { shownTimezones, utcLabel } from './stats/timezones.js';
 import { shownWeekend, weekendPercentLabel } from './stats/weekend.js';
@@ -258,6 +258,11 @@ function shortText(s, maxWidth = 48) {
  * the subject (blank lines and trailers ignored) and their share ("42 commits (31% of
  * non-merge commits)"; stats.messages.bodies, see stats/messages.js shownBodies) when
  * there is at least one.
+ * A "Top words" line follows the bodies with the (at most 3) most common words in the
+ * non-merge commit subjects, each counted once per commit, with how many commits use it
+ * (`"parser" ×5 · "cache" ×3 · "login" ×2 (commits per word)`, a word over 24 characters
+ * cut with "…"; stats.messages.topWords, see stats/messages.js shownTopWords: only words
+ * in at least 2 commits) when there is one.
  * An "Issue refs" line shows how many non-merge commits mention an issue in the subject,
  * their share of non-merge commits and the most referenced issue ("42 commits (12% of
  * non-merge commits) · top #128 (9 commits)"; stats.issueRefs, see stats/issues.js
@@ -571,6 +576,14 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     // on the messages card; only with any.
     const bodies = shownBodies(stats?.messages?.bodies);
     if (bodies) lines.push(`  ${label(R.bodies)}${plural(bodies.commits, 'commit', L)} ${c('dim', `(${R.ofNonMerge(bodiesShareText(bodies, L))})`)}`);
+
+    // The most common subject words, counted once per commit (stats.messages.topWords), as
+    // on the messages card; only words in at least 2 commits (see shownTopWords).
+    const topWords = shownTopWords(stats?.messages?.topWords);
+    if (topWords) {
+      const list = topWords.map((w) => `${c('cyan', `"${shortWord(w.word, 24)}"`)} ${c('dim', `×${num(w.count, L)}`)}`).join(c('dim', ' · '));
+      lines.push(`  ${label(R.topWords)}${list} ${c('dim', `(${R.topWordsNote})`)}`);
+    }
 
     // Commits that removed more lines than they added (stats.cleanups), as on the totals
     // card, with the biggest net deletion's subject, lines and day; only with any.

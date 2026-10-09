@@ -522,6 +522,17 @@ export default {
     bodiesShortTitle: 'Bodies',
     bodiesShort: (count, pct) => `${pct}`,
     bodiesDescription: (count, pct) => `${plural(count, UNITS.commit)} ${count === 1 ? 'has' : 'have'} a message body beyond the subject (${pct} of non-merge commits)`,
+    /**
+     * The top subject words row (stats.messages.topWords), in spare room only, after every
+     * other row (the message bodies too): "Top words" and "parser ×5 · cache ×3 · login ×2"
+     * (`words` is `[{word, count}]`, each count the commits whose subject uses the word),
+     * or all of it as one label, "Top words: parser ×5 · cache ×3" (a label has more room);
+     * fewer words when that would be cut; its hover text says it in words.
+     */
+    topWordsTitle: 'Top words',
+    topWordsLabel: (words) => `Top words: ${words.map((w) => `${w.word} ×${num(w.count)}`).join(' · ')}`,
+    topWordsValue: (words) => words.map((w) => `${w.word} ×${num(w.count)}`).join(' · '),
+    topWordsDescription: (words) => `Most common words in commit subjects: ${words.map((w) => `${w.word} (${plural(w.count, UNITS.commit)})`).join(', ')}`,
   },
 
   personality: {
@@ -776,6 +787,9 @@ export default {
     subjectLengthValue: (median, over72) => `median ${decPlural(median, ['char', 'chars'])} · ${over72 > 0 ? `${plural(over72, UNITS.commit)} over 72` : 'none over 72'}`,
     /** The message bodies line (stats.messages.bodies): label, "42 commits", then "(31% of non-merge commits)". */
     bodies: 'Bodies',
+    /** The top subject words line (stats.messages.topWords): label, `"parser" ×5 · "cache" ×3`, then "(commits per word)". */
+    topWords: 'Top words',
+    topWordsNote: 'commits per word',
     you: 'You are',
     cardsIn: (count, dir) => `${count} in ${dir}`,
     shareImage: 'share image:',
@@ -871,6 +885,9 @@ export default {
     subjectLengthValue: (median, over72) => `median ${decPlural(median, ['character', 'characters'])}; ${over72 > 0 ? `${plural(over72, UNITS.commit)} over 72 characters` : 'none over 72 characters'}`,
     /** The message bodies item (stats.messages.bodies): "42 commits (31% of non-merge commits)". */
     bodies: 'Message bodies',
+    /** The top subject words item (stats.messages.topWords): "parser (5 commits), cache (3 commits), login (2 commits)". */
+    topWords: 'Top subject words',
+    topWordsValue: (words) => words.map((w) => `${w.word} (${plural(w.count, UNITS.commit)})`).join(', '),
     /** The pairing item (stats.coAuthors): "12 commits (31% of non-merge commits), top co-author: Ada". */
     paired: 'Paired',
     topCoAuthor: (name) => `top co-author: ${name}`,

@@ -23,6 +23,7 @@ describe('computeMessages: empty / invalid input', () => {
         fixups: { commits: 0, share: 0 },
         subjectLength: null,
         bodies: null,
+        topWords: [],
       });
     }
   });

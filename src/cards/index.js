@@ -37,7 +37,7 @@ import { shownCleanups } from '../stats/cleanups.js';
 import { issueRefLabel, shownIssueRefs } from '../stats/issues.js';
 import { shownDepBumps } from '../stats/depbumps.js';
 import { shownOneTouch } from '../stats/onetouch.js';
-import { shownBodies, shownFixups, shownSubjectLength } from '../stats/messages.js';
+import { shownBodies, shownFixups, shownSubjectLength, shownTopWords } from '../stats/messages.js';
 import { sizeShares } from '../stats/sizes.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from '../i18n/index.js';
 import { DEFAULT_COLOR_THEME, isColorTheme } from './themes.js';
@@ -1927,8 +1927,44 @@ function messages(s, ctx) {
   // The subject length row (stats.messages.subjectLength) next, appended in spare room
   // only (its longest form that fits): it never folds, shrinks or displaces anything.
   const withSubjects = withFirstFitting(spec, subjectLengthRows(s, ctx.L), ctx.L);
-  // The message bodies row (stats.messages.bodies) last of all, on the same terms.
-  return withFirstFitting(withSubjects, bodiesRows(s, ctx.L), ctx.L);
+  // The message bodies row (stats.messages.bodies) next, on the same terms.
+  const withBodies = withFirstFitting(withSubjects, bodiesRows(s, ctx.L), ctx.L);
+  // The top subject words row (stats.messages.topWords) last of all, on the same terms.
+  return withFirstFitting(withBodies, topWordsRows(s, ctx.L), ctx.L);
+}
+
+/**
+ * The messages card's top subject words row (stats.messages.topWords, see shownTopWords:
+ * words in at least 2 non-merge commits, at most 3) in each form drawn whole (see
+ * rowFits), longest first. For each number of words, from all of them down to one (the
+ * last word dropped each time), two forms: the whole row as one label, "Top words:
+ * parser ×5 · cache ×3 · login ×2" (each word with how many commits use it; a label has
+ * more room than a value), then "Top words" with "parser ×5 · cache ×3 · login ×2" as
+ * its value (a single word only in this form, like the card's other rows). In practice
+ * two short words fit as a label and one as a value. A form whose only word is the card's big favorite word (stats.messages.topWord,
+ * shown when it is in at least 2 subjects) is left out, as it would just repeat it. Null
+ * without the stat (a stats.json from before it), without a shown word, or when no form
+ * is left. The hover text names every shown word with its commits. It is the card's
+ * lowest-priority row: messages() appends it after every other row (the message bodies
+ * included), on withLastRow's terms, so it never folds, shrinks or displaces anything.
+ */
+function topWordsRows(s, L) {
+  const words = shownTopWords(s?.messages?.topWords);
+  if (!words) return null;
+  const M = L.messages;
+  const m = s.messages;
+  const favorite = num(m.topWord?.count) >= 2 && typeof m.topWord?.word === 'string' ? m.topWord.word.trim().toLowerCase() : null;
+  const description = M.topWordsDescription(words);
+  const rows = [];
+  for (let n = words.length; n >= 1; n -= 1) {
+    const shown = words.slice(0, n);
+    if (n === 1 && shown[0].word === favorite) continue;
+    const asValue = { label: M.topWordsTitle, value: M.topWordsValue(shown), description };
+    for (const row of n > 1 ? [{ label: M.topWordsLabel(shown), description }, asValue] : [asValue]) {
+      if (rowFits(row)) rows.push(row);
+    }
+  }
+  return rows.length > 0 ? rows : null;
 }
 
 /** `spec` with the first of `rows` (longest form first) that withLastRow appends, else `spec` itself. */
@@ -1954,8 +1990,9 @@ export const bodiesShareText = (b, L = EN) => shareLabel(b?.pct, b?.commits, L.p
  * their share of non-merge commits), then "Bodies" and "31%". Null without the stat (no
  * non-merge commit, or a stats.json from before it), without a commit with a body, or
  * when even the short form would be cut. The hover text says it in words. It is the
- * card's lowest-priority row: messages() appends it after every other row (the subject
- * length included), on withLastRow's terms, so it never folds, shrinks or displaces anything.
+ * card's lowest-priority row but one (only the top words row comes after it): messages()
+ * appends it after every other row (the subject length included), on withLastRow's
+ * terms, so it never folds, shrinks or displaces anything.
  */
 function bodiesRows(s, L) {
   const b = shownBodies(s?.messages?.bodies);
@@ -1986,8 +2023,8 @@ export const subjectLengthShareText = (r, L = EN) => shareLabel(r?.pct, r?.over7
  * non-merge commits whose subject is longer than 72 characters; just "median 48" when
  * none is), then "48 · 12% >72" ("48"). Null without the stat (no non-merge commit, or a
  * stats.json from before it), or when even the short form would be cut. The hover text
- * says it in words. It is the card's lowest-priority row but one (only the message
- * bodies row comes after it): messages() appends it after every other row (issue
+ * says it in words. It is the card's lowest-priority row but two (only the message
+ * bodies and top words rows come after it): messages() appends it after every other row (issue
  * references and dependency bumps included), on withLastRow's terms, so it never folds,
  * shrinks or displaces anything.
  */

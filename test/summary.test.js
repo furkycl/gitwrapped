@@ -78,8 +78,10 @@ describe('formatSummary', () => {
     assert.match(out, /First commit "initial commit" \(Mar 9, 2024\)\n/);
     // Mar 9, 11, 12, 13: gaps 2, 1, 1 → median 1.
     assert.match(out, /Cadence {6}1 commit per active day · every day\n/);
-    // 25 with the First commit, Busiest day, Top folders, Weekends, Cadence, Docs, One-touch and Subjects lines.
-    assert.ok(lines.length >= 8 && lines.length <= 25, `compact: ${lines.length} lines`);
+    // 26 with the First commit, Busiest day, Top folders, Weekends, Cadence, Docs, One-touch, Subjects and Top words lines.
+    // "parser: handle tabs" starts with a conventional-commit-shaped prefix, cut before counting.
+    assert.match(out, /Top words {4}"parser" ×2 \(commits per word\)\n/);
+    assert.ok(lines.length >= 8 && lines.length <= 26, `compact: ${lines.length} lines`);
   });
 
   test('color: true adds ANSI escapes but keeps the first line plain', () => {

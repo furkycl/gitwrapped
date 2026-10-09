@@ -336,7 +336,7 @@ describe('real git: adversarial commit messages', () => {
     assert.deepEqual(Object.keys(b), ['commits', 'share']);
     assert.equal(b.commits, want);
     assert.equal(b.share, Math.round((want / total) * 1000) / 1000);
-    assert.equal(Object.keys(doc.stats.messages).at(-1), 'bodies');
+    assert.deepEqual(Object.keys(doc.stats.messages).slice(-2), ['bodies', 'topWords']);
     assert.equal(typeof b.commits, 'number');
     assert.ok(Number.isInteger(b.commits));
     assert.ok(b.share > 0 && b.share < 1);

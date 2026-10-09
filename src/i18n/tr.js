@@ -386,6 +386,10 @@ export default {
     bodiesShortTitle: 'Gövde',
     bodiesShort: (count, pct) => `${pct}`,
     bodiesDescription: (count, pct) => `Konu satırından sonra açıklama (gövde) içeren: ${plural(count, UNITS.commit)} (merge dışı commit'lerin ${pct} kadarı)`,
+    topWordsTitle: 'En sık kelimeler',
+    topWordsLabel: (words) => `En sık kelimeler: ${words.map((w) => `${w.word} ×${num(w.count)}`).join(' · ')}`,
+    topWordsValue: (words) => words.map((w) => `${w.word} ×${num(w.count)}`).join(' · '),
+    topWordsDescription: (words) => `Konu satırlarında en sık geçen kelimeler: ${words.map((w) => `${w.word} (${plural(w.count, UNITS.commit)})`).join(', ')}`,
   },
 
   personality: {
@@ -571,6 +575,8 @@ export default {
     subjects: 'Konu satırları',
     subjectLengthValue: (median, over72) => `medyan ${dec(median)} karakter · ${over72 > 0 ? `${plural(over72, UNITS.commit)} 72 üstü` : '72 üstü yok'}`,
     bodies: 'Mesaj gövdeleri',
+    topWords: 'Sık kelimeler',
+    topWordsNote: 'kelime başına commit sayısı',
     you: 'Kişiliğin',
     cardsIn: (count, dir) => `${count}: ${dir}`,
     shareImage: 'paylaşım görseli:',
@@ -630,6 +636,8 @@ export default {
     subjectLength: 'Konu satırı uzunluğu',
     subjectLengthValue: (median, over72) => `medyan ${dec(median)} karakter; ${over72 > 0 ? `${plural(over72, UNITS.commit)} 72 karakteri aşıyor` : 'hiçbiri 72 karakteri aşmıyor'}`,
     bodies: 'Mesaj gövdeleri',
+    topWords: 'Konu satırlarında en sık geçen kelimeler',
+    topWordsValue: (words) => words.map((w) => `${w.word} (${plural(w.count, UNITS.commit)})`).join(', '),
     paired: 'Birlikte yazılan',
     topCoAuthor: (name) => `en sık ortak: ${name}`,
     releases: 'Sürümler',

@@ -9,7 +9,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { mergeHistories } from '../src/git.js';
-import { computeIssueRefs, computeStats, issueRefLabel, issueRefsInSubject, shownIssueRefs } from '../src/stats/index.js';
+import { computeIssueRefs, computeStats as computeAllStats, issueRefLabel, issueRefsInSubject, shownIssueRefs } from '../src/stats/index.js';
 import { buildCards, buildCardSpecs, issueRefsShareText, layoutCard } from '../src/cards/index.js';
 import { rowFits } from '../src/cards/svg.js';
 import { formatSummary } from '../src/summary.js';
@@ -18,6 +18,14 @@ import { buildStatsJson } from '../src/json.js';
 import { generate } from '../src/cli.js';
 import en from '../src/i18n/en.js';
 import tr from '../src/i18n/tr.js';
+
+// The subject length row (stats.messages.subjectLength) is the messages card's lowest-priority
+// row, appended after every other one (see test/subject-length.test.js); these tests are about
+// the rows before it, so their stats leave it out.
+const computeStats = (...args) => {
+  const s = computeAllStats(...args);
+  return s.messages ? { ...s, messages: { ...s.messages, subjectLength: null } } : s;
+};
 
 const TODAY = '2026-04-01';
 const H = (i) => `${String(i).padStart(4, '0')}abcdef0123456789abcdef0123456789abcd`;

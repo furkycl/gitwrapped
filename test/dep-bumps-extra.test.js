@@ -7,7 +7,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { computeDepBumps, computeStats, isDepPath, shownDepBumps } from '../src/stats/index.js';
+import { computeDepBumps, computeStats as computeAllStats, isDepPath, shownDepBumps } from '../src/stats/index.js';
 import { excludeFiles, isIgnoredPath } from '../src/stats/files.js';
 import { compileExcludes } from '../src/glob.js';
 import { buildCards, buildCardSpecs, depBumpShareText, layoutCard } from '../src/cards/index.js';
@@ -17,6 +17,14 @@ import { buildStatsJson } from '../src/json.js';
 import { generate } from '../src/cli.js';
 import en from '../src/i18n/en.js';
 import tr from '../src/i18n/tr.js';
+
+// The subject length row (stats.messages.subjectLength) is the messages card's lowest-priority
+// row, appended after every other one (see test/subject-length.test.js); these tests are about
+// the rows before it, so their stats leave it out.
+const computeStats = (...args) => {
+  const s = computeAllStats(...args);
+  return s.messages ? { ...s, messages: { ...s.messages, subjectLength: null } } : s;
+};
 
 const TODAY = '2026-04-01';
 const LANGS = { en, tr };

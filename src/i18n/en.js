@@ -7,6 +7,8 @@ import { formatDelta, formatInteger } from './format.js';
 const num = (n) => formatInteger(n, ',');
 const dec = (n) => (Math.round((typeof n === 'number' && Number.isFinite(n) ? n : 0) * 10) / 10).toLocaleString('en-US', { maximumFractionDigits: 1 });
 const plural = (n, [one, many]) => `${num(n)} ${n === 1 ? one : many}`;
+/** A length with at most one decimal and its unit: "1 character", "48.5 characters". */
+const decPlural = (n, [one, many]) => `${dec(n)} ${n === 1 ? one : many}`;
 const delta = (n) => formatDelta(n, ',');
 /** A signed change with its unit: "+42 commits", "−1 line", "±0 active days". */
 const signedPlural = (n, [one, many]) => `${delta(n)} ${Math.abs(Math.round(n)) === 1 ? one : many}`;
@@ -456,6 +458,17 @@ export default {
     issueRefsTitle: (ref, times) => (ref ? `Issue refs (top ${ref} ×${num(times)})` : 'Issue refs'),
     issueRefsValue: (count, pct, ref, times) => `${num(count)} · ${pct}${ref ? ` (${ref} ×${num(times)})` : ''}`,
     issueRefsDescription: (count, pct, ref, times) => `${plural(count, UNITS.commit)} ${count === 1 ? 'mentions' : 'mention'} an issue (${pct} of non-merge commits)${ref ? `; most referenced: ${ref} (${plural(times, UNITS.commit)})` : ''}`,
+    /**
+     * The subject length row (stats.messages.subjectLength), in spare room only, after
+     * every other row: "Subject length" and "median 48 · 12% over 72" (the median subject
+     * length in characters, and the share of non-merge commits whose subject is longer
+     * than 72), else "48 · 12% >72"; without such subjects just "median 48" / "48". Its
+     * hover text says it in words.
+     */
+    subjectLengthTitle: 'Subject length',
+    subjectLengthValue: (median, over72, pct) => `median ${dec(median)}${over72 > 0 ? ` · ${pct} over 72` : ''}`,
+    subjectLengthShort: (median, over72, pct) => `${dec(median)}${over72 > 0 ? ` · ${pct} >72` : ''}`,
+    subjectLengthDescription: (median, over72, pct) => `Median subject length: ${decPlural(median, ['character', 'characters'])}; ${over72 > 0 ? `${plural(over72, UNITS.commit)} over 72 characters (${pct} of non-merge commits)` : 'no commit over 72 characters'}`,
   },
 
   personality: {
@@ -697,6 +710,12 @@ export default {
     topIssue: (ref, commits) => `top ${ref} (${commits})`,
     /** The dependency-bumps line (stats.depBumps): label, "12 commits", then "(8% of non-merge commits)". */
     depBumps: 'Dep bumps',
+    /**
+     * The subject length line (stats.messages.subjectLength): label, "median 48 chars ·
+     * 3 commits over 72" (or "· none over 72"), then "(2% of non-merge commits)" when any.
+     */
+    subjects: 'Subjects',
+    subjectLengthValue: (median, over72) => `median ${decPlural(median, ['char', 'chars'])} · ${over72 > 0 ? `${plural(over72, UNITS.commit)} over 72` : 'none over 72'}`,
     you: 'You are',
     cardsIn: (count, dir) => `${count} in ${dir}`,
     shareImage: 'share image:',
@@ -779,6 +798,13 @@ export default {
     topIssue: 'most referenced:',
     /** The dependency-bumps item (stats.depBumps): "12 commits (8% of non-merge commits)". */
     depBumps: 'Dependency bumps',
+    /**
+     * The subject length item (stats.messages.subjectLength): "median 48 characters; 3
+     * commits over 72 characters" (or "none over 72 characters"), then "(2% of non-merge
+     * commits)" when any.
+     */
+    subjectLength: 'Subject length',
+    subjectLengthValue: (median, over72) => `median ${decPlural(median, ['character', 'characters'])}; ${over72 > 0 ? `${plural(over72, UNITS.commit)} over 72 characters` : 'none over 72 characters'}`,
     /** The pairing item (stats.coAuthors): "12 commits (31% of non-merge commits), top co-author: Ada". */
     paired: 'Paired',
     topCoAuthor: (name) => `top co-author: ${name}`,

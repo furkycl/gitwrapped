@@ -21,13 +21,19 @@ describe('computeMessages: empty / invalid input', () => {
         counts: { fix: 0, wip: 0, oops: 0 },
         averageLength: 0,
         fixups: { commits: 0, share: 0 },
+        subjectLength: null,
       });
     }
   });
 
-  test('only empty / blank / missing / non-string subjects → same as empty', () => {
+  test('only empty / blank / missing / non-string subjects → same as empty (but subjectLength: length 0 each)', () => {
     const commits = [msg(''), msg('   \t '), msg(undefined), msg(42), { date: '2024-06-12T12:00:00Z' }, null];
-    assert.deepEqual(computeMessages(commits), computeMessages([]));
+    const { subjectLength, ...rest } = computeMessages(commits);
+    const { subjectLength: none, ...empty } = computeMessages([]);
+    assert.deepEqual(rest, empty);
+    assert.equal(none, null);
+    // subjectLength counts every non-merge commit (the five objects), a missing subject as 0.
+    assert.deepEqual(subjectLength, { median: 0, over72: 0, share: 0 });
   });
 });
 

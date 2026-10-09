@@ -10,13 +10,21 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { computeEmoji, computeStats, emojiIn, emojiKey, GITMOJI, isEmoji, shownEmoji } from '../src/stats/index.js';
+import { computeEmoji, computeStats as computeAllStats, emojiIn, emojiKey, GITMOJI, isEmoji, shownEmoji } from '../src/stats/index.js';
 import { buildCards, buildCardSpecs } from '../src/cards/index.js';
 import { layoutCard } from '../src/cards/svg.js';
 import { stripEmojiFromText } from '../src/png.js';
 import { formatSummary } from '../src/summary.js';
 import { buildMarkdown } from '../src/markdown.js';
 import { getStrings } from '../src/i18n/index.js';
+
+// The subject length row (stats.messages.subjectLength) is the messages card's lowest-priority
+// row, appended after every other one (see test/subject-length.test.js); these tests are about
+// the rows before it, so their stats leave it out.
+const computeStats = (...args) => {
+  const s = computeAllStats(...args);
+  return s.messages ? { ...s, messages: { ...s.messages, subjectLength: null } } : s;
+};
 
 const TODAY = '2026-04-01';
 const commit = (subject, i, files = [], extra = {}) => ({

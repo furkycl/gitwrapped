@@ -5,7 +5,7 @@
 // part only (authorName), and email-shaped text in any repo-derived text (subjects,
 // paths, repo and contributor names) is cut out by escapeMarkdown.
 
-import { authorName, busFactorShareText, displayRepoName, folderLabel, cleanupShareText, depBumpShareText, formatDateRange, formatDay, conventionalText, emojiShareText, fixupShareText, issueRefsShareText, mergeShareText, pctText, revertShareText, repoRows, shownDayRange, sizeShareText, testsShareText } from './cards/index.js';
+import { authorName, busFactorShareText, displayRepoName, folderLabel, cleanupShareText, depBumpShareText, formatDateRange, formatDay, conventionalText, emojiShareText, fixupShareText, issueRefsShareText, mergeShareText, pctText, revertShareText, repoRows, shownDayRange, subjectLengthShareText, sizeShareText, testsShareText } from './cards/index.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
 import { shownEmoji } from './stats/emoji.js';
@@ -13,7 +13,7 @@ import { shownReverts } from './stats/reverts.js';
 import { shownCleanups } from './stats/cleanups.js';
 import { issueRefLabel, shownIssueRefs } from './stats/issues.js';
 import { shownDepBumps } from './stats/depbumps.js';
-import { shownFixups } from './stats/messages.js';
+import { shownFixups, shownSubjectLength } from './stats/messages.js';
 import { shownFileLifecycle } from './stats/files.js';
 import { shownFolders } from './stats/folders.js';
 import { shownTests } from './stats/tests.js';
@@ -134,6 +134,10 @@ const item = (label, value) => `- **${label}:** ${value}`;
  * A "Fixup commits" section follows the reverts ("3 commits (2% of non-merge commits)":
  * the non-merge commits with a `fixup!` / `squash!` / `amend!` subject;
  * stats.messages.fixups, see stats/messages.js shownFixups) when there is at least one.
+ * A "Subject length" section follows it ("median 48 characters; 3 commits over 72
+ * characters (2% of non-merge commits)", "median 31 characters; none over 72 characters";
+ * stats.messages.subjectLength, see stats/messages.js shownSubjectLength) when there is a
+ * non-merge commit.
  * An "Issue references" section follows the cleanups ("42 commits (12% of non-merge
  * commits); most referenced: #128 (9 commits)": the non-merge commits whose subject
  * mentions an issue; stats.issueRefs, see stats/issues.js shownIssueRefs) when there is
@@ -388,6 +392,13 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
     // --- fixup commits (as on the messages card and the recap; only with any) ----------
     const fixups = shownFixups(stats?.messages?.fixups);
     if (fixups) section(M.fixups, [escapeMarkdown(`${plural(fixups.commits, 'commit', L)} (${L.recap.ofNonMerge(fixupShareText(fixups, L))})`)]);
+
+    // --- subject length (as on the messages card and the recap; with any non-merge commit)
+    const subjects = shownSubjectLength(stats?.messages?.subjectLength);
+    if (subjects) {
+      const share = subjects.over72 > 0 ? ` (${L.recap.ofNonMerge(subjectLengthShareText(subjects, L))})` : '';
+      section(M.subjectLength, [escapeMarkdown(`${M.subjectLengthValue(subjects.median, subjects.over72)}${share}`)]);
+    }
 
     // --- cleanups (as on the totals card and the recap; only with any) ------------------
     const cleanups = shownCleanups(stats?.cleanups);

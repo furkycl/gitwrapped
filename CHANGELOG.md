@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Coding sessions: per author (told apart as the contributors are, after `.mailmap`),
+  commits no more than two hours apart form a session, from its first commit to its last
+  (every dated commit counts, merges included). `stats.json` gets `stats.sessions`
+  (`{count, medianMinutes, longest: {minutes, commits, day}}`, or null without a dated
+  commit; the longest session's day is the author-local day it started, and sessions
+  starting after tomorrow are not picked as the longest unless all are). When a session
+  lasted a minute or more, the recap gets a "Sessions  42 sessions · median 35 min ·
+  longest 3h 10m (14 commits, Mar 2, 2026)" line (a single session: "1 session · 26h 41m
+  (50 commits, …)"; "Oturumlar", "42 oturum · medyan 35 dk · en uzun 3 sa 10 dk" in
+  Turkish), `wrapped.md` a "Coding sessions" item ("Kodlama oturumları") in the streaks
+  section, and the streak card a "42 coding sessions  longest 3h 10m" row ("42 kodlama
+  oturumu  en uzun 3 sa 10 dk"), only in spare room (it never displaces, folds or shrinks
+  anything; without room every card is unchanged). In practice the row lands on the streak
+  card only when it has no longest-break panel; the power-hour fallback only happens when
+  that card has no hour chart data (it is otherwise full).
+
 ## [1.14.0] - 2026-10-09
 
 ### Added

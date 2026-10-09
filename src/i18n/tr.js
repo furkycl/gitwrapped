@@ -40,6 +40,14 @@ const mergesText = (prs, merges, share, sep) => [
   merges > 0 ? `${num(merges)} merge commit (commit'lerin ${share} kadarı)` : '',
 ].filter(Boolean).join(sep);
 
+/** Whole minutes as a short length: "0 dk", "45 dk", "3 sa", "3 sa 10 dk". */
+const sessionLength = (minutes) => {
+  const m = Number.isSafeInteger(minutes) && minutes > 0 ? minutes : 0;
+  const h = Math.floor(m / 60);
+  if (h === 0) return `${m} dk`;
+  return m % 60 === 0 ? `${num(h)} sa` : `${num(h)} sa ${m % 60} dk`;
+};
+
 const MONTHS = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 
 export default {
@@ -216,6 +224,17 @@ export default {
     cadencePerDay: (n) => `Aktif gün başına ${dec(n)} commit`,
     cadenceRow: (n) => `Aktif günde ${dec(n)} commit`,
     cadenceEvery: (days) => (dec(days) === '1' ? 'her gün' : `${dec(days)} günde bir`),
+    sessionsRowLabel: (count) => `${num(count)} kodlama oturumu`,
+    sessionsRowShort: (count) => `${num(count)} oturum`,
+    sessionsRowValue: (count, longest) => (count === 1 ? sessionLength(longest) : `en uzun ${sessionLength(longest)}`),
+    sessionsLabel: 'Oturumlar',
+    sessionLength: (minutes) => sessionLength(minutes),
+    sessionsDescription: (count, median, longest, commits) => (count === 1
+      ? `1 kodlama oturumu, ${sessionLength(longest)} (${num(commits)} commit)`
+      : `${num(count)} kodlama oturumu, medyan ${sessionLength(median)}, en uzun ${sessionLength(longest)} (${num(commits)} commit)`),
+    sessionsValue: (count, median, longest, commits, day) => (count === 1
+      ? `1 oturum · ${sessionLength(longest)} (${num(commits)} commit, ${day})`
+      : `${num(count)} oturum · medyan ${sessionLength(median)} · en uzun ${sessionLength(longest)} (${num(commits)} commit, ${day})`),
   },
 
   activity: {
@@ -483,6 +502,7 @@ export default {
     atWindowEnd: 'dönem sonunda',
     breakLabel: 'Mola',
     cadence: 'Ritim',
+    sessions: 'Oturumlar',
     busiestDay: 'En yoğun gün',
     timezones: 'Saat dilimleri',
     timezonesValue: (n) => `${num(n)} saat dilimi`,
@@ -568,6 +588,7 @@ export default {
     windowEndStreak: 'Dönem sonundaki seri',
     longestBreak: 'En uzun mola',
     cadence: 'Ritim',
+    sessions: 'Kodlama oturumları',
     hotFiles: 'Gözde dosyalar',
     file: 'Dosya',
     topFolders: 'Gözde klasörler',

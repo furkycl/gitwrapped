@@ -18,7 +18,7 @@ const EXACT = Symbol('busFactor.exactShare');
  * ignored) behind a NUL prefix that keeps name keys apart from email keys. Names and
  * emails are already mailmapped by src/git.js.
  */
-function identityKey(c) {
+export function identityKey(c) {
   const email = typeof c?.email === 'string' ? c.email.trim().toLowerCase() : '';
   const rawName = typeof c?.author === 'string' ? c.author.replace(/\s+/g, ' ').trim() : '';
   return email || `\0${rawName.toLowerCase()}`;

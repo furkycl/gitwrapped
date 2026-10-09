@@ -16,6 +16,7 @@ import { shownLateNights } from '../stats/latenights.js';
 import { shownOfficeHours } from '../stats/officehours.js';
 import { shownWeekend, weekendPercentLabel } from '../stats/weekend.js';
 import { shownCadence } from '../stats/cadence.js';
+import { shownSessions } from '../stats/sessions.js';
 import { shownReleases } from '../stats/releases.js';
 import { scrubEmails } from '../privacy.js';
 import { personalityReason } from '../stats/personality.js';
@@ -784,6 +785,13 @@ function peakDayText(h, L) {
 }
 
 function peakHour(s, ctx) {
+  const spec = peakHourWithoutSessions(s, ctx);
+  // The coding-sessions row when the streak card has no room for it (see sessionsCard).
+  return sessionsCard(s, ctx) === 'peak-hour' ? withSessionsRow(spec, sessionsRows(s, ctx.L), ctx.L) : spec;
+}
+
+/** The power-hour card without the coding-sessions row (see peakHour, sessionsCard). */
+function peakHourWithoutSessions(s, ctx) {
   const spec = peakHourBase(s, ctx);
   // Weekday commits between 09:00 and 17:59 (stats.officeHours) as the last row, in spare
   // room only (see withRoomyRow): every chart still drawn, and with the late-nights row's
@@ -816,7 +824,7 @@ function officeHoursRow(s, L) {
 export function officeHoursOnPeak(s, ctx) {
   const row = officeHoursRow(s ?? {}, ctx.L);
   if (!row) return false;
-  const lines = peakHour(s ?? {}, ctx).lines;
+  const lines = peakHourWithoutSessions(s ?? {}, ctx).lines;
   return Array.isArray(lines) && lines.some((r) => r?.label === row.label && r?.value === row.value);
 }
 
@@ -992,6 +1000,65 @@ function windowEnd(ctx) {
 }
 
 function streak(s, ctx) {
+  const spec = streakWithoutSessions(s, ctx);
+  // Coding sessions (stats.sessions) as the last row, in spare room only (see sessionsCard).
+  return sessionsCard(s, ctx) === 'streak' ? withSessionsRow(spec, sessionsRows(s, ctx.L), ctx.L) : spec;
+}
+
+/**
+ * The coding-sessions row (stats.sessions, see shownSessions) in each form drawn whole
+ * (see rowFits), longest first: "42 coding sessions" and "longest 3h 10m", then "42
+ * sessions" with the same value, then "Sessions" and just "42" (a single session: "1
+ * coding session" and just its length, "26h 41m"). The hover text says it
+ * in words (median and the longest session's commits too). Null without a session that
+ * lasted a minute or more (shownSessions), or when even the short form would be cut.
+ */
+function sessionsRows(s, L) {
+  const r = shownSessions(s);
+  if (!r) return null;
+  const S = L.streak;
+  const description = S.sessionsDescription(r.count, r.medianMinutes, r.longest.minutes, r.longest.commits);
+  const longest = S.sessionsRowValue(r.count, r.longest.minutes);
+  const forms = [[S.sessionsRowLabel(r.count), longest], [S.sessionsRowShort(r.count), longest], [S.sessionsLabel, L.num(r.count)]];
+  const rows = forms.map(([label, value]) => ({ label, value, description })).filter((row) => rowFits(row));
+  return rows.length > 0 ? rows : null;
+}
+
+/**
+ * `spec` with the first of `rows` (see sessionsRows) that fits as its last row: room for
+ * another row (at most 6), every chart still drawn and no shrink step more than `spec`
+ * takes (see fitsLike), so no other row is moved, folded or left out and the big number
+ * and text keep their size (a flexible chart may give up some of its spare height, as for
+ * the cadence row). A card without rows yet gets its first one on the same terms. Else
+ * `spec` itself, so the card is byte-identical to one without the stat.
+ */
+function withSessionsRow(spec, rows, L) {
+  const lines = Array.isArray(spec?.lines) ? spec.lines : [];
+  if (!Array.isArray(rows) || lines.length >= MAX_ROWS || (spec.lines !== undefined && !Array.isArray(spec.lines))) return spec;
+  for (const row of rows) {
+    const next = { ...spec, lines: [...lines, row] };
+    if (fitsLike(next, spec, 0, L)) return next;
+  }
+  return spec;
+}
+
+/**
+ * Which card shows the coding-sessions row (stats.sessions): 'streak' when the streak card
+ * has spare room for it (see withSessionsRow), else 'peak-hour' when the power-hour card
+ * has (after its other rows), else null (the sessions are still in the recap, wrapped.md
+ * and stats.json). Never both, and never in place of another row.
+ */
+export function sessionsCard(s, ctx) {
+  const rows = sessionsRows(s ?? {}, ctx.L);
+  if (!rows) return null;
+  const st = streakWithoutSessions(s ?? {}, ctx);
+  if (withSessionsRow(st, rows, ctx.L) !== st) return 'streak';
+  const p = peakHourWithoutSessions(s ?? {}, ctx);
+  return withSessionsRow(p, rows, ctx.L) !== p ? 'peak-hour' : null;
+}
+
+/** The streak card without the coding-sessions row (see streak, sessionsCard). */
+function streakWithoutSessions(s, ctx) {
   const { L } = ctx;
   const S = L.streak;
   // Future-dated days (after today + 1) never make the longest streak shown (daily.js).

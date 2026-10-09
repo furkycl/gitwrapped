@@ -176,5 +176,5 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] Rewritten commits: non-merge commits whose committer date is more than 1 hour after the author date (rebased / amended / cherry-picked), count + share, as a row when there's room (never displacing), stats.json `stats.rewritten {commits, share}` or null without non-merge commits, recap and wrapped.md; en/tr; tests
 - [x] Biggest grower: the file with the largest net line growth (added − removed) across non-merge commits in the window (same ignore rules / `--exclude` / repo labels as hot files; ties → path order), as a hot-files card row when there's room (never displacing), stats.json `stats.biggestGrower {path, net, added, removed}` or null, recap and wrapped.md; en/tr; tests
 - 1.16.0 release prep (split as before):
-  - [ ] Cold audit of the 1.16 work (diff 1.15.0 release commit..main) + fix every real bug found, with tests
+  - [x] Cold audit of the 1.16 work (diff 1.15.0 release commit..main) + fix every real bug found, with tests
   - [ ] CHANGELOG 1.16.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync

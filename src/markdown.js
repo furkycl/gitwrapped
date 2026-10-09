@@ -5,7 +5,7 @@
 // part only (authorName), and email-shaped text in any repo-derived text (subjects,
 // paths, repo and contributor names) is cut out by escapeMarkdown.
 
-import { authorName, bodiesShareText, busFactorShareText, displayRepoName, folderLabel, cleanupShareText, depBumpShareText, formatDateRange, formatDay, conventionalText, emojiShareText, fixupShareText, issueRefsShareText, mergeShareText, oneTouchShareText, pctText, revertShareText, repoRows, shownDayRange, subjectLengthShareText, sizeShareText, testsShareText } from './cards/index.js';
+import { authorName, bodiesShareText, busFactorShareText, displayRepoName, folderLabel, cleanupShareText, depBumpShareText, formatDateRange, formatDay, conventionalText, emojiShareText, fixupShareText, issueRefsShareText, mergeShareText, oneTouchShareText, pctText, revertShareText, rewrittenShareText, repoRows, shownDayRange, subjectLengthShareText, sizeShareText, testsShareText } from './cards/index.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
 import { shownEmoji } from './stats/emoji.js';
@@ -19,6 +19,7 @@ import { shownFolders } from './stats/folders.js';
 import { shownTests } from './stats/tests.js';
 import { shownDocShare } from './stats/docs.js';
 import { shownOneTouch } from './stats/onetouch.js';
+import { shownRewritten } from './stats/rewritten.js';
 import { shownCoChange } from './stats/cochange.js';
 import { shownTimezones, utcLabel } from './stats/timezones.js';
 import { shownWeekend, weekendPercentLabel } from './stats/weekend.js';
@@ -163,6 +164,10 @@ const item = (label, value) => `- **${label}:** ${value}`;
  * A "Dependency bumps" section follows the issue references ("12 commits (8% of non-merge
  * commits)": the non-merge commits that only touched lockfiles or dependency manifests;
  * stats.depBumps, see stats/depbumps.js shownDepBumps) when there is at least one.
+ * A "Rewritten commits" section follows it ("12 commits (8% of non-merge commits)": the
+ * non-merge commits committed more than an hour after being authored, i.e. rebased,
+ * amended or cherry-picked; stats.rewritten, see stats/rewritten.js shownRewritten) when
+ * there is at least one.
  * Sections without data are left out (no habits / streak / hot files / languages section
  * for an empty history, no team section unless the contributors card is built, ...).
  */
@@ -463,6 +468,10 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
     // --- dependency bumps (as on the totals / messages card and the recap; only with any)
     const depBumps = shownDepBumps(stats?.depBumps);
     if (depBumps) section(M.depBumps, [escapeMarkdown(`${plural(depBumps.commits, 'commit', L)} (${L.recap.ofNonMerge(depBumpShareText(depBumps, L))})`)]);
+
+    // --- rewritten commits (as on the totals / messages card and the recap; only with any)
+    const rewritten = shownRewritten(stats?.rewritten);
+    if (rewritten) section(M.rewritten, [escapeMarkdown(`${plural(rewritten.commits, 'commit', L)} (${L.recap.ofNonMerge(rewrittenShareText(rewritten, L))})`)]);
 
     // --- personality ------------------------------------------------------------------
     const a = stats?.personality?.archetype;

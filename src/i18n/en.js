@@ -189,6 +189,16 @@ export default {
     depBumpsValue: (commits, pct) => `${plural(commits, UNITS.commit)} · ${pct}`,
     depBumpsShort: (commits, pct) => `${num(commits)} · ${pct}`,
     depBumpsDescription: (commits, pct) => `${plural(commits, UNITS.commit)} only touched lockfiles or dependency manifests (${pct} of non-merge commits)`,
+    /**
+     * The rewritten-commits row (stats.rewritten), in spare room only: last here (after the
+     * dependency bumps), or else last on the messages card: "Rewritten commits" and "5
+     * commits · 2%" (else "12 · 8%", else "Rewritten" and "12 · 8%", the first one drawn whole).
+     */
+    rewritten: 'Rewritten commits',
+    rewrittenLabelShort: 'Rewritten',
+    rewrittenValue: (commits, pct) => `${plural(commits, UNITS.commit)} · ${pct}`,
+    rewrittenShort: (commits, pct) => `${num(commits)} · ${pct}`,
+    rewrittenDescription: (commits, pct) => `${plural(commits, UNITS.commit)} ${commits === 1 ? 'was' : 'were'} committed more than an hour after being authored: rebased, amended or cherry-picked (${pct} of non-merge commits)`,
   },
 
   /**
@@ -779,6 +789,8 @@ export default {
     topIssue: (ref, commits) => `top ${ref} (${commits})`,
     /** The dependency-bumps line (stats.depBumps): label, "12 commits", then "(8% of non-merge commits)". */
     depBumps: 'Dep bumps',
+    /** The rewritten-commits line (stats.rewritten): label, "12 commits", then "(8% of non-merge commits)". */
+    rewritten: 'Rewritten',
     /**
      * The subject length line (stats.messages.subjectLength): label, "median 48 chars ·
      * 3 commits over 72" (or "· none over 72"), then "(2% of non-merge commits)" when any.
@@ -876,6 +888,8 @@ export default {
     topIssue: 'most referenced:',
     /** The dependency-bumps item (stats.depBumps): "12 commits (8% of non-merge commits)". */
     depBumps: 'Dependency bumps',
+    /** The rewritten-commits item (stats.rewritten): "12 commits (8% of non-merge commits)". */
+    rewritten: 'Rewritten commits',
     /**
      * The subject length item (stats.messages.subjectLength): "median 48 characters; 3
      * commits over 72 characters" (or "none over 72 characters"), then "(2% of non-merge

@@ -15,6 +15,7 @@ import { computeCleanups, shownCleanups } from './cleanups.js';
 import { computeIssueRefs, issueRefLabel, issueRefsInSubject, shownIssueRefs } from './issues.js';
 import { computeDepBumps, DEP_MANIFESTS, isDepPath, shownDepBumps } from './depbumps.js';
 import { computeOneTouch, shownOneTouch } from './onetouch.js';
+import { computeRewritten, isRewrittenCommit, REWRITE_GAP_MS, shownRewritten } from './rewritten.js';
 import { computeTimeHabits } from './habits.js';
 import { CADENCE_MIN_DAYS, computeCadence, medianGap, shownCadence } from './cadence.js';
 import { computeSessions, SESSION_GAP_MINUTES, sessionsOf, shownSessions } from './sessions.js';
@@ -49,6 +50,7 @@ export { computeCleanups, shownCleanups };
 export { computeIssueRefs, issueRefLabel, issueRefsInSubject, shownIssueRefs };
 export { computeDepBumps, DEP_MANIFESTS, isDepPath, shownDepBumps };
 export { computeOneTouch, shownOneTouch };
+export { computeRewritten, isRewrittenCommit, REWRITE_GAP_MS, shownRewritten };
 export { CADENCE_MIN_DAYS, computeCadence, medianGap, shownCadence };
 export { computeSessions, SESSION_GAP_MINUTES, sessionsOf, shownSessions };
 export { computeWeekend, shownWeekend, WEEKEND_DAYS, weekendCounts, weekendPercent, weekendPercentLabel };
@@ -140,6 +142,10 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * composer.json, Pipfile, pubspec.yaml, mix.exs, Podfile, flake.nix, exact basenames; Go's
  * vendor/modules.txt by path; see isDepPath) and their share of non-merge commits, `{commits, share}`, or null without a
  * non-merge commit (see depbumps.js).
+ * `rewritten` is how many non-merge commits have a committer date more than an hour after
+ * their author date (rebased, amended or cherry-picked; instants compared, commits without
+ * a committer date not counted) and their share of non-merge commits, `{commits, share}`,
+ * or null without a non-merge commit (see rewritten.js).
  * `firstCommit` is the earliest non-merge commit by author date (`{date, subject, hash}`,
  * plus `repo` in a multi-repo run; emails scrubbed from the subject, see first.js), or null.
  * `coAuthors` is how many non-merge commits have a Co-authored-by co-author other than
@@ -205,6 +211,7 @@ export function computeStats(commits = [], { today, todayComplete, team, author,
     cleanups: computeCleanups(commits),
     issueRefs: computeIssueRefs(commits),
     depBumps: computeDepBumps(commits),
+    rewritten: computeRewritten(commits),
     firstCommit: computeFirstCommit(commits),
     coAuthors: computeCoAuthors(commits),
     releases: computeReleases(commits),

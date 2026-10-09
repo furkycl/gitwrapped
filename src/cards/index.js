@@ -37,6 +37,7 @@ import { shownCleanups } from '../stats/cleanups.js';
 import { issueRefLabel, shownIssueRefs } from '../stats/issues.js';
 import { shownDepBumps } from '../stats/depbumps.js';
 import { shownOneTouch } from '../stats/onetouch.js';
+import { shownRewritten } from '../stats/rewritten.js';
 import { shownBodies, shownFixups, shownSubjectLength, shownTopWords } from '../stats/messages.js';
 import { sizeShares } from '../stats/sizes.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from '../i18n/index.js';
@@ -406,9 +407,66 @@ const MAX_ROWS = 6;
 const TOTALS_BIG_MIN = 140;
 
 function totals(s, ctx) {
+  const spec = totalsWithDepBumps(s, ctx);
+  // The rewritten-commits row (stats.rewritten) last of all, in spare room only (see rewrittenCard).
+  return rewrittenCard(s, ctx) === 'totals' ? withSpareRow(spec, rewrittenRow(s, ctx.L), ctx.L) : spec;
+}
+
+/** The totals card without the rewritten-commits row (see totals, rewrittenCard). */
+function totalsWithDepBumps(s, ctx) {
   const spec = totalsWithCleanups(s, ctx);
-  // The dependency-bumps row (stats.depBumps) last of all, in spare room only (see depBumpsCard).
+  // The dependency-bumps row (stats.depBumps) after every other row, in spare room only (see depBumpsCard).
   return depBumpsCard(s, ctx) === 'totals' ? withSpareRow(spec, depBumpsRow(s, ctx.L), ctx.L) : spec;
+}
+
+/**
+ * A rewritten-commits share (shownRewritten output) as shown: a whole percent of the
+ * non-merge commits, "<1%" when it rounds to 0, never "100%" short of every commit (see
+ * shareLabel). Used by the cards, the recap and wrapped.md, so they agree.
+ */
+export const rewrittenShareText = (r, L = EN) => shareLabel(r?.pct, r?.commits, L.pct);
+
+/**
+ * The rewritten-commits row (stats.rewritten, see shownRewritten) in its first form drawn
+ * whole (see rowFits): "Rewritten commits" and "5 commits · 2%", else "Rewritten commits"
+ * and "12 · 8%", else "Rewritten" and "12 · 8%"; null without a rewritten commit (also
+ * for `{commits: 0}`), or when even the shortest form would be cut. The hover text says
+ * it in words.
+ */
+function rewrittenRow(s, L) {
+  const r = shownRewritten(s?.rewritten);
+  if (!r) return null;
+  const T = L.totals;
+  const pct = rewrittenShareText(r, L);
+  const description = T.rewrittenDescription(r.commits, pct);
+  const forms = [
+    [T.rewritten, T.rewrittenValue(r.commits, pct)],
+    [T.rewritten, T.rewrittenShort(r.commits, pct)],
+    [T.rewrittenLabelShort, T.rewrittenShort(r.commits, pct)],
+  ];
+  return forms.map(([label, value]) => ({ label, value, description })).find((row) => rowFits(row)) ?? null;
+}
+
+/**
+ * Which card shows the rewritten-commits row: 'totals', 'messages' or null (no row, or no
+ * room on either). It is the lowest-priority row of both cards, placed after every other
+ * row (the dependency bumps and the top subject words included), in spare room only, so
+ * it never displaces a row or shrinks anything:
+ * 1. the totals card, as its last row on withSpareRow's terms (every chart drawn at the
+ *    same height);
+ * 2. else the messages card, as its last row when that fits as well as the card did
+ *    without it (see withLastRow: at most 6 rows, every chart still drawn, no extra
+ *    shrink step, nothing folded).
+ * Without the row, or without room on either, every card is byte-identical to before.
+ */
+export function rewrittenCard(s, ctx) {
+  const row = rewrittenRow(s ?? {}, ctx.L);
+  if (!row) return null;
+  const t = totalsWithDepBumps(s ?? {}, ctx);
+  if (Array.isArray(t.lines) && withSpareRow(t, row, ctx.L) !== t) return 'totals';
+  const m = messagesWithoutRewritten(s ?? {}, ctx);
+  if (Array.isArray(m.lines) && withLastRow(m, row, ctx.L) !== m) return 'messages';
+  return null;
 }
 
 /** The totals card without the dependency-bumps row (see totals, depBumpsCard). */
@@ -1921,6 +1979,13 @@ function withReverts(spec, row, { folded, unfolded, emoji }, L) {
 }
 
 function messages(s, ctx) {
+  const spec = messagesWithoutRewritten(s, ctx);
+  // The rewritten-commits row (stats.rewritten) last of all, when the totals card has no room for it (see rewrittenCard).
+  return rewrittenCard(s, ctx) === 'messages' ? withLastRow(spec, rewrittenRow(s, ctx.L), ctx.L) : spec;
+}
+
+/** The messages card without the rewritten-commits row (see messages, rewrittenCard). */
+function messagesWithoutRewritten(s, ctx) {
   const without = messagesWithoutDepBumps(s, ctx);
   // The dependency-bumps row (stats.depBumps) when the totals card has no room for it (see depBumpsCard).
   const spec = depBumpsCard(s, ctx) === 'messages' ? withLastRow(without, depBumpsRow(s, ctx.L), ctx.L) : without;
@@ -1945,7 +2010,8 @@ function messages(s, ctx) {
  * shown when it is in at least 2 subjects) is left out, as it would just repeat it. Null
  * without the stat (a stats.json from before it), without a shown word, or when no form
  * is left. The hover text names every shown word with its commits. It is the card's
- * lowest-priority row: messages() appends it after every other row (the message bodies
+ * lowest-priority row but one (only the rewritten-commits row, when the totals card has
+ * no room for it, comes after it): messages() appends it after every other row (the message bodies
  * included), on withLastRow's terms, so it never folds, shrinks or displaces anything.
  */
 function topWordsRows(s, L) {

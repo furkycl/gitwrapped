@@ -20,7 +20,7 @@ describe('buildLogArgs', () => {
     assert.equal(args[0], 'log');
     assert.ok(args.includes('--no-color'));
     assert.ok(args.includes(`--format=${LOG_FORMAT}`));
-    assert.equal(LOG_FORMAT, '%H%x1f%aN%x1f%aE%x1f%aI%x1f%P%x1f%s%n%(trailers:key=Co-authored-by,valueonly,unfold,separator=%x0a)');
+    assert.equal(LOG_FORMAT, '%H%x1f%aN%x1f%aE%x1f%aI%x1f%P%x1f%s%n%cI%n%(trailers:key=Co-authored-by,valueonly,unfold,separator=%x0a)');
     assert.ok(args.includes('--use-mailmap'));
     assert.ok(args.includes('--ignore-submodules=all'));
     assert.ok(args.includes('-z'));

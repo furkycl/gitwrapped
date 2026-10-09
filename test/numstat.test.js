@@ -85,7 +85,9 @@ describe('readCommits file stats on the fixture repo', () => {
     for (const c of commits) assert.deepEqual(c.coAuthors, []);
     // Nor message bodies: every fixture commit is a subject only.
     for (const c of commits) assert.equal(c.hasBody, false);
-    const noParents = ({ parents, coAuthors, ...c }) => c;
+    // Nor committer dates: the fixture commits are committed when they were authored.
+    for (const c of commits) assert.equal(Date.parse(c.committerDate), Date.parse(c.date));
+    const noParents = ({ parents, coAuthors, committerDate, ...c }) => c;
     assert.deepEqual(commits.map(noParents).map(instant), fx.commits.map(instant));
   });
 

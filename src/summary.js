@@ -14,7 +14,7 @@ import { epochDay } from './stats/time.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
-import { bodiesShareText, busFactorShareText, cleanupShareText, conventionalText, depBumpShareText, emojiShareText, fixupShareText, folderLabel, issueRefsShareText, mergeShareText, oneTouchShareText, revertShareText, sizeShareText, subjectLengthShareText, testsShareText } from './cards/index.js';
+import { bodiesShareText, busFactorShareText, cleanupShareText, conventionalText, depBumpShareText, emojiShareText, fixupShareText, folderLabel, issueRefsShareText, mergeShareText, oneTouchShareText, revertShareText, rewrittenShareText, sizeShareText, subjectLengthShareText, testsShareText } from './cards/index.js';
 import { shownMerges } from './stats/merges.js';
 import { shownFolders } from './stats/folders.js';
 import { shownTests } from './stats/tests.js';
@@ -25,6 +25,7 @@ import { shownReverts } from './stats/reverts.js';
 import { shownCleanups } from './stats/cleanups.js';
 import { shownDepBumps } from './stats/depbumps.js';
 import { shownOneTouch } from './stats/onetouch.js';
+import { shownRewritten } from './stats/rewritten.js';
 import { issueRefLabel, shownIssueRefs } from './stats/issues.js';
 import { shownBodies, shownFixups, shownSubjectLength, shownTopWords } from './stats/messages.js';
 import { shownFileLifecycle } from './stats/files.js';
@@ -270,6 +271,10 @@ function shortText(s, maxWidth = 48) {
  * A "Dep bumps" line shows how many non-merge commits only touched lockfiles or dependency
  * manifests and their share of non-merge commits ("12 commits (8% of non-merge commits)";
  * stats.depBumps, see stats/depbumps.js shownDepBumps) when there is at least one.
+ * A "Rewritten" line shows how many non-merge commits were committed more than an hour
+ * after being authored (rebased, amended or cherry-picked) and their share of
+ * non-merge commits ("12 commits (8% of non-merge commits)"; stats.rewritten, see
+ * stats/rewritten.js shownRewritten) when there is at least one.
  * A "Team" line (top contributor, or the --author's rank) appears exactly when the
  * contributors card is built (see hasTeamCard in stats/contributors.js), followed by a
  * "Bus factor" line ("2 people (58% of lines changed)": the fewest authors who made at
@@ -615,6 +620,11 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     // totals or messages card; only with any.
     const depBumps = shownDepBumps(stats?.depBumps);
     if (depBumps) lines.push(`  ${label(R.depBumps)}${plural(depBumps.commits, 'commit', L)} ${c('dim', `(${R.ofNonMerge(depBumpShareText(depBumps, L))})`)}`);
+
+    // Commits committed more than an hour after being authored (stats.rewritten), as on
+    // the totals or messages card; only with any.
+    const rewritten = shownRewritten(stats?.rewritten);
+    if (rewritten) lines.push(`  ${label(R.rewritten)}${plural(rewritten.commits, 'commit', L)} ${c('dim', `(${R.ofNonMerge(rewrittenShareText(rewritten, L))})`)}`);
 
     const a = stats?.personality?.archetype;
     if (a?.name) {

@@ -147,6 +147,11 @@ export default {
     depBumpsValue: (commits, pct) => `${plural(commits, UNITS.commit)} · ${pct}`,
     depBumpsShort: (commits, pct) => `${num(commits)} · ${pct}`,
     depBumpsDescription: (commits, pct) => `${plural(commits, UNITS.commit)} yalnızca kilit dosyalarını veya bağımlılık manifestlerini değiştirdi (merge dışı commit'lerin ${pct} kadarı)`,
+    rewritten: "Yeniden yazılan commit'ler",
+    rewrittenLabelShort: 'Yeniden yazılmış',
+    rewrittenValue: (commits, pct) => `${plural(commits, UNITS.commit)} · ${pct}`,
+    rewrittenShort: (commits, pct) => `${num(commits)} · ${pct}`,
+    rewrittenDescription: (commits, pct) => `${plural(commits, UNITS.commit)} yazıldıktan bir saatten fazla sonra yeniden commit'lendi: rebase, amend veya cherry-pick (merge dışı commit'lerin ${pct} kadarı)`,
   },
 
   // "<yıl> yılına göre" needs no suffix on the number itself.
@@ -572,6 +577,7 @@ export default {
     issueRefs: 'Issue atıfları',
     topIssue: (ref, commits) => `en çok ${ref} (${commits})`,
     depBumps: 'Bağımlılıklar',
+    rewritten: 'Yeniden yazılmış',
     subjects: 'Konu satırları',
     subjectLengthValue: (median, over72) => `medyan ${dec(median)} karakter · ${over72 > 0 ? `${plural(over72, UNITS.commit)} 72 üstü` : '72 üstü yok'}`,
     bodies: 'Mesaj gövdeleri',
@@ -633,6 +639,7 @@ export default {
     issueRefs: 'Issue atıfları',
     topIssue: 'en çok atıf yapılan:',
     depBumps: 'Bağımlılık güncellemeleri',
+    rewritten: "Yeniden yazılan commit'ler",
     subjectLength: 'Konu satırı uzunluğu',
     subjectLengthValue: (median, over72) => `medyan ${dec(median)} karakter; ${over72 > 0 ? `${plural(over72, UNITS.commit)} 72 karakteri aşıyor` : 'hiçbiri 72 karakteri aşmıyor'}`,
     bodies: 'Mesaj gövdeleri',

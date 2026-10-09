@@ -18,6 +18,7 @@ import { busFactorShareText, cleanupShareText, conventionalText, emojiShareText,
 import { shownMerges } from './stats/merges.js';
 import { shownFolders } from './stats/folders.js';
 import { shownTests } from './stats/tests.js';
+import { shownDocShare } from './stats/docs.js';
 import { shownCoChange } from './stats/cochange.js';
 import { shownEmoji } from './stats/emoji.js';
 import { shownReverts } from './stats/reverts.js';
@@ -191,7 +192,8 @@ function shortText(s, maxWidth = 48) {
  * stats/folders.js shownFolders) when there are two or more.
  * A "Tests" line shows the lines changed in test files and their share of all lines
  * changed ("1,234 lines (23% of lines changed)"; stats.tests, see stats/tests.js
- * shownTests) when at least one test line changed.
+ * shownTests) when at least one test line changed, then a "Docs" line the same for
+ * documentation files (stats.docShare, see stats/docs.js shownDocShare).
  * A "Co-changed" line shows the two files changed together in the most non-merge
  * commits ("src/a.js + src/b.js (12 commits)"; stats.coChange, see stats/cochange.js
  * shownCoChange) when a pair shares at least 3 commits.
@@ -400,6 +402,9 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     // on the hot-files / languages card; only when a test line changed.
     const tests = shownTests(stats?.tests);
     if (tests) lines.push(`  ${label(R.tests)}${c('cyan', plural(tests.lines, 'line', L))} ${c('dim', `(${R.ofLinesChanged(testsShareText(tests, L))})`)}`);
+    // The same for documentation files (stats.docShare); only when a doc line changed.
+    const docs = shownDocShare(stats?.docShare);
+    if (docs) lines.push(`  ${label(R.docs)}${c('cyan', plural(docs.lines, 'line', L))} ${c('dim', `(${R.ofLinesChanged(testsShareText(docs, L))})`)}`);
 
     // The two files changed together in the most non-merge commits (stats.coChange), as on
     // the hot-files card but with their paths; only when a pair shares 3+ commits.

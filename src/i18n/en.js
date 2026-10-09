@@ -326,6 +326,14 @@ export default {
     testsShort: (lines, pct) => `${num(lines)} · ${pct}`,
     testsDescription: (lines, pct) => `${plural(lines, UNITS.line)} changed in tests (${pct} of lines changed)`,
     /**
+     * The docs-share row (stats.docShare), right after the tests row, on the card that has
+     * it (else the other one), in spare room only: "Docs" and "1,234 lines · 23%".
+     */
+    docs: 'Docs',
+    docsValue: (lines, pct) => `${plural(lines, UNITS.line)} · ${pct}`,
+    docsShort: (lines, pct) => `${num(lines)} · ${pct}`,
+    docsDescription: (lines, pct) => `${plural(lines, UNITS.line)} changed in docs (${pct} of lines changed)`,
+    /**
      * The co-change row (stats.coChange), in spare room only, after the other rows:
      * "Changed together" and "a.js + b.js · 12×" (the two file names, then the commits), or
      * when that would be cut "a.js + b.js" and "12× together", else "a.js + b.js" and "12×".
@@ -621,6 +629,8 @@ export default {
     folderLines: (lines) => plural(lines, UNITS.line),
     /** The test-share line (stats.tests): label, "1,234 lines", then "(23% of lines changed)". */
     tests: 'Tests',
+    /** The docs-share line (stats.docShare): label, "1,234 lines", then "(23% of lines changed)". */
+    docs: 'Docs',
     /** The co-change line (stats.coChange): label, "src/a.js + src/b.js", then "(12 commits)" (fits labelWidth). */
     coChange: 'Co-changed',
     ofLinesChanged: (share) => `${share} of lines changed`,
@@ -727,6 +737,8 @@ export default {
     folder: 'Folder',
     /** Lines changed in test files (stats.tests): "1,234 lines (23% of lines changed)". */
     tests: 'Test lines',
+    /** Lines changed in documentation files (stats.docShare): "1,234 lines (23% of lines changed)". */
+    docs: 'Doc lines',
     /** The co-change item after the hot-files table (stats.coChange): "src/a.js + src/b.js (12 commits)". */
     coChange: 'Changed together',
     languages: 'Languages',

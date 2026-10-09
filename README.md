@@ -379,7 +379,7 @@ but it does contain commit subjects and hashes, tag names and repo-relative file
 ```json
 {
   "schemaVersion": 1,
-  "generator": { "name": "@furkycl/gitwrapped", "version": "1.13.0" },
+  "generator": { "name": "@furkycl/gitwrapped", "version": "1.14.0" },
   "repo": "my-app",
   "asOf": "2025-12-31",
   "filters": { "since": "2025-01-01", "until": "2025-12-31", "author": null, "maxCommits": 50000, "exclude": [] },
@@ -895,7 +895,7 @@ README, a PR description or release notes:
   `--author` the name part of that address ("Starring ada.");
 - the headline numbers (commits, active days, lines added / removed, files touched, files
   born / buried when any were added, deleted or renamed (", 4 renamed" with renames), the lines changed in tests and their share
-  when any test file changed; with `--year` the change since the year before), the commit size mix, the first commit and,
+  when any test file changed, the lines changed in docs and their share when any doc file changed; with `--year` the change since the year before), the commit size mix, the first commit and,
   when commits have `Co-authored-by:` trailers, how many were paired and the top co-author,
   and, when tags point at your commits, how many releases you shipped and the latest one,
   and, with any merge commit or pull request number, how many pull requests were merged and

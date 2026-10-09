@@ -193,7 +193,8 @@ describe('the hot-files card row never changes another row', () => {
     let hidden = 0;
     for (let round = 0; round < 60; round++) {
       const commits = randomHistory(rand).filter((c) => c && typeof c === 'object' && Array.isArray(c.files));
-      const s = statsOf(commits);
+      // The shrinker row may follow the grower row; leave it out so only the grower differs.
+      const s = { ...statsOf(commits), biggestShrinker: null };
       const without = { ...s, biggestGrower: null };
       for (const lang of ['en', 'tr']) {
         const L = LANGS[lang];

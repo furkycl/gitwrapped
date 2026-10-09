@@ -419,6 +419,17 @@ export default {
     growerNamed: (name) => `Grower: ${name}`,
     growerShort: (net) => `+${num(net)}`,
     growerDescription: (path, detail) => `${path} grew the most (${detail})`,
+    /**
+     * The biggest-shrinker row (stats.biggestShrinker), in spare room only, after the grower
+     * row: "Biggest shrinker" and "src/old.js · −1,234", else "Shrinker: src/…/legacy/old.js"
+     * and "−1,234" (the path middle-elided, else just its name).
+     */
+    shrinker: 'Biggest shrinker',
+    shrinkerValue: (name, net) => `${name} · −${num(net)}`,
+    shrinkerLabelShort: 'Shrinker',
+    shrinkerNamed: (name) => `Shrinker: ${name}`,
+    shrinkerShort: (net) => `−${num(net)}`,
+    shrinkerDescription: (path, detail) => `${path} shrank the most (${detail})`,
   },
 
   languages: {
@@ -749,6 +760,9 @@ export default {
     /** The biggest-grower line (stats.biggestGrower): label, "src/cli.js", then "(+1,500 / −266, net +1,234 lines)" ("(+1,234 lines)" with nothing removed). */
     grower: 'Top grower',
     growerDetail: (net, added, removed) => (removed > 0 ? `+${num(added)} / −${num(removed)}, net +${plural(net, UNITS.line)}` : `+${plural(net, UNITS.line)}`),
+    /** The biggest-shrinker line (stats.biggestShrinker): label, "src/old.js", then "(−1,500 / +266, net −1,234 lines)" ("(−1,234 lines)" with nothing added). */
+    shrinker: 'Top shrinker',
+    shrinkerDetail: (net, added, removed) => (added > 0 ? `−${num(removed)} / +${num(added)}, net −${plural(net, UNITS.line)}` : `−${plural(net, UNITS.line)}`),
     ofLinesChanged: (share) => `${share} of lines changed`,
     topLanguage: 'Top language',
     /** "(74% of lines, tied with 1 more)". */
@@ -878,6 +892,8 @@ export default {
     oneTouch: 'One-touch files',
     /** The biggest-grower item after the hot-files table (stats.biggestGrower): "src/cli.js (+1,500 / −266, net +1,234 lines)". */
     grower: 'Biggest grower',
+    /** The biggest-shrinker item after the grower item (stats.biggestShrinker): "src/old.js (−1,500 / +266, net −1,234 lines)". */
+    shrinker: 'Biggest shrinker',
     languages: 'Languages',
     language: 'Language',
     contributor: 'Contributor',

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Biggest shrinker: the mirror of the biggest grower, the file with the largest net line
+  loss (lines removed − added) over the non-merge commits in the window, over the same
+  files as the hot files (same ignore rules and `--exclude`; binary files add 0 lines; a
+  rename removes the old path's lines and adds the new one's, as for hot files;
+  repo-labelled paths with several repos; a tie goes to the path that sorts first)
+  (`stats.biggestShrinker {path, net, added, removed}`, `net` the lines lost, or null when
+  no file shrank). The hot-files card gets a "Biggest shrinker  src/old.js · −1,234" row (a
+  longer path moves into the label, "Shrinker: src/…/legacy/old.js  −1,234", shortened in
+  the middle when needed, else just the file name; "En çok küçülen" / "Küçülen: …" in
+  Turkish) after the grower row, only in spare room (it never displaces, folds or shrinks
+  anything, the grower row included); the recap gets a "Top shrinker" line ("En çok
+  küçülen") and `wrapped.md` a "Biggest shrinker" item after the grower item ("En çok
+  küçülen dosya"). Without a shrinking file, or without room, every card is unchanged.
+
 ## [1.16.0] - 2026-10-09
 
 ### Added

@@ -26,6 +26,7 @@ import { shownCleanups } from './stats/cleanups.js';
 import { shownDepBumps } from './stats/depbumps.js';
 import { shownOneTouch } from './stats/onetouch.js';
 import { shownBiggestGrower } from './stats/grower.js';
+import { shownBiggestShrinker } from './stats/shrinker.js';
 import { shownRewritten } from './stats/rewritten.js';
 import { issueRefLabel, shownIssueRefs } from './stats/issues.js';
 import { shownBodies, shownFixups, shownSubjectLength, shownTopWords } from './stats/messages.js';
@@ -208,6 +209,9 @@ function shortText(s, maxWidth = 48) {
  * A "Top grower" line shows the file with the largest net line growth over the non-merge
  * commits ("src/cli.js (+1,500 / −266, net +1,234 lines)"; stats.biggestGrower, see
  * stats/grower.js shownBiggestGrower) when a file grew.
+ * A "Top shrinker" line, its mirror, shows the file with the largest net line loss
+ * ("src/old.js (−1,500 / +266, net −1,234 lines)"; stats.biggestShrinker, see
+ * stats/shrinker.js shownBiggestShrinker) when a file shrank.
  * A "Files" line shows how many files were added and deleted, and renamed when any were
  * (stats.fileLifecycle, see stats/files.js shownFileLifecycle), when there is at least one.
  * A "Busiest day" line shows the calendar day with the most commits and its commit count
@@ -467,6 +471,10 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     // card but with its path (shortened from the start when long); only when a file grew.
     const grower = shownBiggestGrower(stats?.biggestGrower);
     if (grower) lines.push(`  ${label(R.grower)}${c('cyan', shortPath(grower.path))} ${c('dim', `(${R.growerDetail(grower.net, grower.added, grower.removed)})`)}`);
+    // The file with the largest net line loss (stats.biggestShrinker), right after it, the
+    // same way; only when a file shrank.
+    const shrinker = shownBiggestShrinker(stats?.biggestShrinker);
+    if (shrinker) lines.push(`  ${label(R.shrinker)}${c('cyan', shortPath(shrinker.path))} ${c('dim', `(${R.shrinkerDetail(shrinker.net, shrinker.added, shrinker.removed)})`)}`);
 
     // Files added, deleted and renamed in the window (stats.fileLifecycle); only when there are any.
     const lifecycle = shownFileLifecycle(stats?.fileLifecycle);

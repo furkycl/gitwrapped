@@ -131,7 +131,7 @@ describe('docs: the Turkish rows quoted are the ones drawn', () => {
   const read = (p) => readFileSync(fileURLToPath(new URL(`../${p}`, import.meta.url)), 'utf8');
   const README = read('README.md');
   const CHANGELOG = read('CHANGELOG.md');
-  const unreleased = /^## \[Unreleased\][^\n]*$([\s\S]*?)(?=^## \[)/m.exec(CHANGELOG)?.[1] ?? '';
+  const released = /^## \[1\.15\.0\][^\n]*$([\s\S]*?)(?=^## \[)/m.exec(CHANGELOG)?.[1] ?? '';
   const flat = (s) => s.replace(/\s+/g, ' ');
 
   test('sessions: 42 sessions, longest 3h 10m is drawn as "42 oturum  en uzun 3 sa 10 dk" in Turkish', () => {
@@ -139,20 +139,20 @@ describe('docs: the Turkish rows quoted are the ones drawn', () => {
     assert.equal(rowFits({ label: S.sessionsRowLabel(42), value: S.sessionsRowValue(42, 190) }), false);
     assert.equal(rowFits({ label: S.sessionsRowShort(42), value: S.sessionsRowValue(42, 190) }), true);
     assert.ok(rowFits({ label: en.streak.sessionsRowLabel(42), value: en.streak.sessionsRowValue(42, 190) }));
-    assert.ok(flat(unreleased).includes('"42 oturum en uzun 3 sa 10 dk"'));
-    assert.ok(!flat(unreleased).includes('"42 kodlama oturumu en uzun 3 sa 10 dk"'));
+    assert.ok(flat(released).includes('"42 oturum en uzun 3 sa 10 dk"'));
+    assert.ok(!flat(released).includes('"42 kodlama oturumu en uzun 3 sa 10 dk"'));
     assert.ok(!flat(README).includes('"42 kodlama oturumu en uzun 3 sa 10 dk"'));
   });
 
   test('one-touch: the README and the CHANGELOG quote the Turkish card row as drawn', () => {
     const row = `"${tr.hotFiles.oneTouch}  ${tr.hotFiles.oneTouchValue(42, '%31')}"`;
     assert.ok(README.includes(row), row);
-    assert.ok(flat(unreleased).includes(flat(row)), row);
+    assert.ok(flat(released).includes(flat(row)), row);
   });
 
   test('message bodies: the README and the CHANGELOG mention the --reference revert form', () => {
     assert.ok(flat(README).includes('`git revert --reference`'));
-    assert.ok(unreleased.includes('`--reference`'));
+    assert.ok(released.includes('`--reference`'));
   });
 });
 

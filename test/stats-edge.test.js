@@ -184,9 +184,10 @@ describe('robustness of totals and habits', () => {
     assert.equal(s.totals.authors, 50);
     assert.equal(s.totals.activeDays, Math.ceil(100_000 / 24));
     assert.equal(s.habits.byHour.reduce((a, b) => a + b, 0), 100_000);
-    // A guard against accidental quadratic work, not a benchmark: ~1s on a dev machine,
-    // but the Windows/Node 20 CI runner reached 2.1s once a dozen stats modules each made
-    // their own pass. An O(n²) regression at 100k commits would take minutes.
-    assert.ok(elapsed < 5000, `took ${elapsed.toFixed(0)}ms`);
+    // A guard against accidental quadratic work, not a benchmark: ~2.6s on a dev machine
+    // at 1.16.0, and the Windows/Node 20 CI runner reached 5.6s as more stats modules each
+    // made their own linear pass. An O(n²) regression at 100k commits would take minutes,
+    // so 15s still catches it with room for slow runners.
+    assert.ok(elapsed < 15000, `took ${elapsed.toFixed(0)}ms`);
   });
 });

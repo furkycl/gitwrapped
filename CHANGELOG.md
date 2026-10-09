@@ -22,6 +22,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   anything, the grower row included); the recap gets a "Top shrinker" line ("En çok
   küçülen") and `wrapped.md` a "Biggest shrinker" item after the grower item ("En çok
   küçülen dosya"). Without a shrinking file, or without room, every card is unchanged.
+- Bot commits: non-merge commits whose author is a bot (a name or email ending in `[bot]`,
+  such as `dependabot[bot]` or `49699333+dependabot[bot]@users.noreply.github.com`, or a
+  name starting with `dependabot`, `renovate` or `github-actions` as a word; names and
+  emails after `.mailmap`, control and format characters ignored), with their share of
+  non-merge commits and the busiest named bot (`stats.bots {commits, share, top: {name,
+  commits}}`, `top` null without a named bot commit, or null without non-merge commits;
+  bots grouped by name ignoring case and shown by their most used spelling, ties to the
+  name that sorts first, no email ever). A "Bot commits  40 commits · 12%" row ("40 · 12%", else "Bots  40 · 12%"
+  when the longer forms would be cut; "Bot commit'leri" / "Botlar" in Turkish) goes last
+  on the totals card, after the rewritten-commits row, else last on the message hall of
+  fame, only in spare room (it never displaces a row); the busiest bot is in its hover
+  text. The recap gets a "Bot commits" line ("Bot commit'leri", "· top dependabot[bot]
+  (38 commits)") and `wrapped.md` a "Bot commits" section. Without a bot commit every card
+  is unchanged.
 
 ## [1.16.0] - 2026-10-09
 

@@ -40,6 +40,7 @@ import { shownOneTouch } from '../stats/onetouch.js';
 import { shownBiggestGrower } from '../stats/grower.js';
 import { shownBiggestShrinker } from '../stats/shrinker.js';
 import { shownRewritten } from '../stats/rewritten.js';
+import { shownBots } from '../stats/bots.js';
 import { shownBodies, shownFixups, shownSubjectLength, shownTopWords } from '../stats/messages.js';
 import { sizeShares } from '../stats/sizes.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from '../i18n/index.js';
@@ -409,9 +410,66 @@ const MAX_ROWS = 6;
 const TOTALS_BIG_MIN = 140;
 
 function totals(s, ctx) {
+  const spec = totalsWithRewritten(s, ctx);
+  // The bot-commits row (stats.bots) last of all, in spare room only (see botsCard).
+  return botsCard(s, ctx) === 'totals' ? withSpareRow(spec, botsRow(s, ctx.L), ctx.L) : spec;
+}
+
+/** The totals card without the bot-commits row (see totals, botsCard). */
+function totalsWithRewritten(s, ctx) {
   const spec = totalsWithDepBumps(s, ctx);
-  // The rewritten-commits row (stats.rewritten) last of all, in spare room only (see rewrittenCard).
+  // The rewritten-commits row (stats.rewritten) after every other row, in spare room only (see rewrittenCard).
   return rewrittenCard(s, ctx) === 'totals' ? withSpareRow(spec, rewrittenRow(s, ctx.L), ctx.L) : spec;
+}
+
+/**
+ * A bot-commits share (shownBots output) as shown: a whole percent of the non-merge
+ * commits, "<1%" when it rounds to 0, never "100%" short of every commit (see
+ * shareLabel). Used by the cards, the recap and wrapped.md, so they agree.
+ */
+export const botsShareText = (b, L = EN) => shareLabel(b?.pct, b?.commits, L.pct);
+
+/**
+ * The bot-commits row (stats.bots, see shownBots) in its first form drawn whole (see
+ * rowFits): "Bot commits" and "40 commits · 12%", else "Bot commits" and "40 · 12%",
+ * else "Bots" and "40 · 12%"; null without a bot commit (also for `{commits: 0}`), or
+ * when even the shortest form would be cut. The busiest bot is only in the hover text
+ * (with it, the row would be cut even for "dependabot[bot]"), which says it in words.
+ */
+function botsRow(s, L) {
+  const b = shownBots(s?.bots);
+  if (!b) return null;
+  const T = L.totals;
+  const pct = botsShareText(b, L);
+  const description = T.botsDescription(b.commits, pct, b.top?.name ?? null, b.top?.commits ?? 0);
+  const forms = [
+    [T.bots, T.botsValue(b.commits, pct)],
+    [T.bots, T.botsShort(b.commits, pct)],
+    [T.botsLabelShort, T.botsShort(b.commits, pct)],
+  ];
+  return forms.map(([label, value]) => ({ label, value, description })).find((row) => rowFits(row)) ?? null;
+}
+
+/**
+ * Which card shows the bot-commits row: 'totals', 'messages' or null (no row, or no room
+ * on either). It is the lowest-priority row of both cards, placed after every other row
+ * (the rewritten-commits row included), in spare room only, so it never displaces a row
+ * or shrinks anything:
+ * 1. the totals card, as its last row on withSpareRow's terms (every chart drawn at the
+ *    same height);
+ * 2. else the messages card, as its last row when that fits as well as the card did
+ *    without it (see withLastRow: at most 6 rows, every chart still drawn, no extra
+ *    shrink step, nothing folded).
+ * Without the row, or without room on either, every card is byte-identical to before.
+ */
+export function botsCard(s, ctx) {
+  const row = botsRow(s ?? {}, ctx.L);
+  if (!row) return null;
+  const t = totalsWithRewritten(s ?? {}, ctx);
+  if (Array.isArray(t.lines) && withSpareRow(t, row, ctx.L) !== t) return 'totals';
+  const m = messagesWithoutBots(s ?? {}, ctx);
+  if (Array.isArray(m.lines) && withLastRow(m, row, ctx.L) !== m) return 'messages';
+  return null;
 }
 
 /** The totals card without the rewritten-commits row (see totals, rewrittenCard). */
@@ -451,7 +509,8 @@ function rewrittenRow(s, L) {
 
 /**
  * Which card shows the rewritten-commits row: 'totals', 'messages' or null (no row, or no
- * room on either). It is the lowest-priority row of both cards, placed after every other
+ * room on either). It is the lowest-priority row of both cards but one (only the
+ * bot-commits row, see botsCard, comes after it), placed after every other
  * row (the dependency bumps and the top subject words included), in spare room only, so
  * it never displaces a row or shrinks anything:
  * 1. the totals card, as its last row on withSpareRow's terms (every chart drawn at the
@@ -2032,8 +2091,15 @@ function withReverts(spec, row, { folded, unfolded, emoji }, L) {
 }
 
 function messages(s, ctx) {
+  const spec = messagesWithoutBots(s, ctx);
+  // The bot-commits row (stats.bots) last of all, when the totals card has no room for it (see botsCard).
+  return botsCard(s, ctx) === 'messages' ? withLastRow(spec, botsRow(s, ctx.L), ctx.L) : spec;
+}
+
+/** The messages card without the bot-commits row (see messages, botsCard). */
+function messagesWithoutBots(s, ctx) {
   const spec = messagesWithoutRewritten(s, ctx);
-  // The rewritten-commits row (stats.rewritten) last of all, when the totals card has no room for it (see rewrittenCard).
+  // The rewritten-commits row (stats.rewritten) after every other row, when the totals card has no room for it (see rewrittenCard).
   return rewrittenCard(s, ctx) === 'messages' ? withLastRow(spec, rewrittenRow(s, ctx.L), ctx.L) : spec;
 }
 
@@ -2063,8 +2129,8 @@ function messagesWithoutRewritten(s, ctx) {
  * shown when it is in at least 2 subjects) is left out, as it would just repeat it. Null
  * without the stat (a stats.json from before it), without a shown word, or when no form
  * is left. The hover text names every shown word with its commits. It is the card's
- * lowest-priority row but one (only the rewritten-commits row, when the totals card has
- * no room for it, comes after it): messages() appends it after every other row (the message bodies
+ * lowest-priority row but two (only the rewritten-commits and bot-commits rows, when the
+ * totals card has no room for them, come after it): messages() appends it after every other row (the message bodies
  * included), on withLastRow's terms, so it never folds, shrinks or displaces anything.
  */
 function topWordsRows(s, L) {

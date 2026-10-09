@@ -1,6 +1,6 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeBiggestCommit, computeCadence, computeCleanups, computeCoAuthors, computeCoChange, computeCommitSizes, computeFirstCommit, computeCommitTypes, computeContributors, computeEmoji, computeReverts, computeSessions, computeDaily, computeFileLifecycle, computeFolders, computeHotFiles, computeIssueRefs, computeDepBumps, computeRewritten, computeLateNights, computeLanguages, computeMerges, computeMessages, computeMonths, computeOfficeHours, computeOneTouch, computeBiggestGrower, computeBiggestShrinker, computePersonality, computeReleases, computeStats, computeStreaks, computeTests, computeDocShare, computeTimeHabits, computeTimezones, computeTotals, computeWeekend, hourLabel } from '../src/stats/index.js';
+import { computeBiggestCommit, computeCadence, computeCleanups, computeCoAuthors, computeCoChange, computeCommitSizes, computeFirstCommit, computeCommitTypes, computeContributors, computeEmoji, computeReverts, computeSessions, computeDaily, computeFileLifecycle, computeFolders, computeHotFiles, computeIssueRefs, computeDepBumps, computeRewritten, computeBots, computeLateNights, computeLanguages, computeMerges, computeMessages, computeMonths, computeOfficeHours, computeOneTouch, computeBiggestGrower, computeBiggestShrinker, computePersonality, computeReleases, computeStats, computeStreaks, computeTests, computeDocShare, computeTimeHabits, computeTimezones, computeTotals, computeWeekend, hourLabel } from '../src/stats/index.js';
 import { readCommits } from '../src/git.js';
 import { makeFixtureRepo } from '../scripts/make-fixture-repo.js';
 
@@ -147,6 +147,7 @@ describe('computeStats', () => {
       issueRefs: computeIssueRefs(commits),
       depBumps: computeDepBumps(commits),
       rewritten: computeRewritten(commits),
+      bots: computeBots(commits),
       firstCommit: computeFirstCommit(commits),
       coAuthors: computeCoAuthors(commits),
       releases: computeReleases(commits),

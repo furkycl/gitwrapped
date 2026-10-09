@@ -199,6 +199,17 @@ export default {
     rewrittenValue: (commits, pct) => `${plural(commits, UNITS.commit)} · ${pct}`,
     rewrittenShort: (commits, pct) => `${num(commits)} · ${pct}`,
     rewrittenDescription: (commits, pct) => `${plural(commits, UNITS.commit)} ${commits === 1 ? 'was' : 'were'} committed more than an hour after being authored: rebased, amended or cherry-picked (${pct} of non-merge commits)`,
+    /**
+     * The bot-commits row (stats.bots), in spare room only: last here (after the rewritten
+     * commits), or else last on the messages card: "Bot commits" and "40 commits · 12%"
+     * (else "40 · 12%", else "Bots" and "40 · 12%", the first one drawn whole); the busiest
+     * bot is in the hover text.
+     */
+    bots: 'Bot commits',
+    botsLabelShort: 'Bots',
+    botsValue: (commits, pct) => `${plural(commits, UNITS.commit)} · ${pct}`,
+    botsShort: (commits, pct) => `${num(commits)} · ${pct}`,
+    botsDescription: (commits, pct, name, top) => `${plural(commits, UNITS.commit)} by bots (${pct} of non-merge commits)${name ? `; busiest: ${name} (${plural(top, UNITS.commit)})` : ''}`,
   },
 
   /**
@@ -819,6 +830,9 @@ export default {
     depBumps: 'Dep bumps',
     /** The rewritten-commits line (stats.rewritten): label, "12 commits", then "(8% of non-merge commits)". */
     rewritten: 'Rewritten',
+    /** The bot-commits line (stats.bots): label, "40 commits", "(12% of non-merge commits)", then "· top dependabot[bot] (38 commits)". */
+    bots: 'Bot commits',
+    topBot: (name, commits) => `top ${name} (${commits})`,
     /**
      * The subject length line (stats.messages.subjectLength): label, "median 48 chars ·
      * 3 commits over 72" (or "· none over 72"), then "(2% of non-merge commits)" when any.
@@ -922,6 +936,9 @@ export default {
     depBumps: 'Dependency bumps',
     /** The rewritten-commits item (stats.rewritten): "12 commits (8% of non-merge commits)". */
     rewritten: 'Rewritten commits',
+    /** The bot-commits item (stats.bots): "40 commits (12% of non-merge commits); busiest: dependabot[bot] (38 commits)". */
+    bots: 'Bot commits',
+    topBot: 'busiest:',
     /**
      * The subject length item (stats.messages.subjectLength): "median 48 characters; 3
      * commits over 72 characters" (or "none over 72 characters"), then "(2% of non-merge

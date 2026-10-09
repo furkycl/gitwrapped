@@ -35,7 +35,10 @@ const roomy = () => [commit(1, [['src/a.js', 10, 1]]), commit(2, [['src/a.js', 5
 // Many files across folders, a test file and a co-change pair: the hot-files card is full.
 const crowded = () => Array.from({ length: 10 }, (_, i) => commit(i + 1, [['src/a.js', 5, 1], [`lib/f${i}.js`, 3, 0], ['test/x.test.js', 2, 0]]));
 
-const statsOf = (commits, opts = {}) => computeStats(commits, { today: TODAY, ...opts });
+// The biggest-grower row (stats.biggestGrower) is appended after every other hot-files card
+// row in spare room (see test/biggest-grower.test.js); these tests are about the rows before
+// it, so their stats leave it out.
+const statsOf = (commits, opts = {}) => ({ ...computeStats(commits, { today: TODAY, ...opts }), biggestGrower: null });
 const cardOpts = (lang, opts) => ({ repoName: 'demo', today: TODAY, lang, ...opts });
 const specOf = (stats, id, lang = 'en', opts = {}) => buildCardSpecs(stats, cardOpts(lang, opts)).find((c) => c.id === id).spec;
 const svgs = (stats, lang = 'en', opts = {}) => buildCards(stats, cardOpts(lang, opts)).map((c) => [c.id, c.svg]);

@@ -37,6 +37,7 @@ import { shownCleanups } from '../stats/cleanups.js';
 import { issueRefLabel, shownIssueRefs } from '../stats/issues.js';
 import { shownDepBumps } from '../stats/depbumps.js';
 import { shownOneTouch } from '../stats/onetouch.js';
+import { shownBiggestGrower } from '../stats/grower.js';
 import { shownRewritten } from '../stats/rewritten.js';
 import { shownBodies, shownFixups, shownSubjectLength, shownTopWords } from '../stats/messages.js';
 import { sizeShares } from '../stats/sizes.js';
@@ -1350,7 +1351,33 @@ function hotFiles(s, ctx) {
   // spare room only (see withRoomyRow: at most 6 rows, every chart still drawn, nothing
   // shrinking more), so it never displaces a row; else the card is exactly as before.
   const row = shownHotFiles(s).length > 0 ? oneTouchRow(s, ctx.L) : null;
-  return row ? withRoomyRow(spec, row, ctx.L) : spec;
+  const withOneTouch = row ? withRoomyRow(spec, row, ctx.L) : spec;
+  // The biggest-grower row (stats.biggestGrower) after it, on the same terms: in spare room
+  // only, after every other row, so it never displaces one; else the card is as before.
+  const grower = shownHotFiles(s).length > 0 ? growerRow(s, ctx.L) : null;
+  return grower ? withRoomyRow(withOneTouch, grower, ctx.L) : withOneTouch;
+}
+
+/**
+ * The biggest-grower row (stats.biggestGrower, see shownBiggestGrower) in its first form
+ * drawn whole (see rowFits). Names are tried in order: the path whole, then middle-elided
+ * from its first folder (elidedPathForms: "src/…/stats/index.js", the most kept folders
+ * first), then just the file name; for each name, "Biggest grower" and "<name> · +1,234"
+ * first (a row value is narrow, so this fits only short names), else "Grower: <name>" and
+ * "+1,234" (the name in the wider label). Null without a grower, or when nothing fits. The hover text has the full path and the
+ * lines added / removed.
+ */
+function growerRow(s, L) {
+  const g = shownBiggestGrower(s?.biggestGrower);
+  if (!g) return null;
+  const H = L.hotFiles;
+  const description = H.growerDescription(g.path, L.recap.growerDetail(g.net, g.added, g.removed));
+  const names = [...new Set([g.path, ...elidedPathForms(g.path), basename(g.path)])];
+  const rows = names.flatMap((name) => [
+    { label: H.grower, value: H.growerValue(name, g.net) },
+    { label: H.growerNamed(name), value: H.growerShort(g.net) },
+  ]);
+  return rows.map((r) => ({ ...r, description })).find((r) => rowFits(r)) ?? null;
 }
 
 /**

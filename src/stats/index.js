@@ -15,6 +15,7 @@ import { computeCleanups, shownCleanups } from './cleanups.js';
 import { computeIssueRefs, issueRefLabel, issueRefsInSubject, shownIssueRefs } from './issues.js';
 import { computeDepBumps, DEP_MANIFESTS, isDepPath, shownDepBumps } from './depbumps.js';
 import { computeOneTouch, shownOneTouch } from './onetouch.js';
+import { computeBiggestGrower, shownBiggestGrower } from './grower.js';
 import { computeRewritten, isRewrittenCommit, REWRITE_GAP_MS, shownRewritten } from './rewritten.js';
 import { computeTimeHabits } from './habits.js';
 import { CADENCE_MIN_DAYS, computeCadence, medianGap, shownCadence } from './cadence.js';
@@ -50,6 +51,7 @@ export { computeCleanups, shownCleanups };
 export { computeIssueRefs, issueRefLabel, issueRefsInSubject, shownIssueRefs };
 export { computeDepBumps, DEP_MANIFESTS, isDepPath, shownDepBumps };
 export { computeOneTouch, shownOneTouch };
+export { computeBiggestGrower, shownBiggestGrower };
 export { computeRewritten, isRewrittenCommit, REWRITE_GAP_MS, shownRewritten };
 export { CADENCE_MIN_DAYS, computeCadence, medianGap, shownCadence };
 export { computeSessions, SESSION_GAP_MINUTES, sessionsOf, shownSessions };
@@ -118,6 +120,10 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * their share of all changed files, `{files, share}` (the same files as hot files, counted
  * as hot files count commits; a rename is the old path plus the new one; repo-labelled
  * paths in a multi-repo run), or null without a changed file (see onetouch.js);
+ * `biggestGrower` is the file with the largest net line growth (lines added − removed over
+ * the non-merge commits), `{path, net, added, removed}` (the same files as hot files; ties
+ * to the path that sorts first; repo-labelled in a multi-repo run), or null when no file
+ * grew (see grower.js);
  * `languages` is lines / files per language (see languages.js). `biggestCommit` is the
  * non-merge commit with the most lines changed, ignored paths left out as for hot files
  * (see biggest.js), or null. `commitSizes` is how many non-merge commits are tiny (< 10
@@ -200,6 +206,7 @@ export function computeStats(commits = [], { today, todayComplete, team, author,
     docShare: computeDocShare(commits),
     coChange: computeCoChange(commits),
     oneTouch: computeOneTouch(commits),
+    biggestGrower: computeBiggestGrower(commits),
     languages: computeLanguages(commits),
     contributors: computeContributors(team ?? commits, { author, truncated: teamTruncated }),
     messages: computeMessages(commits),

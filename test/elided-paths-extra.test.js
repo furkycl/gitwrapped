@@ -34,7 +34,10 @@ const commit = (paths, repo) => {
   };
 };
 const times = (n, paths) => Array.from({ length: n }, () => commit(paths));
-const stats = (commits, opts = {}) => computeStats(commits, { today: TODAY, ...opts });
+// The biggest-grower row (stats.biggestGrower) is appended after every other hot-files card
+// row in spare room (see test/biggest-grower.test.js); these tests are about the rows before
+// it, so their stats leave it out.
+const stats = (commits, opts = {}) => ({ ...computeStats(commits, { today: TODAY, ...opts }), biggestGrower: null });
 const cardsOf = (s, lang) => buildCards(s, { repoName: 'demo', today: TODAY, lang });
 const svgOf = (s, lang, id) => cardsOf(s, lang).find((c) => c.id === id).svg;
 const hotSpec = (s, lang) => buildCardSpecs(s, { repoName: 'demo', today: TODAY, lang }).find((c) => c.id === 'hot-files').spec;

@@ -408,6 +408,17 @@ export default {
     oneTouchValue: (files, pct) => `${plural(files, UNITS.file)} · ${pct}`,
     oneTouchShort: (files, pct) => `${num(files)} · ${pct}`,
     oneTouchDescription: (files, pct) => `${plural(files, UNITS.file)} changed in just one commit (${pct} of changed files)`,
+    /**
+     * The biggest-grower row (stats.biggestGrower), in spare room only, after the one-touch
+     * row: "Biggest grower" and "src/cli.js · +1,234", else "Grower: src/…/stats/index.js"
+     * and "+1,234" (the path middle-elided, else just its name).
+     */
+    grower: 'Biggest grower',
+    growerValue: (name, net) => `${name} · +${num(net)}`,
+    growerLabelShort: 'Grower',
+    growerNamed: (name) => `Grower: ${name}`,
+    growerShort: (net) => `+${num(net)}`,
+    growerDescription: (path, detail) => `${path} grew the most (${detail})`,
   },
 
   languages: {
@@ -735,6 +746,9 @@ export default {
     /** The one-touch files line (stats.oneTouch): label, "42 files", then "(31% of changed files)". */
     oneTouch: 'One-touch',
     ofChangedFiles: (share) => `${share} of changed files`,
+    /** The biggest-grower line (stats.biggestGrower): label, "src/cli.js", then "(+1,500 / −266, net +1,234 lines)" ("(+1,234 lines)" with nothing removed). */
+    grower: 'Top grower',
+    growerDetail: (net, added, removed) => (removed > 0 ? `+${num(added)} / −${num(removed)}, net +${plural(net, UNITS.line)}` : `+${plural(net, UNITS.line)}`),
     ofLinesChanged: (share) => `${share} of lines changed`,
     topLanguage: 'Top language',
     /** "(74% of lines, tied with 1 more)". */
@@ -862,6 +876,8 @@ export default {
     coChange: 'Changed together',
     /** The one-touch files item after the hot-files table (stats.oneTouch): "42 files (31% of changed files)". */
     oneTouch: 'One-touch files',
+    /** The biggest-grower item after the hot-files table (stats.biggestGrower): "src/cli.js (+1,500 / −266, net +1,234 lines)". */
+    grower: 'Biggest grower',
     languages: 'Languages',
     language: 'Language',
     contributor: 'Contributor',

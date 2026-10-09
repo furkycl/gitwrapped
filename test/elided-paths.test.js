@@ -25,7 +25,10 @@ const commit = (i, paths) => ({
   parents: ['p'],
 });
 const times = (n, paths, from = 1) => Array.from({ length: n }, (_, k) => commit(from + k, paths));
-const stats = (commits) => computeStats(commits, { today: TODAY });
+// The biggest-grower row (stats.biggestGrower) is appended after every other hot-files card
+// row in spare room (see test/biggest-grower.test.js); these tests are about the rows before
+// it, so their stats leave it out.
+const stats = (commits) => ({ ...computeStats(commits, { today: TODAY }), biggestGrower: null });
 const cards = (s, lang) => buildCards(s, { repoName: 'demo', today: TODAY, lang });
 const svgOf = (s, lang, id) => cards(s, lang).find((c) => c.id === id).svg;
 const hotSpec = (s, lang) => buildCardSpecs(s, { repoName: 'demo', today: TODAY, lang }).find((c) => c.id === 'hot-files').spec;
@@ -261,7 +264,7 @@ describe('multi-repo: the repo label is kept', () => {
     { label: 'api', commits: [commit(1, [deep]), commit(2, [deep])] },
     { label: 'web', commits: [commit(3, ['README.md'])] },
   ]);
-  const s = computeStats(commits, { today: TODAY, repos: ['api', 'web'] });
+  const s = { ...computeStats(commits, { today: TODAY, repos: ['api', 'web'] }), biggestGrower: null };
   for (const [lang] of LANGS) {
     test(lang, () => {
       assert.equal(s.hotFiles[0].path, `api/${deep}`);
@@ -312,7 +315,7 @@ describe('audit fixes (turn 088): same-name hot files, edge cases', () => {
       { label: 'api', commits: [...times(10, ['packages/shared/core/forms/InputField.tsx']), ...times(8, ['packages/shared/web/forms/InputField.tsx'], 50)] },
       { label: 'web', commits: times(3, ['README.md'], 100) },
     ]);
-    const t = computeStats(commits, { today: TODAY, repos: ['api', 'web'] });
+    const t = { ...computeStats(commits, { today: TODAY, repos: ['api', 'web'] }), biggestGrower: null };
     for (const [lang] of LANGS) {
       const subs = subsOf(svgOf(t, lang, 'hot-files'));
       assert.ok(subs.includes('api/…/core/forms/') && subs.includes('api/…/web/forms/'), JSON.stringify(subs));
@@ -325,7 +328,7 @@ describe('audit fixes (turn 088): same-name hot files, edge cases', () => {
       { label: 'api', commits: times(10, [f]) },
       { label: 'web', commits: times(8, [f], 100) },
     ]);
-    const t = computeStats(commits, { today: TODAY, repos: ['api', 'web'] });
+    const t = { ...computeStats(commits, { today: TODAY, repos: ['api', 'web'] }), biggestGrower: null };
     for (const [lang] of LANGS) {
       const subs = subsOf(svgOf(t, lang, 'hot-files'));
       assert.ok(subs.some((x) => x.startsWith('api/')) && subs.some((x) => x.startsWith('web/')), JSON.stringify(subs));

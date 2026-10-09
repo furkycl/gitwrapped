@@ -19,6 +19,7 @@ import { shownFolders } from './stats/folders.js';
 import { shownTests } from './stats/tests.js';
 import { shownDocShare } from './stats/docs.js';
 import { shownOneTouch } from './stats/onetouch.js';
+import { shownBiggestGrower } from './stats/grower.js';
 import { shownRewritten } from './stats/rewritten.js';
 import { shownCoChange } from './stats/cochange.js';
 import { shownTimezones, utcLabel } from './stats/timezones.js';
@@ -134,7 +135,9 @@ const item = (label, value) => `- **${label}:** ${value}`;
  * commits)"; stats.coChange, see stats/cochange.js shownCoChange) when a pair shares at
  * least 3 commits, then a "One-touch files" item ("42 files (31% of changed files)": the
  * changed files exactly one non-merge commit touched; stats.oneTouch, see
- * stats/onetouch.js shownOneTouch) when there is at least one.
+ * stats/onetouch.js shownOneTouch) when there is at least one, then a "Biggest grower" item
+ * ("src/cli.js (+1,500 / −266, net +1,234 lines)": the file with the largest net line
+ * growth; stats.biggestGrower, see stats/grower.js shownBiggestGrower) when a file grew.
  * A "Bus factor" item ends the team section ("2 people (58% of lines changed)": the fewest
  * authors who made at least half of the lines changed; stats.contributors.busFactor, see
  * stats/contributors.js shownBusFactor) when there is one.
@@ -323,6 +326,10 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
     // the co-change item; only when there is at least one.
     const oneTouch = shownOneTouch(stats?.oneTouch);
     if (oneTouch) together.push(item(escapeMarkdown(M.oneTouch), escapeMarkdown(`${plural(oneTouch.files, 'file', L)} (${L.recap.ofChangedFiles(oneTouchShareText(oneTouch, L))})`)));
+    // The file with the largest net line growth (stats.biggestGrower), as in the recap, after
+    // the one-touch item; only when a file grew.
+    const grower = shownBiggestGrower(stats?.biggestGrower);
+    if (grower) together.push(item(escapeMarkdown(M.grower), `${escapeMarkdown(grower.path)} (${L.recap.growerDetail(grower.net, grower.added, grower.removed)})`));
     if (hot.length > 0) {
       section(M.hotFiles, [
         `| # | ${M.file} | ${M.commits} | ${M.lines} |`,

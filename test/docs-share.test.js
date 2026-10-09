@@ -19,7 +19,7 @@ import tr from '../src/i18n/tr.js';
 // The one-touch files row (stats.oneTouch) is the hot-files card's lowest-priority row,
 // appended after every other one (see test/one-touch.test.js); these tests are about the
 // rows before it, so their stats leave it out.
-const computeStats = (...args) => ({ ...computeAllStats(...args), oneTouch: null });
+const computeStats = (...args) => ({ ...computeAllStats(...args), oneTouch: null, biggestGrower: null });
 
 const TODAY = '2026-04-01';
 const LANGS = { en, tr };

@@ -290,7 +290,9 @@ export default {
     coChangeTimes: (commits) => `${num(commits)} kez birlikte`,
     coChangeTimesShort: (commits) => `${num(commits)}×`,
     coChangeDescription: (a, b, commits) => `${a} ve ${b}, ${num(commits)} commit'te birlikte değişti`,
-    oneTouch: "Tek commit'lik dosyalar",
+    // "Tek commit'lik dosyalar" never fits a card row next to "42 dosya · %31" (the value
+    // already says "dosya"), so the card label is the short one in every form.
+    oneTouch: "Tek commit'lik",
     oneTouchLabelShort: "Tek commit'lik",
     oneTouchValue: (files, pct) => `${plural(files, UNITS.file)} · ${pct}`,
     oneTouchShort: (files, pct) => `${num(files)} · ${pct}`,

@@ -389,6 +389,15 @@ export default {
     coChangeTimes: (commits) => `${num(commits)}× together`,
     coChangeTimesShort: (commits) => `${num(commits)}×`,
     coChangeDescription: (a, b, commits) => `${a} and ${b} changed together in ${plural(commits, UNITS.commit)}`,
+    /**
+     * The one-touch files row (stats.oneTouch), in spare room only, after every other row:
+     * "One-touch files" and "42 files · 31%", else "42 · 31%", else "One-touch" and "42 · 31%".
+     */
+    oneTouch: 'One-touch files',
+    oneTouchLabelShort: 'One-touch',
+    oneTouchValue: (files, pct) => `${plural(files, UNITS.file)} · ${pct}`,
+    oneTouchShort: (files, pct) => `${num(files)} · ${pct}`,
+    oneTouchDescription: (files, pct) => `${plural(files, UNITS.file)} changed in just one commit (${pct} of changed files)`,
   },
 
   languages: {
@@ -702,6 +711,9 @@ export default {
     docs: 'Docs',
     /** The co-change line (stats.coChange): label, "src/a.js + src/b.js", then "(12 commits)" (fits labelWidth). */
     coChange: 'Co-changed',
+    /** The one-touch files line (stats.oneTouch): label, "42 files", then "(31% of changed files)". */
+    oneTouch: 'One-touch',
+    ofChangedFiles: (share) => `${share} of changed files`,
     ofLinesChanged: (share) => `${share} of lines changed`,
     topLanguage: 'Top language',
     /** "(74% of lines, tied with 1 more)". */
@@ -822,6 +834,8 @@ export default {
     docs: 'Doc lines',
     /** The co-change item after the hot-files table (stats.coChange): "src/a.js + src/b.js (12 commits)". */
     coChange: 'Changed together',
+    /** The one-touch files item after the hot-files table (stats.oneTouch): "42 files (31% of changed files)". */
+    oneTouch: 'One-touch files',
     languages: 'Languages',
     language: 'Language',
     contributor: 'Contributor',

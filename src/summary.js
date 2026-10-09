@@ -14,7 +14,7 @@ import { epochDay } from './stats/time.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
-import { bodiesShareText, busFactorShareText, cleanupShareText, conventionalText, depBumpShareText, emojiShareText, fixupShareText, folderLabel, issueRefsShareText, mergeShareText, revertShareText, sizeShareText, subjectLengthShareText, testsShareText } from './cards/index.js';
+import { bodiesShareText, busFactorShareText, cleanupShareText, conventionalText, depBumpShareText, emojiShareText, fixupShareText, folderLabel, issueRefsShareText, mergeShareText, oneTouchShareText, revertShareText, sizeShareText, subjectLengthShareText, testsShareText } from './cards/index.js';
 import { shownMerges } from './stats/merges.js';
 import { shownFolders } from './stats/folders.js';
 import { shownTests } from './stats/tests.js';
@@ -24,6 +24,7 @@ import { shownEmoji } from './stats/emoji.js';
 import { shownReverts } from './stats/reverts.js';
 import { shownCleanups } from './stats/cleanups.js';
 import { shownDepBumps } from './stats/depbumps.js';
+import { shownOneTouch } from './stats/onetouch.js';
 import { issueRefLabel, shownIssueRefs } from './stats/issues.js';
 import { shownBodies, shownFixups, shownSubjectLength } from './stats/messages.js';
 import { shownFileLifecycle } from './stats/files.js';
@@ -199,6 +200,9 @@ function shortText(s, maxWidth = 48) {
  * A "Co-changed" line shows the two files changed together in the most non-merge
  * commits ("src/a.js + src/b.js (12 commits)"; stats.coChange, see stats/cochange.js
  * shownCoChange) when a pair shares at least 3 commits.
+ * A "One-touch" line shows how many changed files exactly one non-merge commit touched and
+ * their share of all changed files ("42 files (31% of changed files)"; stats.oneTouch, see
+ * stats/onetouch.js shownOneTouch) when there is at least one.
  * A "Files" line shows how many files were added and deleted, and renamed when any were
  * (stats.fileLifecycle, see stats/files.js shownFileLifecycle), when there is at least one.
  * A "Busiest day" line shows the calendar day with the most commits and its commit count
@@ -441,6 +445,10 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
       const [a, b] = shown.map((p) => c('cyan', p));
       lines.push(`  ${label(R.coChange)}${a} ${c('dim', '+')} ${b} ${c('dim', `(${plural(pair.commits, 'commit', L)})`)}`);
     }
+    // Files exactly one non-merge commit touched and their share of all changed files
+    // (stats.oneTouch), as on the hot-files card; only when there is at least one.
+    const oneTouch = shownOneTouch(stats?.oneTouch);
+    if (oneTouch) lines.push(`  ${label(R.oneTouch)}${c('cyan', plural(oneTouch.files, 'file', L))} ${c('dim', `(${R.ofChangedFiles(oneTouchShareText(oneTouch, L))})`)}`);
 
     // Files added, deleted and renamed in the window (stats.fileLifecycle); only when there are any.
     const lifecycle = shownFileLifecycle(stats?.fileLifecycle);

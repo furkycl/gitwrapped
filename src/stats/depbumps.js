@@ -57,6 +57,17 @@ export function isDepPath(path) {
 }
 
 /**
+ * Whether commit `c` (not checked for being a merge) is a dependency bump: it touched at
+ * least one file, every one of them a lockfile or dependency manifest (see isDepPath, on
+ * the repo-relative path, see repoRelativePath). Non-objects → false; never throws.
+ */
+export function isDepBumpCommit(c) {
+  if (!c || typeof c !== 'object') return false;
+  const files = Array.isArray(c.files) ? c.files : [];
+  return files.length > 0 && files.every((f) => f && typeof f === 'object' && isDepPath(repoRelativePath(c, f.path)));
+}
+
+/**
  * stats.depBumps (shape from src/git.js readCommits): `{commits, share}`, or null when
  * there is no non-merge commit (nothing to take a share of; as stats.tests and
  * stats.docShare are null without a changed line). `{commits: 0, share: 0}` when there are
@@ -80,8 +91,7 @@ export function computeDepBumps(commits) {
   for (const c of Array.isArray(commits) ? commits : []) {
     if (!c || typeof c !== 'object' || isMergeCommit(c)) continue;
     total += 1;
-    const files = Array.isArray(c.files) ? c.files : [];
-    if (files.length > 0 && files.every((f) => f && typeof f === 'object' && isDepPath(repoRelativePath(c, f.path)))) bumps += 1;
+    if (isDepBumpCommit(c)) bumps += 1;
   }
   if (total === 0) return null;
   const share = Math.min(Math.round((bumps / total) * 1000) / 1000, bumps < total ? 0.999 : 1);

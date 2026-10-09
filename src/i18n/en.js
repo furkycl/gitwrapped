@@ -535,6 +535,20 @@ export default {
      */
     fixupsValue: (value, count) => `${value} · ${num(count)} fixup!`,
     /**
+     * The typo-fixes row (stats.messages.typos), in spare room only, right after the
+     * fix / wip / oops row(s): "Typo fixes" and "4 commits · 3%" (else "4 · 3%", else
+     * "Typos" and "4 · 3%"); when no form fits there, a "· 4 typos" segment after the
+     * "fix" count ("12 · 4 typos", "· 1 typo"; `short` asks for a shorter form, the same here),
+     * only when the row has no "· 3 fixup!" segment. Its hover text says it in words.
+     */
+    typosTitle: 'Typo fixes',
+    typosShortTitle: 'Typos',
+    typosValue: (count, pct) => `${plural(count, UNITS.commit)} · ${pct}`,
+    typosShort: (count, pct) => `${num(count)} · ${pct}`,
+    // `_short` (a shorter form, see tr) is not needed: "· 4 typos" is already short.
+    typosSegment: (value, count, _short) => `${value} · ${plural(count, ['typo', 'typos'])}`,
+    typosDescription: (count, pct) => `${plural(count, UNITS.commit)} ${count === 1 ? 'fixes' : 'fix'} a typo or spelling mistake (${pct} of non-merge commits)`,
+    /**
      * The issue references row (stats.issueRefs), in spare room only, after every other
      * row: "Issue refs (top #128 ×9)" and "42 · 12%" (the count and its share of non-merge
      * commits), else "Issue refs" and "42 · 12% (#128 ×9)", else "Issue refs" and
@@ -817,6 +831,8 @@ export default {
     reverts: 'Reverts',
     /** The fixups line (stats.messages.fixups): label, "3 commits", then "(2% of non-merge commits)". */
     fixups: 'Fixups',
+    /** The typo-fixes line (stats.messages.typos): label, "4 commits", then "(3% of non-merge commits)". */
+    typos: 'Typo fixes',
     /**
      * The cleanups line (stats.cleanups): label, "12 commits", "(8% of non-merge commits)",
      * then "· biggest "drop the old parser" (−4,210 lines · Mar 3, 2026)" when known.
@@ -923,6 +939,8 @@ export default {
     reverts: 'Reverts',
     /** The fixups item (stats.messages.fixups): "3 commits (2% of non-merge commits)". */
     fixups: 'Fixup commits',
+    /** The typo-fixes item (stats.messages.typos): "4 commits (3% of non-merge commits)". */
+    typos: 'Typo fixes',
     /**
      * The cleanups item (stats.cleanups): "12 commits (8% of non-merge commits); biggest:
      * “drop the old parser” · −4,210 lines (Mar 3, 2026)".

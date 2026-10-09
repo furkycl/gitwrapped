@@ -41,7 +41,7 @@ import { shownBiggestGrower } from '../stats/grower.js';
 import { shownBiggestShrinker } from '../stats/shrinker.js';
 import { shownRewritten } from '../stats/rewritten.js';
 import { shownBots } from '../stats/bots.js';
-import { shownBodies, shownFixups, shownSubjectLength, shownTopWords } from '../stats/messages.js';
+import { shownBodies, shownFixups, shownSubjectLength, shownTopWords, shownTypos } from '../stats/messages.js';
 import { sizeShares } from '../stats/sizes.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from '../i18n/index.js';
 import { DEFAULT_COLOR_THEME, isColorTheme } from './themes.js';
@@ -2091,9 +2091,79 @@ function withReverts(spec, row, { folded, unfolded, emoji }, L) {
 }
 
 function messages(s, ctx) {
-  const spec = messagesWithoutBots(s, ctx);
+  const without = messagesWithoutBots(s, ctx);
   // The bot-commits row (stats.bots) last of all, when the totals card has no room for it (see botsCard).
-  return botsCard(s, ctx) === 'messages' ? withLastRow(spec, botsRow(s, ctx.L), ctx.L) : spec;
+  const spec = botsCard(s, ctx) === 'messages' ? withLastRow(without, botsRow(s, ctx.L), ctx.L) : without;
+  // The typo fixes (stats.messages.typos) after every other row is placed, but drawn right
+  // after the fix / wip / oops row(s), in spare room only (see withTypos).
+  return withTypos(spec, s, ctx.L);
+}
+
+/**
+ * A typo-fixes share (stats/messages.js shownTypos output) as shown: a whole percent of
+ * the non-merge commits, "<1%" when it rounds to 0, never "100%" short of every commit
+ * (see shareLabel). Used by the messages card, the recap and wrapped.md, so they agree.
+ */
+export const typosShareText = (t, L = EN) => shareLabel(t?.pct, t?.commits, L.pct);
+
+/**
+ * The messages card's typo-fixes row (stats.messages.typos, see shownTypos) in each form
+ * drawn whole (see rowFits), longest first: "Typo fixes" and "4 commits · 3%", then
+ * "Typo fixes" and "4 · 3%", then "Typos" and "4 · 3%". Null without a typo fix (also for
+ * `{commits: 0}` or a stats.json from before the stat), or when every form would be cut.
+ * The hover text says it in words.
+ */
+function typosRows(s, L) {
+  const t = shownTypos(s?.messages?.typos);
+  if (!t) return null;
+  const M = L.messages;
+  const pct = typosShareText(t, L);
+  const description = M.typosDescription(t.commits, pct);
+  const forms = [
+    [M.typosTitle, M.typosValue(t.commits, pct)],
+    [M.typosTitle, M.typosShort(t.commits, pct)],
+    [M.typosShortTitle, M.typosShort(t.commits, pct)],
+  ];
+  const rows = forms.map(([label, value]) => ({ label, value, description })).filter((row) => rowFits(row));
+  return rows.length > 0 ? rows : null;
+}
+
+/**
+ * The finished messages card `spec` with the typo fixes (stats.messages.typos), placed
+ * after every other row is (so it is the card's lowest priority and never displaces,
+ * folds or shrinks anything), in the first of these that fits as well as `spec` did (see
+ * fitsLike: at most 6 rows, every chart still drawn, nothing shrinking more):
+ * 1. a row (see typosRows, its longest form that fits) right after the "oops" row, or
+ *    after the folded "fix" / "wip" / "oops" row; the rows after it move down;
+ * 2. else a "· 4 typos" segment after the "fix" row's value ("12 · 4 typos"; its long
+ *    form, else its short one, the first drawn whole), only on a plain "fix" row: when it has a "· 3 fixup!"
+ *    segment, that segment wins (the two never fit on one row together).
+ * Without a counter row on the card (no subjects, or the emoji row took its place), without
+ * a typo fix, or without room, `spec` itself (byte-identical to before).
+ */
+function withTypos(spec, s, L) {
+  if (!Array.isArray(spec.lines)) return spec;
+  const t = shownTypos(s?.messages?.typos);
+  if (!t) return spec;
+  const M = L.messages;
+  const after = spec.lines.findIndex((r) => r?.label === M.oopsCommits || r?.label === M.counterCommits);
+  if (after < 0) return spec;
+  for (const row of typosRows(s, L) ?? []) {
+    const next = { ...spec, lines: [...spec.lines.slice(0, after + 1), row, ...spec.lines.slice(after + 1)] };
+    if (fitsLike(next, spec, 0, L)) return next;
+  }
+  // The segment only goes on a plain "fix" row: a "· 3 fixup!" segment wins (both never
+  // fit on one row).
+  const at = spec.lines.findIndex((r) => r?.label === M.fixCommits);
+  if (at < 0 || spec.lines[at].value !== L.num(s.messages.counts?.fix)) return spec;
+  const fix = spec.lines[at];
+  for (const value of new Set([M.typosSegment(fix.value, t.commits, false), M.typosSegment(fix.value, t.commits, true)])) {
+    const segment = { ...fix, value };
+    if (!rowFits(segment)) continue;
+    const next = { ...spec, lines: spec.lines.map((r, i) => (i === at ? segment : r)) };
+    if (fitsLike(next, spec, 0, L)) return next;
+  }
+  return spec;
 }
 
 /** The messages card without the bot-commits row (see messages, botsCard). */

@@ -29,13 +29,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   non-merge commits and the busiest named bot (`stats.bots {commits, share, top: {name,
   commits}}`, `top` null without a named bot commit, or null without non-merge commits;
   bots grouped by name ignoring case and shown by their most used spelling, ties to the
-  name that sorts first, no email ever). A "Bot commits  40 commits · 12%" row ("40 · 12%", else "Bots  40 · 12%"
-  when the longer forms would be cut; "Bot commit'leri" / "Botlar" in Turkish) goes last
-  on the totals card, after the rewritten-commits row, else last on the message hall of
-  fame, only in spare room (it never displaces a row); the busiest bot is in its hover
-  text. The recap gets a "Bot commits" line ("Bot commit'leri", "· top dependabot[bot]
-  (38 commits)") and `wrapped.md` a "Bot commits" section. Without a bot commit every card
-  is unchanged.
+  name that sorts first, no email ever). A "Bot commits  40 commits · 12%" row ("40 ·
+  12%", else "Bots  40 · 12%" when the longer forms would be cut; "Bot commit'leri" /
+  "Botlar" in Turkish) goes last on the totals card, after the rewritten-commits row,
+  else last on the message hall of fame, only in spare room (it never displaces a row);
+  the busiest bot is in its hover text. The recap gets a "Bot commits" line ("Bot
+  commit'leri", "· top dependabot[bot] (38 commits)") and `wrapped.md` a "Bot commits"
+  section. Without a bot commit every card is unchanged.
+- Typo fixes: non-merge commits whose subject mentions a typo or spelling fix (`typo`,
+  `typos`, `spelling(s)`, `misspell…` / `misspelt`, Turkish `yazım` / `yazim`; whole
+  words with Unicode-aware boundaries, any letter case, dotted `İ` read as `i`; URLs and
+  email addresses cut first, and a word in a path, package, file or domain name, such as
+  `crate-ci/typos`, `typos.toml` or `example.com/typo`, does not count; dependency bumps
+  never count; each commit once), with their share of non-merge commits
+  (`stats.messages.typos {commits, share}`, `{commits: 0, share: 0}` without any). The
+  message hall of fame gets a "Typo fixes  4 commits · 3%" row ("4 · 3%", else
+  "Typos  4 · 3%"; "Yazım düzeltmeleri" / "Yazım düzeltme" in Turkish) right after the
+  fix / wip / oops row(s), placed after every other row and only in spare room, else a
+  "· 4 typos" segment on a plain "fix" row ("· 4 yazım düz.", else "· 4 yazım") when that
+  is drawn whole (a "· 3 fixup!" segment wins); it never displaces anything. The recap
+  gets a "Typo fixes" line ("Yazım düzeltme") and `wrapped.md` a "Typo fixes" section
+  ("Yazım düzeltmeleri"). Without a typo fix every card is unchanged.
 
 ## [1.16.0] - 2026-10-09
 

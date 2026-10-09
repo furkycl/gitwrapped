@@ -22,6 +22,9 @@ const LOCKFILES = new Set([
   'uv.lock',
 ]);
 
+/** Whether `name` (a file's basename) is a lockfile (exact, case-sensitive; see LOCKFILES). */
+export const isLockfileName = (name) => typeof name === 'string' && LOCKFILES.has(name);
+
 /** Dependency / tool cache directories: unambiguous, matched at any depth. */
 const ALWAYS_IGNORED_DIRS = new Set([
   'node_modules',

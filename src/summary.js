@@ -14,7 +14,7 @@ import { epochDay } from './stats/time.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
-import { busFactorShareText, cleanupShareText, conventionalText, emojiShareText, fixupShareText, folderLabel, issueRefsShareText, mergeShareText, revertShareText, sizeShareText, testsShareText } from './cards/index.js';
+import { busFactorShareText, cleanupShareText, conventionalText, depBumpShareText, emojiShareText, fixupShareText, folderLabel, issueRefsShareText, mergeShareText, revertShareText, sizeShareText, testsShareText } from './cards/index.js';
 import { shownMerges } from './stats/merges.js';
 import { shownFolders } from './stats/folders.js';
 import { shownTests } from './stats/tests.js';
@@ -23,6 +23,7 @@ import { shownCoChange } from './stats/cochange.js';
 import { shownEmoji } from './stats/emoji.js';
 import { shownReverts } from './stats/reverts.js';
 import { shownCleanups } from './stats/cleanups.js';
+import { shownDepBumps } from './stats/depbumps.js';
 import { issueRefLabel, shownIssueRefs } from './stats/issues.js';
 import { shownFixups } from './stats/messages.js';
 import { shownFileLifecycle } from './stats/files.js';
@@ -244,6 +245,9 @@ function shortText(s, maxWidth = 48) {
  * their share of non-merge commits and the most referenced issue ("42 commits (12% of
  * non-merge commits) · top #128 (9 commits)"; stats.issueRefs, see stats/issues.js
  * shownIssueRefs) when there is at least one.
+ * A "Dep bumps" line shows how many non-merge commits only touched lockfiles or dependency
+ * manifests and their share of non-merge commits ("12 commits (8% of non-merge commits)";
+ * stats.depBumps, see stats/depbumps.js shownDepBumps) when there is at least one.
  * A "Team" line (top contributor, or the --author's rank) appears exactly when the
  * contributors card is built (see hasTeamCard in stats/contributors.js), followed by a
  * "Bus factor" line ("2 people (58% of lines changed)": the fewest authors who made at
@@ -550,6 +554,11 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
       const top = t ? ` ${c('dim', '·')} ${R.topIssue(c('cyan', shortText(issueRefLabel(t), 40)), plural(t.commits, 'commit', L))}` : '';
       lines.push(`  ${label(R.issueRefs)}${plural(issues.commits, 'commit', L)} ${c('dim', `(${R.ofNonMerge(issueRefsShareText(issues, L))})`)}${top}`);
     }
+
+    // Commits that only touched lockfiles / dependency manifests (stats.depBumps), as on the
+    // totals or messages card; only with any.
+    const depBumps = shownDepBumps(stats?.depBumps);
+    if (depBumps) lines.push(`  ${label(R.depBumps)}${plural(depBumps.commits, 'commit', L)} ${c('dim', `(${R.ofNonMerge(depBumpShareText(depBumps, L))})`)}`);
 
     const a = stats?.personality?.archetype;
     if (a?.name) {

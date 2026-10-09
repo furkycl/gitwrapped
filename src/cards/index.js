@@ -34,6 +34,7 @@ import { shownDocShare } from '../stats/docs.js';
 import { shownCoChange } from '../stats/cochange.js';
 import { shownCleanups } from '../stats/cleanups.js';
 import { issueRefLabel, shownIssueRefs } from '../stats/issues.js';
+import { shownDepBumps } from '../stats/depbumps.js';
 import { shownFixups } from '../stats/messages.js';
 import { sizeShares } from '../stats/sizes.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from '../i18n/index.js';
@@ -403,10 +404,73 @@ const MAX_ROWS = 6;
 const TOTALS_BIG_MIN = 140;
 
 function totals(s, ctx) {
+  const spec = totalsWithCleanups(s, ctx);
+  // The dependency-bumps row (stats.depBumps) last of all, in spare room only (see depBumpsCard).
+  return depBumpsCard(s, ctx) === 'totals' ? withSpareRow(spec, depBumpsRow(s, ctx.L), ctx.L) : spec;
+}
+
+/** The totals card without the dependency-bumps row (see totals, depBumpsCard). */
+function totalsWithCleanups(s, ctx) {
   // The cleanup rows (stats.cleanups) go here or on the messages card, never both (see
   // cleanupsPlacement); without them the card is exactly totalsBase.
   const place = cleanupsPlacement(s, ctx);
   return place?.card === 'totals' ? place.spec : totalsBase(s, ctx);
+}
+
+/**
+ * A dependency-bumps share (shownDepBumps output) as shown: a whole percent of the
+ * non-merge commits, "<1%" when it rounds to 0, never "100%" short of every commit (see
+ * shareLabel). Used by the cards, the recap and wrapped.md, so they agree.
+ */
+export const depBumpShareText = (d, L = EN) => shareLabel(d?.pct, d?.commits, L.pct);
+
+/**
+ * The dependency-bumps row (stats.depBumps, see shownDepBumps) in its first form drawn
+ * whole (see rowFits): "Dependency bumps" and "12 commits · 8%", else "Dependency bumps"
+ * and "12 · 8%", else "Dep bumps" and "12 · 8%"; null without a dependency bump (also for
+ * `{commits: 0}`), or when even the shortest form would be cut. The hover text says it in words.
+ */
+function depBumpsRow(s, L) {
+  const d = shownDepBumps(s?.depBumps);
+  if (!d) return null;
+  const T = L.totals;
+  const pct = depBumpShareText(d, L);
+  const description = T.depBumpsDescription(d.commits, pct);
+  const forms = [
+    [T.depBumps, T.depBumpsValue(d.commits, pct)],
+    [T.depBumps, T.depBumpsShort(d.commits, pct)],
+    [T.depBumpsLabelShort, T.depBumpsShort(d.commits, pct)],
+  ];
+  return forms.map(([label, value]) => ({ label, value, description })).find((row) => rowFits(row)) ?? null;
+}
+
+/**
+ * Which card shows the dependency-bumps row: 'totals', 'messages' or null (no row, or no
+ * room on either). It is the lowest-priority row of both: placed after every other row
+ * (the cleanup, merges and issue-reference rows included), in spare room only, so it never
+ * displaces a row or shrinks anything:
+ * 1. the totals card, as its last row on withSpareRow's terms (every chart drawn at the
+ *    same height);
+ * 2. else the messages card, as its last row when that fits as well as the card did
+ *    without it (see fitsLike: at most 6 rows, every chart still drawn, no extra shrink
+ *    step, nothing folded).
+ * Without the row, or without room on either, every card is byte-identical to before.
+ */
+export function depBumpsCard(s, ctx) {
+  const row = depBumpsRow(s ?? {}, ctx.L);
+  if (!row) return null;
+  const t = totalsWithCleanups(s ?? {}, ctx);
+  if (Array.isArray(t.lines) && withSpareRow(t, row, ctx.L) !== t) return 'totals';
+  const m = messagesWithoutDepBumps(s ?? {}, ctx);
+  if (Array.isArray(m.lines) && withLastDepBumps(m, row, ctx.L) !== m) return 'messages';
+  return null;
+}
+
+/** The messages card `spec` with the dependency-bumps `row` as its last row when that fits as well as `spec` (see fitsLike, no extra shrink step), else `spec` itself. */
+function withLastDepBumps(spec, row, L) {
+  if (!Array.isArray(spec.lines) || spec.lines.length >= MAX_ROWS) return spec;
+  const next = { ...spec, lines: [...spec.lines, row] };
+  return fitsLike(next, spec, 0, L) ? next : spec;
 }
 
 /** The totals card without the cleanup rows. */
@@ -1752,6 +1816,13 @@ function withReverts(spec, row, { folded, unfolded, emoji }, L) {
 }
 
 function messages(s, ctx) {
+  const spec = messagesWithoutDepBumps(s, ctx);
+  // The dependency-bumps row (stats.depBumps) when the totals card has no room for it (see depBumpsCard).
+  return depBumpsCard(s, ctx) === 'messages' ? withLastDepBumps(spec, depBumpsRow(s, ctx.L), ctx.L) : spec;
+}
+
+/** The messages card without the dependency-bumps row (see messages, depBumpsCard). */
+function messagesWithoutDepBumps(s, ctx) {
   // The cleanup rows (stats.cleanups) go here or on the totals card, never both (see
   // cleanupsPlacement); without them the card is exactly messagesBase's.
   const place = cleanupsPlacement(s, ctx);

@@ -1,6 +1,6 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeBiggestCommit, computeCadence, computeCleanups, computeCoAuthors, computeCoChange, computeCommitSizes, computeFirstCommit, computeCommitTypes, computeContributors, computeEmoji, computeReverts, computeDaily, computeFileLifecycle, computeFolders, computeHotFiles, computeIssueRefs, computeLateNights, computeLanguages, computeMerges, computeMessages, computeMonths, computeOfficeHours, computePersonality, computeReleases, computeStats, computeStreaks, computeTests, computeDocShare, computeTimeHabits, computeTimezones, computeTotals, computeWeekend, hourLabel } from '../src/stats/index.js';
+import { computeBiggestCommit, computeCadence, computeCleanups, computeCoAuthors, computeCoChange, computeCommitSizes, computeFirstCommit, computeCommitTypes, computeContributors, computeEmoji, computeReverts, computeDaily, computeFileLifecycle, computeFolders, computeHotFiles, computeIssueRefs, computeDepBumps, computeLateNights, computeLanguages, computeMerges, computeMessages, computeMonths, computeOfficeHours, computePersonality, computeReleases, computeStats, computeStreaks, computeTests, computeDocShare, computeTimeHabits, computeTimezones, computeTotals, computeWeekend, hourLabel } from '../src/stats/index.js';
 import { readCommits } from '../src/git.js';
 import { makeFixtureRepo } from '../scripts/make-fixture-repo.js';
 
@@ -141,6 +141,7 @@ describe('computeStats', () => {
       reverts: computeReverts(commits),
       cleanups: computeCleanups(commits),
       issueRefs: computeIssueRefs(commits),
+      depBumps: computeDepBumps(commits),
       firstCommit: computeFirstCommit(commits),
       coAuthors: computeCoAuthors(commits),
       releases: computeReleases(commits),

@@ -1,6 +1,7 @@
 import { scrubEmails } from '../privacy.js';
 import { localParts } from './time.js';
 import { stripLeadingEmoji } from './types.js';
+import { isDepBumpCommit } from './depbumps.js';
 
 /** Words ignored by topWord: English filler, conventional-commit types, and the words
  * that have their own counters (fix / wip / oops families). Words shorter than 3 code
@@ -25,6 +26,46 @@ const FIXUP = /^(?:fixup|squash|amend)! /u;
 const EXACT = Symbol('messages.fixups.exactShare');
 /** The non-enumerable key computeMessages keeps the exact (unrounded) over-72 share under (see shownSubjectLength). */
 const EXACT_OVER = Symbol('messages.subjectLength.exactShare');
+/** The non-enumerable key computeMessages keeps the exact (unrounded) typo-fix share under (see shownTypos). */
+const EXACT_TYPOS = Symbol('messages.typos.exactShare');
+/**
+ * A typo / spelling fix, as a whole word (Unicode-aware boundaries, combining marks
+ * included, so "typography", "typology" or "typó" do not match), case-insensitive:
+ * "typo", "typos", "spelling(s)", "misspell…" (misspell, misspelled, misspelling(s),
+ * misspells, misspelt) and Turkish "yazım" (also as "yazim" / "YAZIM"; no suffix, so
+ * "test yazımı", "writing of the tests", is not one). Hyphens and apostrophes are
+ * boundaries ("typo-fix", "fix-typo", "typo'yu"). A word right after a "/", or right
+ * before a "/" or a "." followed by a letter or digit, is part of a path, package, file
+ * or domain name ("crate-ci/typos", "typos.toml", "example.com/typo") and does not count;
+ * a sentence-final "typo." does. Dotted "İ" and "i" + U+0307 are read as "i" first (see
+ * typoIn), so "SPELLİNG" and "YAZİM" count.
+ */
+const TYPO = /(?<![\p{L}\p{M}\p{N}_/])(?:typos?|spellings?|misspell\p{L}*|misspelt|yaz[ıi]m)(?![\p{L}\p{M}\p{N}_/]|\.[\p{L}\p{N}])/iu;
+/** URLs (`scheme://…`, `www.…`) cut before TYPO is tried, as subjectWords cuts them (see NOT_WORDS). */
+const URLS = /(?<![\p{L}\p{N}_+.-])[a-z][a-z0-9+.-]*:\/\/\S*|(?<![\p{L}\p{N}_])www\.\S*/giu;
+
+/** Dotted capital I, or "i" with a combining dot above: read as "i" (Turkish keyboards upper-case "i" to "İ"). */
+const DOTTED_I = /İ|i\u0307/gu;
+
+/**
+ * Whether an already email-scrubbed subject (see scrubEmails) mentions a typo / spelling
+ * fix (see TYPO): NFC-normalized, URLs cut, dotted "İ" / "i̇" read as "i", then TYPO.
+ */
+function typoIn(scrubbed) {
+  return TYPO.test(scrubbed.normalize('NFC').replace(URLS, ' ').replace(DOTTED_I, 'i'));
+}
+
+/**
+ * Whether a commit subject mentions a typo / spelling fix (see TYPO): the subject
+ * NFC-normalized, email-shaped text (see scrubEmails) and URLs cut first, so
+ * "docs: link https://x.io/typo" or "typo@x.io" is not one. Non-strings → false.
+ * computeMessages also skips dependency bumps (see isDepBumpCommit in depbumps.js).
+ */
+export function isTypoFixSubject(subject) {
+  if (typeof subject !== 'string') return false;
+  return typoIn(scrubEmails(subject));
+}
+
 /** The subject length git's own docs (and most style guides) suggest staying within. */
 export const SUBJECT_LIMIT = 72;
 /** The non-enumerable key computeMessages keeps the exact (unrounded) body share under (see shownBodies). */
@@ -300,7 +341,7 @@ export function shownTopWords(stat) {
  * one entry in `parents`; for commits without a `parents` array, subjects starting "Merge
  * branch / branches / pull request / remote-tracking branch / tag / commit" or "Merge
  * '...' into") are skipped by every field.
- * Returns `{shortest, longest, topWord, counts: {fix, wip, oops}, averageLength, fixups, subjectLength, bodies, topWords}`:
+ * Returns `{shortest, longest, topWord, counts: {fix, wip, oops}, typos, averageLength, fixups, subjectLength, bodies, topWords}`:
  * - shortest / longest: `{subject, hash, length}` (length in Unicode code points) or null
  *   when no commit has a non-empty subject. Ties go to the earliest commit by date;
  *   commits with an unparseable date come after dated ones; then input order.
@@ -313,6 +354,12 @@ export function shownTopWords(stat) {
  *   fix — fix/fixes/fixed/fixing, optionally prefixed hot/bug (hotfix, bugfixes);
  *   wip — wip; oops — oops, ooops, oopss... (not "ops"). Word boundaries are Unicode-aware
  *   ("préfix" is not a fix). Each commit counts at most once per category.
+ * - typos: `{commits, share}`: how many non-merge commits have a subject that mentions a
+ *   typo / spelling fix (see isTypoFixSubject: "typo", "typos", "spelling", "misspell…",
+ *   Turkish "yazım", as whole words, case-insensitive, URLs and email addresses cut
+ *   first), each commit once, and their share of every non-merge commit, rounded as
+ *   `fixups.share`; `{commits: 0, share: 0}` without any (also without a non-merge
+ *   commit). The exact ratio rides along non-enumerably for shownTypos.
  * - averageLength: mean length (code points) of non-empty subjects, rounded to 1 decimal;
  *   0 when there are none.
  * - fixups: `{commits, share}`: how many non-merge commits have an autosquash subject
@@ -359,14 +406,21 @@ export function computeMessages(commits) {
   const entries = [];
   let nonMerge = 0;
   let fixups = 0;
+  let typos = 0;
   let bodies = 0;
   let known = 0;
   const lengths = [];
   commits.forEach((c, index) => {
     if (isMergeCommit(c)) return;
+    // Email-shaped text is cut first (see scrubEmails), so no field (the shown subjects,
+    // their lengths, the top word, the typo fixes) is ever built from an address.
+    const scrubbed = typeof c?.subject === 'string' ? scrubEmails(c.subject) : '';
     if (c && typeof c === 'object') {
       nonMerge += 1;
       if (isFixupSubject(c.subject)) fixups += 1;
+      // The subject is email-scrubbed once (scrubbing commutes with NFC: it cuts whole
+      // whitespace-delimited tokens), and dependency bumps ("bump crate-ci/typos") never count.
+      if (typeof c.subject === 'string' && !isDepBumpCommit(c) && typoIn(scrubbed)) typos += 1;
       lengths.push(typeof c.subject === 'string' ? codePoints(c.subject.trim()) : 0);
       // git.js readBodies sets a boolean hasBody (and leaves it out when git could not
       // read the bodies). The `body` string is a fallback for hand-built / JSON input and
@@ -377,9 +431,7 @@ export function computeMessages(commits) {
         if (typeof c.hasBody === 'boolean' ? c.hasBody : hasMessageBody(c.body)) bodies += 1;
       }
     }
-    // Email-shaped text is cut first (see scrubEmails), so no field (the shown subjects,
-    // their lengths, the top word) is ever built from an address.
-    const subject = typeof c?.subject === 'string' ? scrubEmails(c.subject).trim() : '';
+    const subject = scrubbed.trim();
     if (!subject) return;
     const t = localParts(c.date);
     entries.push({ subject, hash: c.hash ?? null, length: codePoints(subject), ms: t ? t.ms : Infinity, index });
@@ -421,6 +473,7 @@ export function computeMessages(commits) {
     longest: pick(longest),
     topWord,
     counts,
+    typos: typosStat(typos, nonMerge),
     averageLength: entries.length ? Math.round((totalLength / entries.length) * 10) / 10 : 0,
     fixups: fixupsStat(fixups, nonMerge),
     subjectLength: subjectLengthStat(lengths),
@@ -493,6 +546,33 @@ export function shownSubjectLength(stat) {
   const raw = typeof ratio === 'number' && Number.isFinite(ratio) ? Math.min(Math.max(ratio, 0), 1) : 0;
   const share = ratio === 1 ? 1 : Math.min(raw, 0.999);
   return { median, over72, pct: share * 100 };
+}
+
+/** stats.messages.typos for `typos` of `total` non-merge commits (see computeMessages). */
+function typosStat(typos, total) {
+  if (typos === 0) return { commits: 0, share: 0 };
+  const share = Math.min(Math.round((typos / total) * 1000) / 1000, typos < total ? 0.999 : 1);
+  return Object.defineProperty({ commits: typos, share }, EXACT_TYPOS, { value: typos / total });
+}
+
+/**
+ * stats.messages.typos as the messages card, the recap and wrapped.md show it: `{commits,
+ * pct}`, or null (no object, e.g. a stats.json from before the stat, or no typo fix).
+ * - commits: a positive whole number;
+ * - pct: the share as a percent for shareLabel in stats/contributors.js, from the exact
+ *   ratio computeMessages keeps, else from `share`; below 100 unless the share is exactly 1.
+ * All outputs use this, so they agree.
+ */
+export function shownTypos(stat) {
+  if (!stat || typeof stat !== 'object') return null;
+  const n = stat.commits;
+  const commits = typeof n === 'number' && Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
+  if (commits === 0) return null;
+  const exact = stat[EXACT_TYPOS];
+  const ratio = typeof exact === 'number' && Number.isFinite(exact) ? exact : stat.share;
+  const raw = typeof ratio === 'number' && Number.isFinite(ratio) ? Math.min(Math.max(ratio, 0), 1) : 0;
+  const share = ratio === 1 ? 1 : Math.min(raw, 0.999);
+  return { commits, pct: share * 100 };
 }
 
 /** stats.messages.fixups for `fixups` of `total` non-merge commits (see computeMessages). */

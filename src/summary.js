@@ -14,7 +14,7 @@ import { epochDay } from './stats/time.js';
 import { shownBiggestLines } from './stats/biggest.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
-import { bodiesShareText, busFactorShareText, cleanupShareText, conventionalText, depBumpShareText, emojiShareText, fixupShareText, folderLabel, issueRefsShareText, mergeShareText, oneTouchShareText, revertShareText, rewrittenShareText, botsShareText, sizeShareText, subjectLengthShareText, testsShareText } from './cards/index.js';
+import { bodiesShareText, busFactorShareText, cleanupShareText, conventionalText, depBumpShareText, emojiShareText, fixupShareText, typosShareText, folderLabel, issueRefsShareText, mergeShareText, oneTouchShareText, revertShareText, rewrittenShareText, botsShareText, sizeShareText, subjectLengthShareText, testsShareText } from './cards/index.js';
 import { shownMerges } from './stats/merges.js';
 import { shownFolders } from './stats/folders.js';
 import { shownTests } from './stats/tests.js';
@@ -30,7 +30,7 @@ import { shownBiggestShrinker } from './stats/shrinker.js';
 import { shownRewritten } from './stats/rewritten.js';
 import { shownBots } from './stats/bots.js';
 import { issueRefLabel, shownIssueRefs } from './stats/issues.js';
-import { shownBodies, shownFixups, shownSubjectLength, shownTopWords } from './stats/messages.js';
+import { shownBodies, shownFixups, shownSubjectLength, shownTopWords, shownTypos } from './stats/messages.js';
 import { shownFileLifecycle } from './stats/files.js';
 import { shownTimezones, utcLabel } from './stats/timezones.js';
 import { shownWeekend, weekendPercentLabel } from './stats/weekend.js';
@@ -259,6 +259,9 @@ function shortText(s, maxWidth = 48) {
  * A "Fixups" line shows how many non-merge commits have a `fixup!` / `squash!` / `amend!`
  * subject and their share of non-merge commits ("3 commits (2% of non-merge commits)";
  * stats.messages.fixups, see stats/messages.js shownFixups) when there is at least one.
+ * A "Typo fixes" line follows it with how many non-merge commits mention a typo / spelling
+ * fix in their subject and their share of non-merge commits ("4 commits (3% of non-merge
+ * commits)"; stats.messages.typos, see stats/messages.js shownTypos) when there is at least one.
  * A "Subjects" line follows it with the median subject length and how many non-merge
  * commits have a subject over 72 characters, with their share ("median 48 chars · 3
  * commits over 72 (2% of non-merge commits)", "median 31 chars · none over 72";
@@ -589,6 +592,11 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     // messages card; only with any.
     const fixups = shownFixups(stats?.messages?.fixups);
     if (fixups) lines.push(`  ${label(R.fixups)}${plural(fixups.commits, 'commit', L)} ${c('dim', `(${R.ofNonMerge(fixupShareText(fixups, L))})`)}`);
+
+    // Commits whose subject mentions a typo / spelling fix (stats.messages.typos), as on
+    // the messages card; only with any.
+    const typos = shownTypos(stats?.messages?.typos);
+    if (typos) lines.push(`  ${label(R.typos)}${plural(typos.commits, 'commit', L)} ${c('dim', `(${R.ofNonMerge(typosShareText(typos, L))})`)}`);
 
     // The median subject length and the subjects over 72 characters
     // (stats.messages.subjectLength), as on the messages card; with any non-merge commit.

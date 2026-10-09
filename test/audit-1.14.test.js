@@ -153,12 +153,12 @@ describe('docs', () => {
   const read = (f) => readFileSync(fileURLToPath(new URL(`../${f}`, import.meta.url)), 'utf8');
   const README = read('README.md');
   const CHANGELOG = read('CHANGELOG.md');
-  const unreleased = /^## \[Unreleased\]$([\s\S]*?)(?=^## \[)/m.exec(CHANGELOG)?.[1] ?? '';
+  const released = /^## \[1\.14\.0\][^\n]*$([\s\S]*?)(?=^## \[)/m.exec(CHANGELOG)?.[1] ?? '';
   const NEW = ['composer.json', 'Pipfile', 'pubspec.yaml', 'mix.exs', 'Podfile', 'flake.nix', 'vendor/modules.txt'];
 
-  test('README and the CHANGELOG [Unreleased] dependency bumps entry name every new manifest', () => {
-    const entry = /^- Dependency bumps:[\s\S]*?(?=^- |^### |^## )/m.exec(unreleased)?.[0];
-    assert.ok(entry, 'a Dependency bumps entry under [Unreleased]');
+  test('README and the CHANGELOG [1.14.0] dependency bumps entry name every new manifest', () => {
+    const entry = /^- Dependency bumps:[\s\S]*?(?=^- |^### |^## )/m.exec(released)?.[0];
+    assert.ok(entry, 'a Dependency bumps entry under [1.14.0]');
     for (const m of NEW) {
       assert.ok(entry.includes(`\`${m}\``), `CHANGELOG: ${m}`);
       assert.ok(README.includes(`\`${m}\``), `README: ${m}`);

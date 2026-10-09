@@ -26,6 +26,114 @@ const EXACT = Symbol('messages.fixups.exactShare');
 const EXACT_OVER = Symbol('messages.subjectLength.exactShare');
 /** The subject length git's own docs (and most style guides) suggest staying within. */
 export const SUBJECT_LIMIT = 72;
+/** The non-enumerable key computeMessages keeps the exact (unrounded) body share under (see shownBodies). */
+const EXACT_BODIES = Symbol('messages.bodies.exactShare');
+/** A `Token: value` line: a token of letters, digits and hyphens starting with a letter, optional blanks, a colon, then the value. */
+const TRAILER_LINE = /^([A-Za-z][A-Za-z0-9-]*)[ \t]*:[ \t]*(.*)$/u;
+/** People trailers (`Signed-off-by`, `Co-authored-by`, `Reviewed-by`, `Acked-by`, `Tested-by`, `Reported-by`, `Suggested-by`, `Helped-by`, …): any value. */
+const BY_TOKEN = /^[a-z][a-z-]*-by$/u;
+/** Well-known hyphenated git / Gerrit / tool trailers (lower case): any value. */
+const KNOWN_TOKENS = new Set(['change-id', 'reviewed-on', 'git-svn-id', 'bug-url', 'message-id', 'closes-bug', 'partial-bug', 'related-bug', 'depends-on']);
+/**
+ * One-word trailer tokens (lower case) that count only with a reference-shaped value (see
+ * isReferenceList): "Fixes: #12" is a trailer, "Fixes: a race where …" is prose.
+ */
+const REFERENCE_TOKENS = new Set(['cc', 'bcc', 'fixes', 'closes', 'resolves', 'refs', 'ref', 'references', 'related', 'bug', 'issue', 'link']);
+/**
+ * One reference word: `#123`, `owner/repo#123`, `GH-123` / `ABC-123`, a URL, a commit hash
+ * (7 to 64 hex digits), a bare number, an email address, or `<email>`.
+ */
+const REFERENCE_WORD = /^(?:#\d+|[\w.-]+\/[\w.-]+#\d+|[A-Za-z][A-Za-z0-9_]*-\d+|[a-z][a-z0-9+.-]*:\/\/\S+|[0-9a-f]{7,64}|\d+|[^\s<>@]+@[^\s<>@]+|<[^\s<>]+>)$/iu;
+/** `Name <email>` (the name optional). */
+const NAME_EMAIL = /^(?:[^<>]*\S[ \t]*)?<[^\s<>]+>$/u;
+/** The Linux kernel's `Fixes:` form: a commit hash and its quoted subject. */
+const HASH_SUBJECT = /^[0-9a-f]{7,64}[ \t]+\(".*"\)$/iu;
+
+/**
+ * Whether a trailer value is a list of references (see REFERENCE_WORD, NAME_EMAIL,
+ * HASH_SUBJECT): items separated by commas or semicolons, each one `Name <email>` or
+ * whitespace-separated reference words; a final "." is allowed. Empty → false.
+ */
+function isReferenceList(value) {
+  const v = value.trim().replace(/\.$/u, '');
+  if (v === '') return false;
+  if (HASH_SUBJECT.test(v)) return true;
+  return v.split(/[,;]/u).every((piece) => {
+    const p = piece.trim();
+    if (p === '') return false;
+    if (NAME_EMAIL.test(p)) return true;
+    return p.split(/[ \t]+/u).every((w) => REFERENCE_WORD.test(w));
+  });
+}
+
+/** The line `git cherry-pick -x` adds; git's trailer parser treats it as part of the trailer block too. */
+const CHERRY_PICKED = /^\(cherry picked from commit [0-9a-f]{7,64}\)$/u;
+/**
+ * What `git revert` writes as the body (a whole paragraph, its lines joined by single
+ * spaces first, however it is wrapped): "This reverts commit <hash>." and, for a merge,
+ * "This reverts commit <hash>, reversing changes made to <hash>.".
+ */
+const REVERT_BOILERPLATE = /^This reverts commit [0-9a-f]{7,64}(?:, reversing changes made to [0-9a-f]{7,64})?\.$/iu;
+
+/**
+ * Whether `line` (trimmed at the end) is a trailer line: `Token: value` with a people
+ * token (`*-by`, any value), a well-known hyphenated token (`Change-Id`, `Reviewed-on`,
+ * …, see KNOWN_TOKENS; any value), or a one-word token such as `Fixes` / `Cc`, or any
+ * other hyphenated token, with a reference-shaped value (see isReferenceList); or git's
+ * cherry-pick note. A hyphen alone does not make a trailer ("Follow-up: …",
+ * "Trade-offs: …" are prose), nor does a word ("Note: …", "TODO: …"). Tokens are matched
+ * case-insensitively.
+ */
+function isTrailerLine(line) {
+  if (CHERRY_PICKED.test(line)) return true;
+  const m = TRAILER_LINE.exec(line);
+  if (!m) return false;
+  const token = m[1].toLowerCase();
+  if (BY_TOKEN.test(token) || KNOWN_TOKENS.has(token)) return true;
+  // Any other hyphenated token (tool trailers such as `Claude-Session: https://…` or
+  // `X-Ticket: ABC-1`) is one only with a reference-shaped value, like the one-word tokens.
+  return (REFERENCE_TOKENS.has(token) || token.includes('-')) && isReferenceList(m[2]);
+}
+
+/** Whether a paragraph (its non-blank lines) is only trailers (folded lines too) or git's revert boilerplate. */
+function isBoilerplate(para) {
+  if (isTrailerLine(para[0]) && para.every((l, i) => i === 0 || isTrailerLine(l) || /^[ \t]/u.test(l))) return true;
+  return REVERT_BOILERPLATE.test(para.join(' ').replace(/\s+/gu, ' ').trim());
+}
+
+/**
+ * Whether a commit message body (the message after its subject paragraph, as git's `%b`
+ * prints it) says anything beyond the subject. Lines are split into paragraphs at blank
+ * (empty or whitespace-only) lines. A paragraph is boilerplate when either
+ * - it is a trailer block: its first line is a trailer line and every later line is a
+ *   trailer line or a folded continuation (starting with a blank); see isTrailerLine for
+ *   what a trailer line is (`Signed-off-by:`, `Co-authored-by:`, `Change-Id:`,
+ *   `Fixes: #12`, git cherry-pick -x's "(cherry picked from commit …)" line); or
+ * - it is what `git revert` writes: "This reverts commit <hash>." (", reversing changes
+ *   made to <hash>." for a merge), however its lines are wrapped.
+ * True when some paragraph is not boilerplate. This is deliberately not git's own trailer
+ * parsing (which only reads the last paragraph, takes any `Token: value` and tolerates
+ * some other lines in it): the question is whether a person wrote anything beyond the
+ * subject, so trailer-shaped prose ("Fixes: a race where …", "Follow-up: …") counts, and
+ * trailers or boilerplate in any paragraph do not. A whole message (subject included) is
+ * not expected; non-strings → false. Pure function.
+ */
+export function hasMessageBody(body) {
+  if (typeof body !== 'string' || body === '') return false;
+  let para = [];
+  const prose = () => para.length > 0 && !isBoilerplate(para);
+  for (const raw of body.split('\n')) {
+    const line = raw.trimEnd();
+    if (line.trim() === '') {
+      if (prose()) return true;
+      para = [];
+    } else {
+      para.push(line);
+    }
+  }
+  return prose();
+}
+
 /** Subjects git generates for merges; they say nothing about the author's habits. */
 const MERGE = /^Merge (?:(?:branch|branches|pull request|remote-tracking branch|tag|commit)\b|(['"]).+?\1 into\b)/;
 
@@ -59,7 +167,7 @@ const codePoints = (s) => [...s].length;
  * one entry in `parents`; for commits without a `parents` array, subjects starting "Merge
  * branch / branches / pull request / remote-tracking branch / tag / commit" or "Merge
  * '...' into") are skipped by every field.
- * Returns `{shortest, longest, topWord, counts: {fix, wip, oops}, averageLength, fixups, subjectLength}`:
+ * Returns `{shortest, longest, topWord, counts: {fix, wip, oops}, averageLength, fixups, subjectLength, bodies}`:
  * - shortest / longest: `{subject, hash, length}` (length in Unicode code points) or null
  *   when no commit has a non-empty subject. Ties go to the earliest commit by date;
  *   commits with an unparseable date come after dated ones; then input order.
@@ -88,15 +196,28 @@ const codePoints = (s) => [...s].length;
  *   share: over72 over every non-merge commit, rounded as `fixups.share` (3 decimals, at
  *   most 0.999 unless all of them are; 0 without any). The exact ratio rides along
  *   non-enumerably for shownSubjectLength. Null without a non-merge commit.
+ * - bodies: `{commits, share}`: how many non-merge commits have a message body beyond
+ *   the subject (blank lines, trailers such as `Co-authored-by:` / `Signed-off-by:` and
+ *   git's revert boilerplate ignored, see hasMessageBody), and their share of the
+ *   non-merge commits whose body is known, rounded as `fixups.share`; `{commits: 0,
+ *   share: 0}` without any. A commit's body is known when it carries a boolean `hasBody`
+ *   (set by git.js readBodies: on every commit, or on none when git could not read the
+ *   bodies), else a string `body` (hand-built input, checked with hasMessageBody). The
+ *   exact ratio rides along non-enumerably for shownBodies. Null when no non-merge commit
+ *   has a known body (there is none, or the bodies could not be read): unknown is never
+ *   reported as 0.
  * Invalid input policy: never throws; a missing / non-string subject is treated as empty
- * and is skipped by every field but fixups and subjectLength, which count every non-merge
- * commit (subjectLength as length 0). Empty input → nulls and zeros (subjectLength null).
+ * and is skipped by every field but fixups, subjectLength and bodies, which count every
+ * non-merge commit (subjectLength as length 0). Empty input → nulls and zeros
+ * (subjectLength and bodies null).
  */
 export function computeMessages(commits) {
   commits = commits ?? [];
   const entries = [];
   let nonMerge = 0;
   let fixups = 0;
+  let bodies = 0;
+  let known = 0;
   const lengths = [];
   commits.forEach((c, index) => {
     if (isMergeCommit(c)) return;
@@ -104,6 +225,14 @@ export function computeMessages(commits) {
       nonMerge += 1;
       if (isFixupSubject(c.subject)) fixups += 1;
       lengths.push(typeof c.subject === 'string' ? codePoints(c.subject.trim()) : 0);
+      // git.js readBodies sets a boolean hasBody (and leaves it out when git could not
+      // read the bodies). The `body` string is a fallback for hand-built / JSON input and
+      // tests (commits from git never carry it). A commit with neither is unknown, not
+      // "no body".
+      if (typeof c.hasBody === 'boolean' || typeof c.body === 'string') {
+        known += 1;
+        if (typeof c.hasBody === 'boolean' ? c.hasBody : hasMessageBody(c.body)) bodies += 1;
+      }
     }
     // Email-shaped text is cut first (see scrubEmails), so no field (the shown subjects,
     // their lengths, the top word) is ever built from an address.
@@ -150,7 +279,36 @@ export function computeMessages(commits) {
     averageLength: entries.length ? Math.round((totalLength / entries.length) * 10) / 10 : 0,
     fixups: fixupsStat(fixups, nonMerge),
     subjectLength: subjectLengthStat(lengths),
+    bodies: known === 0 ? null : bodiesStat(bodies, known),
   };
+}
+
+/** stats.messages.bodies for `bodies` of `total` (> 0) non-merge commits with a known body (see computeMessages). */
+function bodiesStat(bodies, total) {
+  if (bodies === 0) return { commits: 0, share: 0 };
+  const share = Math.min(Math.round((bodies / total) * 1000) / 1000, bodies < total ? 0.999 : 1);
+  return Object.defineProperty({ commits: bodies, share }, EXACT_BODIES, { value: bodies / total });
+}
+
+/**
+ * stats.messages.bodies as the messages card, the recap and wrapped.md show it:
+ * `{commits, pct}`, or null (no object, e.g. a stats.json from before the stat or a
+ * history without a non-merge commit, or no commit with a body).
+ * - commits: a positive whole number;
+ * - pct: the share as a percent for shareLabel in stats/contributors.js, from the exact
+ *   ratio computeMessages keeps, else from `share`; below 100 unless the share is exactly 1.
+ * All outputs use this, so they agree.
+ */
+export function shownBodies(stat) {
+  if (!stat || typeof stat !== 'object') return null;
+  const n = stat.commits;
+  const commits = typeof n === 'number' && Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
+  if (commits === 0) return null;
+  const exact = stat[EXACT_BODIES];
+  const ratio = typeof exact === 'number' && Number.isFinite(exact) ? exact : stat.share;
+  const raw = typeof ratio === 'number' && Number.isFinite(ratio) ? Math.min(Math.max(ratio, 0), 1) : 0;
+  const share = ratio === 1 ? 1 : Math.min(raw, 0.999);
+  return { commits, pct: share * 100 };
 }
 
 /** stats.messages.subjectLength for the subject `lengths` of every non-merge commit (see computeMessages). */

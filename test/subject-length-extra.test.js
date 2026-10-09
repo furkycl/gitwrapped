@@ -273,7 +273,7 @@ describe('stats.json', () => {
     ]) {
       const doc = JSON.parse(buildStatsJson({ stats: statsOf(subjects), repoName: 'demo' }));
       assert.equal(JSON.stringify(doc.stats.messages.subjectLength), expected);
-      assert.deepEqual(Object.keys(doc.stats.messages).slice(-2), ['fixups', 'subjectLength']);
+      assert.deepEqual(Object.keys(doc.stats.messages).slice(-3), ['fixups', 'subjectLength', 'bodies']);
     }
   });
 

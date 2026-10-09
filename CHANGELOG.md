@@ -24,6 +24,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   anything; without room every card is unchanged). In practice the row lands on the streak
   card only when it has no longest-break panel; the power-hour fallback only happens when
   that card has no hour chart data (it is otherwise full).
+- Message bodies: how many non-merge commits have a message body beyond the subject,
+  with their share of non-merge commits (`stats.messages.bodies {commits, share}`, or null
+  without non-merge commits or when git could not read the bodies). Blank lines are
+  ignored, and so are paragraphs made only of trailers (`Signed-off-by:` and other `-by`
+  tokens, `Change-Id:`, `Reviewed-on:`, …, and `Fixes:` / `Closes:` / `Cc:` / `Refs:` …
+  only with reference values such as `#12`, `ABC-123`, a URL, a hash or `Name <email>`, so
+  "Fixes: a race where …" or "Follow-up: …" still count as prose) and the "This reverts
+  commit <hash>." paragraph `git revert` writes (the merge form too); a revert with its
+  own explanation still counts. The message hall of fame gets a "Message bodies  42 · 31%"
+  row ("Bodies  31%" when that would be cut; "Mesaj gövdesi" / "Gövde" in Turkish) as its
+  lowest-priority row, after the subject length, only in spare room (it never folds,
+  shrinks or displaces anything); the recap gets a "Bodies" line ("Mesaj gövdeleri") and
+  `wrapped.md` a "Message bodies" section ("Mesaj gövdeleri"). Bodies are read by one
+  extra `git log` call without diffs, parsed as it streams so only a yes / no per commit
+  is kept. Without a commit with a body, or without room, every card is unchanged.
 
 ## [1.14.0] - 2026-10-09
 

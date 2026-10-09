@@ -5,7 +5,7 @@
 // part only (authorName), and email-shaped text in any repo-derived text (subjects,
 // paths, repo and contributor names) is cut out by escapeMarkdown.
 
-import { authorName, busFactorShareText, displayRepoName, folderLabel, cleanupShareText, depBumpShareText, formatDateRange, formatDay, conventionalText, emojiShareText, fixupShareText, issueRefsShareText, mergeShareText, pctText, revertShareText, repoRows, shownDayRange, subjectLengthShareText, sizeShareText, testsShareText } from './cards/index.js';
+import { authorName, bodiesShareText, busFactorShareText, displayRepoName, folderLabel, cleanupShareText, depBumpShareText, formatDateRange, formatDay, conventionalText, emojiShareText, fixupShareText, issueRefsShareText, mergeShareText, pctText, revertShareText, repoRows, shownDayRange, subjectLengthShareText, sizeShareText, testsShareText } from './cards/index.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
 import { shownEmoji } from './stats/emoji.js';
@@ -13,7 +13,7 @@ import { shownReverts } from './stats/reverts.js';
 import { shownCleanups } from './stats/cleanups.js';
 import { issueRefLabel, shownIssueRefs } from './stats/issues.js';
 import { shownDepBumps } from './stats/depbumps.js';
-import { shownFixups, shownSubjectLength } from './stats/messages.js';
+import { shownBodies, shownFixups, shownSubjectLength } from './stats/messages.js';
 import { shownFileLifecycle } from './stats/files.js';
 import { shownFolders } from './stats/folders.js';
 import { shownTests } from './stats/tests.js';
@@ -139,6 +139,9 @@ const item = (label, value) => `- **${label}:** ${value}`;
  * characters (2% of non-merge commits)", "median 31 characters; none over 72 characters";
  * stats.messages.subjectLength, see stats/messages.js shownSubjectLength) when there is a
  * non-merge commit.
+ * A "Message bodies" section follows it ("42 commits (31% of non-merge commits)": the
+ * non-merge commits whose message has a body beyond the subject, blank lines and trailers
+ * ignored; stats.messages.bodies, see stats/messages.js shownBodies) when there is at least one.
  * An "Issue references" section follows the cleanups ("42 commits (12% of non-merge
  * commits); most referenced: #128 (9 commits)": the non-merge commits whose subject
  * mentions an issue; stats.issueRefs, see stats/issues.js shownIssueRefs) when there is
@@ -408,6 +411,10 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
       const share = subjects.over72 > 0 ? ` (${L.recap.ofNonMerge(subjectLengthShareText(subjects, L))})` : '';
       section(M.subjectLength, [escapeMarkdown(`${M.subjectLengthValue(subjects.median, subjects.over72)}${share}`)]);
     }
+
+    // --- message bodies (as on the messages card and the recap; only with any) ---------
+    const bodies = shownBodies(stats?.messages?.bodies);
+    if (bodies) section(M.bodies, [escapeMarkdown(`${plural(bodies.commits, 'commit', L)} (${L.recap.ofNonMerge(bodiesShareText(bodies, L))})`)]);
 
     // --- cleanups (as on the totals card and the recap; only with any) ------------------
     const cleanups = shownCleanups(stats?.cleanups);

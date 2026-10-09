@@ -1,8 +1,9 @@
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { readFileSync, statSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
 import { promisify } from 'node:util';
 import { scrubEmails } from './privacy.js';
+import { hasMessageBody } from './stats/messages.js';
 import { localParts } from './stats/time.js';
 
 const execFileAsync = promisify(execFile);
@@ -366,6 +367,8 @@ async function shallowBoundary(repoPath) {
  * skips that git call for a read whose releases are not used.
  * A commit whose message says "This reverts commit <hash>" gets `revertOf`, those hashes
  * (see readReverts); `reverts: false` skips that git call for a read whose reverts are not used.
+ * Every commit gets `hasBody`, whether its message has a body beyond the subject (see
+ * readBodies); `bodies: false` skips that git call for a read whose message bodies are not used.
  * A commit that adds, deletes or renames files gets `born` / `buried`, those paths, and
  * `renamed`, `[{from, to}]` (see readLifecycle); `lifecycle: false` skips that git call for a read whose file lifecycle
  * is not used.
@@ -376,7 +379,7 @@ async function shallowBoundary(repoPath) {
  * a file ("not a directory: <path>"), a folder that is not a repo ("not a git repository:
  * <path>"), git's safe.directory ownership check, a missing git, or oversized output.
  */
-export async function readHistory(repoPath, { since, until, author, limit = DEFAULT_LIMIT, maxBuffer = MAX_BUFFER, coAuthors = true, tags = true, reverts = true, lifecycle = true } = {}) {
+export async function readHistory(repoPath, { since, until, author, limit = DEFAULT_LIMIT, maxBuffer = MAX_BUFFER, coAuthors = true, tags = true, reverts = true, bodies = true, lifecycle = true } = {}) {
   if (limit !== Infinity && (!Number.isSafeInteger(limit) || limit < 1)) {
     throw new TypeError(`limit must be a positive integer or Infinity, got ${limit}`);
   }
@@ -417,6 +420,7 @@ export async function readHistory(repoPath, { since, until, author, limit = DEFA
   if (coAuthors) await mailmapCoAuthors(repoPath, commits);
   if (tags) await readTags(repoPath, commits);
   if (reverts) await readReverts(repoPath, commits);
+  if (bodies) await readBodies(repoPath, commits);
   if (lifecycle) await readLifecycle(repoPath, commits);
   const boundary = await shallowBoundary(repoPath);
   if (boundary) {
@@ -552,6 +556,122 @@ export async function readReverts(repoPath, commits) {
   for (const c of commits) {
     const targets = typeof c?.hash === 'string' ? found.get(c.hash.toLowerCase()) : undefined;
     if (targets) c.revertOf = targets;
+  }
+  return commits;
+}
+
+/**
+ * One `%H%x1f%b` record (see parseBodyLog) → `[hash, hasBody]` (hash lowercased), or null
+ * when it is not one (no \x1f, or a non-hex hash). Newlines (and CRs) before the hash, as
+ * `-z` output may put between records, are skipped.
+ */
+function parseBodyRecord(rec) {
+  const us = rec.indexOf(US);
+  if (us < 0) return null;
+  const hash = rec.slice(0, us).replace(/^[\r\n]+/, '').toLowerCase();
+  if (!/^[0-9a-f]+$/.test(hash)) return null;
+  return [hash, hasMessageBody(rec.slice(us + 1))];
+}
+
+/**
+ * `git log -z --format=%H%x1f%b` output → Map of commit hash (lowercase) → whether its
+ * message has a body beyond the subject (see hasMessageBody in stats/messages.js: blank
+ * lines, trailers and git's revert boilerplate ignored). Each record is NUL-terminated
+ * (git never allows NUL in a message) and the hash is hex, so the first \x1f ends it
+ * whatever the body holds. Pure function (readBodies parses the same records as they
+ * stream in).
+ */
+export function parseBodyLog(stdout) {
+  const found = new Map();
+  for (const rec of String(stdout ?? '').split('\0')) {
+    const parsed = parseBodyRecord(rec);
+    if (parsed) found.set(parsed[0], parsed[1]);
+  }
+  return found;
+}
+
+/**
+ * Run `git <args>` with `input` on stdin and parse its NUL-terminated stdout records as
+ * they arrive (see parseBodyRecord), so only one record's bytes and a boolean per commit
+ * are ever held, however long the messages are. A NUL byte never occurs inside a UTF-8
+ * multi-byte sequence, so each record is cut from the raw bytes and decoded whole.
+ * Resolves the Map; rejects when git cannot start, exits non-zero, or a single record
+ * grows past MAX_BUFFER.
+ */
+function streamBodyLog(args, input) {
+  return new Promise((resolve, reject) => {
+    const found = new Map();
+    let pending = [];
+    let pendingBytes = 0;
+    let failed = false;
+    const fail = (err) => {
+      if (failed) return;
+      failed = true;
+      child.kill();
+      reject(err);
+    };
+    const take = (buf) => {
+      const parsed = parseBodyRecord(buf.toString('utf8'));
+      if (parsed) found.set(parsed[0], parsed[1]);
+    };
+    const child = spawn('git', args, { env: gitEnv(), stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true });
+    child.on('error', fail);
+    child.stdin.on('error', () => {}); // git exiting early (EPIPE) surfaces as its exit code
+    child.stdout.on('data', (chunk) => {
+      if (failed) return;
+      let start = 0;
+      for (let nul = chunk.indexOf(0); nul >= 0; nul = chunk.indexOf(0, start)) {
+        const piece = chunk.subarray(start, nul);
+        take(pending.length > 0 ? Buffer.concat([...pending, piece]) : piece);
+        pending = [];
+        pendingBytes = 0;
+        start = nul + 1;
+      }
+      if (start < chunk.length) {
+        pending.push(chunk.subarray(start));
+        pendingBytes += chunk.length - start;
+        if (pendingBytes > MAX_BUFFER) fail(new Error('git log: message too large'));
+      }
+    });
+    child.on('close', (code) => {
+      if (failed) return;
+      if (code !== 0) return fail(new Error(`git log exited with ${code}`));
+      if (pending.length > 0) take(Buffer.concat(pending));
+      resolve(found);
+    });
+    child.stdin.end(input);
+  });
+}
+
+/**
+ * Give every commit `hasBody`: whether its message says anything after the subject (the
+ * first paragraph, as `%s` / `%b` split it), blank lines, trailers and git's revert
+ * boilerplate ignored (see hasMessageBody). LOG_FORMAT carries only the subject and the
+ * Co-authored-by trailers (a raw body could hold anything, \x1f and newlines included), so
+ * the bodies are read by one extra `git log -z --no-walk=unsorted --stdin
+ * --format=%H%x1f%b` call over exactly the given commits (hashes on stdin, as readReverts
+ * does: the window, --author and the cap apply as to everything else). No diff is
+ * computed, and the output is parsed as it streams in (see streamBodyLog): only a boolean
+ * per commit is kept, never the text. Best effort and all or nothing: when git fails, no
+ * commit gets `hasBody`, which stats.messages.bodies reports as null (unknown), not as
+ * "no bodies". Returns `commits`.
+ */
+export async function readBodies(repoPath, commits) {
+  if (!Array.isArray(commits) || commits.length === 0) return commits;
+  const hashes = commits.map((c) => c?.hash).filter((h) => typeof h === 'string' && /^[0-9a-f]+$/i.test(h));
+  if (hashes.length === 0) return commits;
+  let found;
+  try {
+    found = await streamBodyLog(
+      ['-C', repoPath, 'log', '-z', '--no-walk=unsorted', '--stdin', '--no-color', '--no-show-signature', '--encoding=UTF-8', '--format=%H%x1f%b'],
+      `${hashes.join('\n')}\n`,
+    );
+  } catch {
+    return commits;
+  }
+  for (const c of commits) {
+    const has = typeof c?.hash === 'string' ? found.get(c.hash.toLowerCase()) : undefined;
+    if (typeof has === 'boolean') c.hasBody = has;
   }
   return commits;
 }

@@ -94,9 +94,9 @@ describe('shownSubjectLength', () => {
 });
 
 describe('stats and stats.json', () => {
-  test('stats.messages.subjectLength comes last in messages; stats.json keeps {median, over72, share}', () => {
+  test('stats.messages.subjectLength comes after fixups (only bodies after it); stats.json keeps {median, over72, share}', () => {
     const s = statsOf(['add parser', len(80), 'tidy']);
-    assert.deepEqual(Object.keys(s.messages), ['shortest', 'longest', 'topWord', 'counts', 'averageLength', 'fixups', 'subjectLength']);
+    assert.deepEqual(Object.keys(s.messages), ['shortest', 'longest', 'topWord', 'counts', 'averageLength', 'fixups', 'subjectLength', 'bodies']);
     const doc = JSON.parse(buildStatsJson({ stats: s, repoName: 'demo' }));
     assert.deepEqual(doc.stats.messages.subjectLength, { median: 10, over72: 1, share: 0.333 });
     const none = JSON.parse(buildStatsJson({ stats: computeStats([], { today: TODAY }), repoName: 'demo' }));

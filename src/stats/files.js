@@ -115,12 +115,33 @@ export function repoRelativePath(c, path) {
  * top file "the one you can't stop touching".
  */
 export function computeHotFiles(commits, { limit = 5 } = {}) {
-  commits = commits ?? [];
   if (!Number.isInteger(limit) || limit < 0) {
     throw new TypeError(`limit must be a non-negative integer, got: ${JSON.stringify(limit)}`);
   }
+  return [...fileTouches(commits).values()]
+    .sort(
+      (a, b) =>
+        b.commits - a.commits ||
+        b.linesAdded + b.linesRemoved - (a.linesAdded + a.linesRemoved) ||
+        (a.path < b.path ? -1 : a.path > b.path ? 1 : 0),
+    )
+    .slice(0, limit)
+    .map((e) => ({ ...e, path: scrubEmails(e.path) }));
+}
+
+/**
+ * Every changed file of `commits`, as hot files count them (see computeHotFiles): a Map
+ * from the path as git reports it (repo-labelled in a multi-repo run, so the same path in
+ * two repos is two files) to `{path, commits, linesAdded, linesRemoved}`, in first-seen
+ * order. Ignored paths (isIgnoredPath, relative to each repo's root) and files without a
+ * string path are skipped; a path listed twice in one commit counts once for that commit.
+ * Paths are as git reports them with --no-renames (a rename is the old path plus the new
+ * one). Every commit given is counted (merges carry no files, see readCommits). Never throws.
+ */
+export function fileTouches(commits) {
   const byPath = new Map();
-  for (const c of commits) {
+  for (const c of Array.isArray(commits) ? commits : []) {
+    if (!c || typeof c !== 'object') continue;
     const seen = new Set();
     for (const f of c.files ?? []) {
       if (!f || typeof f.path !== 'string' || isIgnoredPath(repoRelativePath(c, f.path))) continue;
@@ -137,15 +158,7 @@ export function computeHotFiles(commits, { limit = 5 } = {}) {
       entry.linesRemoved += count(f.removed);
     }
   }
-  return [...byPath.values()]
-    .sort(
-      (a, b) =>
-        b.commits - a.commits ||
-        b.linesAdded + b.linesRemoved - (a.linesAdded + a.linesRemoved) ||
-        (a.path < b.path ? -1 : a.path > b.path ? 1 : 0),
-    )
-    .slice(0, limit)
-    .map((e) => ({ ...e, path: scrubEmails(e.path) }));
+  return byPath;
 }
 
 /**

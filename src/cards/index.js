@@ -36,6 +36,7 @@ import { shownCoChange } from '../stats/cochange.js';
 import { shownCleanups } from '../stats/cleanups.js';
 import { issueRefLabel, shownIssueRefs } from '../stats/issues.js';
 import { shownDepBumps } from '../stats/depbumps.js';
+import { shownOneTouch } from '../stats/onetouch.js';
 import { shownBodies, shownFixups, shownSubjectLength } from '../stats/messages.js';
 import { sizeShares } from '../stats/sizes.js';
 import { DEFAULT_LANG, getStrings, languageLabel } from '../i18n/index.js';
@@ -1285,8 +1286,40 @@ const shownHotFiles = (s) => (Array.isArray(s?.hotFiles) ? s.hotFiles : [])
   .map((f) => ({ ...f, path: scrubEmails(f.path) }));
 
 function hotFiles(s, ctx) {
-  const spec = hotFilesBase(s, ctx);
-  return docsCard(s, ctx) === 'hot-files' ? withDocsRow(spec, docsRow(s, ctx.L), s, ctx.L) : spec;
+  const base = hotFilesBase(s, ctx);
+  const spec = docsCard(s, ctx) === 'hot-files' ? withDocsRow(base, docsRow(s, ctx.L), s, ctx.L) : base;
+  // The one-touch files row (stats.oneTouch) last of all, after the docs row is placed, in
+  // spare room only (see withRoomyRow: at most 6 rows, every chart still drawn, nothing
+  // shrinking more), so it never displaces a row; else the card is exactly as before.
+  const row = shownHotFiles(s).length > 0 ? oneTouchRow(s, ctx.L) : null;
+  return row ? withRoomyRow(spec, row, ctx.L) : spec;
+}
+
+/**
+ * A one-touch share (shownOneTouch output) as shown: a whole percent of the changed files,
+ * "<1%" when it rounds to 0, never "100%" short of every file (see shareLabel). Used by
+ * the cards, the recap and wrapped.md, so they agree.
+ */
+export const oneTouchShareText = (o, L = EN) => shareLabel(o?.pct, o?.files, L.pct);
+
+/**
+ * The one-touch files row (stats.oneTouch, see shownOneTouch) in its first form drawn
+ * whole (see rowFits): "One-touch files" and "42 files · 31%", else "One-touch files" and
+ * "42 · 31%", else "One-touch" and "42 · 31%"; null without a one-touch file (also for
+ * `{files: 0}`), or when even the shortest form would be cut. The hover text says it in words.
+ */
+function oneTouchRow(s, L) {
+  const o = shownOneTouch(s?.oneTouch);
+  if (!o) return null;
+  const H = L.hotFiles;
+  const pct = oneTouchShareText(o, L);
+  const description = H.oneTouchDescription(o.files, pct);
+  const forms = [
+    [H.oneTouch, H.oneTouchValue(o.files, pct)],
+    [H.oneTouch, H.oneTouchShort(o.files, pct)],
+    [H.oneTouchLabelShort, H.oneTouchShort(o.files, pct)],
+  ];
+  return forms.map(([label, value]) => ({ label, value, description })).find((row) => rowFits(row)) ?? null;
 }
 
 /** The hot-files card without the docs-share row (see hotFiles, docsCard). */

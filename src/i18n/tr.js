@@ -290,6 +290,11 @@ export default {
     coChangeTimes: (commits) => `${num(commits)} kez birlikte`,
     coChangeTimesShort: (commits) => `${num(commits)}×`,
     coChangeDescription: (a, b, commits) => `${a} ve ${b}, ${num(commits)} commit'te birlikte değişti`,
+    oneTouch: "Tek commit'lik dosyalar",
+    oneTouchLabelShort: "Tek commit'lik",
+    oneTouchValue: (files, pct) => `${plural(files, UNITS.file)} · ${pct}`,
+    oneTouchShort: (files, pct) => `${num(files)} · ${pct}`,
+    oneTouchDescription: (files, pct) => `${plural(files, UNITS.file)} yalnızca tek bir commit'te değişti (değişen dosyaların ${pct} kadarı)`,
   },
 
   languages: {
@@ -524,6 +529,8 @@ export default {
     tests: 'Testler',
     docs: 'Dokümanlar',
     coChange: 'Birlikte değişen',
+    oneTouch: "Tek commit'lik",
+    ofChangedFiles: (share) => `değişen dosyaların ${share} kadarı`,
     ofLinesChanged: (share) => `değişen satırların ${share} kadarı`,
     topLanguage: 'Favori dil',
     languageDetail: (share, basis, tiedMore) => `${basis === 'files' ? 'dosyaların' : 'satırların'} ${share} kadarı${tiedMore > 0 ? `, ${num(tiedMore)} dil ile berabere` : ''}`,
@@ -602,6 +609,7 @@ export default {
     tests: 'Test satırları',
     docs: 'Doküman satırları',
     coChange: 'Birlikte değişenler',
+    oneTouch: "Tek commit'lik dosyalar",
     languages: 'Diller',
     language: 'Dil',
     contributor: 'Katkıcı',

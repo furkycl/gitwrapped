@@ -6,7 +6,7 @@ import { computeCoAuthors, shownCoAuthors, TOP_CO_AUTHORS } from './coauthors.js
 import { computeReleases, shownReleases } from './releases.js';
 import { computeMerges, pullRequestOf, shownMerges } from './merges.js';
 import { busiestOf, computeDaily, daysUpTo, longestGap, longestRun, shownBusiestDay, shownLongest, shownLongestBreak } from './daily.js';
-import { computeFileLifecycle, computeHotFiles, isIgnoredPath, repoRelativePath, shownFileLifecycle } from './files.js';
+import { computeFileLifecycle, computeHotFiles, fileTouches, isIgnoredPath, repoRelativePath, shownFileLifecycle } from './files.js';
 import { computeFolders, folderOf, ROOT_FOLDER, shownFolders, TOP_FOLDERS } from './folders.js';
 import { computeTests, isTestPath, shownTests, TEST_DIRS } from './tests.js';
 import { computeDocShare, DOC_DIRS, isDocPath, shownDocShare } from './docs.js';
@@ -14,6 +14,7 @@ import { CO_CHANGE_MAX_FILES, CO_CHANGE_MIN_COMMITS, computeCoChange, shownCoCha
 import { computeCleanups, shownCleanups } from './cleanups.js';
 import { computeIssueRefs, issueRefLabel, issueRefsInSubject, shownIssueRefs } from './issues.js';
 import { computeDepBumps, DEP_MANIFESTS, isDepPath, shownDepBumps } from './depbumps.js';
+import { computeOneTouch, shownOneTouch } from './onetouch.js';
 import { computeTimeHabits } from './habits.js';
 import { CADENCE_MIN_DAYS, computeCadence, medianGap, shownCadence } from './cadence.js';
 import { computeSessions, SESSION_GAP_MINUTES, sessionsOf, shownSessions } from './sessions.js';
@@ -35,7 +36,7 @@ import { computePreviousPeriod, previousPeriod, previousWindow } from './period.
 import { computeReverts, isRevertCommit, isRevertSubject, shownReverts } from './reverts.js';
 import { computeEmoji, EMOJI_MIN_SHARE, emojiIn, emojiKey, GITMOJI, isEmoji, shownEmoji, TOP_EMOJI } from './emoji.js';
 
-export { computeTotals, computeTimeHabits, computeStreaks, computeDaily, busiestOf, daysUpTo, longestGap, longestRun, shownBusiestDay, shownLongest, shownLongestBreak, computeFileLifecycle, shownFileLifecycle, computeHotFiles, isIgnoredPath, repoRelativePath, computeRepos, computeYearOverYear, yearOverYear, computePreviousPeriod, previousPeriod, previousWindow };
+export { computeTotals, computeTimeHabits, computeStreaks, computeDaily, busiestOf, daysUpTo, longestGap, longestRun, shownBusiestDay, shownLongest, shownLongestBreak, computeFileLifecycle, shownFileLifecycle, computeHotFiles, fileTouches, isIgnoredPath, repoRelativePath, computeRepos, computeYearOverYear, yearOverYear, computePreviousPeriod, previousPeriod, previousWindow };
 export { computeLanguages, languageBarRows, languageHeadline, languageOf, languageType, LANGUAGE_NAMES, OTHER_LANGUAGE, percentShares };
 export { computeBusFactor, computeContributors, contributorName, contributorShare, exactPercent, hasTeamCard, shareLabel, shownBusFactor, TOP_CONTRIBUTORS };
 export { computeFirstCommit, SHORT_HASH };
@@ -47,6 +48,7 @@ export { CO_CHANGE_MAX_FILES, CO_CHANGE_MIN_COMMITS, computeCoChange, shownCoCha
 export { computeCleanups, shownCleanups };
 export { computeIssueRefs, issueRefLabel, issueRefsInSubject, shownIssueRefs };
 export { computeDepBumps, DEP_MANIFESTS, isDepPath, shownDepBumps };
+export { computeOneTouch, shownOneTouch };
 export { CADENCE_MIN_DAYS, computeCadence, medianGap, shownCadence };
 export { computeSessions, SESSION_GAP_MINUTES, sessionsOf, shownSessions };
 export { computeWeekend, shownWeekend, WEEKEND_DAYS, weekendCounts, weekendPercent, weekendPercentLabel };
@@ -110,6 +112,10 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * b], commits}` (sorted paths, repo-labelled in a multi-repo run; the same files as hot
  * files; commits with more than 30 counted files left out), or null when no pair shares at
  * least 3 commits (see cochange.js);
+ * `oneTouch` is how many distinct changed files exactly one non-merge commit touched and
+ * their share of all changed files, `{files, share}` (the same files as hot files, counted
+ * as hot files count commits; a rename is the old path plus the new one; repo-labelled
+ * paths in a multi-repo run), or null without a changed file (see onetouch.js);
  * `languages` is lines / files per language (see languages.js). `biggestCommit` is the
  * non-merge commit with the most lines changed, ignored paths left out as for hot files
  * (see biggest.js), or null. `commitSizes` is how many non-merge commits are tiny (< 10
@@ -187,6 +193,7 @@ export function computeStats(commits = [], { today, todayComplete, team, author,
     tests: computeTests(commits),
     docShare: computeDocShare(commits),
     coChange: computeCoChange(commits),
+    oneTouch: computeOneTouch(commits),
     languages: computeLanguages(commits),
     contributors: computeContributors(team ?? commits, { author, truncated: teamTruncated }),
     messages: computeMessages(commits),

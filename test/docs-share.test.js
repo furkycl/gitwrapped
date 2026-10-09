@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { computeDocShare, computeStats, DOC_DIRS, isDocPath, shownDocShare } from '../src/stats/index.js';
+import { computeDocShare, computeStats as computeAllStats, DOC_DIRS, isDocPath, shownDocShare } from '../src/stats/index.js';
 import { mergeHistories } from '../src/git.js';
 import { excludeFiles } from '../src/stats/files.js';
 import { compileExcludes } from '../src/glob.js';
@@ -15,6 +15,11 @@ import { buildStatsJson } from '../src/json.js';
 import { generate } from '../src/cli.js';
 import en from '../src/i18n/en.js';
 import tr from '../src/i18n/tr.js';
+
+// The one-touch files row (stats.oneTouch) is the hot-files card's lowest-priority row,
+// appended after every other one (see test/one-touch.test.js); these tests are about the
+// rows before it, so their stats leave it out.
+const computeStats = (...args) => ({ ...computeAllStats(...args), oneTouch: null });
 
 const TODAY = '2026-04-01';
 const LANGS = { en, tr };

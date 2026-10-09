@@ -109,7 +109,7 @@ describe('generate / run with --json', () => {
     // maxCommits is the cap in effect (the default here).
     assert.deepEqual(doc.filters, { since: null, until: null, author: null, maxCommits: 50000, exclude: [] });
     assert.equal(doc.truncated, false);
-    assert.deepEqual(Object.keys(doc.stats), ['totals', 'habits', 'timezones', 'weekend', 'lateNights', 'officeHours', 'streaks', 'cadence', 'sessions', 'daily', 'busiestDay', 'months', 'hotFiles', 'folders', 'fileLifecycle', 'tests', 'docShare', 'coChange', 'languages', 'contributors', 'messages', 'biggestCommit', 'commitSizes', 'commitTypes', 'emoji', 'reverts', 'cleanups', 'issueRefs', 'depBumps', 'firstCommit', 'coAuthors', 'releases', 'merges', 'personality']);
+    assert.deepEqual(Object.keys(doc.stats), ['totals', 'habits', 'timezones', 'weekend', 'lateNights', 'officeHours', 'streaks', 'cadence', 'sessions', 'daily', 'busiestDay', 'months', 'hotFiles', 'folders', 'fileLifecycle', 'tests', 'docShare', 'coChange', 'oneTouch', 'languages', 'contributors', 'messages', 'biggestCommit', 'commitSizes', 'commitTypes', 'emoji', 'reverts', 'cleanups', 'issueRefs', 'depBumps', 'firstCommit', 'coAuthors', 'releases', 'merges', 'personality']);
     // Contributors by name only: no author email anywhere in the file (no --author given).
     assert.equal(doc.stats.contributors.total, 2);
     assert.doesNotMatch(text, /@example\.com/);

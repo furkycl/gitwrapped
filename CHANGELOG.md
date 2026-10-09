@@ -39,6 +39,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `wrapped.md` a "Message bodies" section ("Mesaj gövdeleri"). Bodies are read by one
   extra `git log` call without diffs, parsed as it streams so only a yes / no per commit
   is kept. Without a commit with a body, or without room, every card is unchanged.
+- One-touch files: how many changed files exactly one non-merge commit in the window
+  touched, with their share of all changed files, over the same files as the hot files
+  (same ignore rules and `--exclude`; a rename is the old path plus the new one, as for hot
+  files; repo-labelled paths with several repos) (`stats.oneTouch {files, share}`, or null
+  without a changed file). The hot-files card gets a "One-touch files  42 files · 31%" row
+  ("42 · 31%", else "One-touch  42 · 31%"; "Tek commit'lik dosyalar" / "Tek commit'lik" in
+  Turkish) as its lowest-priority row, after every other row, only in spare room (it never
+  displaces, folds or shrinks anything); the recap gets a "One-touch" line ("Tek commit'lik")
+  and `wrapped.md` a "One-touch files" item after the hot-files table ("Tek commit'lik
+  dosyalar"). Without a one-touch file, or without room, every card is unchanged.
 
 ## [1.14.0] - 2026-10-09
 

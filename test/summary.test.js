@@ -78,8 +78,8 @@ describe('formatSummary', () => {
     assert.match(out, /First commit "initial commit" \(Mar 9, 2024\)\n/);
     // Mar 9, 11, 12, 13: gaps 2, 1, 1 → median 1.
     assert.match(out, /Cadence {6}1 commit per active day · every day\n/);
-    // 24 with the First commit, Busiest day, Top folders, Weekends, Cadence, Docs and Subjects lines.
-    assert.ok(lines.length >= 8 && lines.length <= 24, `compact: ${lines.length} lines`);
+    // 25 with the First commit, Busiest day, Top folders, Weekends, Cadence, Docs, One-touch and Subjects lines.
+    assert.ok(lines.length >= 8 && lines.length <= 25, `compact: ${lines.length} lines`);
   });
 
   test('color: true adds ANSI escapes but keeps the first line plain', () => {

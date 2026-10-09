@@ -5,7 +5,7 @@
 // part only (authorName), and email-shaped text in any repo-derived text (subjects,
 // paths, repo and contributor names) is cut out by escapeMarkdown.
 
-import { authorName, bodiesShareText, busFactorShareText, displayRepoName, folderLabel, cleanupShareText, depBumpShareText, formatDateRange, formatDay, conventionalText, emojiShareText, fixupShareText, issueRefsShareText, mergeShareText, pctText, revertShareText, repoRows, shownDayRange, subjectLengthShareText, sizeShareText, testsShareText } from './cards/index.js';
+import { authorName, bodiesShareText, busFactorShareText, displayRepoName, folderLabel, cleanupShareText, depBumpShareText, formatDateRange, formatDay, conventionalText, emojiShareText, fixupShareText, issueRefsShareText, mergeShareText, oneTouchShareText, pctText, revertShareText, repoRows, shownDayRange, subjectLengthShareText, sizeShareText, testsShareText } from './cards/index.js';
 import { shownCommitSizes } from './stats/sizes.js';
 import { shownCommitTypes } from './stats/types.js';
 import { shownEmoji } from './stats/emoji.js';
@@ -18,6 +18,7 @@ import { shownFileLifecycle } from './stats/files.js';
 import { shownFolders } from './stats/folders.js';
 import { shownTests } from './stats/tests.js';
 import { shownDocShare } from './stats/docs.js';
+import { shownOneTouch } from './stats/onetouch.js';
 import { shownCoChange } from './stats/cochange.js';
 import { shownTimezones, utcLabel } from './stats/timezones.js';
 import { shownWeekend, weekendPercentLabel } from './stats/weekend.js';
@@ -124,7 +125,9 @@ const item = (label, value) => `- **${label}:** ${value}`;
  * lines" item the same for documentation files (stats.docShare, see stats/docs.js).
  * A "Changed together" item follows the hot-files table ("src/a.js + src/b.js (12
  * commits)"; stats.coChange, see stats/cochange.js shownCoChange) when a pair shares at
- * least 3 commits.
+ * least 3 commits, then a "One-touch files" item ("42 files (31% of changed files)": the
+ * changed files exactly one non-merge commit touched; stats.oneTouch, see
+ * stats/onetouch.js shownOneTouch) when there is at least one.
  * A "Bus factor" item ends the team section ("2 people (58% of lines changed)": the fewest
  * authors who made at least half of the lines changed; stats.contributors.busFactor, see
  * stats/contributors.js shownBusFactor) when there is one.
@@ -300,6 +303,10 @@ export function buildMarkdown(stats, { repoName, window, author, today, streakAt
     // Left out when the two paths would read alike (scrubbed or clipped to the same text).
     const shown = pair ? pair.files.map((p) => escapeMarkdown(p)) : [];
     const together = pair && shown[0] !== shown[1] ? [item(escapeMarkdown(M.coChange), `${shown[0]} + ${shown[1]} (${plural(pair.commits, 'commit', L)})`)] : [];
+    // The files exactly one non-merge commit touched (stats.oneTouch), as in the recap, after
+    // the co-change item; only when there is at least one.
+    const oneTouch = shownOneTouch(stats?.oneTouch);
+    if (oneTouch) together.push(item(escapeMarkdown(M.oneTouch), escapeMarkdown(`${plural(oneTouch.files, 'file', L)} (${L.recap.ofChangedFiles(oneTouchShareText(oneTouch, L))})`)));
     if (hot.length > 0) {
       section(M.hotFiles, [
         `| # | ${M.file} | ${M.commits} | ${M.lines} |`,

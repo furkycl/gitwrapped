@@ -1,6 +1,6 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeBiggestCommit, computeCadence, computeCleanups, computeCoAuthors, computeCoChange, computeCommitSizes, computeFirstCommit, computeCommitTypes, computeContributors, computeEmoji, computeReverts, computeSessions, computeDaily, computeFileLifecycle, computeFolders, computeHotFiles, computeIssueRefs, computeDepBumps, computeRewritten, computeLateNights, computeLanguages, computeMerges, computeMessages, computeMonths, computeOfficeHours, computeOneTouch, computeBiggestGrower, computePersonality, computeReleases, computeStats, computeStreaks, computeTests, computeDocShare, computeTimeHabits, computeTimezones, computeTotals, computeWeekend, hourLabel } from '../src/stats/index.js';
+import { computeBiggestCommit, computeCadence, computeCleanups, computeCoAuthors, computeCoChange, computeCommitSizes, computeFirstCommit, computeCommitTypes, computeContributors, computeEmoji, computeReverts, computeSessions, computeDaily, computeFileLifecycle, computeFolders, computeHotFiles, computeIssueRefs, computeDepBumps, computeRewritten, computeLateNights, computeLanguages, computeMerges, computeMessages, computeMonths, computeOfficeHours, computeOneTouch, computeBiggestGrower, computeBiggestShrinker, computePersonality, computeReleases, computeStats, computeStreaks, computeTests, computeDocShare, computeTimeHabits, computeTimezones, computeTotals, computeWeekend, hourLabel } from '../src/stats/index.js';
 import { readCommits } from '../src/git.js';
 import { makeFixtureRepo } from '../scripts/make-fixture-repo.js';
 
@@ -110,7 +110,7 @@ describe('computeTimeHabits', () => {
 });
 
 describe('computeStats', () => {
-  test('combines totals, habits, time zones, weekend, late nights, office hours, streaks, cadence, coding sessions, daily, busiest day, months, hot files, top folders, files born / buried, test share, co-change pair, one-touch files, biggest grower, languages, contributors, messages, biggest commit, commit sizes, commit types, emoji, reverts, cleanups, issue references, first commit, co-authors, releases, merges and personality', () => {
+  test('combines totals, habits, time zones, weekend, late nights, office hours, streaks, cadence, coding sessions, daily, busiest day, months, hot files, top folders, files born / buried, test share, co-change pair, one-touch files, biggest grower, biggest shrinker, languages, contributors, messages, biggest commit, commit sizes, commit types, emoji, reverts, cleanups, issue references, first commit, co-authors, releases, merges and personality', () => {
     const commits = [at('2024-06-15T09:00:00Z')];
     const today = '2024-06-16';
     const parts = {
@@ -134,6 +134,7 @@ describe('computeStats', () => {
       coChange: computeCoChange(commits),
       oneTouch: computeOneTouch(commits),
       biggestGrower: computeBiggestGrower(commits),
+      biggestShrinker: computeBiggestShrinker(commits),
       languages: computeLanguages(commits),
       contributors: computeContributors(commits),
       messages: computeMessages(commits),

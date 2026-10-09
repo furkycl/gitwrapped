@@ -43,8 +43,8 @@ Options:
                        files, top folders, the test and docs shares, the
                        co-change pair, languages, the biggest commit,
                        cleanups, dependency bumps, commit sizes, one-touch
-                       files, the biggest grower and files born / buried /
-                       renamed
+                       files, the biggest grower / shrinker and files born /
+                       buried / renamed
                        (repeatable; commits still count).
                        *.min.js and docs match at any depth, docs/ or docs/**
                        a whole folder, src/gen/*.js from the repo root

@@ -16,6 +16,7 @@ import { computeIssueRefs, issueRefLabel, issueRefsInSubject, shownIssueRefs } f
 import { computeDepBumps, DEP_MANIFESTS, isDepPath, shownDepBumps } from './depbumps.js';
 import { computeOneTouch, shownOneTouch } from './onetouch.js';
 import { computeBiggestGrower, shownBiggestGrower } from './grower.js';
+import { computeBiggestShrinker, shownBiggestShrinker } from './shrinker.js';
 import { computeRewritten, isRewrittenCommit, REWRITE_GAP_MS, shownRewritten } from './rewritten.js';
 import { computeTimeHabits } from './habits.js';
 import { CADENCE_MIN_DAYS, computeCadence, medianGap, shownCadence } from './cadence.js';
@@ -52,6 +53,7 @@ export { computeIssueRefs, issueRefLabel, issueRefsInSubject, shownIssueRefs };
 export { computeDepBumps, DEP_MANIFESTS, isDepPath, shownDepBumps };
 export { computeOneTouch, shownOneTouch };
 export { computeBiggestGrower, shownBiggestGrower };
+export { computeBiggestShrinker, shownBiggestShrinker };
 export { computeRewritten, isRewrittenCommit, REWRITE_GAP_MS, shownRewritten };
 export { CADENCE_MIN_DAYS, computeCadence, medianGap, shownCadence };
 export { computeSessions, SESSION_GAP_MINUTES, sessionsOf, shownSessions };
@@ -124,6 +126,10 @@ export { dayKeyFromEpoch, epochDay, hourLabel, localParts, mondayOf, WEEKDAY_NAM
  * the non-merge commits), `{path, net, added, removed}` (the same files as hot files; ties
  * to the path that sorts first; repo-labelled in a multi-repo run), or null when no file
  * grew (see grower.js);
+ * `biggestShrinker` is its mirror, the file with the largest net line loss (lines removed −
+ * added over the non-merge commits), `{path, net, added, removed}` with `net` the lines lost
+ * (same files, ties and labels as `biggestGrower`), or null when no file shrank (see
+ * shrinker.js);
  * `languages` is lines / files per language (see languages.js). `biggestCommit` is the
  * non-merge commit with the most lines changed, ignored paths left out as for hot files
  * (see biggest.js), or null. `commitSizes` is how many non-merge commits are tiny (< 10
@@ -207,6 +213,7 @@ export function computeStats(commits = [], { today, todayComplete, team, author,
     coChange: computeCoChange(commits),
     oneTouch: computeOneTouch(commits),
     biggestGrower: computeBiggestGrower(commits),
+    biggestShrinker: computeBiggestShrinker(commits),
     languages: computeLanguages(commits),
     contributors: computeContributors(team ?? commits, { author, truncated: teamTruncated }),
     messages: computeMessages(commits),

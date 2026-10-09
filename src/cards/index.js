@@ -38,6 +38,7 @@ import { issueRefLabel, shownIssueRefs } from '../stats/issues.js';
 import { shownDepBumps } from '../stats/depbumps.js';
 import { shownOneTouch } from '../stats/onetouch.js';
 import { shownBiggestGrower } from '../stats/grower.js';
+import { shownBiggestShrinker } from '../stats/shrinker.js';
 import { shownRewritten } from '../stats/rewritten.js';
 import { shownBodies, shownFixups, shownSubjectLength, shownTopWords } from '../stats/messages.js';
 import { sizeShares } from '../stats/sizes.js';
@@ -1355,7 +1356,11 @@ function hotFiles(s, ctx) {
   // The biggest-grower row (stats.biggestGrower) after it, on the same terms: in spare room
   // only, after every other row, so it never displaces one; else the card is as before.
   const grower = shownHotFiles(s).length > 0 ? growerRow(s, ctx.L) : null;
-  return grower ? withRoomyRow(withOneTouch, grower, ctx.L) : withOneTouch;
+  const withGrower = grower ? withRoomyRow(withOneTouch, grower, ctx.L) : withOneTouch;
+  // The biggest-shrinker row (stats.biggestShrinker) last of all, after the grower row, on
+  // the same terms: in spare room only, so it never displaces a row (the grower's included).
+  const shrinker = shownHotFiles(s).length > 0 ? shrinkerRow(s, ctx.L) : null;
+  return shrinker ? withRoomyRow(withGrower, shrinker, ctx.L) : withGrower;
 }
 
 /**
@@ -1376,6 +1381,27 @@ function growerRow(s, L) {
   const rows = names.flatMap((name) => [
     { label: H.grower, value: H.growerValue(name, g.net) },
     { label: H.growerNamed(name), value: H.growerShort(g.net) },
+  ]);
+  return rows.map((r) => ({ ...r, description })).find((r) => rowFits(r)) ?? null;
+}
+
+/**
+ * The biggest-shrinker row (stats.biggestShrinker, see shownBiggestShrinker): the mirror of
+ * growerRow, in its first form drawn whole (see rowFits). Names are tried in order: the path
+ * whole, then middle-elided (elidedPathForms), then just the file name; for each name,
+ * "Biggest shrinker" and "<name> · −1,234" first, else "Shrinker: <name>" and "−1,234".
+ * Null without a shrinker, or when nothing fits. The hover text has the full path and the
+ * lines removed / added.
+ */
+function shrinkerRow(s, L) {
+  const g = shownBiggestShrinker(s?.biggestShrinker);
+  if (!g) return null;
+  const H = L.hotFiles;
+  const description = H.shrinkerDescription(g.path, L.recap.shrinkerDetail(g.net, g.added, g.removed));
+  const names = [...new Set([g.path, ...elidedPathForms(g.path), basename(g.path)])];
+  const rows = names.flatMap((name) => [
+    { label: H.shrinker, value: H.shrinkerValue(name, g.net) },
+    { label: H.shrinkerNamed(name), value: H.shrinkerShort(g.net) },
   ]);
   return rows.map((r) => ({ ...r, description })).find((r) => rowFits(r)) ?? null;
 }

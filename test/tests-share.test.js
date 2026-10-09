@@ -201,7 +201,7 @@ describe('cards', () => {
       // Without the docs-share and one-touch rows (test/docs-share.test.js and
       // test/one-touch.test.js cover them), which would take the tests row's spare room
       // when that is left out.
-      const s = { ...computeStats(commits, { today: TODAY }), docShare: null, oneTouch: null };
+      const s = { ...computeStats(commits, { today: TODAY }), docShare: null, oneTouch: null, biggestGrower: null };
       for (const lang of ['en', 'tr']) {
         for (const opts of [{}, { colorTheme: 'mono' }]) {
           let shown = 0;

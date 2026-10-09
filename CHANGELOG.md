@@ -32,6 +32,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   commits" section. Without a rewritten commit every card is unchanged. Squash merges,
   `git am` and GitHub's "Rebase and merge" also commit again, so a repo that rebase-merges
   its pull requests can show a share close to 100%.
+- Biggest grower: the file with the largest net line growth (lines added − removed) over
+  the non-merge commits in the window, over the same files as the hot files (same ignore
+  rules and `--exclude`; binary files add 0 lines; a rename removes the old path's lines and
+  adds the new one's, as for hot files; repo-labelled paths with several repos; a tie goes
+  to the path that sorts first) (`stats.biggestGrower {path, net, added, removed}`, or null
+  when no file grew). The hot-files card gets a "Biggest grower  src/cli.js · +1,234" row
+  (a longer path moves into the label, "Grower: src/…/stats/index.js  +1,234", shortened in
+  the middle when needed, else just the file name; "En çok büyüyen" / "Büyüyen: …" in
+  Turkish) after the one-touch row, only in spare room (it never displaces, folds or
+  shrinks anything); the recap gets a "Top grower" line ("En çok büyüyen") and `wrapped.md`
+  a "Biggest grower" item after the hot-files table ("En çok büyüyen dosya"). Without a
+  growing file, or without room, every card is unchanged.
 
 ## [1.15.0] - 2026-10-09
 

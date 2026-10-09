@@ -143,7 +143,7 @@ export function fileTouches(commits) {
   for (const c of Array.isArray(commits) ? commits : []) {
     if (!c || typeof c !== 'object') continue;
     const seen = new Set();
-    for (const f of c.files ?? []) {
+    for (const f of Array.isArray(c.files) ? c.files : []) {
       if (!f || typeof f.path !== 'string' || isIgnoredPath(repoRelativePath(c, f.path))) continue;
       let entry = byPath.get(f.path);
       if (!entry) {

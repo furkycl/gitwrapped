@@ -46,7 +46,10 @@ const specOf = (stats, lang = 'en') => buildCardSpecs(stats, { repoName: 'demo',
 const svgs = (stats, lang = 'en') => buildCards(stats, { repoName: 'demo', today: TODAY, lang }).map((c) => c.svg);
 const rowOf = (spec, L = en) => (spec.lines ?? []).find((r) => r.label === L.hotFiles.coChange);
 const rowOf2 = (spec, label) => (spec.lines ?? []).find((r) => r.label === label);
-const stats = (commits) => computeStats(commits, { today: TODAY });
+// The biggest-grower row (stats.biggestGrower) is appended after every other hot-files card
+// row in spare room (see test/biggest-grower.test.js); these tests are about the rows before
+// it, so their stats leave it out.
+const stats = (commits) => ({ ...computeStats(commits, { today: TODAY }), biggestGrower: null });
 
 describe('computeCoChange', () => {
   test('the pair with the most shared commits, sorted paths', () => {

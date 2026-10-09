@@ -25,6 +25,7 @@ import { shownReverts } from './stats/reverts.js';
 import { shownCleanups } from './stats/cleanups.js';
 import { shownDepBumps } from './stats/depbumps.js';
 import { shownOneTouch } from './stats/onetouch.js';
+import { shownBiggestGrower } from './stats/grower.js';
 import { shownRewritten } from './stats/rewritten.js';
 import { issueRefLabel, shownIssueRefs } from './stats/issues.js';
 import { shownBodies, shownFixups, shownSubjectLength, shownTopWords } from './stats/messages.js';
@@ -204,6 +205,9 @@ function shortText(s, maxWidth = 48) {
  * A "One-touch" line shows how many changed files exactly one non-merge commit touched and
  * their share of all changed files ("42 files (31% of changed files)"; stats.oneTouch, see
  * stats/onetouch.js shownOneTouch) when there is at least one.
+ * A "Top grower" line shows the file with the largest net line growth over the non-merge
+ * commits ("src/cli.js (+1,500 / −266, net +1,234 lines)"; stats.biggestGrower, see
+ * stats/grower.js shownBiggestGrower) when a file grew.
  * A "Files" line shows how many files were added and deleted, and renamed when any were
  * (stats.fileLifecycle, see stats/files.js shownFileLifecycle), when there is at least one.
  * A "Busiest day" line shows the calendar day with the most commits and its commit count
@@ -459,6 +463,10 @@ export function formatSummary(stats, { color = false, repoName, window, streakAt
     // (stats.oneTouch), as on the hot-files card; only when there is at least one.
     const oneTouch = shownOneTouch(stats?.oneTouch);
     if (oneTouch) lines.push(`  ${label(R.oneTouch)}${c('cyan', plural(oneTouch.files, 'file', L))} ${c('dim', `(${R.ofChangedFiles(oneTouchShareText(oneTouch, L))})`)}`);
+    // The file with the largest net line growth (stats.biggestGrower), as on the hot-files
+    // card but with its path (shortened from the start when long); only when a file grew.
+    const grower = shownBiggestGrower(stats?.biggestGrower);
+    if (grower) lines.push(`  ${label(R.grower)}${c('cyan', shortPath(grower.path))} ${c('dim', `(${R.growerDetail(grower.net, grower.added, grower.removed)})`)}`);
 
     // Files added, deleted and renamed in the window (stats.fileLifecycle); only when there are any.
     const lifecycle = shownFileLifecycle(stats?.fileLifecycle);

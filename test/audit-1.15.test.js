@@ -38,8 +38,9 @@ const specOf = (stats, id, lang) => buildCardSpecs(stats, cardOpts(lang)).find((
 const svgOf = (stats, id, lang) => buildCards(stats, cardOpts(lang)).find((c) => c.id === id).svg;
 
 describe('one-touch row: the long form is drawn in Turkish too', () => {
-  // Two files, one touched once: the hot-files card has room for the row.
-  const s = computeStats([commit(1, [['src/a.js', 10, 1]]), commit(2, [['src/a.js', 5, 1], ['src/b.js', 3, 0]])], { today: TODAY });
+  // Two files, one touched once: the hot-files card has room for the row. Without the
+  // biggest-grower row, which goes after it (see test/biggest-grower.test.js).
+  const s = { ...computeStats([commit(1, [['src/a.js', 10, 1]]), commit(2, [['src/a.js', 5, 1], ['src/b.js', 3, 0]])], { today: TODAY }), biggestGrower: null };
 
   test('tr: "Tek commit\'lik" and "1 dosya · %50" on the card and in the SVG', () => {
     const row = specOf(s, 'hot-files', 'tr').lines.at(-1);
@@ -164,7 +165,8 @@ describe('audit 1.15, edge cases', () => {
     for (let f = 0; f < total; f++) {
       for (let k = 0; k < (f < once ? 1 : 2); k++) cs.push(commit(++i, [[`src/f${f}.js`, 1, 0]]));
     }
-    return computeStats(cs, { today: TODAY });
+    // Without the biggest-grower row, which goes after the one-touch row.
+    return { ...computeStats(cs, { today: TODAY }), biggestGrower: null };
   };
   const CASES = [
     [300, 1, '1 dosya · <%1', '1 file · <1%'],

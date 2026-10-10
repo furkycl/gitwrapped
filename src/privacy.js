@@ -7,8 +7,12 @@
  * ("lodash@4.17.21", "@babel/core@7.2", "logo@2x.png") is not an address and is kept.
  * Neither side spans "/" or "\\", so in a path only the file name part is cut
  * ("keys/ada@example.com.pub" → "keys/…").
+ * A match only starts where a token does (the lookbehind): the same matches as without it
+ * (a token's address always starts at the token's first character), but a long run with
+ * no "@" is scanned once, not once per character (quadratic: a 30,000-character subject
+ * took about a second).
  */
-const EMAIL = /[^\s<>()[\]"'`,;:|/\\@]+@(?=\p{L})[^\s<>()[\]"'`,;:|/\\@]+/gu;
+const EMAIL = /(?<![^\s<>()[\]"'`,;:|/\\@])[^\s<>()[\]"'`,;:|/\\@]+@(?=\p{L})[^\s<>()[\]"'`,;:|/\\@]+/gu;
 
 /** `s` (a commit subject, path or name) with every email-like token (see EMAIL) replaced by "…". */
 export function scrubEmails(s) {

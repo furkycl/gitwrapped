@@ -406,6 +406,43 @@ function comparisonRows(s, L) {
 /** The most list rows a card draws (see renderCard's `lines`). */
 const MAX_ROWS = 6;
 
+/**
+ * Placement answers (depBumpsCard, rewrittenCard, botsCard) per build context and stats
+ * object: each one rebuilds the totals and messages cards below it, and both cards ask
+ * every placement above theirs, so without this a build redid the same work many times
+ * over. Keyed on `ctx` (a fresh object for every buildCardSpecs call) and then on `s`, so
+ * a different stats object or context is never answered from another one's result.
+ */
+const PLACEMENTS = new WeakMap();
+
+/** False only inside withoutPlacementCache. */
+let placementCache = true;
+
+/**
+ * `fn()` with every placement worked out afresh at every call (no PLACEMENTS cache), as
+ * the cards were built before it: for tests, to check the cache never changes a card.
+ */
+export function withoutPlacementCache(fn) {
+  const was = placementCache;
+  placementCache = false;
+  try {
+    return fn();
+  } finally {
+    placementCache = was;
+  }
+}
+
+/** `place(s, ctx)` once per (`ctx`, `s`, `key`); non-object `s` / `ctx` are not cached. */
+function placementOf(key, s, ctx, place) {
+  if (!placementCache || !s || typeof s !== 'object' || !ctx || typeof ctx !== 'object') return place(s, ctx);
+  let byStats = PLACEMENTS.get(ctx);
+  if (!byStats) PLACEMENTS.set(ctx, (byStats = new WeakMap()));
+  let answers = byStats.get(s);
+  if (!answers) byStats.set(s, (answers = new Map()));
+  if (!answers.has(key)) answers.set(key, place(s, ctx));
+  return answers.get(key);
+}
+
 /** The smallest big number (px) the totals card of a multi-repo run shrinks to. */
 const TOTALS_BIG_MIN = 140;
 
@@ -463,6 +500,11 @@ function botsRow(s, L) {
  * Without the row, or without room on either, every card is byte-identical to before.
  */
 export function botsCard(s, ctx) {
+  return placementOf('botsCard', s, ctx, botsPlacement);
+}
+
+/** botsCard itself, uncached (see placementOf). */
+function botsPlacement(s, ctx) {
   const row = botsRow(s ?? {}, ctx.L);
   if (!row) return null;
   const t = totalsWithRewritten(s ?? {}, ctx);
@@ -521,6 +563,11 @@ function rewrittenRow(s, L) {
  * Without the row, or without room on either, every card is byte-identical to before.
  */
 export function rewrittenCard(s, ctx) {
+  return placementOf('rewrittenCard', s, ctx, rewrittenPlacement);
+}
+
+/** rewrittenCard itself, uncached (see placementOf). */
+function rewrittenPlacement(s, ctx) {
   const row = rewrittenRow(s ?? {}, ctx.L);
   if (!row) return null;
   const t = totalsWithDepBumps(s ?? {}, ctx);
@@ -579,6 +626,11 @@ function depBumpsRow(s, L) {
  * Without the row, or without room on either, every card is byte-identical to before.
  */
 export function depBumpsCard(s, ctx) {
+  return placementOf('depBumpsCard', s, ctx, depBumpsPlacement);
+}
+
+/** depBumpsCard itself, uncached (see placementOf). */
+function depBumpsPlacement(s, ctx) {
   const row = depBumpsRow(s ?? {}, ctx.L);
   if (!row) return null;
   const t = totalsWithCleanups(s ?? {}, ctx);

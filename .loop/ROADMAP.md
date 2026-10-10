@@ -185,4 +185,12 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] Typo fixes: non-merge commits whose subject mentions a typo / spelling fix (`typo`, `typos`, `spelling`, `misspell*`; tr `yazım`; word-boundary, case-insensitive, outside URLs) — count + share, folded into or after the fix / wip / oops row when it fits (never displacing), stats.json `stats.messages.typos {commits, share}`, recap and wrapped.md; en/tr; tests
 - 1.17.0 release prep (split as before):
   - [x] Cold audit of the 1.17 work (diff 1.16.0 release commit..main) + fix every real bug found, with tests
-  - [ ] CHANGELOG 1.17.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync
+  - [x] CHANGELOG 1.17.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync
+
+## M24 — 1.18 (proposed by loop turn 110 per the M8 owner note "do not finish the loop"; owner may prune)
+- [ ] Cleanup of left-over audit nits: elidedPathForms linear in path segments (grower/shrinker rows were ~1.3 s at 5k-char paths), computeIssueRefs linear on 'a.a.a.' runs, computeMessages tolerates non-array input, drop unused shrinkerLabelShort, share one shownCount helper between grower.js/shrinker.js, isBotAuthor/botName treat control chars the same way; CHANGELOG 1.17.0 Bot commits entry mentions the #114 "Unknown" rule if 1.17.0 is still untagged; tests (perf guards + old-vs-new output equality)
+- [ ] Breaking changes: non-merge commits marked breaking (conventional `type(scope)!:` subject or a `BREAKING CHANGE:` / `BREAKING-CHANGE:` body footer) — count + share, as a messages-card row when there's room (never displacing), stats.json `stats.messages.breaking {commits, share}`, recap and wrapped.md; en/tr; tests
+- [ ] Comeback file: the file with the longest gap between two consecutive touches inside the window (same ignore rules / `--exclude` / repo labels as hot files; ties → path order), as a hot-files card row when there's room (never displacing, after the shrinker row), stats.json `stats.comebackFile {path, days, from, to}` or null, recap and wrapped.md; en/tr; tests
+- 1.18.0 release prep (split as before):
+  - [ ] Cold audit of the 1.18 work (diff 1.17.0 release commit..main) + fix every real bug found, with tests
+  - [ ] CHANGELOG 1.18.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync

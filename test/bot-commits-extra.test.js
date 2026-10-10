@@ -113,7 +113,8 @@ function refIsBot(name, email) {
 
 function refName(name) {
   let n = typeof name === 'string' ? name : '';
-  n = [...n].map((ch) => (/[\p{Cc}\p{Cf}]/u.test(ch) ? ' ' : ch)).join('');
+  // Format characters dropped, control characters read as spaces (audit 1.17).
+  n = [...n].filter((ch) => !/\p{Cf}/u.test(ch)).map((ch) => (/\p{Cc}/u.test(ch) ? ' ' : ch)).join('');
   n = n.split(/\s+/).filter(Boolean).join(' ');
   const lt = n.indexOf('<');
   if (lt > 0) n = n.slice(0, lt).trim();
@@ -121,7 +122,8 @@ function refName(name) {
   const at = n.indexOf('@');
   if (at >= 0) n = n.slice(0, at).trim();
   n = scrubEmails(n).split(/\s+/).filter(Boolean).join(' ');
-  return n;
+  // "Unknown" is never a bot's shown name (see shownBots), so it is unnamed (audit 1.17).
+  return n === 'Unknown' ? '' : n;
 }
 
 function reference(commits) {
@@ -160,7 +162,7 @@ const NAMES = [
   'githubactions', 'github--actions', 'Robot', 'Bot', 'ada[bot] fan', '  spaced[bot]  ', 'snyk-bot', 'çrenovate', 'renovateé',
   'Ünïcödé[bot]', '依赖机器人[bot]', '😀renovate', 'renovate😀', 'x\u0000renovate', 'renovate​', 'dependabot​[bot]',
   'ci <ci@example.com>', 'ci@example.com', 'ops@example.com [bot]', '', '   ', 'Zed[bot]', 'Ab[bot]', 'ab[bot]',
-  'dep­endabot', 'İrenovate', 'renovate1', '1renovate', '_renovate_', 'renovate.bot', 'DEPENDABOT', 'Name\nWith\tTabs[bot]',
+  'Unknown', 'unknown', 'dep­endabot', 'İrenovate', 'renovate1', '1renovate', '_renovate_', 'renovate.bot', 'DEPENDABOT', 'Name\nWith\tTabs[bot]',
 ];
 const EMAILS = [
   'ada@example.com', 'bob@example.com', '49699333+dependabot[bot]@users.noreply.github.com', 'X[BOT]@users.noreply.github.com',

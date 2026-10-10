@@ -47,15 +47,25 @@ export function isBotAuthor(name, email) {
   return at > 0 && BOT_SUFFIX.test(e.slice(0, at).trim());
 }
 
+/** Format characters only (zero-width spaces, soft hyphens, bidi marks, ...). */
+const FORMAT = /\p{Cf}/gu;
+/** Control characters only (NUL, tab, newline, ...). */
+const CONTROL = /\p{Cc}/gu;
+
 /**
- * A bot's name as shown: control / format characters turned into spaces, the author name
- * through contributorName (an address used as a name cut to its local part), any
- * email-like text cut (see scrubEmails), whitespace runs collapsed, trimmed; '' when
- * nothing is left (an unnamed bot).
+ * A bot's name as shown: format characters removed (as isBotAuthor ignores them, so
+ * "dependabot\u200b[bot]" is the same bot as "dependabot[bot]", not "dependabot [bot]"),
+ * control characters turned into spaces, the author name through contributorName (an
+ * address used as a name cut to its local part), any email-like text cut (see
+ * scrubEmails), whitespace runs collapsed, trimmed; '' when nothing is left (an unnamed
+ * bot), and also for "Unknown" (contributors' placeholder for a missing name, which
+ * shownBots never shows, so it never hides a named bot as `top`; exact spelling only, as
+ * in contributors and shownBots, so a bot really called "unknown" still counts).
  */
 const botName = (name) => {
-  const n = typeof name === 'string' ? name.replace(INVISIBLE, ' ') : '';
-  return scrubEmails(contributorName(n) ?? '').replace(/\s+/g, ' ').trim();
+  const n = typeof name === 'string' ? name.replace(FORMAT, '').replace(CONTROL, ' ') : '';
+  const shown = scrubEmails(contributorName(n) ?? '').replace(/\s+/g, ' ').trim();
+  return shown === 'Unknown' ? '' : shown;
 };
 
 /** Code-unit order of two strings (-1, 0, 1). */

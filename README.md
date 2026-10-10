@@ -946,7 +946,10 @@ every one was a bot's). `top` is the bot with the most non-merge commits, groupe
 author name ignoring letter case and named by its most used spelling (a tie goes to the
 spelling, then the name, that sorts first; an address used as a name is cut to the part
 before the `@`, and no email is ever shown), or `null` when there is no bot commit. A bot
-without a name (only its email gives it away) counts in `commits` but is never `top`. `{"commits": 0, "share": 0, "top": null}` when no commit is a bot's (the cards,
+without a name (only its email gives it away, or just named `Unknown`) counts in `commits`
+but is never `top`; zero-width and other format characters in a bot's name are dropped, so
+`dependabot[bot]` with a hidden zero-width space is the same bot. `{"commits": 0, "share":
+0, "top": null}` when no commit is a bot's (the cards,
 recap and `wrapped.md` then show nothing); `null` without non-merge commits. The `--author`
 filter applies first, so with `--author` this only counts when you are the bot.
 

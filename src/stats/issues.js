@@ -13,10 +13,70 @@ const EXACT = Symbol('issueRefs.exactShare');
  * not a mention), and hex hashes (7–64 hex digits with at least one letter and one digit,
  * standing alone, lowercase only as git prints them, and not followed by "-" and a digit:
  "deadbeef1" is a commit hash, "ABC1234-5" is still a key). Email
- * addresses are cut by scrubEmails before that.
+ * addresses are cut by scrubEmails before that. URLs are the matches of
+ * `\b[a-z][a-z0-9+.-]*:\/\/\S*` or `\bwww\.\S*` (one regex, flags `giu`), cut by cutUrls
+ * (in linear time).
  */
-const URL = /\b[a-z][a-z0-9+.-]*:\/\/\S*|\bwww\.\S*/giu;
 const HEX_HASH = /(?<![\p{L}\p{N}_])(?=[0-9a-f]*[a-f])(?=[0-9a-f]*\d)[0-9a-f]{7,64}(?![\p{L}\p{N}_]|-\d)/gu;
+
+/** One code unit tests for cutUrls, with the URL regex's own flags (so "ſ" / "K" fold as they do there). */
+const URL_WORD = /^\w$/iu;
+const URL_SCHEME_START = /^[a-z]$/iu;
+const URL_SCHEME = /^[a-z0-9+.-]$/iu;
+const URL_SPACE = /^\s$/u;
+/** "www." where the URL regex's second branch can start (a word boundary before it). */
+const URL_WWW = /\bwww\./giu;
+
+/**
+ * `s` with every URL (the regex in HEX_HASH's comment) replaced by a space, exactly
+ * as `s.replace(thatRegex, ' ')` does, in linear time: the regex retried
+ * its scheme part from every letter of a long "a-a-a-…" run with no "://" after it (a
+ * 100,000-character subject took seconds). Here each run before a "://" is scanned once:
+ * the leftmost scheme start in it is its first letter with a non-word character (or
+ * nothing) before it; the "www." branch is found by URL_WWW; the earlier start wins (the
+ * scheme branch on a tie, as in the regex), and the match runs to the next whitespace.
+ */
+export function cutUrls(s) {
+  const isWord = (i) => i >= 0 && URL_WORD.test(s[i]);
+  const toSpace = (i) => {
+    while (i < s.length && !URL_SPACE.test(s[i])) i += 1;
+    return i;
+  };
+  let out = '';
+  let i = 0;
+  // The next scheme match start at or after `i` (and the "://" it ends at), cached.
+  let scheme = null;
+  let from = 0;
+  // The next "www." match at or after `i`, cached (undefined: not looked for yet; null: none).
+  let www;
+  const nextScheme = () => {
+    for (let q = s.indexOf('://', Math.max(from, i)); q >= 0; q = s.indexOf('://', q + 1)) {
+      let r = q;
+      while (r > i && URL_SCHEME.test(s[r - 1])) r -= 1;
+      for (let p = r; p < q; p += 1) {
+        if (URL_SCHEME_START.test(s[p]) && !isWord(p - 1)) return { start: p, rest: q + 3 };
+      }
+    }
+    return null;
+  };
+  for (;;) {
+    if (!scheme || scheme.start < i) {
+      scheme = nextScheme();
+      from = scheme ? scheme.rest - 3 : s.length;
+    }
+    if (www !== null && (www === undefined || www.index < i)) {
+      URL_WWW.lastIndex = i;
+      www = URL_WWW.exec(s);
+    }
+    const useScheme = scheme && (!www || scheme.start <= www.index);
+    if (!useScheme && !www) break;
+    const start = useScheme ? scheme.start : www.index;
+    const end = toSpace(useScheme ? scheme.rest : www.index + 4);
+    out += `${s.slice(i, start)} `;
+    i = end;
+  }
+  return out + s.slice(i);
+}
 
 /**
  * A GitHub-style `#123` (1–7 digits, the first 1–9): not after a letter, digit, "_", "/",
@@ -58,12 +118,12 @@ const REF = /^(?:#[1-9]\d{0,6}|[A-Z][A-Z0-9]{1,9}-[1-9]\d{0,6})$/;
 /**
  * The issues a commit subject mentions, as distinct normalized references in the order
  * they first appear: `#123` and `GH-123` → "#123", a Jira-style key → "ABC-123" (see
- * HASH_REF, GH_REF, JIRA_REF; URLs, hex hashes and email addresses are skipped, see URL,
- * HEX_HASH; NOT_ISSUE_KEYS are not keys). [] for anything but a string. Pure function.
+ * HASH_REF, GH_REF, JIRA_REF; URLs, hex hashes and email addresses are skipped, see
+ * HEX_HASH and cutUrls; NOT_ISSUE_KEYS are not keys). [] for anything but a string. Pure function.
  */
 export function issueRefsInSubject(subject) {
   if (typeof subject !== 'string' || subject === '') return [];
-  const s = scrubEmails(subject).replace(URL, ' ').replace(HEX_HASH, ' ');
+  const s = cutUrls(scrubEmails(subject)).replace(HEX_HASH, ' ');
   const found = [];
   for (const m of s.matchAll(HASH_REF)) found.push([m.index, `#${m[1]}`, m.index + m[0].length]);
   for (const m of s.matchAll(GH_REF)) found.push([m.index, `#${m[1]}`, m.index + m[0].length]);

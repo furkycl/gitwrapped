@@ -51,6 +51,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   gets a "Typo fixes" line ("Yazım düzeltme") and `wrapped.md` a "Typo fixes" section
   ("Yazım düzeltmeleri"). Without a typo fix every card is unchanged.
 
+### Fixed
+
+- Email scrubbing (subjects, paths, names) took time quadratic in the length of a run with
+  no delimiter character (whitespace, brackets, quotes, `,;:|/\`) and no `@`: a
+  30,000-character subject took about a second, a 1,000,000-character one many minutes.
+  It is now linear, with exactly the same results.
+- Issue references: cutting URLs from a subject was quadratic on long runs such as
+  `a-a-a-…` (a 200,000-character subject took over 20 seconds); it is now linear, with
+  exactly the same results.
+- With the dependency-bumps, rewritten-commits or bot-commits rows in play, building the
+  cards worked out where those rows go many times over (each decision rebuilt the totals
+  and message cards below it); each is now worked out once per build, so such cards are
+  built about twice as fast, every card exactly as before.
+
 ## [1.16.0] - 2026-10-09
 
 ### Added

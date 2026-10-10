@@ -184,5 +184,5 @@ Legend: `[ ]` todo · `[x]` done · `[!]` blocked (reason on the same line)
 - [x] Bot commits: non-merge commits by bot authors (email or name ending in `[bot]`, plus `dependabot`, `renovate`, `github-actions` names; after .mailmap) — count + share and the busiest bot, as a row when there's room (never displacing), stats.json `stats.bots {commits, share, top: {name, commits}}` or null without non-merge commits, recap and wrapped.md; en/tr; tests
 - [x] Typo fixes: non-merge commits whose subject mentions a typo / spelling fix (`typo`, `typos`, `spelling`, `misspell*`; tr `yazım`; word-boundary, case-insensitive, outside URLs) — count + share, folded into or after the fix / wip / oops row when it fits (never displacing), stats.json `stats.messages.typos {commits, share}`, recap and wrapped.md; en/tr; tests
 - 1.17.0 release prep (split as before):
-  - [ ] Cold audit of the 1.17 work (diff 1.16.0 release commit..main) + fix every real bug found, with tests
+  - [x] Cold audit of the 1.17 work (diff 1.16.0 release commit..main) + fix every real bug found, with tests
   - [ ] CHANGELOG 1.17.0 + version bump, regenerate docs/self-wrapped (`git fetch --unshallow` first) + hero GIF, README in sync

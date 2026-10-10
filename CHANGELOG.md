@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.17.0] - 2026-10-10
+
 ### Added
 
 - Biggest shrinker: the mirror of the biggest grower, the file with the largest net line
@@ -60,10 +62,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issue references: cutting URLs from a subject was quadratic on long runs such as
   `a-a-a-…` (a 200,000-character subject took over 20 seconds); it is now linear, with
   exactly the same results.
-- With the dependency-bumps, rewritten-commits or bot-commits rows in play, building the
-  cards worked out where those rows go many times over (each decision rebuilt the totals
-  and message cards below it); each is now worked out once per build, so such cards are
-  built about twice as fast, every card exactly as before.
+- With the dependency-bumps or rewritten-commits rows in play, building the cards worked
+  out where those rows go many times over (each decision rebuilt the totals and message
+  cards below it); each is now worked out once per build (the new bot-commits row
+  included), so such cards are built about twice as fast, every card exactly as before.
 
 ## [1.16.0] - 2026-10-09
 
@@ -905,7 +907,8 @@ First public release on npm as `@furkycl/gitwrapped`.
 - On macOS, color emoji are left out of PNG exports, because resvg drew Apple Color Emoji
   far from their text. SVG cards and `wrapped.html` keep them.
 
-[Unreleased]: https://github.com/furkycl/gitwrapped/compare/v1.16.0...HEAD
+[Unreleased]: https://github.com/furkycl/gitwrapped/compare/v1.17.0...HEAD
+[1.17.0]: https://github.com/furkycl/gitwrapped/compare/v1.16.0...v1.17.0
 [1.16.0]: https://github.com/furkycl/gitwrapped/compare/v1.15.0...v1.16.0
 [1.15.0]: https://github.com/furkycl/gitwrapped/compare/v1.14.0...v1.15.0
 [1.14.0]: https://github.com/furkycl/gitwrapped/compare/v1.13.0...v1.14.0
